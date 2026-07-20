@@ -1,0 +1,63 @@
+﻿<div class="modal fade" id="modalDocumentLog" tabindex="-1" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" onclick="onclickClose()"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modalDocumentLog-title"></h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="row" style="margin-top: 15px; margin-bottom: 15px">
+                    <div class="col-lg-12">
+                        <div class="col-lg-3">
+                            <p><b>Total View :</b></p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p id="logTotalView"></p>
+                        </div>
+@*                        <div class="col-lg-3">
+                            <p><b>Total Download :</b></p>
+                        </div>*@
+@*                        <div class="col-lg-3">
+                            <p id="logTotalDownload"></p>
+                        </div>*@
+                    </div>
+                    <div class="col-lg-12">
+                        <div class="col-lg-3">
+                            <p><b>Total Print :</b></p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p id="logTotalPrint"></p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p><b>Total Published :</b></p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p id="logTotalPublished"></p>
+                        </div>
+                    </div>
+                </div>
+                <table id="datagridDocumentLog" class="table table-bordered table-condensed" width="100%">
+                    <thead>
+                        <tr>
+                            <th class="text-center" width="35px">No</th>
+                            <th class="text-center">Log Type</th>
+                            <th class="text-center">By</th>
+                            <th class="text-center">Date</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <div class="col-xs-12 text-right">
+                    @*<button type="button" class="btn btn-primary" id="btn_okApproveReject" style="width: 80px;">OK</button>
+                    <button type="button" class="btn btn-danger" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>*@
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

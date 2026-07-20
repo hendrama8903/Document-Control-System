@@ -1,0 +1,172 @@
+﻿<div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modal-title">Add / Edit @ViewData["Title"]</h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-lg-12 form-horizontal" style="margin-top:15px;">
+                        <div class="row ">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Menu ID <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="addEditMenuID" type="text" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Sequence <span class="text-red"> *</span></label>
+                                    <div class="col-sm-2">
+                                        <input class="form-control" id="addEditMenuSeq" type="text" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row" id="radioMenuType">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Menu Type <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8 radio-list">
+                                        <div class="radio-inline col-sm-12" style="padding-top:0px; margin-left:-15px;">
+                                            <span class="radio  col-sm-5">
+                                                <input type="radio" name="addEditMenuName" id="chkMenuParent" value="Parent" checked>
+                                                <label for="chkMenuParent" class="control-label" style="padding-top:2px; padding-left:0;">Parent Menu</label>
+                                            </span>
+                                            <span class="radio  col-sm-6">
+                                                <input type="radio" name="addEditMenuName" id="chkMenuChild" value="Child">
+                                                <label for="chkMenuChild" class="control-label" style="padding-top:2px; padding-left:0;">Sub Menu</label>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label"> </label>
+                                    <div class="col-sm-8">
+                                        <select name="parent_id" id="addEditParentID" class="form-control" disabled></select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Menu Name <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="addEditMenuName" type="text" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Menu Icon <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control icon-picker" id="addEditMenuIcon" type="text" autocomplete="off"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Menu URL <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="addEditMenuURL" type="text" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <div class="col-xs-12 text-right">
+                    <button type="button" class="btn btn-primary" id="btn_save" style="width: 80px;">Save</button>
+                    <button type="button" class="btn btn-danger" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalFunction" role="dialog" aria-labelledby="basicModal" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modal-title-function">Function List</h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <div class="row">
+                            <div class="col-md-12 form-group">
+                                <label class="control-label">Function ID <span class="text-red"> *</span></label>
+                                <input class="form-control" id="addEditFunctionId" type="text" />
+                            </div>
+                            <div class="col-md-12 form-group">
+                                <label class="control-label">Function Name <span class="text-red"> *</span></label>
+                                <input class="form-control" id="addEditFunctionName" type="text" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="row">
+                            <div class="col-md-12 form-group">
+                                <label class="control-label">Function Desc</label>
+                                <textarea class="form-control" rows="5" id="addEditFunctionDesc"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-xs-6">
+                        <button type="button" class="btn btn-warning" id="btn_edit_function" style="width: 80px;">Edit</button>
+                        <button type="button" class="btn btn-danger" id="btn_delete_function" style="width: 80px;">Delete</button>
+                    </div>
+                    <div class="col-xs-6 text-right">
+                        <button type="button" class="btn btn-success" id="btn_add_function" style="width: 80px;">Add</button>
+                        <button type="button" class="btn btn-grey" id="btn_clear_function" style="width: 80px;">Clear</button>
+                    </div>
+                </div>
+                <div class="row" style="margin-top: 15px;">
+                    <div class="col-lg-12">
+                        <table id="functiongrid" class="table table-bordered table-condensed" width="100%" style="min-width:auto;">
+                            <thead>
+                                <tr>
+                                    <th>Function ID</th>
+                                    <th>Function Name</th>
+                                    <th>Function Desc</th>
+                                </tr>
+                            </thead>
+                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-grey" id="btn_close_function" style="width: 80px;" data-dismiss="modal" >Close</button>
+            </div>
+        </div>
+    </div>
+</div>

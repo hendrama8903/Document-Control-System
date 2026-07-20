@@ -1,0 +1,288 @@
+﻿<script type="text/javascript">
+    var gScreenMode = null;
+    var gDocumentId = null;
+    var gFilePath = null;
+
+    $(document).ready(function() {
+        setDataSelect2WithParam("addEditLevel", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "- Choose -", "LEVEL_CODE");
+
+        $("#btn_add").on("click", function() {
+            onAddPrepare();
+        });
+
+        $("#btn_edit").on("click", function() {
+            onEditPrepare();
+        });
+
+        $("#btn_delete").on("click", function() {
+            onDeletePrepare();
+        });
+
+        $("#btn_save").on("click", function() {
+            confirmAddEditData();
+        });
+
+        $("#btn_delete_filepath").on("click", function() {
+            confirmDeleteAttachment()
+        });
+
+    });
+
+    function onSearch() {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        grid.clearSelection();
+        grid.refresh();
+    }
+
+    function onAddPrepare() {
+        gScreenMode = 'ADD';
+        $('#modal-title').html("Add Document Master");
+        $('#addEditDocumentCode').val("");
+        $('#addEditDocumentName').val("");
+        $('#addEditLevel').val("").trigger("change");
+        $('#fileNameContainer :input[type="text"]').val("");
+
+        $('#addEditDocumentCode').prop('disabled', false);
+        $('#addEditDocumentName').prop('disabled', false);
+        $('#addEditLevel').prop('disabled', false);
+
+        $('#fileNameContainer').removeClass();
+        $('#fileNameContainer').addClass('col-sm-8');
+        $('#btn_delete_filepath').hide();
+
+        gFilePath = null;
+
+        $("#modalAddEdit").modal();
+        $('#modalAddEdit').on('shown.bs.modal', function() {
+            $('#addEditDocumentCode').focus();
+        });
+    }
+
+    function onEditPrepare() {
+
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gDocumentId = row.DOCUMENT_ID;
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetByKey", "DocumentMaster")",
+            async: false,
+            data: {
+                DOCUMENT_ID: gDocumentId
+            },
+            success: function(result) {
+                if (result.status == true) {
+                    var data = result.data;
+
+                    gScreenMode = 'EDIT';
+                    $('#modal-title').html("Edit Document Master");
+                    $('#addEditDocumentCode').val(data.DOCUMENT_CODE);
+                    $('#addEditDocumentName').val(data.DOCUMENT_NAME);
+                    $('#addEditLevel').select2("trigger", "select", { data: { id: data.LEVEL, text: data.LEVEL_VAL } });
+
+                    gFilePath = data.FILE_PATH;
+                    $('#inputContainer :input[type="text"]').val(data.FILE_PATH);
+                    if (data.FILE_PATH == null) {
+                        $('#fileNameContainer').removeClass();
+                        $('#fileNameContainer').addClass('col-sm-8');
+                        $('#btn_delete_filepath').hide();
+                    } else {
+                        if ("@ViewData["Delete-FilePath"]" == "False") {
+                            $('#fileNameContainer').removeClass();
+                            $('#fileNameContainer').addClass('col-sm-8');
+                            $('#btn_delete_filepath').hide();
+                        } else {
+                            $('#fileNameContainer').removeClass();
+                            $('#fileNameContainer').addClass('col-sm-7');
+                            $('#btn_delete_filepath').show();
+                        }
+                    }
+
+                    $('#addEditDocumentCode').prop('disabled', true);
+                    $('#addEditDocumentName').prop('disabled', false);
+                    $('#addEditLevel').prop('disabled', false);
+
+                    $("#modalAddEdit").modal();
+                    $('#modalAddEdit').on('shown.bs.modal', function() {
+                        $('#addEditDocumentName').focus();
+                    });
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function(result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function onDeletePrepare() {
+
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gDocumentId = row.DOCUMENT_ID;
+        gFilePath = row.FILE_PATH;
+
+        showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
+    }
+
+    function confirmAddEditData() {
+        showConfirmMesg("Are you sure you want to continue process?", addEditData, "Confirmation");
+    }
+
+    $(document).on('change', '#attachmentPath', function(e) {
+        ex = e;
+    });
+
+    function addEditData() {
+        popUpProgressShow();
+        var data = new FormData();
+        var level = $('#addEditLevel').val();
+
+        data.append("screenMode", gScreenMode);
+        data.append("DOCUMENT_CODE", $('#addEditDocumentCode').val());
+        data.append("DOCUMENT_NAME", $('#addEditDocumentName').val());
+        if (level == null || level == "null") {
+            data.append("LEVEL", "");
+        } else {
+            data.append("LEVEL", $('#addEditLevel').val());
+        }
+        if (gDocumentId == null || level == "null") {
+            data.append("DOCUMENT_ID", "");
+        } else {
+            data.append("DOCUMENT_ID", gDocumentId);
+        }
+
+        if (gFilePath !== null) {
+            data.append("FILE_PATH", gFilePath);
+        }
+
+        if ($('#attachmentPath').val() != '') {
+            e = ex;
+            var files = e.target.files;
+            if (files.length > 0) {
+                if (window.FormData !== undefined)
+                    for (var x = 0; x < files.length; x++) {
+                        data.append("file" + x, files[x]);
+                    }
+            }
+        }
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("AddEdit", "DocumentMaster")",
+            contentType: false,
+            processData: false,
+            data: data,
+            success: function(result) {
+                //popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    popUpProgressHide();
+                    $("#modalAddEdit").modal('hide');
+                } else {
+                    //showErrorMesgGrowl(result.message);
+                    popUpProgressHide();
+                }
+            },
+            error: function(result) {
+                //showErrorMesgGrowl(result);
+                popUpProgressHide();
+            }
+        });
+    }
+
+    function deleteData() {
+        popUpProgressHide();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("Delete", "DocumentMaster")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                DOCUMENT_ID: gDocumentId,
+                FILE_PATH: gFilePath
+            },
+            success: function(result) {
+                //popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    popUpProgressHide();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                    popUpProgressHide();
+                }
+            },
+            error: function(result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+                popUpProgressHide();
+            }
+        });
+    }
+
+    function onDownload(attachment) {
+        gFilePath = attachment;
+        downloadAttachment();
+    }
+
+    function downloadAttachment() {
+        if (gFilePath !== "null" && gFilePath !== null) {
+            var link = '@Html.Raw(Url.Action("downloadAttachment", "DocumentMaster", new { path = "-1" }))';
+            link = link.replace("-1", gFilePath);
+            window.location.href = link;
+        } else {
+            showErrorMesgGrowl("This data does not have an attachment");
+        }
+    }
+
+    function confirmDeleteAttachment() {
+        showConfirmMesg("Are you sure you want to continue process?", deleteAttachment, "Confirmation");
+    }
+
+    function deleteAttachment() {
+        popUpProgressShow();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("RemoveAttachment", "DocumentMaster")",
+            dataType: 'json',
+            data: {
+                DOCUMENT_ID: gDocumentId,
+                FILE_PATH: gFilePath
+            },
+            success: function(result) {
+                if (result.status != false) {
+                    $('#inputContainer :input[type="text"]').val("");
+                    $('#fileNameContainer').removeClass();
+                    $('#fileNameContainer').addClass('col-sm-8');
+                    $('#btn_delete_filepath').hide();
+
+                    gFilePath = null;
+                    $(":file").filestyle('clear');
+
+                    onSearch();
+                    showSuccessMesgGrowl(result.message);
+                    popUpProgressHide();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                    popUpProgressHide();
+                }
+            },
+            error: function(result) {
+                showErrorMesgGrowl(result);
+                popUpProgressHide();
+            }
+        });
+    }
+
+</script>

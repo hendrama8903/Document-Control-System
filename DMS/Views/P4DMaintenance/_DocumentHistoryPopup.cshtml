@@ -1,0 +1,85 @@
+﻿<div class="modal fade" id="modalDocumentHistory" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" onclick="onclickClose()"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modalDocumentHistory-title"></h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="row" style="margin-top: 15px; margin-bottom: 15px">
+                    <div class="col-lg-12">
+                        <div class="col-lg-3">
+                            <p><b>Document Code :</b></p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p id="txtDocumentCode"></p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p><b>Last Revision :</b></p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p id="txtLastRevision"></p>
+                        </div>
+                    </div>
+                    <div class="col-lg-12">
+                        <div class="col-lg-3">
+                            <p><b>Division :</b></p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p id="txtDivision"></p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p><b>Department :</b></p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p id="txtDepartment"></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="text-right">
+                            <button type="button" class="btn btn-warning" id="btn_hide" onclick="toggleColumnWithId('datagridDocumentHistory');" style="margin-bottom: 10px"><i class="fa fa-eye"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <table id="datagridDocumentHistory" class="table table-bordered table-condensed" width="100%">
+                    <thead>
+                        <tr>
+                            <th class="text-center" width="35px">No</th>
+                            <th class="text-center">Action</th>
+                            <th class="text-center">Distribution</th>
+                            <th class="text-center">Log</th>
+                            <th class="text-center">Document No</th>
+                            <th class="text-center">Document Name</th>
+                            <th class="text-center">Divisi</th>
+                            <th class="text-center">Department</th>
+                            <th class="text-center">Classified</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Revision</th>
+                            <th class="text-center">Item Changed</th>
+                            <th class="text-center">Reason</th>
+                            <th class="text-center">Reference No</th>
+                            <th class="text-center">Source</th>
+                            <th class="text-center">Created By</th>
+                            <th class="text-center">Created Date</th>
+                            <th class="text-center">Changed By</th>
+                            <th class="text-center">Changed Date</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <div class="col-xs-12 text-right">
+                    @*<button type="button" class="btn btn-primary" id="btn_okApproveReject" style="width: 80px;">OK</button>
+                    <button type="button" class="btn btn-danger" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>*@
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

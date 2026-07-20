@@ -1,0 +1,166 @@
+﻿<div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modal-title">Add / Edit @ViewData["Title"]</h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-lg-12 form-horizontal" style="margin-top:15px;">
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Username <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="addEditUsername" type="text" oninput="removeWhiteSpace(this)" maxlength="50" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Reg No <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="addEditRegNo" type="text" oninput="removeWhiteSpace(this)" maxlength="50" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Full Name <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="addEditFullname" type="text" oninput="removeWhiteSpace(this)" maxlength="255"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Email <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="addEditEmail" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Phone</label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="addEditPhone" type="text" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Role <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <select class="form-control select2" id="addEditRoleId">
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">AD User</label>
+                                    <div class="col-sm-8" style="padding-top: 7px;">
+                                        <input type="checkbox" id="addEditAdUser" style="cursor: pointer; vertical-align: middle;" />
+                                        <label for="addEditAdUser" style="margin-left: 6px; margin-bottom: 0; font-weight: normal; cursor: pointer; vertical-align: middle;">Login menggunakan akun Active Directory (domain)</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row" id="rowOldPassword">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Old Password <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="addEditOldPassword" type="password" />
+                                        <span id="spanOldPassword" class="text-red">*Keep it blank if you don't change the password</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row" id="rowNewPassword">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label id="labelNewPassword" class="col-sm-3 control-label">New Password <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="addEditPassword" type="password" />
+                                        <span id="spanEditPassword" class="text-red">*Keep it blank if you don't change the password</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row" id="rowConfirmPassword">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Confirm Password <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="addEditConfirmPassword" type="password" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group has-feedback" id="inputContainer">
+                                    <label class="col-sm-3 control-label">Signature</label>
+                                    <div class="col-sm-8" id="fileNameContainer">
+                                        <input type="file" class="filestyle" data-btnClass="btn-primary" id="filePath" style="height: 31px;" accept=".jpg,.jpeg,.png">
+                                    </div>
+                                    <div class="col-sm-2" style="padding-left: 0px">
+                                        <div class="btn-group">
+                                            <button type="button" id="btn_delete_attachment" class="btn btn-danger" data-toggle="tooltip" data-placement="bottom" title="Remove Signature"><i class="fa fa-trash"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+@*                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Division <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <select class="form-control" id="addEditDivision" onchange="setDepartment(this.value)"></select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Department <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <select class="form-control" id="addEditDepartment"></select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>*@
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <div class="col-xs-12 text-right">
+                    <button type="button" class="btn btn-primary" id="btn_save" style="width: 80px;">Save</button>
+                    <button type="button" class="btn btn-danger" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,1775 @@
+﻿﻿@using Microsoft.AspNetCore.Http
+
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+
+<script type="text/javascript">
+    //RECOMMIT DINA
+    //RECOMMIT DINA 2
+    var gScreenMode = null;
+    var gId = null;
+    var gDocumentId = null;
+    var gDocumentNo = null;
+    var gIsApproved = null;
+    var gFilePath = null;
+    var gApprovalId = null;
+    var approvalSeq = null;
+    var approver = null;
+    var gDocumentName = null;
+    var gDocumentDepartment = null;
+    var gDocumentClassified = null;
+    var gApprovalMode = null;
+    var gImpactOther = null;
+    var gReffNo = null;
+    var gSourceNo = null;
+    var documentLevel = null;
+    var gAttachmentPath = null;
+    var SESSION_POSITION_ID = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetInt32("POSITION_ID"))";
+    var SESSION_DIVISION = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("DIVISION"))";
+    var SESSION_DIVISION_NAME = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("DIVISION_NAME"))";
+    var SESSION_DEPARTMENT_ID = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetInt32("DEPARTMENT_ID"))";
+    var SESSION_DEPARTMENT_CODE = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("DEPARTMENT_CODE"))";
+    var SESSION_DEPARTMENT_NAME = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("DEPARTMENT_NAME"))";
+    var SESSION_SECTION_ID = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetInt32("SECTION_ID"))";
+    var SESSION_SECTION_CODE = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("SECTION_CODE"))";
+    var SESSION_SECTION_NAME = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("SECTION_NAME"))";
+
+    $(document).ready(function () {
+        //Updated By Arie (2023-08-24)
+        setDataSelect2("addEditDocumentNo2", "@Url.Action("GetDocumentNoAllowedRevision", "DocumentMaintenance")", "- Choose -");
+        $('#addEditDocumentNo2').data('select2').$container.addClass('hide');
+        setDataSelect2WithParam("addEditDocumentLevel", "@Url.Action("GetSystemCodeBySystemType", "MSystem")", "- Choose -", "LEVEL_CODE");
+
+        setDataSelect2WithParam("addEditDocumentType", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "- Choose -", "DOCUMENT_TYPE");
+        setDataSelect2("addEditDocumentCode", "@Url.Action("GetDocumentCodeByLevel", "DocumentMaintenance")", "- Choose -");
+        setDataSelect2WithParam("addEditClassified", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "- Choose -", "CLASSIFIED");
+        setDataSelect2WithParam("addEditProcessCode", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "- Choose -", "PROCESS_CODE");
+        setDataSelect2WithParam("addEditCompanyCode", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "- Choose -", "COMPANY_CODE");
+        setDataSelect2WithParam("addEditDivision", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "- Choose -", "DIVISION");
+        setDataSelect2WithParam("addEditDepartment", "@Url.Action("GetDepartmentIdAndNameByDivision", "DepartmentMaster")", "- Choose -", "");
+        setDataSelect2WithParam("addEditDocumentCreator", "@Url.Action("GetUserNameByDepartmentId", "User")", "- Choose -", "");
+        setDataSelect2("addEditSection", "@Url.Action("GetSectionCodeAndName", "SectionMaster")", "- Choose -");
+
+
+        $("#btn_add").on("click", function () {
+            onAddPrepare();
+        });
+
+        $("#btn_edit").on("click", function () {
+            onEditPrepare();
+        });
+
+        $("#btn_delete").on("click", function () {
+            onDeletePrepare();
+        });
+
+        $("#btn_save").on("click", function () {
+            confirmAddEditData();
+        });
+
+        $("#btn_saveEdit").on("click", function () {
+            confirmAddEditData();
+        });
+
+        $("#btn_cancel").on("click", function () {
+            $('#addEditDocumentType').val("").trigger("change");
+            reset();
+        });
+
+        //$("#btn_delete").on("click", function () {
+        //    onDeletePrepare();
+        //});
+
+        //$("#btn_edit").on("click", function () {
+        //    onEditPrepare();
+        //});
+
+        $("#btn_download").on("click", function () {
+            onDownload();
+        });
+
+        $("#btn_approval").on("click", function () {
+            onApprovalPrepare();
+        });
+
+        $("#btn_approve").on("click", function () {
+            gApprovalMode = "approve";
+            onApproveRejectPrepare();
+        });
+
+        $("#btn_reject").on("click", function () {
+            gApprovalMode = "reject";
+            onApproveRejectPrepare();
+        });
+
+        $("#btn_download_pengesahan").on("click", function () {
+            downloadPengesahan();
+        });
+    });
+
+    function onclickClose() {
+        $('#datagridApproval').DataTable({
+            "bDestroy": true
+        });
+    }
+
+    //update approval - Hafidz Ezio
+    function onApprovalPrepare() {
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gId = row.DOCUMENT_TRANSACTION_ID;
+        gDocumentNo = row.DOCUMENT_CODE;
+        gDocumentName = row.DOCUMENT_TRANSACTION_NAME;
+        gDocumentDepartment = row.DEPARTMENT_NAME;
+        gDocumentClassified = row.CLASSIFIED_VAL;
+        gApprovalId = row.APPROVAL_ID;
+
+        getApprovalHeader();
+        getApprovalDetail();
+        getApprovalHistoryDetail();
+        $("#modalApproval").modal();
+    }
+
+    function getApprovalHeader() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetApprovalHeader", "DocumentMaintenance")",
+            async: false,
+            data: {
+                approvalId: gApprovalId
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    approvalHeaderData = result.data;
+
+                    $('#approvalDocumentNo').html(gDocumentNo);
+                    $('#approvalDocumentName').html(gDocumentName);
+                    $('#approvalDocumentDepartment').html(gDocumentDepartment);
+                    $('#approvalDocumentClassified').html(gDocumentClassified);
+                    $('#approvalCreator').html(approvalHeaderData["CREATOR_NAME"]);
+
+                    if (approvalHeaderData["APPROVAL_STATUS"] == 0) {
+                        $('#approvalStatus').html('<span class="label label-info">' + approvalHeaderData["APPROVAL_STATUS_DESC"] + '</span>');
+                    } else if (approvalHeaderData["APPROVAL_STATUS"] == 1) {
+                        $('#approvalStatus').html('<span class="label label-success">' + approvalHeaderData["APPROVAL_STATUS_DESC"] + '</span>');
+                        $('#pengesahanLayout').show();
+                    } else {
+                        $('#approvalStatus').html('<span class="label label-danger">' + approvalHeaderData["APPROVAL_STATUS_DESC"] + '</span>');
+                    }
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function getApprovalDetail() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetApprovalDetail", "DocumentMaintenance")",
+            async: false,
+            data: {
+                approvalId: gApprovalId
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    var data = result.data;
+
+                    $("#approvalgrid").dataTable().fnDestroy();
+                    $('#approvalgrid').DataTable({
+                        "ordering": false,
+                        "oLanguage": { "sEmptyTable": "Data not found." },
+                        "scrollCollapse": false,
+                        "paging": false,
+                        "info": false,
+                        "searching": false,
+                        "data": data,
+                        "columns": [
+                            {
+                                data: 'APPROVER_NAME'
+                            },
+                            {
+                                render: function (data, type, row) {
+                                    if (row["STATUS"] == 0) {
+                                        return '<span class="label label-info">' + row["STATUS_DESC"] + '</span>';
+                                    } else if (row["STATUS"] == 1) {
+                                        return '<span class="label label-success">' + row["STATUS_DESC"] + '</span>';
+                                    } else {
+                                        return '<span class="label label-danger">' + row["STATUS_DESC"] + '</span>';
+                                    }
+                                }
+                            },
+                            {
+                                render: function (data, type, row) {
+                                    if (row["CHANGED_DT"] != null) {
+                                        return moment(row["CHANGED_DT"]).format("DD-MM-YYYY HH:mm:ss");
+                                    } else {
+                                        return "";
+                                    }
+                                }
+                            },
+                            {
+                                render: function (data, type, row) {
+                                    if (approvalHeaderData != null) {
+                                        if (approvalHeaderData["CURRENT_SEQ"] == row["WORKFLOW_SEQ"] &&
+                                            row["APPROVER"] === '@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("USERNAME"))'
+                                            && approvalHeaderData["APPROVAL_STATUS"] == 0) {
+                                            return '<button class="btn btn-info" id="btn_approval_form" onClick="onApprovalForm(' + row["WORKFLOW_SEQ"] + ', \'' + row["APPROVER"] + '\')">Approval</button>';
+                                        }
+                                    }
+                                    return null;
+                                }
+                            }
+                        ],
+                        "columnDefs": [
+                            { "width": "15%", "targets": 1 },
+                            { "width": "15%", "targets": 2 },
+                            { "width": "10%", "targets": 3 },
+                            {
+                                "targets": [1],
+                                "className": "text-center",
+                            },
+                            {
+                                "targets": [2],
+                                "className": "text-center",
+                            },
+                        ]
+                    });
+
+                    $('#modalApproval').on('shown.bs.modal', function () {
+                        $("#approvalgrid").DataTable().columns.adjust().draw();
+                    });
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function getApprovalHistoryDetail() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetApprovalHistoryDetail", "DocumentMaintenance")",
+            async: false,
+            data: {
+                MENU_ID: "M00006-01",
+                TRANSACTION_ID: gId
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    var data = result.data;
+
+                    $("#historyGrid").dataTable().fnDestroy();
+                    $('#historyGrid').DataTable({
+                        "ordering": false,
+                        "oLanguage": { "sEmptyTable": "Data not found." },
+                        "scrollCollapse": false,
+                        "paging": false,
+                        "info": false,
+                        "searching": false,
+                        "data": data,
+                        "columns": [
+                            {
+                                data: 'APPROVER_NAME'
+                            },
+                            {
+                                render: function (data, type, row) {
+                                    if (row["CHANGED_DT"] != null) {
+                                        return moment(row["CHANGED_DT"]).format("DD-MM-YYYY HH:mm:ss");
+                                    } else {
+                                        return "";
+                                    }
+                                }
+                            },
+                            {
+                                data: 'REMARK'
+                            },
+                        ],
+                        "columnDefs": [
+                            {
+                                "targets": [1],
+                                "className": "text-center",
+                            },
+                            { "width": "15%", "targets": 0 },
+                            { "width": "15%", "targets": 1 },
+                        ]
+                    });
+
+                    $('#modalApproval').on('shown.bs.modal', function () {
+                        $("#historyGrid").DataTable().columns.adjust().draw();
+                    });
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function onApprovalForm(approval_seq, approver_name) {
+        approvalSeq = approval_seq;
+        approver = approver_name;
+        $("#approvalRemark").val("");
+        $("#modalApprovalForm").modal();
+    }
+
+    function maxLengthCheck(object) {
+        if (object.value.length > object.maxLength)
+            object.value = object.value.slice(0, object.maxLength)
+    }
+
+    function onDownload() {
+        download();
+    }
+
+    function download() {
+        var link = '@Html.Raw(Url.Action("DownloadReport", "DocumentMaintenance"))';
+        var param = '?DOCUMENT_CODE=null&DOCUMENT_TRANSACTION_NAME=null&DOCUMENT_YEAR=null';
+
+        window.location.href = link + param;
+    }
+
+
+    function onSearch() {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        grid.clearSelection();
+        grid.refresh();
+    }
+
+    function onAddPrepare() {
+        gScreenMode = 'ADD';
+        $('#modal-title').html("Add Document");
+        $('#addEditDocumentType').val("").trigger("change");
+
+        reset();
+
+        gFilePath = null;
+
+        $("#modalAddEdit").modal();
+        $('#modalAddEdit').on('shown.bs.modal', function () {
+            $('#addEditDocumentType').focus();
+        });
+
+    }
+
+    function generateDocumentNo() {
+
+        //Updated By Arie (2023-08-24)
+        $("#addEditDocumentNo").val("GENERATED");
+    }
+
+    function onChangeDocumentType() {
+        reset();
+
+        if ($('#addEditDocumentType').val() == "01") //NEW
+        {
+            $('#addEditDocumentType').prop('disabled', false);
+            $('#addEditClassified').prop('disabled', true);
+            $('#addEditProcessCode').prop('disabled', true);
+            $('#addEditCompanyCode').prop('disabled', true);
+            $('#addEditDate').prop('disabled', true);
+            $('#addEditItemChanged').prop('disabled', true);
+            $('#addEditExternal').prop('disabled', false);
+
+            $('#addEditDocumentNo').prop('disabled', true);
+            $('#addEditDocumentNo2').prop('disabled', true);
+            $('#addEditDocumentCode').prop('disabled', true);
+            $('#addEditDocumentName').prop('disabled', true);
+            $('#addEditDocumentUpload').prop('disabled', true);
+            $('#addEditReason').prop('disabled', true);
+            $('#addEditSection').prop('disabled', true);
+            $('#addEditDocumentCreator').prop('disabled', true);
+
+            $('#addEditReferenceNo').prop('disabled', true);
+            $('#addEditImpactToOtherDocument').prop('disabled', true);
+            $('#addEditSource').prop('disabled', true);
+
+            generateDocumentNo();
+
+            //Updated By Arie (2023-08-24)
+            $('#addEditDocumentNo').removeClass('hide');
+            $('#addEditDocumentNo2').data('select2').$container.addClass('hide');
+            $('#addEditDocumentLevel').prop('disabled', false);
+        }
+
+        if ($('#addEditDocumentType').val() == "02") //REVISION
+        {
+            $('#addEditDocumentType').prop('disabled', false);
+            $('#addEditClassified').prop('disabled', true);
+            $('#addEditProcessCode').prop('disabled', true);
+            $('#addEditCompanyCode').prop('disabled', true);
+            $('#addEditDate').prop('disabled', true);
+            $('#addEditItemChanged').prop('disabled', false);
+            $('#addEditExternal').prop('disabled', false);
+
+            $('#addEditDocumentNo').prop('disabled', false);
+            $('#addEditDocumentNo2').prop('disabled', false);
+            $('#addEditDocumentCode').prop('disabled', true);
+            $('#addEditDocumentName').prop('disabled', true);
+            $('#addEditDocumentUpload').prop('disabled', true);
+            $('#addEditReason').prop('disabled', false);
+            $('#addEditSection').prop('disabled', true);
+            $('#addEditDocumentCreator').prop('disabled', true);
+
+            $('#addEditReferenceNo').prop('disabled', true);
+            $('#addEditImpactToOtherDocument').prop('disabled', true);
+            $('#addEditSource').prop('disabled', true);
+
+            //Updated By Arie (2023-08-24)
+            $('#addEditDocumentNo').addClass('hide');
+            $('#addEditDocumentNo2').data('select2').$container.removeClass('hide');
+            $('#addEditDocumentNo2').val("").trigger("change");
+            $('#addEditDocumentLevel').prop('disabled', true);
+        }
+    }
+
+    function onChangeDocumentLevel() {
+        if ($('#addEditDocumentType').val() == "01") //NEW
+        {
+            onChangeDocumentCode();
+        }
+
+        setDataSelect2WithParam("addEditDocumentCode", "@Url.Action("GetDocumentCodeByLevel", "DocumentMaintenance")", "- Choose -", $('#addEditDocumentLevel').val());
+    }
+
+    function onChangeDocumentNo() {
+        gImpactOther = null;
+        gReffNo = null;
+        gSourceNo = null;
+
+        //Updated By Arie (2023-08-24)
+        $("#addEditDocumentNo").val($("#addEditDocumentNo2").val());
+
+        if ($('#addEditDocumentType').val() == "02" && $("#addEditDocumentNo").val() != null && $("#addEditDocumentNo").val() != "" && $("#addEditDocumentNo").val() != "null") //REVISION
+        {
+            $.ajax({
+                type: "POST",
+                url: "@Url.Action("GetDataByDocumentNo")",
+                async: false,
+                data: {
+                    DOCUMENT_CODE: $("#addEditDocumentNo").val()
+                },
+                success: function (result) {
+                    if (result.status == true) {
+                        var data = result.data;
+
+                        gImpactOther = data.IMPACT_OTHER_FLAG;
+                        gReffNo = data.REFERENCE_NO;
+                        gSourceNo = data.SOURCE;
+
+                        $("#addEditDocumentLevel").select2("trigger", "select", { data: { id: data.LEVEL_CODE, text: data.LEVEL_CODE } });//.val(data.CLASSIFIED);
+                        $("#addEditClassified").select2("trigger", "select", { data: { id: data.CLASSIFIED, text: data.CLASSIFIED + ' - ' + data.CLASSIFIED_VAL } });//.val(data.CLASSIFIED);
+                        $("#addEditDocumentCode").select2("trigger", "select", { data: { id: data.DOCUMENT_CODE, text: data.DOCUMENT_CODE } });//.val(data.DOCUMENT_CODE);
+                        $("#addEditDocumentName").val(data.DOCUMENT_TRANSACTION_NAME);
+                        $("#addEditCompanyCode").select2("trigger", "select", { data: { id: data.COMPANY_CODE, text: data.COMPANY_CODE } });//.val(data.COMPANY_CODE);
+                        $("#addEditDivision").select2("trigger", "select", { data: { id: data.DIVISION, text: data.DIVISION + " - " + data.DIVISION_NAME } });//.val(data.DIVISION_CODE);
+                        $("#addEditDepartment").select2("trigger", "select", { data: { id: data.DEPARTMENT_ID, text: data.DEPARTMENT_CODE + " - " + data.DEPARTMENT_NAME } });//.val(data.DEPARTMENT_CODE);
+                        $("#addEditDocumentCreator").select2("trigger", "select", { data: { id: data.DOCUMENT_CREATOR, text: data.DOCUMENT_CREATOR } });//.val(data.DEPARTMENT_CODE);
+                        $("#addEditDate").val(data.DOCUMENT_DATE.substring(0, 10));
+                        $('#addEditItemChanged').val(data.ITEM_CHANGED);
+                        $('#addEditReason').val(data.REASON);
+
+                        if (data.PROCESS_CODE != null) {
+                            $("#addEditProcessCode").select2("trigger", "select", { data: { id: data.PROCESS_CODE, text: data.PROCESS_CODE } });//.val(data.PROCESS_CODE);
+                        } else {
+                            $("#addEditProcessCode").val("").trigger("change");
+                        }
+
+                        if (data.SECTION_CODE != null) {
+                            $("#addEditSection").select2("trigger", "select", { data: { id: data.SECTION_CODE, text: data.SECTION_NAME } });//.val(data.SECTION_CODE);
+                        } else {
+                            $("#addEditSection").val("").trigger("change");
+                        }
+
+                        $('#addEditDocumentName').prop('disabled', false);
+                        $('#addEditDate').prop('disabled', false);
+                        $('#addEditDocumentUpload').prop('disabled', false);
+                        $('#addEditExternal').prop('disabled', false);
+                        $('#addEditReferenceNo').prop('disabled', true);
+
+                        if (data.EXTERNAL_FLAG == "1") {
+                            $('#addEditImpactToOtherDocument').prop('disabled', false);
+                            $("#addEditExternal").prop("checked", true);
+                        } else {
+                            $('#addEditImpactToOtherDocument').prop('disabled', true);
+                            $("#addEditExternal").prop("checked", false);
+                        }
+
+                        if (data.IMPACT_OTHER_FLAG == "1") {
+                            $("#addEditImpactToOtherDocument").prop("checked", true);
+                        } else {
+                            $("#addEditImpactToOtherDocument").prop("checked", false);
+                        }
+
+                        $('#addEditReferenceNo').val(data.REFERENCE_NO);
+                        $('#addEditSource').val(data.SOURCE);
+                    } else {
+                        showErrorMesgGrowl(result.message);
+                    }
+                },
+                error: function (result) {
+                    //popUpProgressHide();
+                    showErrorMesgGrowl(result);
+                }
+            });
+        }
+    }
+
+    function onChangeDocumentCode() {
+        $("#addEditDate").val('');
+        $("#addEditDocumentUpload").val('');
+        $('#addEditDocumentCode').val("").trigger("change");
+
+        $('#addEditDocumentCode').prop('disabled', false);
+        //$('#addEditDivision').prop('disabled', true);
+        $('#addEditClassified').prop('disabled', false);
+
+        documentLevel = $("#addEditDocumentLevel").val();
+
+        //showErrorMesgGrowl(selectedDocumentCode);
+        //showErrorMesgGrowl(myArray[0]);
+        //showErrorMesgGrowl(myArray[1]);
+
+
+
+        /*
+        -	IF Level = 1
+    -	Enable :					-	Company Code
+                            -	Document Name
+                            -	Date
+                            -	Document Upload
+
+         -	IF Level = 2
+    -	Enable :					-	Company Code
+                            -	Process Code
+                            -	Document Name
+                            -	Date
+                            -	Document Upload
+
+    -	IF Level = 3 or 4
+    -	Enable :					-	Department
+                            -	Section
+                            -	Document Name
+                            -	Date
+                            -	Document Upload
+
+
+        */
+
+        if (documentLevel == "1") {
+            //showErrorMesgGrowl(documentLevel);
+
+            $('#addEditCompanyCode').prop('disabled', false);
+            $('#addEditDocumentName').prop('disabled', false);
+            $('#addEditDate').prop('disabled', false);
+            $('#addEditDocumentUpload').prop('disabled', false);
+            $('#addEditSection').prop('disabled', true);
+
+            $('#addEditProcessCode').prop('disabled', true);
+            $('#addEditProcessCode').val("").trigger("change");
+
+            $('#mandatoryMarkProcessCode').hide();
+            $('#mandatoryMarkSection').hide();
+
+            //Updated By Arie (2023-08-24)
+            //$('#addEditSection').prop('disabled', true);
+            //$('#addEditSection').val("").trigger("change");
+            //$('#addEditDepartment').prop('disabled', true);
+            //$('#addEditSection').prop('disabled', true);
+            setPositionState(documentLevel)
+        }
+
+        else if (documentLevel == "2") {
+            //showErrorMesgGrowl(documentLevel);
+
+            $('#addEditCompanyCode').prop('disabled', false);
+            $('#addEditProcessCode').prop('disabled', false);
+            $('#addEditDocumentName').prop('disabled', false);
+            $('#addEditDate').prop('disabled', false);
+            $('#addEditDocumentUpload').prop('disabled', false);
+            $('#addEditSection').prop('disabled', true);
+
+            $('#mandatoryMarkProcessCode').show();
+            $('#mandatoryMarkSection').hide();
+
+            //Updated By Arie (2023-08-24)
+            //$('#addEditSection').prop('disabled', true);
+            //$('#addEditSection').val("").trigger("change");
+            //$('#addEditDepartment').prop('disabled', true);
+            //$('#addEditSection').prop('disabled', true);
+            setPositionState(documentLevel)
+        }
+
+        else if (documentLevel == "3" || documentLevel == "4") {
+            //showErrorMesgGrowl(documentLevel);
+
+            //Updated By Arie (2023-08-24)
+            //$('#addEditDepartment').prop('disabled', false);
+            //$('#addEditSection').prop('disabled', false);
+            $('#addEditCompanyCode').prop('disabled', false);
+            $('#addEditDocumentName').prop('disabled', false);
+            $('#addEditDate').prop('disabled', false);
+            $('#addEditDocumentUpload').prop('disabled', false);
+
+            //$('#addEditCompanyCode').prop('disabled', true);
+            $('#addEditProcessCode').prop('disabled', true);
+            $('#addEditProcessCode').val("").trigger("change");
+
+            $('#mandatoryMarkProcessCode').hide();
+            $('#mandatoryMarkSection').show();
+            setPositionState(documentLevel)
+        }
+    }
+
+    function setPositionState(documentLevel) {
+        if (documentLevel == 1 || documentLevel == 2)
+        {
+            $('#addEditSection').prop('disabled', true);
+
+            if ((documentLevel == 1 || documentLevel == 2) && (SESSION_SECTION_ID == null || SESSION_SECTION_ID == "" || SESSION_SECTION_ID == 0)) {
+                $('#addEditSection').val("").trigger("change");
+            }
+
+            var departmentId = $('#addEditDepartment').val();
+
+            if (departmentId != null && departmentId != "") {
+                $('#addEditDocumentCreator').prop('disabled', false);
+            }
+        }
+
+        if (documentLevel == 3 || documentLevel == 4) {
+            var departmentId = $('#addEditDepartment').val();
+
+            if (departmentId != null && departmentId != "") {
+                $('#addEditSection').prop('disabled', false);
+                $('#addEditDocumentCreator').prop('disabled', false);
+            }
+        }
+
+        if (SESSION_DEPARTMENT_ID == null || SESSION_DEPARTMENT_ID == "" || SESSION_DEPARTMENT_ID == 0) {
+            var division = $('#addEditDivision').val();
+
+            if (division != null && division != "") {
+                $('#addEditDepartment').prop('disabled', false);
+            }
+        }
+
+        if (SESSION_DIVISION == null || SESSION_DIVISION == "" || SESSION_DIVISION == 0 || SESSION_POSITION_ID == "5") {
+            $('#addEditDivision').prop('disabled', false);
+        }
+    }
+
+    function setDepartment(val) {
+        var division = val;
+
+        if (division != null && division != "") {
+            if (SESSION_DIVISION == null || SESSION_DIVISION == "" || SESSION_DIVISION == 0 || SESSION_POSITION_ID == "5") {
+                $('#addEditDepartment').prop('disabled', false);
+            }
+
+            $('#addEditDepartment').val("").trigger("change");
+            setDataSelect2WithParam("addEditDepartment", "@Url.Action("GetDepartmentIdAndNameByDivision", "DepartmentMaster")", "- Choose -", division);
+        }
+    }
+
+    function setSection(val) {
+        var departmentId = val;
+
+        if (departmentId == null || departmentId == "" || (documentLevel != "3" && documentLevel != "4")) {
+            $('#addEditSection').prop('disabled', true);
+        } else {
+            $('#addEditSection').prop('disabled', false);
+        }
+
+        $('#addEditSection').val("").trigger("change");
+        setDataSelect2WithParam("addEditSection", "@Url.Action("GetSectionCodeAndNameByDepartment", "SectionMaster")", "- Choose -", departmentId);
+
+        setDocumentCreator(val)
+    }
+
+    function setDocumentCreator(val) {
+        var departmentId = val;
+
+        if (departmentId == null || departmentId == "" || documentLevel == null || documentLevel == "") {
+            $('#addEditDocumentCreator').prop('disabled', true);
+        } else {
+            $('#addEditDocumentCreator').prop('disabled', false);
+        }
+
+        $('#addEditDocumentCreator').val("").trigger("change");
+        setDataSelect2WithParam("addEditDocumentCreator", "@Url.Action("GetUserNameByDepartmentId", "User")", "- Choose -", val);
+    }
+
+    function confirmAddEditData() {
+        showConfirmMesg("Are you sure you want to continue process?", addEditData, "Confirmation");
+    }
+
+    function addEditData() {
+        popUpProgressShow();
+        var data = new FormData();
+        data.append("screenMode", gScreenMode);
+
+        if (gScreenMode == "ADD") {
+            var documentId = $('#addEditDocumentId').val();
+            var documentType = $('#addEditDocumentType').val();
+            var documentNo = $('#addEditDocumentNo').val();
+            var classified = $('#addEditClassified').val();
+            var documentCode = $('#addEditDocumentCode').val();
+            var processCode = $('#addEditProcessCode').val();
+            var documentName = $('#addEditDocumentName').val();
+            var companyCode = $('#addEditCompanyCode').val();
+            var division = $('#addEditDivision').val();
+            var department = $('#addEditDepartment').val();
+            var section = $('#addEditSection').val();
+            var date = $('#addEditDate').val();
+            var documentUpload = $('#addEditDocumentUpload').val();
+            var itemChanged = $('#addEditItemChanged').val();
+            var reason = $('#addEditReason').val();
+            var external = $('#addEditExternal').val();
+            var referenceNo = $('#addEditReferenceNo').val();
+            var source = $('#addEditSource').val();
+            var impactToOtherDocument = $('#addEditImpactToOtherDocument').val();
+            var levelCode = $('#addEditDocumentLevel').val();
+            var documentCategoryArray = $('#addEditDocumentCode').val().split('|');
+            var documentCreator = $('#addEditDocumentCreator').val();
+
+            if ($('#addEditExternal').is(":checked")) {
+                data.append("EXTERNAL_FLAG", '1');
+            } else {
+                data.append("EXTERNAL_FLAG", '0');
+            }
+
+            if ($('#addEditImpactToOtherDocument').is(":checked")) {
+                data.append("IMPACT_OTHER_FLAG", '1');
+            } else {
+                data.append("IMPACT_OTHER_FLAG", '0');
+            }
+
+            if (gDocumentId != null && gDocumentId != "null" && gDocumentId != "") {
+                data.append("DOCUMENT_TRANSACTION_ID", gDocumentId);
+            }
+
+            if (documentType != null && documentType != "null" && documentType != "") {
+                data.append("DOCUMENT_TYPE", $('#addEditDocumentType').val());
+            }
+
+            if (documentNo != null && documentNo != "null" && documentNo != "") {
+                data.append("DOCUMENT_CODE", $('#addEditDocumentNo').val());
+            }
+
+            if (classified != null && classified != "null" && classified != "") {
+                data.append("CLASSIFIED", $('#addEditClassified').val());
+            }
+
+            if (documentCode != null && documentCode != "null" && documentCode != "") {
+                data.append("DOCUMENT_CODE", $('#addEditDocumentCode').val());
+            }
+
+            if (processCode != null && processCode != "null" && processCode != "") {
+                data.append("PROCESS_CODE", $('#addEditProcessCode').val());
+            }
+
+            if (documentName != null && documentName != "null" && documentName != "") {
+                data.append("DOCUMENT_TRANSACTION_NAME", $('#addEditDocumentName').val());
+            }
+
+            if (companyCode != null && companyCode != "null") {
+                data.append("COMPANY_CODE", $('#addEditCompanyCode').val());
+            }
+
+            if (division != null && division != "null" && division != "") {
+                data.append("DIVISION", $('#addEditDivision').val());
+            }
+
+            if (department != null && department != "null" && department != "") {
+                data.append("DEPARTMENT_ID", $('#addEditDepartment').val());
+            }
+
+            if (section != null && section != "null" && section != "") {
+                data.append("SECTION_CODE", $('#addEditSection').val());
+            }
+
+            if (date != null && date != "null" && date != "") {
+                data.append("DOCUMENT_DATE", $('#addEditDate').val());
+            }
+
+            if (itemChanged != null && itemChanged != "null" && itemChanged != "") {
+                data.append("ITEM_CHANGED", $('#addEditItemChanged').val());
+            }
+
+            if (reason != null && reason != "null" && reason != "") {
+                data.append("REASON", $('#addEditReason').val());
+            }
+
+            if (referenceNo != null && referenceNo != "null" && referenceNo != "") {
+                data.append("REFERENCE_NO", $('#addEditReferenceNo').val());
+            }
+
+            if (source != null && source != "null" && source != "") {
+                data.append("SOURCE", $('#addEditSource').val());
+            }
+
+            if (levelCode != null && levelCode != "null" && levelCode != "") {
+                data.append("LEVEL_CODE", $('#addEditDocumentLevel').val());
+            }
+
+            if (documentCreator != null && documentCreator != "null" && documentCreator != "") {
+                data.append("DOCUMENT_CREATOR", $('#addEditDocumentCreator').val());
+            }
+
+            if (documentCategoryArray != null && documentCategoryArray != "null" && documentCategoryArray != "") {
+                data.append("DOCUMENT_ID", documentCategoryArray[0]);
+            }
+
+            if ($('#addEditDocumentUpload').val() != '') {
+                //data.append("FILE_PATH", $('#addEditDocumentUpload').val());
+
+                e = ex;
+                var files = e.target.files;
+                if (files.length > 0) {
+                    if (window.FormData !== undefined)
+                        for (var x = 0; x < files.length; x++) {
+                            data.append("FILE_PATH", files[x]);
+                        }
+                }
+            }
+        } else if (gScreenMode == "EDIT") {
+            var documentId = $('#editDocumentId').val();
+            var documentNo = $('#editDocumentNo').val();
+            var documentName = $('#editDocumentName').val();
+            var date = $('#editDate').val();
+            var documentUpload = $('#editDocumentUpload').val();
+            var itemChanged = $('#editItemChanged').val();
+            var reason = $('#editReason').val();
+            var external = $('#editExternal').val();
+            var referenceNo = $('#editReferenceNo').val();
+            var source = $('#editSource').val();
+            var impactToOtherDocument = $('#editImpactToOtherDocument').val();
+            var remark = $('#editRemark').val();
+
+            // data.append("DOCUMENT_TRANSACTION_ID", $('#editDocumentId').val());
+            // data.append("DOCUMENT_CODE", $('#editDocumentNo').val());
+            // data.append("DOCUMENT_TRANSACTION_NAME", $('#editDocumentName').val());
+            // data.append("DOCUMENT_DATE", $('#editDate').val());
+            // data.append("DOCUMENT_UPLOAD", $('#editDocumentUpload').val());
+            // // data.append("ITEM_CHANGED", $('#editItemChanged').val());
+            // // data.append("REASON", $('#editReason').val());
+            // data.append("REFERENCE_NO", $('#editReferenceNo').val());
+            // data.append("SOURCE", $('#editSource').val());
+
+            if ($('#editExternal').is(":checked")) {
+                data.append("EXTERNAL_FLAG", '1');
+            } else {
+                data.append("EXTERNAL_FLAG", '0');
+            }
+
+            if ($('#editImpactToOtherDocument').is(":checked")) {
+                data.append("IMPACT_OTHER_FLAG", '1');
+            } else {
+                data.append("IMPACT_OTHER_FLAG", '0');
+            }
+
+            if (gDocumentId != null && gDocumentId != "null" && gDocumentId != "") {
+                data.append("DOCUMENT_TRANSACTION_ID", gDocumentId);
+            }
+
+            if (documentNo != null && documentNo != "null" && documentNo != "") {
+                data.append("DOCUMENT_CODE", $('#editDocumentNo').val());
+            }
+
+            if (documentName != null && documentName != "null" && documentName != "") {
+                data.append("DOCUMENT_TRANSACTION_NAME", $('#editDocumentName').val());
+            }
+
+            if (date != null && date != "null" && date != "") {
+                data.append("DOCUMENT_DATE", $('#editDate').val());
+            }
+
+            // if (itemChanged != null && itemChanged != "null" && itemChanged != "") {
+            //     data.append("ITEM_CHANGED", $('#editItemChanged').val());
+            // }
+
+            // if (reason != null && reason != "null" && reason != "") {
+            //     data.append("REASON", $('#editReason').val());
+            // }
+
+            if (referenceNo != null && referenceNo != "null" && referenceNo != "") {
+                data.append("REFERENCE_NO", $('#editReferenceNo').val());
+            }
+
+            if (source != null && source != "null" && source != "") {
+                data.append("SOURCE", $('#editSource').val());
+            }
+
+            if (remark != null && remark != "null" && remark != "") {
+                data.append("REMARK", $('#editRemark').val());
+            }
+
+            if (gFilePath !== null) {
+                data.append("FILE_PATH", gFilePath);
+            }
+
+            if ($('#editDocumentUpload').val() != '') {
+                //data.append("FILE_PATH", $('#editDocumentUpload').val());
+
+                e = ex;
+                var files = e.target.files;
+                if (files.length > 0) {
+                    if (window.FormData !== undefined)
+                        for (var x = 0; x < files.length; x++) {
+                            data.append("file", files[x]);
+                        }
+                }
+            }
+        }
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("AddEdit", "DocumentMaintenance")",
+            contentType: false,
+            processData: false,
+            data: data,
+            success: function (result) {
+                //popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    popUpProgressHide();
+                    if (gScreenMode == "ADD") {
+                        $("#modalAddEdit").modal('hide');
+                    } else if (gScreenMode == "EDIT") { $("#modalEdit").modal('hide'); }
+                } else {
+                    showErrorMesgGrowl(result.message);
+                    popUpProgressHide();
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+                popUpProgressHide();
+            }
+        });
+
+        //reset();
+    }
+
+    $(document).on('change', '#addEditDocumentUpload', function (e) {
+        ex = e;
+
+        validateExtension($('#addEditDocumentUpload').val(), ["xlsx", "xls"]);
+    });
+
+    $(document).on('change', '#editDocumentUpload', function (e) {
+        ex = e;
+
+        validateExtension($('#editDocumentUpload').val(), ["xlsx", "xls"]);
+    });
+
+    function reset() {
+        $('#addEditClassified').val("").trigger("change");
+        $('#addEditProcessCode').val("").trigger("change");
+        $('#addEditCompanyCode').val("").trigger("change");
+        $('#addEditDepartment').val("").trigger("change");
+        $('#addEditDivision').val("").trigger("change");
+        $('#addEditSection').val("").trigger("change");
+        $('#addEditDocumentNo2').val("").trigger("change");
+        $('#addEditDocumentLevel').val("").trigger("change");
+        $('#addEditDocumentCode').val("").trigger("change");
+
+        setValueFromLogin();
+
+        $('#addEditDate').val("");
+        $('#addEditItemChanged').val("");
+        $('#addEditDocumentLevel').val("");
+        $('#addEditDocumentNo').val("");
+        $('#addEditDocumentName').val("");
+        //$('#addEditDocumentUpload').val("");
+        $('#addEditReason').val("");
+        $('#addEditReferenceNo').val("");
+        $('#addEditImpactToOtherDocument').val("");
+        $('#addEditSource').val("");
+
+        $("#addEditExternal").prop("checked", false);
+        $("#addEditImpactToOtherDocument").prop("checked", false);
+
+        $('#addEditDocumentUpload').filestyle('clear');
+
+        $('#addEditDocumentType').prop('disabled', false);
+        $('#addEditClassified').prop('disabled', true);
+        $('#addEditProcessCode').prop('disabled', true);
+        $('#addEditCompanyCode').prop('disabled', true);
+        $('#addEditDate').prop('disabled', true);
+        $('#addEditItemChanged').prop('disabled', true);
+        $('#addEditExternal').prop('disabled', false);
+        $('#addEditDocumentLevel').prop('disabled', true);
+
+        $('#addEditDocumentNo').prop('disabled', true);
+        $('#addEditDocumentNo2').prop('disabled', true);
+        $('#addEditDocumentCode').prop('disabled', true);
+        $('#addEditDocumentName').prop('disabled', true);
+        $('#addEditDocumentUpload').prop('disabled', true);
+        $('#addEditReason').prop('disabled', true);
+        $('#addEditDocumentLevel').prop('disabled', true);
+
+        $('#addEditReferenceNo').prop('disabled', true);
+        $('#addEditImpactToOtherDocument').prop('disabled', true);
+        $('#addEditSource').prop('disabled', true);
+
+        gFilePath = null;
+        documentLevel = null;
+    }
+
+    function setValueFromLogin() {
+        $('#addEditDivision').prop('disabled', true);
+        $('#addEditDepartment').prop('disabled', true);
+        $('#addEditSection').prop('disabled', true);
+        $('#addEditDocumentCreator').prop('disabled', true);
+
+        if (SESSION_DIVISION != "" && SESSION_DIVISION != null) {
+            if (SESSION_POSITION_ID == "5") //if user login position is eo
+            {
+                setDataSelect2("addEditDivision", "@Url.Action("GetDivisionByUsername", "DepartmentMaster")", "- Choose -");
+            } else 
+            {
+                $("#addEditDivision").select2("trigger", "select", {
+                    data: {
+                        id: SESSION_DIVISION,
+                        text: SESSION_DIVISION + " - " + SESSION_DIVISION_NAME
+                    }
+                });
+            }
+        }
+
+        if (SESSION_DEPARTMENT_ID != "" && SESSION_DEPARTMENT_ID != 0) {
+            $("#addEditDepartment").select2("trigger", "select", {
+                data: {
+                    id: SESSION_DEPARTMENT_ID,
+                    text: SESSION_DEPARTMENT_CODE + " - " + SESSION_DEPARTMENT_NAME
+                }
+            });
+        }
+
+        if (SESSION_SECTION_ID != "" && SESSION_SECTION_ID != 0) {
+            $("#addEditSection").select2("trigger", "select", {
+                data: {
+                    id: SESSION_SECTION_CODE,
+                    text: SESSION_SECTION_NAME
+                }
+            });
+        }
+
+        //if (SESSION_DIVISION != "" && SESSION_DIVISION != 0) {
+        //    $('#addEditDivision').prop('disabled', true);
+
+        //    if (SESSION_DEPARTMENT_ID != "" && SESSION_DEPARTMENT_ID != 0) {
+        //        $('#addEditDepartment').prop('disabled', true);
+
+        //        if (SESSION_SECTION_CODE != "" && SESSION_SECTION_CODE != 0) {
+        //            $('#addEditSection').prop('disabled', true);
+        //        } else {
+        //            $('#addEditSection').prop('disabled', false);
+        //        }
+        //    } else {
+        //        $('#addEditDepartment').prop('disabled', false);
+        //    }
+        //} else {
+        //    $('#addEditDivision').prop('disabled', false);
+        //    $('#addEditDepartment').prop('disabled', true);
+        //    $('#addEditSection').prop('disabled', true);
+        //}
+    }
+
+    $('#addEditExternal').click(function () {
+        if ($(this).is(':checked')) {
+            $('#addEditReferenceNo').val(gReffNo);
+            if (gImpactOther == "1") {
+                $("#addEditImpactToOtherDocument").prop("checked", true);
+            } else {
+                $("#addEditImpactToOtherDocument").prop("checked", false);
+            }
+            $('#addEditSource').val(gSourceNo);
+
+            $('#mandatoryMarkReferenceNo').show();
+            $('#mandatoryMarkSource').show();
+
+            $('#addEditReferenceNo').prop('disabled', false);
+            $('#addEditImpactToOtherDocument').prop('disabled', false);
+            $('#addEditSource').prop('disabled', false);
+        } else {
+            $('#addEditReferenceNo').val("");
+            $('#addEditImpactToOtherDocument').val("");
+            $('#addEditSource').val("");
+
+            $('#mandatoryMarkReferenceNo').hide();
+            $('#mandatoryMarkSource').hide();
+
+            $('#addEditReferenceNo').prop('disabled', true);
+            $('#addEditImpactToOtherDocument').prop('disabled', true);
+            $('#addEditSource').prop('disabled', true);
+
+        }
+    });
+
+    $('#editExternal').click(function () {
+        if ($(this).is(':checked')) {
+            $('#editReferenceNo').val(gReffNo);
+            if (gImpactOther == "1") {
+                $("#editImpactToOtherDocument").prop("checked", true);
+            } else {
+                $("#editImpactToOtherDocument").prop("checked", false);
+            }
+            $('#editSource').val(gSourceNo);
+
+            $('#mandatoryMarkEditReferenceNo').show();
+            $('#mandatoryMarkEditSource').show();
+
+            $('#editReferenceNo').prop('disabled', false);
+            $('#editImpactToOtherDocument').prop('disabled', false);
+            $('#editSource').prop('disabled', false);
+        } else {
+            $('#editReferenceNo').val("");
+            $("#editImpactToOtherDocument").prop("checked", false);
+            $('#editSource').val("");
+
+            $('#mandatoryMarkEditReferenceNo').hide();
+            $('#mandatoryMarkEditSource').hide();
+
+            $('#editReferenceNo').prop('disabled', true);
+            $('#editImpactToOtherDocument').prop('disabled', true);
+            $('#editSource').prop('disabled', true);
+
+        }
+    });
+
+    function onDeletePrepare() {
+
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gDocumentId = row.DOCUMENT_TRANSACTION_ID;
+        gFilePath = row.FILE_PATH;
+
+        showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
+
+    }
+
+    function deleteData() {
+        popUpProgressShow();
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("Delete", "DocumentMaintenance")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                DOCUMENT_TRANSACTION_ID: gDocumentId,
+                FILE_PATH: gFilePath
+            },
+            success: function (result) {
+                //popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    popUpProgressHide();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                    popUpProgressHide();
+                }
+            },
+            error: function (result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+                popUpProgressHide();
+            }
+        });
+    }
+
+    function onEditPrepare() {
+        gImpactOther = null;
+        gSourceNo = null;
+        gReffNo = null;
+
+        $('#editRemark').val("");
+
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gDocumentId = row.DOCUMENT_TRANSACTION_ID;
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetByKey", "DocumentMaintenance")",
+            async: false,
+            data: {
+                DOCUMENT_TRANSACTION_ID: gDocumentId
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    var data = result.data;
+                    //showErrorMesgGrowl(data.STATUS);
+                    if (data.STATUS == "1") {
+                        showErrorMesgGrowl("Edit is not allowed");
+                    } else {
+                        gScreenMode = 'EDIT';
+                        gImpactOther = data.IMPACT_OTHER_FLAG;
+                        gReffNo = data.REFERENCE_NO;
+                        gSourceNo = data.SOURCE;
+
+                        $('#editDocumentNo').prop('disabled', true);
+                        $('#editRevision').prop('disabled', true);
+
+                        $('#modalEdit-title').html("Edit Document Maintenance");
+                        $('#editDocumentId').val(data.DOCUMENT_TRANSACTION_ID);
+                        $('#editDocumentNo').val(data.DOCUMENT_CODE);
+                        $('#editRevision').val(data.REVISION);
+                        $('#editDocumentName').val(data.DOCUMENT_TRANSACTION_NAME);
+                        $('#editDate').val(data.DOCUMENT_DATE.substring(0, 10));
+                        $('#editItemChanged').val(data.ITEM_CHANGED);
+                        $('#editReason').val(data.REASON);
+
+                        gFilePath = data.FILE_PATH;
+                        $('#inputContainer :input[type="text"]').val(data.FILE_PATH);
+                        if (data.FILE_PATH == null) {
+                            $('#editFileNameContainer').removeClass();
+                            $('#editFileNameContainer').addClass('col-sm-8');
+                            $('#btn_delete_filepath').hide();
+                        }
+                        else {
+                            if ("@ViewData["Delete-FilePath"]" == "False") {
+                                $('#editFileNameContainer').removeClass();
+                                $('#editFileNameContainer').addClass('col-sm-8');
+                                $('#btn_delete_filepath').hide();
+                            } else {
+                                $('#editFileNameContainer').removeClass();
+                                $('#editFileNameContainer').addClass('col-sm-7');
+                                $('#btn_delete_filepath').show();
+                            }
+                        }
+
+                        if (data.EXTERNAL_FLAG == "1") {
+                            $("#editExternal").prop("checked", true);
+                            $('#editReferenceNo').prop('disabled', false);
+                            $('#editSource').prop('disabled', false);
+                            $('#editImpactToOtherDocument').prop('disabled', false);
+
+                            $('#mandatoryMarkEditReferenceNo').show();
+                            $('#mandatoryMarkEditSource').show();
+                        } else {
+                            $("#editExternal").prop("checked", false);
+                            $('#editReferenceNo').prop('disabled', true);
+                            $('#editSource').prop('disabled', true);
+                            $('#editImpactToOtherDocument').prop('disabled', true);
+
+                            $('#mandatoryMarkEditReferenceNo').hide();
+                            $('#mandatoryMarkEditSource').hide();
+                        }
+
+                        if (data.IMPACT_OTHER_FLAG == "1") {
+                            $("#editImpactToOtherDocument").prop("checked", true);
+                        } else {
+                            $("#editImpactToOtherDocument").prop("checked", false);
+                        }
+
+                        $('#editReferenceNo').val(data.REFERENCE_NO);
+                        $('#editSource').val(data.SOURCE);
+
+
+                        $("#modalEdit").modal();
+                        $('#modalEdit').on('shown.bs.modal', function () {
+                            $('#editDocumentName').focus();
+                        });
+                    }
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function onclickDistribution(documentTransactionId) {
+        $('#modalDistribution-title').html("Document Master Distribution");
+
+        $("#datagridDistribution").dataTable().fnDestroy();
+        $('#datagridDistribution').DataTable({
+            "ordering": false,
+            "oLanguage": { "sEmptyTable": "Data not found." },
+            "dom": "<t><r><'row mt-10'<'col-lg-2'i><'col-lg-1'><'col-lg-5'l><'col-lg-4'p>>",
+            "processing": true,
+            "serverSide": true,
+            "ajax": {
+                "url": "@Url.Action("SearchDocumentApproval", "P4DMaintenance")",
+                "type": "POST",
+                "datatype": "json",
+                "data": function (d) {
+                    d.DOCUMENT_TRANSACTION_ID = documentTransactionId
+                },
+            },
+            "columnDefs": [
+                {
+                    "targets": [0],
+                    "className": "text-center",
+                },
+                {
+                    "targets": [1],
+                    "className": "text-left",
+                },
+                {
+                    "targets": [2],
+                    "className": "text-left",
+                },
+                {
+                    "targets": [3],
+                    "className": "text-right",
+                }
+                ,
+                {
+                    "targets": [4],
+                    "className": "text-center",
+                }
+            ],
+            "columns": [
+                {
+                    render: function (data, type, row, meta) {
+                        return meta.row + meta.settings._iDisplayStart + 1;
+                    }
+                },
+                {
+                    render: function (data, type, row) {
+                        return row["DIVISION"] + " - " + row["DIVISION_NAME"];
+                    }
+                },
+                {
+                    render: function (data, type, row) {
+                        return row["DEPARTMENT_CODE"] + " - " + row["DEPARTMENT_NAME"];
+                    }
+                },
+                { "data": "DATE", "name": "DATE" },
+                {
+                    render: function (data, type, row) {
+                        if (row["STATUS"] == 1) {
+                            return '<span class="label label-success">' + row["STATUS_DISPLAY"] + '</span>';
+                        } else {
+                            return '<span class="label label-danger">' + row["STATUS_DISPLAY"] + '</span>';
+                        }
+                    }
+                },
+            ],
+            "fnDrawCallback": function (oSettings) {
+                $('#datagridDistribution tbody > tr').removeClass('selected');
+                $('.grid-checkbox').not(this).prop('checked', false);
+
+                $("th").removeClass('sorting_asc');
+            }
+        });
+
+
+        $("#datagridDistribution").on("click", "tbody tr", function (e) {
+            if (event.target.type !== 'checkbox') {
+                $(':checkbox', this).trigger('click');
+            }
+        });
+
+        $("#datagridDistribution").on('change', "input[type='checkbox']", function (e) {
+            $('#datagridDistribution tbody > tr').removeClass('selected');
+            $('.grid-checkbox').not(this).prop('checked', false);
+        });
+
+        $("#modalDistribution").modal();
+    }
+
+    function onApproveRejectPrepare() {
+        showConfirmMesg("Are you sure you want to continue process?", onApproveReject, "Confirmation");
+    }
+
+    function onApproveReject() {
+        popUpProgressShow();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("ApproveReject", "DocumentMaintenance")",
+            async: false,
+            data: {
+                approvalId: gApprovalId,
+                workflowSeq: approvalSeq,
+                approver: approver,
+                remark: $('#approvalRemark').val(),
+                mode: gApprovalMode,
+                DOCUMENT_TRANSACTION_ID: gId,
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    getApprovalHeader();
+                    getApprovalDetail();
+                    getApprovalHistoryDetail();
+                    popUpProgressHide();
+                    $("#modalApprovalForm").modal('hide');
+                } else {
+                    popUpProgressHide();
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function onDownloadAttachment(attachment, documentId) {
+        gAttachmentPath = attachment;
+        gDocumentId = documentId;
+        downloadAttachment();
+    }
+
+    function downloadAttachment() {
+        if (gAttachmentPath !== "null" && gAttachmentPath !== null) {
+            var link = '@Html.Raw(Url.Action("downloadAttachment", "DocumentMaintenance", new { FILE_PATH = "-1", DOCUMENT_TRANSACTION_ID = "-2" }))';
+            link = link.replace("-1", gAttachmentPath);
+            link = link.replace("-2", gDocumentId);
+            window.location.href = link;
+        } else {
+            showErrorMesgGrowl("This data does not have an attachment");
+        }
+    }
+
+    function onViewAttachment(attachment, documentId) {
+        gAttachmentPath = attachment;
+        gDocumentId = documentId;
+        viewAttachment();
+    }
+
+    function viewAttachment() 
+    {
+        if (gAttachmentPath !== "null" && gAttachmentPath !== null) {
+            var link = '@Html.Raw(Url.Action("ViewAttachment", "DocumentMaintenance", new { FILE_PATH = "-1", DOCUMENT_TRANSACTION_ID = "-2", type = "-3" }))';
+            link = link.replace("-1", gAttachmentPath);
+            link = link.replace("-2", gDocumentId);
+            link = link.replace("-3", "1");
+            window.open(link, '_blank');
+        } else {
+            showErrorMesgGrowl("This data does not have an attachment");
+        }
+    }
+
+    function onPrintAttachment(attachment, documentId, approvalId) {
+        gAttachmentPath = attachment;
+        gDocumentId = documentId;
+        gApprovalId = approvalId;
+        printAttachment();
+    }
+
+    // Original JS
+    // function printAttachment() 
+    // {
+    //     popUpProgressShow();
+    //     $.ajax({
+    //         type: "POST",
+    //         url: "@Url.Action("printAttachment", "DocumentMaintenance")",
+    //         data: {
+    //             FILE_PATH: gAttachmentPath,
+    //             DOCUMENT_TRANSACTION_ID: gDocumentId,
+    //             type: "1"
+    //         },
+    //         success: function (result) {
+    //             if (result.status == true) {
+    //                 popUpProgressHide();
+    //                 printJS({ printable: result.data, type: 'pdf', showModal: true });
+    //             } else {
+    //                 popUpProgressHide();
+    //                 showErrorMesgGrowl(result.message);
+    //             }
+    //         },
+    //         error: function (result) {
+    //             popUpProgressHide();
+    //             showErrorMesgGrowl(result);
+    //         }
+    //     });
+    // }
+    //End Original JS
+
+     // Custom JS by Hendra
+    let _printDocData = null;
+    let _totalPages   = 0;
+
+    // Ganti fungsi onPrintAttachment yang lama
+    function onPrintAttachment(filePath, documentTransactionId, approvalId) {
+        _printDocData = {
+            filePath: filePath,
+            documentTransactionId: documentTransactionId,
+            approvalId: approvalId,
+            type: '2'
+        };
+        _totalPages = 0;
+
+        $("#txtPrintCopy").val(1);
+        $("#txtTotalPages").val("Menghitung...");
+        $("#txtTotalSheets").val("-");
+        $("#btnConfirmPrint").prop("disabled", true);
+        $("#modalPrint").modal("show");
+
+        $.get("/DocumentMaintenance/GetPdfPageCount", { filePath: filePath })
+            .done(function(res) {
+                if (res.status) {
+                    _totalPages = res.pageCount;
+                    $("#txtTotalPages").val(_totalPages + " halaman");
+                    $("#txtTotalSheets").val(
+                        (_totalPages * parseInt($("#txtPrintCopy").val())) + " lembar");
+                } else {
+                    $("#txtTotalPages").val("Tidak diketahui");
+                }
+            })
+            .always(function() {
+                $("#btnConfirmPrint").prop("disabled", false);
+            });
+    }
+
+    // Update total lembar saat copy diubah
+    $("#txtPrintCopy").on("input", function() {
+        let copy = parseInt($(this).val()) || 0;
+        $("#txtTotalSheets").val(
+            _totalPages > 0 && copy > 0
+                ? (_totalPages * copy) + " lembar"
+                : "-");
+    });
+
+    // Konfirmasi print
+    $("#btnConfirmPrint").on("click", function() {
+        let copy = parseInt($("#txtPrintCopy").val());
+        if (!copy || copy < 1) {
+            showErrorMesgGrowl("Jumlah copy harus minimal 1.");
+            return;
+        }
+
+        $(this).prop("disabled", true)
+               .html('<span class="fa fa-spinner fa-spin"></span> Memproses...');
+
+        $.post("/DocumentMaintenance/printAttachment", {
+            DOCUMENT_TRANSACTION_ID: _printDocData.documentTransactionId,
+            FILE_PATH:               _printDocData.filePath,
+            type:                    _printDocData.type,
+            printCopy:               copy
+        })
+        // .done(function(res) 
+        // {
+        //     if (res.status) {
+        //         $("#modalPrint").modal("hide");
+        //         window.open(res.data, "_blank");
+        //     } else {
+        //         alert("Gagal: " + res.message);
+        //     }
+        // })
+           .done(function(res) {
+        if (res.status) {
+            $("#modalPrint").modal("hide");
+
+            let copy = parseInt($("#txtPrintCopy").val());
+            let totalSheet = _totalPages * copy;
+            let pdfPath = res.data;
+
+            // Hapus modal warning lama kalau ada
+            $("#modalPrintWarning").remove();
+
+            // Buat modal warning baru
+            $("body").append(`
+            <div class="modal fade" id="modalPrintWarning" tabindex="-1" role="dialog">
+                <div class="modal-dialog modal-sm">
+                    <div class="modal-content">
+                        <div class="modal-header" style="background:#FF9800;">
+                            <h5 class="modal-title text-white">
+                                ⚠️ Print Confirmation
+                            </h5>
+                            <button type="button" class="close text-white"
+                                    data-dismiss="modal">&times;</button>
+                        </div>
+                        <div class="modal-body text-center">
+                            <p>Document has been prepared for</p>
+                            <h4><strong>${copy} ${copy > 1 ? 'Copies' : 'Copy'}</strong></h4>
+                            <p>Total: <strong>${totalSheet} sheet(s)</strong></p>
+                            <hr/>
+                            <div class="alert alert-danger">
+                                <strong>IMPORTANT!</strong><br/>
+                                Make sure <u><strong>Copies = 1</strong></u><br/>
+                                in the print dialog.<br/>
+                                <small>
+                                    Document has been multiplied
+                                    ${copy}x by the system.
+                                </small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary"
+                                    data-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary"
+                                    id="btnStartPrint">🖨️ Proceed to Print
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `);
+            $("#modalPrintWarning").modal("show");
+
+            // Klik Lanjut Print → buka dialog print
+            $("#btnStartPrint").off("click").on("click", function() {
+                $("#modalPrintWarning").modal("hide");
+
+                printJS({
+                    printable: pdfPath,
+                    type: 'pdf',
+                    showModal: true,
+                    modalMessage: 'Mempersiapkan dokumen untuk print...'
+                });
+            });
+
+        } else {
+            showErrorMesgGrowl("Gagal: " + res.message);
+        }
+    })
+        .fail(function() {
+            showErrorMesgGrowl("Terjadi kesalahan saat memproses print.");
+        })
+        .always(function() {
+            $("#btnConfirmPrint").prop("disabled", false).html("🖨️ Print");
+        });
+    });
+
+    // End Custom JS by Hendra
+
+    function downloadPengesahan() {
+        var link = '@Html.Raw(Url.Action("DownloadPengesahan", "DocumentMaintenance", new { DOCUMENT_TRANSACTION_ID = "-1", APPROVAL_ID = "-2" }))';
+        link = link.replace("-1", gId);
+        link = link.replace("-2", gApprovalId);
+        window.location.href = link;
+    }
+    
+    function onclickLog(documentId) {
+        countTotalLog(documentId);
+        openLogModal(documentId)
+    }
+    
+    function countTotalLog(documentId) {
+        popUpProgressShow();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("CountTotalLog", "DocumentMaintenance")",
+            data: {
+                DOCUMENT_TRANSACTION_ID : documentId
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    popUpProgressHide();
+                    $('#logTotalView').html(result.totalView);
+                    $('#logTotalDownload').html(result.totalDownload);
+                    $('#logTotalPrint').html(result.totalPrint);
+                    $('#logTotalPublished').html(result.totalPublished);
+                } else {
+                    popUpProgressHide();
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function openLogModal(documentId) {
+        $('#modalDocumentLog-title').html("Document Log");
+
+        $("#datagridDocumentLog").dataTable().fnDestroy();
+        $('#datagridDocumentLog').DataTable({
+            "ordering": false,
+            "oLanguage": { "sEmptyTable": "Data not found." },
+            "dom": "<t><r><'row mt-10'<'col-lg-2'i><'col-lg-1'><'col-lg-5'l><'col-lg-4'p>>",
+            "processing": true,
+            "serverSide": true,
+            "ajax": {
+                "url": "@Url.Action("SearchDocumentLog", "DocumentMaintenance")",
+                "type": "POST",
+                "datatype": "json",
+                "data": function (d) {
+                    d.DOCUMENT_TRANSACTION_ID = documentId
+                },
+            },
+            "columnDefs": [
+                {
+                    "targets": [0],
+                    "className": "text-center",
+                },
+                {
+                    "targets": [1],
+                    "className": "text-center",
+                },
+                {
+                    "targets": [2],
+                    "className": "text-left",
+                },
+                {
+                    "targets": [3],
+                    "className": "text-right",
+                }
+            ],
+            "columns": [
+                {
+                    render: function (data, type, row, meta) {
+                        return meta.row + meta.settings._iDisplayStart + 1;
+                    }
+                },
+                { "data": "LOG_TYPE_VAL", "name": "LOG_TYPE_VAL" },
+                { "data": "CREATED_BY", "name": "CREATED_BY" },
+                {
+                    render: function (data, type, row) {
+                        if (row["CREATED_DT"] != null) {
+                            return moment(row["CREATED_DT"]).format("DD-MM-YYYY HH:mm:ss");
+                        } else {
+                            return "";
+                        }
+                    }
+                },
+            ],
+            "fnDrawCallback": function (oSettings) {
+                $('#datagridDocumentLog tbody > tr').removeClass('selected');
+                $('.grid-checkbox').not(this).prop('checked', false);
+
+                $("th").removeClass('sorting_asc');
+            }
+        });
+
+
+        $("#datagridDocumentLog").on("click", "tbody tr", function (e) {
+            if (event.target.type !== 'checkbox') {
+                $(':checkbox', this).trigger('click');
+            }
+        });
+
+        $("#datagridDocumentLog").on('change', "input[type='checkbox']", function (e) {
+            $('#datagridDocumentLog tbody > tr').removeClass('selected');
+            $('.grid-checkbox').not(this).prop('checked', false);
+        });
+
+        $("#modalDocumentLog").modal();
+    }
+
+</script>

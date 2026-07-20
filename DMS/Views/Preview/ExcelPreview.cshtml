@@ -1,0 +1,29 @@
+﻿@{
+    Layout = "~/Views/Shared/_EmptyLayout.cshtml";
+}
+
+<html lang="en">
+<body>
+    <div id="spreadsheet-viewer" style="height: 98vh;"></div>
+</body>
+</html>
+
+<script type="module">
+    import { SpreadsheetViewer } from '../../lib/spreadsheet-viewer/client-library/clientLibrary.js';
+
+    SpreadsheetViewer({
+        container: document.querySelector('div#spreadsheet-viewer'),
+        assetsUrl: '../../lib/spreadsheet-viewer/sv/index.html'
+    })
+        .then(instance => {
+            instance.configure({
+                licenseKey: 'evaluation', // contact us to order a license key for commercial use beyond evaluation
+            })
+            instance.loadWorkbook('@Url.Content("~")' + '@ViewData["FilePath"]', 0);
+
+            document.getElementsByClassName("icons-wrapper")[0].remove();
+        })
+        .catch(error => {
+            console.error(error.message);
+        });
+</script>

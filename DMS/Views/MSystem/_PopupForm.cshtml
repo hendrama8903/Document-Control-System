@@ -1,0 +1,132 @@
+﻿<div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modal-title">Add / Edit @ViewData["Title"]</h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-lg-12 form-horizontal" style="margin-top:15px; margin-left:15px">
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">System Type <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="addEditSystemType" type="text" oninput="removeWhiteSpace(this)" maxlength="50" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">System Code <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="addEditSystemCode" type="text" oninput="removeWhiteSpace(this)" maxlength="50" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">System Value <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <textarea class="form-control" id="addEditSystemValue" rows="6" style="resize:none" oninput="removeWhiteSpace(this)" maxlength="255"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Status <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <select class="form-control select2s" id="addEditSystemStatus">
+                                            <option value="1">Active</option>
+                                            <option value="0">Inactive</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <div class="col-xs-12 text-right">
+                    <button type="button" class="btn btn-primary" id="btn_save" style="width: 80px;">Save</button>
+                    <button type="button" class="btn btn-danger" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalPermission" tabindex="-1" role="dialog" aria-labelledby="basicModal" aria-hidden="true">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modal-title">Role Permission</h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Role Information : </h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="row">
+                            <div class="col-lg-12 form-horizontal" style="margin-top:10px;">
+                                <div class="row">
+                                    <div class="col-lg-4">
+                                        <div class="form-group">
+                                            <label class="col-sm-7 control-label">Role ID : </label>
+                                            <div class="col-sm-5">
+                                                <input class="form-control" id="txtRoleId" type="text" style="text-align:center" readonly />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-8">
+                                        <div class="form-group">
+                                            <label class="col-sm-4 control-label">Role Name : </label>
+                                            <div class="col-sm-7">
+                                                <input class="form-control" id="txtRoleName" type="text" readonly />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Role Permission : </h3>
+                    </div>
+                    <div class="panel-body">
+                        <div class="box-group" id="accordion">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <div class="col-xs-12 text-right">
+                    <button type="button" class="btn btn-primary" id="btn_save_permission" style="width: 80px;">Save</button>
+                    <button type="button" class="btn btn-danger" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

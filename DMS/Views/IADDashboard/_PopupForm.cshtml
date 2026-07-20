@@ -1,0 +1,77 @@
+﻿            <!-- RECOMMIT DINA -->
+
+
+<div class="modal fade" id="modalRequestDocument" tabindex="-1" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modal-title">Request Document</h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-lg-12 form-horizontal" style="margin-top:15px; margin-left:15px">
+                       @* <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Document No <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="addEditDocumentNo" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
+                                        <select class="form-control" id="addEditDocumentNo"></select>
+                                        <input class="form-control" id="addEditDocumentId" type="hidden" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>*@
+                        
+
+                        <div class="row" id="divDivision">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Division <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <select class="form-control" id="addEditDivision"></select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row" id="divDepartment">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Department <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <select class="form-control" id="addEditDepartment"></select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Document No / Document Name <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <select class="form-control" id="addEditDocumentName"></select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <div class="col-xs-12 text-right">
+                    <button type="button" class="btn btn-primary" id="btn_save" style="width: 80px;">Save</button>
+                    <button type="button" class="btn btn-danger" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

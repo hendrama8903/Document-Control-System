@@ -1,0 +1,441 @@
+﻿<script type="text/javascript">
+    var gScreenMode = null;
+    var gId = null;
+
+    $(document).ready(function () {
+        $("#btn_add").on("click", function () {
+            onAddPrepare();
+        });
+
+        $("#btn_edit").on("click", function () {
+            onEditPrepare();
+        });
+
+        $("#btn_delete").on("click", function () {
+            onDeletePrepare();
+        });
+
+        $("#btn_save").on("click", function () {
+            confirmAddEditData();
+        });
+
+        $("#btn_authorization").on("click", function () {
+            onAuthPrepare();
+        });
+
+        $("#btn_save_auth").on("click", function () {
+            confirmAddEditAuthorization();
+        });
+    });
+
+    function onSearch() {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        grid.clearSelection();
+        grid.refresh();
+    }
+
+    function onAddPrepare() {
+        gScreenMode = 'ADD';
+        $('#modal-title').html("Add Role");
+        $('#addEditRoleId').val("");
+        $('#addEditRoleName').val("");
+        $('#addEditRoleDesc').val("");
+
+        $('#addEditRoleId').prop('disabled', false);
+        $('#addEditRoleName').prop('disabled', false);
+        $('#addEditRoleDesc').prop('disabled', false);
+
+        $("#modalAddEdit").modal();
+        $('#modalAddEdit').on('shown.bs.modal', function () {
+            $('#addEditRoleId').focus();
+        });
+    }
+
+    function onEditPrepare() {
+
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gId = row.ROLE_ID;
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetByKey", "Role")",
+            async: false,
+            data: {
+                ROLE_ID: gId
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    var data = result.data;
+
+                    gScreenMode = 'EDIT';
+                    $('#modal-title').html("Edit Role");
+                    $('#addEditRoleId').val(data.ROLE_ID);
+                    $('#addEditRoleName').val(data.ROLE_NAME);
+                    $('#addEditRoleDesc').val(data.ROLE_DESC);
+
+                    $('#addEditRoleId').prop('disabled', true);
+                    $('#addEditRoleName').prop('disabled', false);
+                    $('#addEditRoleDesc').prop('disabled', false);
+
+                    $("#modalAddEdit").modal();
+                    $('#modalAddEdit').on('shown.bs.modal', function () {
+                        $('#addEditRoleName').focus();
+                    });
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function(result){
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function onDeletePrepare() {
+
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gId = row.ROLE_ID;
+
+        showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
+    }
+
+    function confirmAddEditData() {
+        showConfirmMesg("Are you sure you want to continue process?", addEditData, "Confirmation");
+    }
+
+    function addEditData() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("AddEdit", "Role")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                screenMode: gScreenMode,
+                ROLE_ID: $('#addEditRoleId').val(),
+                ROLE_NAME: $('#addEditRoleName').val(),
+                ROLE_DESC: $('#addEditRoleDesc').val(),
+            },
+            success: function (result) {
+                //popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    $("#modalAddEdit").modal('hide');
+                }else {
+                   showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function deleteData() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("Delete", "Role")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                ROLE_ID: gId
+            },
+            success: function (result) {
+                //popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                }else {
+                   showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function onAuthPrepare() {
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gId = row.ROLE_ID;
+
+        getAuthorization();
+    }
+
+    function getAuthorization(){
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetAuthByRole", "Role")",
+            async: false,
+            data: {
+                ROLE_ID: gId
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    
+                    var arrayMenuId = [];
+                    var arrayFunctionId = [];
+
+                    for (MENU_ID in result.param[1]) {
+                        arrayMenuId.push(result.param[1][MENU_ID].MENU_ID);
+                    }
+                    for (FUNCTION_ID in result.param[3]) {
+                        arrayFunctionId.push(result.param[3][FUNCTION_ID].FUNCTION_ID);
+                    }
+
+                    setCollapseItem(result.param[0], arrayMenuId, result.param[2], arrayFunctionId, gId);
+                    
+                    $('#modal-title-auth').html("Authorization : " + gId);
+                    $("#modalAuth").modal({
+                        backdrop: 'static',
+                        keyboard: false
+                    });
+
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function(result){
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function setCollapseItem(allMenu, arrayMenuId, allFunction, arrayFunctionId, roleId) {
+        $("#accordion").empty();
+        $("#accordion").append('<div class="box box-primary box-solid box-collapse collapsed-box">'
+            + '<div class="box-header with-border">'
+            + '<div class="adm-auth-check">'
+            + '<input class="grid-checkbox-menu" type="checkbox" id="checkAllMenu">'
+            + '<label for="checkAllMenu">Check All Menu</label>'
+            + '</div>'
+            + '<div class="adm-auth-check">'
+            + '<input class="grid-checkbox-function" type="checkbox" id="checkAllFunction">'
+            + '<label for="checkAllFunction">Check All Function</label>'
+            + '</div>'
+            + '</div></div>');
+
+        $.each(allMenu, function (key, parent) {
+            if (parent.PARENT_ID == null) {
+                if (arrayMenuId.includes(parent.MENU_ID)) {
+                    checked = "checked";
+                } else {
+                    checked = "";
+                }
+                var returnedData = $.grep(allMenu, function (element) {
+                    return element.PARENT_ID == parent.MENU_ID;
+                });
+                $("#accordion").append('<div class="box box-primary box-solid box-collapse" id="collapseHeader'+ parent.MENU_ID +'">'
+                    + '<div class="box-header with-border" style="border-bottom: 0px">'
+                    + '<div class="adm-auth-check">'
+                    + '<input class="grid-checkbox-menu" type="checkbox" name="menuChkRow" id="checkMenuID' + parent.MENU_ID + '" value="' + parent.MENU_ID + '" data-roleId="' + roleId + '" data-parentId="' + parent.PARENT_ID + '" data-menuId="' + parent.MENU_ID + '" ' + checked + '>'
+                    + '<label for="checkMenuID' + parent.MENU_ID + '">'+ parent.MENU_NAME +'</label>'
+                    + '</div>'
+                    + '<div class="box-tools pull-right" id="collapseButtonDiv' + parent.MENU_ID + '"><button type="button" class="btn btn-box-tool collapseAuthButton" data-toggle="collapse" data-target="#toggle' + parent.MENU_ID + '" id="collapseButton' + parent.MENU_ID + '">'
+                    + '<i class="fa fa-chevron-up"></i></button></div></div>'
+                    + '<div id="toggle' + parent.MENU_ID + '" class="collapse in"><div class="box-body box-id' + parent.MENU_ID + '" style="padding-top:10px;">');
+
+                if (returnedData.length == 0) {
+                    $("#collapseButtonDiv" + parent.MENU_ID).remove();
+                    $("#collapseHeader"+parent.MENU_ID).addClass("collapsed-box");
+                } else {
+                    var i = 0;
+                    $.each(returnedData, function (key, child) {
+
+                        if (i > 0){
+                             $(".box-id" + parent.MENU_ID).append('<hr style="margin:5px 0 5px 0; border-top: 1px solid #CACACA;">');
+                        }
+
+                        if (arrayMenuId.includes(child.MENU_ID)) {
+                            checked = "checked";
+                        } else {
+                            checked = "";
+                        }
+                        $(".box-id" + parent.MENU_ID).append('<div class="adm-auth-check">'
+                            + '<input class="grid-checkbox-menu" type="checkbox" name="menuChkRow" id="checkMenuID' + child.MENU_ID + '" value="' + child.MENU_ID + '" data-roleId="' + roleId + '" data-parentId="' + child.PARENT_ID + '" data-menuId="' + child.MENU_ID + '" ' + checked + '>'
+                            + '<label for="checkMenuID' + child.MENU_ID + '">' + child.MENU_NAME + '</label>'
+                            + '</div>');
+
+                        // add function
+                         $.each(allFunction, function (key, func) {
+                            if (func.MENU_ID == child.MENU_ID){
+                                if (arrayFunctionId.includes(func.FUNCTION_ID)) {
+                                    checked = "checked";
+                                } else {
+                                    checked = "";
+                                }
+
+                                $(".box-id" + parent.MENU_ID).append('<div class="adm-auth-check adm-auth-function">'
+                                    + '<input class="grid-checkbox-function" type="checkbox" id="checkFunctionID' + func.FUNCTION_ID + '" name="functionChkRow" value="' + func.FUNCTION_ID + '" data-roleId="' + roleId + '" data-functionId="' + func.FUNCTION_ID + '" data-menuId="' + child.MENU_ID + '" ' + checked + '>'
+                                    + '<label for="checkFunctionID' + func.FUNCTION_ID + '">' + func.FUNCTION_NAME + '</label>'
+                                    + '</div>');
+                            }
+
+                        });
+
+                        i++;
+                    });
+                }
+            }
+        });
+
+        var menuLength = $('input[name=menuChkRow]').length;
+        if (menuLength == $('input[name=menuChkRow]:checked').length) {
+            $("#checkAllMenu").prop('checked', true);
+        }
+        var funcLength = $('input[name=functionChkRow]').length;
+        if (funcLength == $('input[name=functionChkRow]:checked').length) {
+            $("#checkAllFunction").prop('checked', true);
+        }
+    }
+    
+    $(document).on("change", "#checkAllMenu", function () {
+        $(".grid-checkbox-menu").prop("checked", $("#checkAllMenu").is(":checked"));
+        if (!this.checked) {
+            $('input[name=functionChkRow]').prop('checked', false);
+        }
+    });
+
+    $(document).on("change", "#checkAllFunction", function () {
+        $(".grid-checkbox-function").prop("checked", $("#checkAllFunction").is(":checked"));
+    });
+
+    $(document).on("click", ".collapseAuthButton", function () {
+        $(this).find('i').toggleClass('fa fa-chevron-up fa fa-chevron-down');
+    });
+
+    $(document).on("change", "input[name=menuChkRow]", function () {
+        $("#checkAllMenu").prop("checked", $('.grid-checkbox-menu:not(#checkAllMenu)').not(':checked').length == 0);
+        if (this.checked) {
+            var parentId = $(this).attr('data-parentId');
+            var menuId = $(this).attr('data-menuId');
+                
+            if (parentId != 'null') {
+                $('input[name=menuChkRow][data-menuId="' + parentId + '"]').prop('checked', true);
+            } else {
+                $('input[name=menuChkRow][data-parentId="' + menuId + '"]').prop('checked', true);
+            }
+            $("#checkAllMenu").prop("checked", $('.grid-checkbox-menu:not(#checkAllMenu)').not(':checked').length == 0);
+        } else {
+            var parentId = $(this).attr('data-parentId');
+            var menuId = $(this).attr('data-menuId');
+                
+            if (parentId != 'null') {
+                if ($('input[name=menuChkRow][data-parentId="' + parentId + '"]:checked').length == 0) {
+                    $('input[name=menuChkRow][data-menuId="' + parentId + '"]').prop('checked', false);
+                }
+                $('input[name=functionChkRow][data-menuId="' + menuId + '"]').prop('checked', false);
+            } else {
+                $('input[name=menuChkRow][data-parentId="' + menuId + '"]').prop('checked', false);
+            }
+        }
+    });
+
+    $(document).on("change", "input[name=functionChkRow]", function () {
+        if (this.checked) {
+            var menuId = $(this).attr('data-menuId');
+            $('input[name=menuChkRow][data-menuId="' + menuId + '"]').prop('checked', true);
+        }
+    });
+    
+    function confirmAddEditAuthorization() {
+        showConfirmMesg("Are you sure you want to continue process?", addEditAuthorization, "Confirmation");
+    }
+
+    function addEditAuthorization() {
+        var dataMenu = [];
+        var dataFunc = [];
+
+        var checkboxMenu = document.querySelectorAll('input[name=menuChkRow]:checked')
+        var checkboxFunc = document.querySelectorAll('input[name=functionChkRow]:checked')
+
+        
+        if (checkboxMenu.length > 0) {
+            for (var i = 0; i < checkboxMenu.length; i++) {
+                var dtl = new Object();
+                dtl.MENU_ID = checkboxMenu[i].value;
+                dtl.ROLE_ID = $('input[name=menuChkRow]:checked').attr('data-roleId');
+                dataMenu.push(dtl);
+            }
+        } else {
+            var dtl = new Object();
+            dtl.ROLE_ID = gId;
+            dataMenu.push(dtl);
+        }
+
+        if (checkboxFunc.length > 0) {
+            for (var i = 0; i < checkboxFunc.length; i++) {
+                var dtl = new Object();
+                dtl.FUNCTION_ID = checkboxFunc[i].value;
+                dtl.ROLE_ID = $('input[name=functionChkRow]:checked').attr('data-roleId');
+                dataFunc.push(dtl);
+            }
+        } else {
+            var dtl = new Object();
+            dtl.ROLE_ID = gId;
+            dataFunc.push(dtl);
+        }
+
+        saveAuthMenu(dataMenu);
+        saveAuthFunction(dataFunc);
+    }
+
+    function saveAuthMenu(data){
+        $.ajax({
+            ContentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            type: "POST",
+            url: "@Url.Action("AddEditMenu", "Role")",
+            data: { data: data },
+            success: function (result) {
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+
+                    $("#modalAuth").modal('hide');
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function saveAuthFunction(data){
+        $.ajax({
+            ContentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            type: "POST",
+            url: "@Url.Action("AddEditFunction", "Role")",
+            data: { data: data },
+            success: function (result) {
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+</script>

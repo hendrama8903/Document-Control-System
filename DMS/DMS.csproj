@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OutputType>WinExe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.2" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.9.69" />
+    <PackageReference Include="Hangfire" Version="1.8.6" />
+    <PackageReference Include="itext7" Version="8.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="6.0.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.8">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="NetEscapades.AspNetCore.SecurityHeaders" Version="0.21.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="NPOI" Version="2.5.6" />
+    <PackageReference Include="PDFsharp" Version="6.0.0" />
+    <PackageReference Include="System.DirectoryServices.AccountManagement" Version="8.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="wwwroot\lib\BlockUI\" />
+    <Folder Include="wwwroot\Upload\ATTACHMENT\DOCUMENT_TEMP\" />
+    <Folder Include="wwwroot\Upload\ATTACHMENT\DOCUMENT_TRANSACTION\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="cli_uno">
+      <HintPath>..\..\..\Program Files\LibreOffice\program\cli_uno.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <PackageReference Include="DevExtreme.AspNet.Core" Version="22.2.11" />
+    <PackageReference Include="DevExtreme.AspNet.Data" Version="2.9.2" />
+  </ItemGroup>
+</Project>

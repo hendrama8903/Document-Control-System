@@ -1,0 +1,132 @@
+﻿<div class="modal fade" id="modalApproval" role="dialog" aria-labelledby="basicModal" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modal-title-function">Approval List</h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="row" style="margin-top: 15px;">
+                    <div class="col-lg-12">
+                        <div class="col-lg-3">
+                            <p><b>Document No :</b></p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p id="approvalDocumentNo"></p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p><b>Document Name :</b></p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p id="approvalDocumentName"></p>
+                        </div>
+                    </div>
+                    <div class="col-lg-12">
+                        <div class="col-lg-3">
+                            <p><b>Department :</b></p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p id="approvalDocumentDepartment"></p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p><b>Classified :</b></p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p id="approvalDocumentClassified"></p>
+                        </div>
+                    </div>
+                    <div class="col-lg-12">
+                        <hr>
+                    </div>
+                    <div class="col-lg-12">
+                        <div class="col-lg-3">
+                            <p><b>Document Creator :</b></p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p id="approvalCreator">HSCODE-001</p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p><b>Approval Status :</b></p>
+                        </div>
+                        <div class="col-lg-3">
+                            <p id="approvalStatus"></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="row" style="margin-top: 15px;">
+                    <div class="col-lg-12">
+                        <table id="approvalgrid" class="table table-bordered table-condensed" width="100%">
+                            <thead>
+                                <tr>
+                                    <th>Approver</th>
+                                    <th>Status</th>
+                                    <th>Approval Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+                <div class="row" style="margin-top: 15px;">
+                    <div class="col-lg-12">
+                        <table id="historyGrid" class="table table-bordered table-condensed" width="100%">
+                            <thead>
+                                <tr>
+                                    <th>Approver</th>
+                                    <th>Approval Date</th>
+                                    <th>Remark</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+                <div class="row" style="margin-top: 10px; display: none" id="pengesahanLayout">
+                    <div class="col-lg-12">
+                        <button id="btn_download_pengesahan" class="btn btn-primary">Download Bukti Pengesahan</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-grey" id="btn_close_approvalList" style="width: 80px;" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalApprovalForm" role="dialog" aria-labelledby="basicModal" aria-hidden="true">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modal-title-function">Approval</h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="row" style="margin-top: 15px;">
+                    <div class="col-lg-12">
+                        <p><b>Remark :</b></p>
+                    </div>
+                    <div class="col-lg-12">
+                        <textarea id="approvalRemark" rows="5" class="form-control"></textarea>
+                    </div>
+                </div>
+                <div class="text-right" style="margin-top: 20px">
+                    <button type="button" class="btn btn-primary" id="btn_approve"><i class="fa fa-check"></i> Approve</button>
+                    <button type="button" class="btn btn-danger" id="btn_reject"><i class="fa fa-ban"></i> Reject</button>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-grey" id="btn_close_approval" style="width: 80px;" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>

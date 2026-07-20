@@ -1,0 +1,75 @@
+<div class="modal fade" id="modalReassign" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modal-title-reassign">Reassign Approver</h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-lg-12 form-horizontal" style="margin-top:15px;">
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Current Approver</label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="reassignOldApprover" type="text" disabled />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">New Approver <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <select class="form-control" id="addEditNewApprover"></select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Reason</label>
+                                    <div class="col-sm-8">
+                                        <textarea class="form-control" id="addEditReassignReason" rows="2"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <hr style="margin-top:10px; border-top: 2px solid #eee;" />
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <label class="control-label">Pending Approval Tasks</label>
+                                <span id="spanNoPendingTask" class="text-muted" style="display:none;"> - No pending approval task for this user.</span>
+                                <table id="reassignDetailGrid" class="table table-bordered table-condensed" width="100%" style="min-width:auto; margin-top: 8px;">
+                                    <thead>
+                                        <tr>
+                                            <th width="5%" class="text-center"><input type="checkbox" id="checkAllReassignTask" /></th>
+                                            <th width="20%">Document Code</th>
+                                            <th width="35%">Document Name</th>
+                                            <th width="20%">Submitted Date</th>
+                                            <th width="20%">Approval Step</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <div class="col-xs-12 text-right">
+                    <button type="button" class="btn btn-primary" id="btn_save_reassign" style="width: 120px;">Reassign</button>
+                    <button type="button" class="btn btn-danger" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

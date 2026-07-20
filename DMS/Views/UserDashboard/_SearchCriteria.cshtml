@@ -1,0 +1,16 @@
+            <!-- RECOMMIT DINA -->
+<div class="box-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:0 0 14px 0;">
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+        @if ((bool)ViewData["Publish"])
+        {
+            <button type="button" class="btn btn-success btn-sm" id="btn_publish" style="min-width: 84px;"><i class="fa fa-share-square-o"></i> Publish</button>
+        }
+    </div>
+    <div style="display:flex; align-items:center; gap:6px;">
+        @if ((bool)ViewData["Request"])
+        {
+            <button type="button" class="btn btn-success btn-sm" id="btn_request" style="min-width: 84px;"><i class="fa fa-plus"></i> Request</button>
+        }
+        <button type="button" class="btn btn-primary btn-sm" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
+    </div>
+</div>

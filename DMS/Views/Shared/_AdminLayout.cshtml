@@ -1,0 +1,239 @@
+﻿@using Microsoft.AspNetCore.Http
+
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>DCS - @ViewData["Title"]</title>
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css">
+    <!-- DataTables -->
+    <link rel="stylesheet" href="~/lib/datatables.net-bs/css/dataTables.bootstrap.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="~/lib/font-awesome/css/font-awesome.min.css">
+    <link rel="stylesheet" href="~/lib/fontawesome-iconpicker-1.4.0/dist/css/fontawesome-iconpicker.min.css">
+    <!-- Ionicons -->
+    <link rel="stylesheet" href="~/lib/Ionicons/css/ionicons.min.css">
+    <link rel="Stylesheet" href="~/lib/select2/dist/css/select2.css" />
+    <link rel="Stylesheet" href="~/lib/jquery-message-box-3.2.2/dist/messagebox.css" />
+    <link rel="stylesheet" href="~/css/site.css">
+    <!-- jQuery 3 -->
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <!-- Google Font -->
+    <link rel="stylesheet" href="~/lib/google-font/google-font.css">
+    <!-- Font tema admin (fallback ke system-ui bila tidak ada internet) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- date-range picker -->
+    <link rel="stylesheet" href="~/dist/css/daterangepicker.css">
+    <!-- date picker -->
+    <link rel="stylesheet" href="~/dist/css/bootstrap-datepicker3.css">
+    <!-- date range picker -->
+    <link rel="stylesheet" href="~/lib/daterangepicker-master/daterangepicker.css">
+    <!-- print.js -->
+    <link rel="stylesheet" href="~/lib/print-js/print.min.css">
+    <!-- Tema admin (harus paling akhir agar menimpa style di atas) -->
+    <link rel="stylesheet" href="~/css/admin-theme.css">
+    <style type="text/css">
+        div.dataTables_wrapper div.dataTables_processing {
+            position: fixed;
+        }
+    </style>
+</head>
+<body class="adm-body">
+    <div class="adm-scrim" id="admScrim" onclick="admToggleNav(false)"></div>
+    <div class="adm-app" id="admApp">
+
+        <!-- ===== SIDEBAR: rail + panel menu ===== -->
+        <aside class="adm-sidebar" id="admSidebar">
+            <div class="adm-rail">
+                <a class="adm-rail-ic" href="~/" title="Home">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M12 3.2 2.5 10.6a1 1 0 0 0 .62 1.8H4.5v7.1a1 1 0 0 0 1 1H9a1 1 0 0 0 1-1v-4.6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4.6a1 1 0 0 0 1 1h3.5a1 1 0 0 0 1-1v-7.1h1.38a1 1 0 0 0 .62-1.8L12 3.2Z" />
+                    </svg>
+                </a>
+                <div class="adm-rail-vtext">DOCUMENT <em>CONTROL</em> SYSTEM</div>
+                <button type="button" class="adm-rail-collapse" onclick="admToggleCollapse()" title="Show / hide menu">
+                    <i class="fa fa-angle-double-left"></i>
+                </button>
+            </div>
+            <div class="adm-sidepanel">
+                <div class="adm-brand">
+                    <b>DCS</b>
+                    <span>Document Control System</span>
+                </div>
+                @Html.Partial("_MainMenu")
+            </div>
+        </aside>
+
+        <!-- ===== MAIN ===== -->
+        <main class="adm-main">
+            <div class="adm-topbar">
+                <button type="button" class="adm-topbtn adm-menu-btn" onclick="admToggleNav(true)">
+                    <i class="fa fa-bars"></i>
+                </button>
+                <div class="adm-crumb">DCS &nbsp;/&nbsp; <b>@ViewData["Title"]</b></div>
+                <div class="adm-top-right">
+                    <div class="dropdown adm-notif" id="notificationHeader">
+                        <button type="button" class="adm-topbtn dropdown-toggle" data-toggle="dropdown" aria-expanded="false" onclick="GetListNotif()">
+                            <i class="fa fa-bell-o"></i>
+                            <span class="label label-warning" id="totalNotification"></span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li class="adm-notif-head" id="headerNotification">You have 0 unread message.</li>
+                            <li>
+                                <ul class="adm-notif-list" id="listNotification"></ul>
+                            </li>
+                            <li class="adm-notif-foot"><a href="#" onclick="GetListNotif()">Refresh</a></li>
+                        </ul>
+                    </div>
+                    <a class="adm-user" href="~/User/Profile">
+                        <img src="~/dist/img/user.png" alt="User Image">
+                        <span>
+                            <span class="nm" id="txtUserNameLayout">@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("USERNAME"))</span>
+                            <span class="ps">@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("POSITION_NAME"))</span>
+                        </span>
+                    </a>
+                    <button type="button" class="adm-topbtn" onclick="confirmLogout();" title="Logout">
+                        <i class="fa fa-sign-out"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="adm-content">
+                @RenderBody()
+            </div>
+
+            <div id="divFooter">
+                <footer class="adm-footer">
+                    <strong>Copyright © 2022.</strong> All rights reserved.
+                </footer>
+            </div>
+        </main>
+    </div>
+    <!-- REQUIRED JS SCRIPTS -->
+    <script src="~/lib/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src="~/lib/datatables.net/js/jquery.dataTables.min.js"></script>
+    <script src="~/lib/datatables.net-bs/js/dataTables.bootstrap.min.js"></script>
+    <script src="~/lib/bootstrap-growl/jquery.bootstrap-growl.js"></script>
+    <script src="~/lib/select2/dist/js/select2.full.min.js"></script>
+    <script src="~/lib/jquery-message-box-3.2.2/dist/messagebox.js"></script>
+    <script src="~/lib/blockUI/jquery.blockUI.js"></script>
+    <script src="~/lib/bootstrap-filestyle-2.1.0/src/bootstrap-filestyle.js"></script>
+    <script src="~/js/site.js"></script>
+    <script src="~/js/admin-theme.js"></script>
+    <script src="~/lib/moment/min/moment.min.js"></script>
+    <script src="~/dist/js/daterangepicker.js"></script>
+    <script src="~/dist/js/bootstrap-datepicker.js"></script>
+    <script src="~/lib/fontawesome-iconpicker-1.4.0/dist/js/fontawesome-iconpicker.js"></script>
+    <script src="~/lib/daterangepicker-master/daterangepicker.js"></script>
+    <script src="~/lib/print-js/print.min.js"></script>
+    <script src="~/lib/microsoft/signalr/dist/browser/signalr.js"></script>
+</body>
+</html>
+
+<script type="text/javascript">
+    var connection = new signalR.HubConnectionBuilder().withUrl("/notificationsHub").build();
+    connection.on("ReceiveMessage", function (message) {
+        if (message != "") {
+            showSuccessMesgGrowl(message);
+            GetListNotif();
+        }
+    });
+
+    connection.start().then(() => {
+        connection.invoke("AddToGroup", "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("USERNAME"))").catch((err) => {
+            console.error("Error when add group:", err);
+        });
+    }).catch((err) => {
+        console.error("Error connecting to the hub:", err);
+    });
+
+    $(document).ready(function () {
+        GetListNotif();
+    });
+
+    function GetListNotif() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("getListNotification", "Auth")",
+            dataType: 'json',
+            traditional: true,
+            async: false,
+            data: {
+                USERNAME: "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("USERNAME"))",
+            },
+            success: function (result) {
+                $('#listNotification').empty();
+                if (result.status == true) {
+                    var count = result.data.filter(item => item.STATUS === "0").length;
+                    $('#totalNotification').text(count);
+                    $('#headerNotification').text("You have " + count + " unread message.");
+                    $.each(result.data, function (index) {
+                        var background = "";
+                        if (result.data[index].STATUS === "0") {
+                            background = 'class="bg-warning"';
+                        }
+
+                        $('#listNotification').append(
+                            '<li ' + background + '>'
+                            + '<a href="#" onclick="onClickNotif(\'' + result.data[index].NOTIFICATION_URL + '\', \'' + result.data[index].NOTIFICATION_ID + '\')">'
+                            + '<small><i class="fa fa-clock-o"> </i> ' + moment(result.data[index].NOTIFICATION_DATE).format('DD-MM-YYYY HH:mm') + '</small>'
+                            + '<h4 style="margin-left:0px; margin-bottom:8px">'
+                            + result.data[index].NOTIFICATION_TITLE
+                            + '</h4>'
+                            + '<p style="margin-left:0px">' + result.data[index].NOTIFICATION_TEXT + '</p>'
+                            + '</a>'
+                            + '</li>'
+                        );
+                    });
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function onClickNotif(path, notificationId) {
+        var data = {
+            notificationId: notificationId
+        };
+
+        $.ajax({
+            type: "GET",
+            url: "@Url.Action("UpdateNotification", "Auth")",
+            dataType: 'json',
+            traditional: true,
+            async: false,
+            data: data,
+            success: function (result) {
+                if (result.status == true) {
+                    GetListNotif();
+                    window.location.href = path;
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function confirmLogout(){
+        showConfirmMesg("Are you sure you want to logout ?", logout, "Confirmation");
+    }
+
+    function logout(){
+        window.location.href = '@Url.Action("Logout", "Auth")';
+    }
+
+</script>

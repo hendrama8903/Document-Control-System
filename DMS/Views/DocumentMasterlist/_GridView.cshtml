@@ -1,0 +1,172 @@
+<link rel="stylesheet" href="~/css/devextreme/dx.light.css" />
+<script src="~/js/devextreme/dx.web.js"></script>
+
+<div class="box-body">
+    <div id="datagrid"></div>
+</div>
+
+<script type="text/javascript">
+    function computeGridHeight() {
+        var gridTop = $("#datagrid").offset().top;
+        var footerHeight = $("#divFooter").outerHeight(true) || 0;
+
+        return Math.max(300, $(window).height() - gridTop - footerHeight - 40);
+    }
+
+    $(document).ready(function () {
+        var gridStore = new DevExpress.data.CustomStore({
+            key: "DOCUMENT_TRANSACTION_ID",
+            loadMode: "raw",
+            load: function () {
+                var d = $.Deferred();
+
+                $.ajax({
+                    type: "POST",
+                    url: "@Url.Action("Search", "DocumentMasterlist")",
+                    data: {
+                        draw: 1,
+                        start: 0,
+                        length: 100000,
+                        initialMode: false
+                    }
+                }).done(function (result) {
+                    d.resolve(result.data == "" ? [] : result.data);
+                }).fail(function () {
+                    d.reject("Data loading error");
+                });
+
+                return d.promise();
+            }
+        });
+
+        $("#datagrid").dxDataGrid({
+            dataSource: gridStore,
+            showBorders: true,
+            columnAutoWidth: true,
+            wordWrapEnabled: false,
+            sorting: { mode: "none" },
+            noDataText: "Data not found.",
+            height: computeGridHeight(),
+            filterRow: { visible: true, applyFilter: "auto" },
+            headerFilter: { visible: true },
+            toolbar: { visible: false },
+            paging: { pageSize: 10 },
+            pager: {
+                visible: true,
+                displayMode: "compact",
+                showPageSizeSelector: true,
+                allowedPageSizes: [10, 25, 50, 100],
+                showInfo: true,
+                showNavigationButtons: true
+            },
+            columnChooser: {
+                enabled: true,
+                mode: "select"
+            },
+            columnFixing: { enabled: true },
+            columns: [
+                {
+                    caption: "No",
+                    width: 50,
+                    alignment: "center",
+                    allowHiding: false,
+                    allowFiltering: false,
+                    fixed: true,
+                    fixedPosition: "left",
+                    cellTemplate: function (container, options) {
+                        var pageIndex = options.component.pageIndex();
+                        var pageSize = options.component.pageSize();
+                        container.text(pageIndex * pageSize + options.row.rowIndex + 1);
+                    }
+                },
+                { dataField: "DOCUMENT_CODE", caption: "Document Code", fixed: true, fixedPosition: "left" },
+                { dataField: "DOCUMENT_TRANSACTION_NAME", caption: "Document Name" },
+                { dataField: "DOCUMENT_CATEGORY", caption: "Category" },
+                {
+                    caption: "Division",
+                    calculateCellValue: function (row) {
+                        return row.DIVISION != null ? row.DIVISION + " - " + row.DIVISION_NAME : "";
+                    }
+                },
+                {
+                    caption: "Department",
+                    calculateCellValue: function (row) {
+                        return row.DEPARTMENT_CODE != null ? row.DEPARTMENT_CODE + " - " + row.DEPARTMENT_NAME : "";
+                    }
+                },
+                { dataField: "CLASSIFIED_VAL", caption: "Classified" },
+                { dataField: "REVISION", caption: "Revision", alignment: "center", width: 80 },
+                {
+                    dataField: "STATUS",
+                    caption: "Status",
+                    alignment: "center",
+                    filterValue: "1",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+                        var labelClass = "label label-danger";
+
+                        if (row.STATUS == 0) {
+                            labelClass = "label label-info";
+                        } else if (row.STATUS == 1) {
+                            labelClass = "label label-success";
+                        } else if (row.STATUS == 4) {
+                            labelClass = "label label-default";
+                        }
+
+                        $("<span>").addClass(labelClass).text(row.STATUS_DISPLAY).appendTo(container);
+                    }
+                },
+                {
+                    dataField: "DOCUMENT_DATE",
+                    caption: "Effective Date",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.DOCUMENT_DATE;
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
+                    }
+                },
+                {
+                    caption: "Last Change",
+                    calculateCellValue: function (row) {
+                        return [row.ITEM_CHANGED, row.REASON].filter(Boolean).join(" - ");
+                    }
+                },
+                { dataField: "DOCUMENT_CREATOR", caption: "Owner" },
+                { dataField: "CREATED_BY", caption: "Created By", visible: false },
+                {
+                    dataField: "CREATED_DT",
+                    caption: "Created Date",
+                    alignment: "right",
+                    visible: false,
+                    cellTemplate: function (container, options) {
+                        var value = options.data.CREATED_DT;
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
+                    }
+                },
+                { dataField: "CHANGED_BY", caption: "Changed By", visible: false },
+                {
+                    dataField: "CHANGED_DT",
+                    caption: "Changed Date",
+                    alignment: "right",
+                    visible: false,
+                    cellTemplate: function (container, options) {
+                        var value = options.data.CHANGED_DT;
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
+                    }
+                }
+            ]
+        });
+
+        $("#btn_columns").on("click", function () {
+            $("#datagrid").dxDataGrid("instance").showColumnChooser();
+        });
+
+        $("#btn_export").on("click", function () {
+            window.location.href = "@Url.Action("DownloadExcel", "DocumentMasterlist")";
+        });
+
+        $(window).on("resize", function () {
+            $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+        });
+    });
+</script>

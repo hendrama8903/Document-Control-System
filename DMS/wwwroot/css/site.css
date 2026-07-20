@@ -1,0 +1,181 @@
+﻿./*
+   badge
+*/
+.badge-success {
+   color: #fff !important;
+   background-color: #28a745 !important;
+}
+.badge-primary {
+   color: #fff;
+   background-color: #007bff;
+}
+.badge-secondary {
+   color: #fff;
+   background-color: #6c757d;
+}
+.badge-danger {
+   color: #fff;
+   background-color: #dc3545;
+}
+.badge-warning {
+   color: #fff;
+   background-color: #ffc107;
+}
+.badge-info {
+   color: #fff;
+   background-color: #17a2b8;
+}
+.badge-light {
+   color: #212529;
+   background-color: #f8f9fa;
+}
+.badge-dark {
+   color: #fff;
+   background-color: #343a40;
+}
+.mt-5 {
+    margin-top:5px;
+}
+.mt-10 {
+    margin-top: 10px;
+}
+.m-0 {
+    margin: 0px;
+}
+.ml-10 {
+    margin-left: 10px;
+}
+
+tbody:not(.unclickable) tr:hover {
+    cursor: pointer;
+    background-color: #fff4c1 !important;
+    color: #3c8dbc;
+}
+
+.selected {
+    background-color: #fff4c1 !important;
+    color: #3c8dbc;
+}
+
+.odd:not(.selected) {
+    background-color: #F2F2F2;
+}
+
+.even:not(.selected) {
+    background-color: #FFFFFF;
+}
+
+.select2-selection__rendered {
+    line-height: 31px !important;
+}
+
+.select2-container .select2-selection--single {
+    height: 34px !important;
+    border-radius: 0;
+}
+
+.select2-selection__arrow {
+    height: 34px !important;
+}
+
+.readonly {
+    background-color: #ffffff !important;
+    cursor: default !important;
+}
+
+thead th {
+    background-color: #3c8dbc;
+    color: #fff;
+    /*position: sticky;*/
+    /*top: 0;*/
+}
+
+.btn-grey {
+    color: #fff;
+    background: #b7b7b7;
+}
+
+.btn-grey:hover {
+    color: #fff;
+    background: #999;
+}
+
+.fa-chevron-down {
+    color: #fff;
+}
+
+.fa-chevron-up {
+    color: #fff;
+}
+
+.accordion-box-detail {
+    border: 0px !important;
+    box-shadow: 0 0px 0px rgba(0, 0, 0, 0.1);
+    margin-bottom: 3px;
+}
+
+.accordion-box-add {
+    border: 1px solid #b7b7b7 !important;
+    margin-bottom: 3px;
+    border-radius: 9px;
+}
+
+.accordion-header-detail {
+    border-radius: 7px;
+}
+
+.accordion-header-add {
+    border-radius: 7px 7px 7px 7px;
+    margin-bottom: -1px;
+    margin-top:-1px;
+}
+
+.modal-scrollable .modal-body {
+    max-height: 75vh; 
+    overflow-y: auto;
+}
+
+.dataTables_scrollHeadInner .table {
+    width: 100% !important;
+    min-width: 1235px;
+    margin-top: 0 !important;
+}
+
+.dataTables_scrollBody .table {
+    width: 100% !important;
+    min-width: 1235px;
+}
+
+.dataTables_scrollHeadInner {
+    /*width: 100% !important;*/
+}
+
+.dataTables_scrollHead {
+    border: 1px solid #d2d6de !important;
+    background-color: #F8F8F8 !important;
+    overflow: hidden scroll !important;
+}
+
+.dataTables_scrollBody {
+    border: 1px solid #d2d6de !important;
+    background-color: #F8F8F8 !important;
+    overflow: scroll !important;
+}
+
+thead th {
+    white-space: nowrap;
+}
+
+.my-bg-color {
+    background-color: #3c8dbc;
+}
+
+table.dataTable td, table.dataTable th {
+    padding: 3px 10px;
+    width: 1px;
+    white-space: nowrap;
+}
+
+table.dataTable.table-condensed > thead > tr > th {
+    padding-right: 5px;
+}

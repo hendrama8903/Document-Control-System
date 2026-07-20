@@ -1,0 +1,156 @@
+﻿<script type="text/javascript">
+    var gScreenMode = null;
+    var gId = null;
+    var fromDT = null;
+    var toDT = null;
+    var gStartDate = null;
+    var gEndDate = null;
+
+    $(document).ready(function () {
+        $('#searchDate').daterangepicker({
+            autoUpdateInput: false,
+            locale: {
+                cancelLabel: 'Clear'
+            }
+        });
+
+        $('#searchDate').on('apply.daterangepicker', function (ev, picker) {
+            fromDT = picker.startDate;
+            toDT = picker.endDate;
+            $(this).val(picker.startDate.format('DD-MM-YYYY') + ' - ' + picker.endDate.format('DD-MM-YYYY'));
+
+            gStartDate = picker.startDate.format("YYYY-MM-DD");
+            gEndDate = picker.endDate.format("YYYY-MM-DD");
+            onSearch();
+        });
+
+        $('#searchDate').on('cancel.daterangepicker', function (ev, picker) {
+            fromDT = null;
+            toDT = null;
+            $(this).val('');
+
+            gStartDate = null;
+            gEndDate = null;
+            onSearch();
+        });
+    });
+
+    function onSearch() {
+        $("#datagrid").dxDataGrid("instance").refresh();
+    }
+
+    function onDetail(processID) {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetByKey", "LogMonitoring")",
+            async: false,
+            data: {
+                PROCESS_ID: processID
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    var data = result.data;
+                    $('#txtProcessID').html('<b>: </b>' + data.PROCESS_ID);
+                    $('#txtModuleName').html('<b>: </b>' + data.MODULE);
+                    if (data.PROCESS_STATUS == 0) {
+                        $('#txtStatus').html('<b>: </b>' + data.PROCESS_STATUS + ':Start');
+                    } else if (data.PROCESS_STATUS == 1) {
+                        $('#txtStatus').html('<b>: </b>' + data.PROCESS_STATUS + ':Process');
+                    } else if (data.PROCESS_STATUS == 2) {
+                        $('#txtStatus').html('<b>: </b>' + data.PROCESS_STATUS + ':Finish');
+                    } else if (data.PROCESS_STATUS == 3) {
+                        $('#txtStatus').html('<b>: </b>' + data.PROCESS_STATUS + ':Finish with error');
+                    } else {
+                        $('#txtStatus').html('<b>: </b>' + data.PROCESS_STATUS + ':Abnormal');
+                    }
+                    $('#txtStartDate').html('<b>: </b>' + moment(data.START_DT).format("DD-MM-YYYY HH:mm:ss"));
+                    $('#txtFunction').html('<b>: </b>' + data.FUNCTION);
+                    $('#txtUsername').html('<b>: </b>' + data.CREATED_BY);
+                    $('#txtStartEnd').html('<b>: </b>' + moment(data.END_DT).format("DD-MM-YYYY HH:mm:ss"));
+
+                    $("#modalLogDetail").modal();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("SearchDetail", "LogMonitoring")",
+            async: false,
+            data: {
+                PROCESS_ID: processID
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    var data = result.data;
+
+                    $("#logDetailGrid").dataTable().fnDestroy();
+                    $('#logDetailGrid').DataTable({
+                        "ordering": false,
+                        "oLanguage": { "sEmptyTable": "Data not found." },
+                        "scrollCollapse": false,
+                        "paging": false,
+                        "info": false,
+                        "searching": false,
+                        "data": data,
+                        "columns": [
+                            {
+                                data: 'SEQ_NO'
+                            },
+                            {
+                                render: function (data, type, row) {
+                                    if (row["CREATED_DT"] != null) {
+                                        return moment(row["START_DT"]).format("DD-MM-YYYY HH:mm:ss");
+                                    } else {
+                                        return "";
+                                    }
+                                }
+                            },
+                            {
+                                data: 'LOCATION'
+                            },
+                            {
+                                data: 'MESSAGE_TYPE'
+                            },
+                            {
+                                data: 'MESSAGE_CONTENT'
+                            }
+                        ],
+                        "columnDefs": [
+                            { "width": "15%", "targets": 4 },
+                            {
+                                "targets": [0],
+                                "className": "text-center",
+                            },
+                            {
+                                "targets": [1],
+                                "className": "text-center",
+                            },
+                            {
+                                "targets": [3],
+                                "className": "text-center",
+                            },
+                        ]
+                    });
+
+                    $('#modalApproval').on('shown.bs.modal', function () {
+                        $("#approvalgrid").DataTable().columns.adjust().draw();
+                    });
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+</script>

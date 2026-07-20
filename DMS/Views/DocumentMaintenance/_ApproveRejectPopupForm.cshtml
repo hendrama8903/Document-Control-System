@@ -1,0 +1,137 @@
+﻿            <!-- RECOMMIT DINA -->
+
+
+<div class="modal fade" id="modalApproveReject" tabindex="-1" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" onclick="onclickClose()"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modalApproveReject-title"></h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <button type="button" class="btn btn-success" id="btn_approveApproval" style="width: 80px;">Approve</button>
+                <button type="button" class="btn btn-danger" id="btn_rejectApproval" style="width: 80px;">Reject</button>
+                <br />
+                <br />
+                <input class="form-control" id="approveRejectDocumentId" type="hidden" />
+                <input class="form-control" id="approveRejectDocumentNo" type="hidden" />
+
+                <table id="datagridApproval" class="table table-bordered table-condensed" width="100%">
+                    <thead>
+                        <tr>
+                            <th class="text-center">Sequence</th>
+                            <th class="text-center">Approver Name</th>
+                            <th class="text-center">Department</th>
+                            <th class="text-center">Section</th>
+                            <th class="text-center">Status</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <div class="col-xs-12 text-right">
+                    @*<button type="button" class="btn btn-primary" id="btn_okApproveReject" style="width: 80px;">OK</button>
+                    <button type="button" class="btn btn-danger" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>*@
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    //$(document).ready(function () {
+
+    //    $('#datagridApproval').DataTable({
+    //        "ordering": false,
+    //        "oLanguage": { "sEmptyTable": "Data not found." },
+    //        "dom": "<t><r><'row mt-10'<'col-lg-2'i><'col-lg-6'l><'col-lg-4'p>>",
+    //        "scrollY": '200px',
+    //        "scrollCollapse": false,
+    //        "scrollX": true,
+    //        "processing": true,
+    //        "serverSide": true,
+    //        "ajax": {
+    //            "url": "@Url.Action("SearchDocumentApproval", "DocumentMaintenance")",
+    //            "type": "POST",
+    //            "datatype": "json",
+    //            "data": function (d) {
+    //                    d.DOCUMENT_ID = $("#approveRejectDocumentId").val(),
+    //                    d.DOCUMENT_NO = $("#approveRejectDocumentNo").val()
+    //            },
+    //        },
+    //        "columnDefs": [
+    //            {
+    //                "targets": [0],
+    //                "className": "text-right",
+    //            },
+    //            {
+    //                "targets": [1],
+    //                "className": "text-left",
+    //            },
+    //            {
+    //                "targets": [2],
+    //                "className": "text-left",
+    //            },
+    //            {
+    //                "targets": [3],
+    //                "className": "text-left",
+    //            }
+    //            ,
+    //            {
+    //                "targets": [4],
+    //                "className": "text-center",
+    //            }
+    //        ],
+    //        "columns": [
+    //            { "data": "DOCUMENT_CODE", "name": "DOCUMENT_CODE" },
+    //            { "data": "DOCUMENT_NAME", "name": "DOCUMENT_NAME" },
+    //            { "data": "DEPARTMENT_NAME", "name": "DEPARTMENT_NAME" },
+    //            { "data": "CLASSIFIED", "name": "CLASSIFIED" },
+    //            { "data": "STATUS_DISPLAY", "name": "STATUS_DISPLAY" },
+    //        ],
+    //        //"fnDrawCallback": function (oSettings) {
+    //        //    $('#datagrid tbody > tr').removeClass('selected');
+    //        //    $('.grid-checkbox').not(this).prop('checked', false);
+
+    //        //    //$("#btn_edit").prop("disabled", ($("[name='chkRow']:checked").length == 1) ? false : true);
+    //        //    //$("#btn_delete").prop("disabled", ($("[name='chkRow']:checked").length == 1) ? false : true);
+    //        //    //$("#btn_approve").prop("disabled", ($("[name='chkRow']:checked").length == 1) ? false : true);
+    //        //    resizeGrid();
+
+    //        //    if (initial) {
+    //        //        toggleColumn();
+    //        //        initial = false;
+    //        //    }
+    //        //}
+    //    });
+
+    //    $('body').tooltip({ selector: '[data-toggle="tooltip"]' });
+    //    //$("#btn_add").prop("disabled", false);
+    //    //$("#btn_edit").prop("disabled", true);
+    //    //$("#btn_delete").prop("disabled", true);
+    //    //$("#btn_download").prop("disabled", true);
+    //    //$("#btn_approve").prop("disabled", true);
+
+    //    $("#datagrid").on("click", "tbody tr", function (e) {
+    //        //if (event.target.type !== 'checkbox') {
+    //        //    $(':checkbox', this).trigger('click');
+    //        //}
+    //    });
+
+    //    $("#datagrid").on('change', "input[type='checkbox']", function (e) {
+    //        //$('#datagrid tbody > tr').removeClass('selected');
+    //        //$('.grid-checkbox').not(this).prop('checked', false);
+
+    //        //$(this).is(":checked") ? $(this).closest('tr').addClass('selected') : $(this).closest('tr').removeClass('selected');
+    //        //$("#btn_edit").prop("disabled", ($("[name='chkRow']:checked").length == 1) ? false : true);
+    //        //$("#btn_delete").prop("disabled", ($("[name='chkRow']:checked").length == 1) ? false : true);
+    //        //$("#btn_approve").prop("disabled", ($("[name='chkRow']:checked").length == 1) ? false : true);
+    //    });
+    //});
+</script>

@@ -1,0 +1,49 @@
+﻿            <!-- RECOMMIT DINA -->
+
+
+<div class="modal fade" id="modalSend" tabindex="-1" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content" style="width:85%">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modalSend-title"></h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-lg-2 form-horizontal" style="margin-top:15px; margin-left:15px;position:center">
+                        <img src="~/images/q.png" width="100%" />
+                    </div>
+                    <div class="col-lg-8 form-horizontal">
+                        <div class="row">
+                            <div class="col-sm-12">
+                                @*<label>Are you sure want to <label id="labelOperation"></label> Document No <label id="labelDocumentNo"></label>?</label>*@
+                                <h6 id="labelConfirmation" style="align-content:center"></h6>
+                            </div>
+                        </div>
+                        <div class="row" id="divRemarks">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <div class="col-sm-8">
+                                        <textarea id="addEditRemarks" rows="4" cols="50" oninput="removeWhiteSpace(this)" maxlength="200"></textarea>
+                                        @*<input class="form-control" id="addEditRemarks" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />*@
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <div class="col-xs-12 text-right">
+                    <button type="button" class="btn btn-primary" id="btn_okSend" style="width: 80px;">OK</button>
+                    <button type="button" class="btn btn-danger" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

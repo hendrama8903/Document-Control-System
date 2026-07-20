@@ -1,0 +1,635 @@
+﻿<script type="text/javascript">
+    var gScreenMode = null;
+    var gId = null;
+    var url = $("#txtUrl").val();
+    var gAttachmentPath = null;
+    var gHasLocalPassword = true;
+
+    $(document).ready(function () {
+        setDataSelect2("addEditRoleId", "@Url.Action("GetRoleIdName", "Role")", "- Choose -");
+
+        setDataSelect2("addEditPosition", "@Url.Action("GetPositionNameAndPositionID", "User")", "- Choose -");
+        setDataSelect2WithParam("addEditDivision", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "- Choose -", "DIVISION");
+        setDataSelect2WithParamMultiple("addEditDivisionMultiple", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "", "DIVISION");
+        setDataSelect2("addEditDepartment", "@Url.Action("GetDepartmentIdAndNameByDivision", "DepartmentMaster")", "- Choose -");
+        setDataSelect2WithParam("addEditSection", "@Url.Action("GetSectionNameAndSectionIDByDepartment", "SectionMaster")", "- Choose -", "");
+
+        $("#rowDivisionMultiple").hide();
+        $("#rowDivision").show();
+
+        $("#btn_add").on("click", function () {
+            onAddPrepare();
+        });
+
+        $("#btn_edit").on("click", function () {
+            onEditPrepare();
+        });
+
+        $("#btn_delete").on("click", function () {
+            onDeletePrepare();
+        });
+
+        $("#btn_save").on("click", function () {
+            confirmAddEditData();
+        });
+
+        $("#btn_cancel_profile").on("click", function () {
+            window.history.back();
+        });
+
+        if (url === "/User/Profile") {
+            getProfileData();
+        }
+
+        $("#btn_position").on("click", function () {
+            onAddPositionPrepare();
+        });
+
+        $("#btn_save_position").on("click", function () {
+            confirmAddEditPositionData();
+        });
+
+        $("#btn_delete_attachment").on("click", function () {
+            confirmDeleteAttachment()
+        });
+
+        $("#addEditAdUser").on("change", function () {
+            toggleAdUserFields();
+        });
+    });
+
+    function toggleAdUserFields() {
+        var isAdUser = $('#addEditAdUser').is(':checked');
+
+        if (isAdUser) {
+            $('#rowOldPassword').hide();
+            $('#rowNewPassword').hide();
+            $('#rowConfirmPassword').hide();
+        } else {
+            if (gScreenMode === 'EDIT' && gHasLocalPassword) {
+                $('#rowOldPassword').show();
+            } else {
+                $('#rowOldPassword').hide();
+            }
+            $('#rowNewPassword').show();
+            $('#rowConfirmPassword').show();
+        }
+    }
+
+    function onSearch() {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        grid.clearSelection();
+        grid.refresh();
+    }
+
+    function onAddPrepare() {
+        gScreenMode = 'ADD';
+        $('#modal-title').html("Add User");
+
+        $('#addEditUsername').prop('disabled', false);
+
+        $('#addEditUsername').val("");
+        $('#addEditRegNo').val("");
+        $('#addEditFullname').val("");
+        $('#addEditOldPassword').val("");
+        $('#addEditPassword').val("");
+        $('#addEditConfirmPassword').val("");
+        $('#addEditEmail').val("");
+        $('#addEditPhone').val("");
+        $('#addEditRoleId').val("").trigger("change");
+        $('#addEditAdUser').prop('checked', false);
+        //$('#addEditDivision').val("").trigger("change");
+        //$('#addEditDepartment').val("").trigger("change");
+        $('#fileNameContainer :input[type="text"]').val("");
+        
+        $('#btn_download_attachment').hide();
+        $('#btn_delete_attachment').hide();
+
+        $('#rowOldPassword').hide();
+        $('#spanEditPassword').hide();
+        $('#labelNewPassword').text("");
+        $('#labelNewPassword').append(
+            'Password <span class="text-red"> *</span>'
+        );
+
+        gAttachmentPath = null;
+        gHasLocalPassword = true;
+
+        //$('#addEditDivision').prop('disabled', false);
+        //$('#addEditDepartment').prop('disabled', true);
+
+        toggleAdUserFields();
+
+        $("#modalAddEdit").modal();
+        $('#modalAddEdit').on('shown.bs.modal', function () {
+            $('#addEditUsername').focus();
+        });
+    }
+
+    function onEditPrepare() {
+
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gId = row.USERNAME;
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetByKey", "User")",
+            async: false,
+            data: {
+                USERNAME: gId
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    var data = result.data;
+
+                    gScreenMode = 'EDIT';
+                    $('#modal-title').html("Edit User");
+                    $("#addEditRoleId").empty().trigger('change');
+
+                    $('#rowOldPassword').show();
+                    $('#spanEditPassword').show();
+                    $('#labelNewPassword').text("");
+                    $('#labelNewPassword').append(
+                        'New Password <span class="text-red"> *</span>'
+                    );
+
+                    $('#addEditUsername').val(data.USERNAME);
+                    $('#addEditRegNo').val(data.REG_NO);
+                    $('#addEditFullname').val(data.FULL_NAME);
+                    $('#addEditOldPassword').val("");
+                    $('#addEditPassword').val("");
+                    $('#addEditConfirmPassword').val("");
+                    $('#addEditEmail').val(data.EMAIL);
+                    $('#addEditPhone').val(data.PHONE);
+                    $('#addEditRoleId').select2("trigger", "select", { data: { id: data.ROLE_ID, text: data.ROLE_NAME } });
+                    $('#addEditAdUser').prop('checked', data.AD_USER == "1");
+                    gHasLocalPassword = (data.PASSWORD != null);
+                    toggleAdUserFields();
+                    $('#inputContainer :input[type="text"]').val(data.FILE_PATH);
+
+                    gAttachmentPath = data.FILE_PATH;
+                    if (data.FILE_PATH == null) {
+                        $('#fileNameContainer').removeClass();
+                        $('#fileNameContainer').addClass('col-sm-8');
+                        $('#btn_delete_attachment').hide();
+                    } else {
+                        if ("@ViewData["Delete-Attachment"]" == "False") {
+                            $('#fileNameContainer').removeClass();
+                            $('#fileNameContainer').addClass('col-sm-8');
+                            $('#btn_delete_attachment').hide();
+                        } else {
+                            $('#fileNameContainer').removeClass();
+                            $('#fileNameContainer').addClass('col-sm-7');
+                            $('#btn_delete_attachment').show();
+                        }
+                    }
+
+                    //if (data.DIVISION != null) {
+                    //    $('#addEditDivision').select2("trigger", "select", { data: { id: data.DIVISION, text: data.DIVISION + " - " + data.DIVISION_NAME } });
+                    //}
+
+                    //if (data.DEPARTMENT_NAME != null) {
+                    //    $('#addEditDepartment').select2("trigger", "select", { data: { id: data.DEPARTMENT_ID, text: data.DEPARTMENT_NAME } });
+                    //}
+
+                    //$('#addEditDepartment').prop('disabled', false);
+                    $('#addEditUsername').prop('disabled', true);
+
+                    $("#modalAddEdit").modal();
+                    $('#modalAddEdit').on('shown.bs.modal', function () {
+                        $('#addEditRegNo').focus();
+                    });
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function(result){
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function setDivision(val) {
+        var position = val;
+
+        if (position == '5') { //Executive Officer
+            //Set Multiple Division
+            $("#rowDivisionMultiple").show();
+            $("#addEditDivisionMultiple").val([]).trigger('change');
+            $("#rowDivision").hide();
+
+            $('#addEditDivision').prop('disabled', true);
+            $('#addEditDepartment').prop('disabled', true);
+            $('#addEditSection').prop('disabled', true);
+        } else if (position == '6' || position == '7') { //Direktur || Presiden Direktur
+            $("#rowDivision").show();
+            $("#rowDivisionMultiple").hide();
+            $('#addEditDivision').prop('disabled', true);
+            $('#addEditDepartment').prop('disabled', true);
+            $('#addEditSection').prop('disabled', true);            
+        } else {
+            $("#rowDivision").show();
+            $("#rowDivisionMultiple").hide();
+            $('#addEditDivision').prop('disabled', false);
+            $('#addEditDepartment').prop('disabled', true);
+            $('#addEditSection').prop('disabled', true);
+        }
+
+        $('#addEditDivision').val("").trigger("change");
+    }
+
+    function setDepartment(val) {
+        var division = val;
+        var position = $("#addEditPosition").val();
+
+        if (division == null || division == "") {
+            $('#addEditDepartment').prop('disabled', true);
+        } else {
+            if (position == '3' || position == '2' || position == '1') { //Dept. Head || Section Head || Staff
+                $('#addEditDepartment').prop('disabled', false);
+            } else {
+                $('#addEditDepartment').prop('disabled', true);
+            }
+        }
+
+        $('#addEditDepartment').val("").trigger("change");
+        setDataSelect2WithParam("addEditDepartment", "@Url.Action("GetDepartmentIdAndNameByDivision", "DepartmentMaster")", "- Choose -", division);
+    }
+
+    function setSection(val) {
+        var department = val;
+        var position = $("#addEditPosition").val();
+
+        if (department == null || department == "") {
+            $('#addEditSection').prop('disabled', true);
+        } else {
+            if (position == '2' || position == '1') { //Section Head || Staff
+                $('#addEditSection').prop('disabled', false);
+            } else {
+                $('#addEditSection').prop('disabled', true);
+            }
+        }
+
+        $('#addEditSection').val("").trigger("change");
+        setDataSelect2WithParam("addEditSection", "@Url.Action("GetSectionNameAndSectionIDByDepartment", "SectionMaster")", "- Choose -", department);
+    }
+
+    function confirmAddEditData() {
+        showConfirmMesg("Are you sure you want to continue process?", addEditData, "Confirmation");
+    }
+
+    $(document).on('change', '#filePath', function (e) {
+        ex = e;
+
+        validateExtension($('#filePath').val(), ["jpg", "png", "jpeg"]);
+    });
+
+    function addEditData() {
+        if (url === "/User/Profile") {
+            ROLE_ID = $('#addEditRoleIdProfile').val();
+        } else {
+            ROLE_ID = $('#addEditRoleId').val();
+        }
+
+        popUpProgressShow();
+        var data = new FormData();
+        
+        var isAdUser = $('#addEditAdUser').is(':checked');
+
+        data.append("screenMode", gScreenMode);
+        data.append("USERNAME", $('#addEditUsername').val());
+        data.append("REG_NO", $('#addEditRegNo').val());
+        data.append("FULL_NAME", $('#addEditFullname').val());
+        if (!isAdUser) {
+            data.append("OLD_PASSWORD", $('#addEditOldPassword').val());
+            data.append("PASSWORD", $('#addEditPassword').val());
+            data.append("CONFIRM_PASSWORD", $('#addEditConfirmPassword').val());
+        }
+        data.append("EMAIL", $('#addEditEmail').val());
+        data.append("PHONE", $('#addEditPhone').val());
+        data.append("ROLE_ID", ROLE_ID);
+        data.append("AD_USER", isAdUser ? "1" : "0");
+
+        if (gAttachmentPath !== null) {
+            data.append("FILE_PATH", gAttachmentPath);
+        }
+
+        if ($('#filePath').val() !== "" && $('#filePath').val() !== null && $('#filePath').val() !== undefined) {
+            e = ex;
+            var files = e.target.files;
+            if (files.length > 0) {
+                if (window.FormData !== undefined) {
+                    for (var x = 0; x < files.length; x++) {
+                        data.append("file" + x, files[x]);
+                    }
+                }
+            }
+        }
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("AddEdit", "User")",
+            contentType: false,
+            processData: false,
+            data: data,
+            success: function (result) {
+                //popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    //if (gScreenMode === 'EDIT_PROFILE') {
+                    if (url === "/User/Profile") {
+                        getProfileData();
+                        popUpProgressHide();
+                    } else {
+                        onSearch();
+                        $("#modalAddEdit").modal('hide');
+                        popUpProgressHide();
+                    }
+                }else {
+                   showErrorMesgGrowl(result.message);
+                   popUpProgressHide();
+                }
+            },
+            error: function (result) {
+                popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function getProfileData() {
+      $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetByKey", "User")",
+            async: false,
+            data: {
+                USERNAME: $("#txtUserNameLayout").text()
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    var data = result.data;
+
+                    gScreenMode = 'EDIT';
+                    $("#txtUserName").text(data.USERNAME);
+                    $("#txtFullName").text(data.FULL_NAME);
+                    $('#addEditUsername').val(data.USERNAME);
+                    $('#addEditRegNo').val(data.REG_NO);
+                    $('#addEditFullname').val(data.FULL_NAME);
+                    $('#addEditOldPassword').val("");
+                    $('#addEditPassword').val("");
+                    $('#addEditConfirmPassword').val("");
+                    $('#addEditEmail').val(data.EMAIL);
+                    $('#addEditPhone').val(data.PHONE);
+                    $('#addEditRoleIdProfile').val(data.ROLE_ID);
+                    $('#addEditRoleName').val(data.ROLE_NAME);
+
+                    if (data.FILE_PATH != null) {
+                        $('#imgSignature').attr('src', data.FILE_PATH).show();
+                        $('#noSignatureText').hide();
+                    } else {
+                        $('#imgSignature').attr('src', '').hide();
+                        $('#noSignatureText').show();
+                    }
+
+                    $('#addEditRoleId').prop('disabled', true);
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function(result){
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function onDeletePrepare() {
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gId = row.USERNAME;
+
+        showConfirmMesg("Are you sure you want to delete user " + gId + "?", deleteData, "Confirmation");
+    }
+
+    function deleteData() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("Delete", "User")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                USERNAME: gId
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function onAddPositionPrepare() {
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gId = row.USERNAME;
+
+        $('#addEditUsernamePosition').prop('disabled', true);
+        $('#addEditUsernamePosition').val(gId);
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("PositionGetByKey", "User")",
+            async: false,
+            data: {
+                USERNAME: gId
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    if (result.data != null) {
+                        var data = result.data;
+                        var mode = result.mode;
+
+                        if (mode == "multiple") {
+                            //set division multiple
+                            $("#rowDivisionMultiple").show();
+                            $("#addEditDivisionMultiple").val([]).trigger('change');
+                           
+                            $("#rowDivision").hide();
+                            $('#addEditDivision').prop('disabled', true);
+
+                            if (data[0].POSITION_ID != null) {
+                                $('#addEditPosition').select2("trigger", "select", { data: { id: data[0].POSITION_ID, text: data[0].POSITION_NAME } });
+                            }
+
+                            var select2 = $("#addEditDivisionMultiple");
+
+                            select2.val(null).trigger('change');
+                            console.log(data)
+
+                            data.forEach((item, index) => {
+                                const divisionID = item.DIVISION;
+                                const divisionIDName = item.DIVISION + ' - ' + item.DIVISION_NAME;
+
+                                var option = new Option(divisionIDName, divisionID, true, true);
+                                $('#addEditDivisionMultiple').append(option).trigger('change');
+                            });
+
+                        } else {
+                            //set data normal
+                            $("#rowDivisionMultiple").hide();
+                            $("#addEditDivisionMultiple").val([]).trigger('change');
+
+                            $("#rowDivision").show();
+
+                            if (data.POSITION_ID != null) {
+                                $('#addEditPosition').select2("trigger", "select", { data: { id: data.POSITION_ID, text: data.POSITION_NAME } });
+                            }
+
+                            if (data.DIVISION != null) {
+                                $('#addEditDivision').select2("trigger", "select", { data: { id: data.DIVISION, text: data.DIVISION + " - " + data.DIVISION_NAME } });
+                            }
+
+                            if (data.DEPARTMENT_ID != null) {
+                                $('#addEditDepartment').select2("trigger", "select", { data: { id: data.DEPARTMENT_ID, text: data.DEPARTMENT_NAME } });
+                            }
+
+                            if (data.SECTION_ID != null) {
+                                $('#addEditSection').select2("trigger", "select", { data: { id: data.SECTION_ID, text: data.SECTION_NAME } });
+                            }
+                        }
+                    } else {
+                        //Set data kosong
+                        $("#rowDivision").show();
+                        $("#rowDivisionMultiple").hide();
+                        $("#addEditDivisionMultiple").val([]).trigger('change');
+
+                        $('#addEditPosition').val("").trigger("change");
+
+                        $('#addEditPosition').prop('disabled', false);
+                        $('#addEditDepartment').prop('disabled', true);
+                    }
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+
+        $("#modalAddEditPosition").modal();
+        $('#modalAddEditPosition').on('shown.bs.modal', function () {
+            $('#addEditUsernamePosition').focus();
+        });
+    }
+
+    function confirmAddEditPositionData() {
+        showConfirmMesg("Are you sure you want to continue process?", addEditPositionData, "Confirmation");
+    }
+
+    function addEditPositionData() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("AddEditPosition", "User")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                screenMode: gScreenMode,
+                USERNAME: $('#addEditUsernamePosition').val(),
+                POSITION_ID: $('#addEditPosition').val(),
+                DIVISION: $('#addEditDivision').val(),
+                arrDivision: $("#addEditDivisionMultiple").val(),
+                DEPARTMENT_ID: $('#addEditDepartment').val(),
+                SECTION_ID: $('#addEditSection').val()
+            },
+            success: function (result) {
+                //popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    $("#modalAddEditPosition").modal('hide');
+                }else {
+                   showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function onDonload(id) {
+        gAttachmentPath = id;
+        downloadAttachment();
+    }
+
+    function downloadAttachment() {
+        if (gAttachmentPath !== "null" && gAttachmentPath !== null) {
+            var link = '@Html.Raw(Url.Action("downloadAttachment", "User", new { path = "-1" }))';
+            link = link.replace("-1", gAttachmentPath);
+            window.location.href = link;
+        } else {
+            showErrorMesgGrowl("This data does not have an attachment");
+        }
+    }
+
+    function confirmDeleteAttachment() {
+        showConfirmMesg("Are you sure you want to continue process?", deleteAttachment, "Confirmation");
+    }
+
+    function deleteAttachment() {
+        popUpProgressShow();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("DeleteAttachment", "User")",
+            dataType: 'json',
+            data: {
+                USERNAME    : gId,
+                FILE_PATH   : gAttachmentPath
+            },
+            success: function (result) {
+                if (result.status != false) {
+                    $('#inputContainer :input[type="text"]').val("");
+                    $('#fileNameContainer').removeClass();
+                    $('#fileNameContainer').addClass('col-sm-8');
+                    $('#btn_download_attachment').hide();
+                    $('#btn_delete_attachment').hide();
+
+                    gAttachmentPath = null;
+                    $(":file").filestyle('clear');
+
+                    onSearch();
+                    showSuccessMesgGrowl(result.message);
+                    popUpProgressHide();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                    popUpProgressHide();
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+                popUpProgressHide();
+            }
+        });
+    }
+
+</script>

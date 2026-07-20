@@ -1,0 +1,166 @@
+<script type="text/javascript">
+    var statusColorMap = {
+        "NEW": "#B8860B",
+        "APPROVED": "#2E7D3B",
+        "REJECTED": "#B5402C",
+        "DELETED": "#66788A"
+    };
+
+    function getStatusColor(statusText) {
+        var key = (statusText || "").toUpperCase();
+        return statusColorMap[key] || "#2E6DA0";
+    }
+
+    function formatDashDate(value) {
+        if (!value) {
+            return "";
+        }
+        return moment(value).format("DD-MM-YYYY HH:mm");
+    }
+
+    $(document).ready(function () {
+        loadDashboardSummary();
+    });
+
+    function loadDashboardSummary() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetDashboardSummary", "Home")",
+            success: function (result) {
+                if (result.status == true) {
+                    renderDashboard(result.data);
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function renderDashboard(data) {
+        $("#statTotalDocuments").text(data.totalDocuments);
+        $("#statNew").text(data.totalNew);
+        $("#statApproved").text(data.totalApproved);
+        $("#statRejected").text(data.totalRejected);
+        $("#statTotalUsers").text(data.totalUsers);
+
+        renderStatusChart(data.statusSummary);
+        renderDivisionChart(data.divisionSummary);
+        renderRecentDocuments(data.recentDocuments);
+        renderCtrlStatusList(data.ctrlStatusSummary);
+    }
+
+    function renderStatusChart(statusSummary) {
+        if (!statusSummary || statusSummary.length == 0) {
+            $("#chartStatus").html('<div class="dash-empty-text">No document data yet.</div>');
+            return;
+        }
+
+        $("#chartStatus").dxPieChart({
+            dataSource: statusSummary,
+            palette: statusSummary.map(function (item) { return getStatusColor(item.status); }),
+            series: {
+                argumentField: "status",
+                valueField: "count",
+                label: {
+                    visible: true,
+                    connectorWidth: 1,
+                    customizeText: function (pointInfo) {
+                        return pointInfo.argument + ": " + pointInfo.value;
+                    }
+                }
+            },
+            legend: {
+                horizontalAlignment: "center",
+                verticalAlignment: "bottom"
+            },
+            tooltip: {
+                enabled: true,
+                customizeTooltip: function (pointInfo) {
+                    return { text: pointInfo.argument + ": " + pointInfo.value };
+                }
+            }
+        });
+    }
+
+    function renderDivisionChart(divisionSummary) {
+        if (!divisionSummary || divisionSummary.length == 0) {
+            $("#chartDivision").html('<div class="dash-empty-text">No document data yet.</div>');
+            return;
+        }
+
+        $("#chartDivision").dxChart({
+            dataSource: divisionSummary,
+            commonSeriesSettings: {
+                argumentField: "division",
+                type: "bar",
+                color: "#14456E"
+            },
+            series: [{ valueField: "count", name: "Documents" }],
+            argumentAxis: {
+                label: {
+                    overlappingBehavior: "rotate",
+                    rotationAngle: 45
+                }
+            },
+            valueAxis: {
+                allowDecimals: false
+            },
+            legend: { visible: false },
+            tooltip: {
+                enabled: true,
+                customizeTooltip: function (pointInfo) {
+                    return { text: pointInfo.argumentText + ": " + pointInfo.valueText };
+                }
+            }
+        });
+    }
+
+    function renderRecentDocuments(recentDocuments) {
+        var tbody = $("#tblRecentDocumentsBody");
+        tbody.empty();
+
+        if (!recentDocuments || recentDocuments.length == 0) {
+            tbody.append('<tr><td colspan="4" class="dash-empty-text">No document data yet.</td></tr>');
+            return;
+        }
+
+        recentDocuments.forEach(function (doc) {
+            var badgeClass = "label label-default";
+            if (doc.statusCode == "1") {
+                badgeClass = "label label-success";
+            } else if (doc.statusCode == "2") {
+                badgeClass = "label label-danger";
+            } else if (doc.statusCode == "0") {
+                badgeClass = "label label-warning";
+            }
+
+            var row = $("<tr>");
+            row.append($("<td>").text(doc.documentCode || ""));
+            row.append($("<td>").text(doc.documentName || ""));
+            row.append($("<td>").html('<span class="' + badgeClass + '">' + (doc.status || "") + '</span>'));
+            row.append($("<td>").text(formatDashDate(doc.changedDate)));
+
+            tbody.append(row);
+        });
+    }
+
+    function renderCtrlStatusList(ctrlStatusSummary) {
+        var list = $("#listCtrlStatus");
+        list.empty();
+
+        if (!ctrlStatusSummary || ctrlStatusSummary.length == 0) {
+            list.append('<li class="dash-empty-text">No document control activity yet.</li>');
+            return;
+        }
+
+        ctrlStatusSummary.forEach(function (item) {
+            var li = $("<li>");
+            li.append($("<span>").text(item.status));
+            li.append($("<span>").addClass("dash-ctrl-count").text(item.count));
+            list.append(li);
+        });
+    }
+</script>

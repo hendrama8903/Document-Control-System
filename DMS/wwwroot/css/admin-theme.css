@@ -1,0 +1,935 @@
+/* =====================================================================
+   DMS Admin Theme (biru)
+   Diadaptasi dari desain sirt-prototype (sidebar rail + panel, kartu).
+   Dipakai bersama Bootstrap 3 + DataTables + select2,
+   TANPA AdminLTE.css / adminlte.min.js.
+   Semua kelas shell memakai prefix .adm- agar tidak bentrok Bootstrap.
+   ===================================================================== */
+:root {
+    --primary: #14456E;
+    --primary-2: #1B578A;
+    --accent: #2E6DA0;
+    --accent-soft: #E1ECF5;
+    --paper: #F7F9FB;
+    --paper-2: #EDF1F6;
+    --surface: #FFFFFF;
+    --ink: #16212B;
+    --muted: #66788A;
+    --line: #DFE5EB;
+    --line-2: #CBD5DF;
+    --merah: #B5402C;
+    --merah-soft: #F4E3DF;
+    --emas: #B8860B;
+    --emas-soft: #F6EFD9;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(20,35,50,.04), 0 8px 24px -12px rgba(20,35,50,.18);
+}
+
+body.adm-body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 13.5px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+.adm-body h1, .adm-body h2, .adm-body h3, .adm-body h4 {
+    font-family: inherit;
+}
+
+/* ---------- Shell ---------- */
+.adm-app {
+    display: grid;
+    grid-template-columns: 316px 1fr;
+    min-height: 100vh;
+    transition: grid-template-columns .26s cubic-bezier(.4,0,.2,1);
+}
+
+.adm-scrim { display: none; }
+
+/* ---------- Sidebar: rail sempit + panel menu ---------- */
+.adm-sidebar {
+    display: flex;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow: hidden;
+    z-index: 30;
+}
+
+.adm-rail {
+    flex: 0 0 56px;
+    width: 56px;
+    background: linear-gradient(180deg, #175a8c, #0d2c47);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 14px 0 12px;
+    color: #cfe0ef;
+}
+
+.adm-rail-ic {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #cfe0ef;
+    font-size: 17px;
+}
+
+.adm-rail-ic:hover, .adm-rail-ic:focus {
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    text-decoration: none;
+}
+
+.adm-rail-ic img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+}
+
+.adm-rail-vtext {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    margin: auto 0; /* posisikan di tengah rail */
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: .04em;
+    white-space: nowrap;
+    line-height: 1;
+    background: linear-gradient(180deg, #ffffff, #8ec6ec);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.adm-rail-vtext em {
+    font-style: normal;
+    -webkit-text-fill-color: #86b9dd;
+    font-weight: 700;
+}
+
+.adm-rail-collapse {
+    margin-top: auto;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #cfe0ef;
+    border: 1px solid rgba(255,255,255,.2);
+    background: none;
+    cursor: pointer;
+    transition: .15s;
+}
+
+.adm-rail-collapse:hover {
+    background: rgba(255,255,255,.12);
+    color: #fff;
+}
+
+.adm-rail-collapse .fa { transition: transform .26s; }
+
+.adm-sidepanel {
+    flex: 1;
+    min-width: 0;
+    background: #fff;
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    padding: 0 14px 16px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    transition: padding .26s cubic-bezier(.4,0,.2,1), opacity .2s;
+}
+
+/* tinggi 62px = tinggi topbar (12px padding x2 + tombol 38px),
+   agar garis bawahnya sejajar dengan garis bawah topbar */
+.adm-brand {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 62px;
+    flex: 0 0 62px;
+    padding: 0 6px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 10px;
+}
+
+.adm-brand b {
+    display: block;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--primary);
+    letter-spacing: .01em;
+}
+
+.adm-brand span {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+/* collapsed (desktop): sembunyikan panel, sisakan rail */
+@media (min-width: 921px) {
+    .adm-app.collapsed { grid-template-columns: 56px 1fr; }
+
+    .adm-app.collapsed .adm-sidepanel {
+        padding-left: 0;
+        padding-right: 0;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .adm-app.collapsed .adm-rail-collapse .fa { transform: rotate(180deg); }
+}
+
+/* ---------- Menu tree (markup AdminLTE dari session menuString) ---------- */
+.adm-sidepanel .sidebar-menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.adm-sidepanel .sidebar-menu li > a {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 11px;
+    border-radius: 10px;
+    color: var(--ink);
+    font-weight: 600;
+    font-size: 13.5px;
+    text-decoration: none;
+    white-space: nowrap; /* jangan wrap ke baris kedua */
+    transition: .13s;
+}
+
+.adm-sidepanel .sidebar-menu li > a:hover,
+.adm-sidepanel .sidebar-menu li > a:focus {
+    background: var(--paper-2);
+    color: var(--ink);
+}
+
+.adm-sidepanel .sidebar-menu li > a > .fa {
+    width: 18px;
+    flex: 0 0 18px;
+    text-align: center;
+    color: var(--accent);
+    font-size: 14px;
+}
+
+.adm-sidepanel .sidebar-menu li.active > a {
+    background: var(--accent-soft);
+    color: #12405f;
+}
+
+.adm-sidepanel .sidebar-menu li.active > a > .fa { color: #175a8c; }
+
+/* chevron parent menu */
+.adm-sidepanel .pull-right-container { margin-left: auto; }
+
+.adm-sidepanel .pull-right-container .fa {
+    color: #a3b2c0;
+    transition: transform .22s;
+    width: auto;
+}
+
+.adm-sidepanel .treeview.open > a .pull-right-container .fa,
+.adm-sidepanel .treeview.menu-open > a .pull-right-container .fa {
+    transform: rotate(-90deg);
+}
+
+/* submenu */
+.adm-sidepanel .treeview-menu {
+    list-style: none;
+    display: none;
+    padding: 0 0 0 8px;
+    margin: 2px 0 4px 12px;
+    border-left: 1.5px solid var(--line);
+}
+
+.adm-sidepanel .treeview.open > .treeview-menu,
+.adm-sidepanel .treeview.menu-open > .treeview-menu {
+    display: block;
+}
+
+.adm-sidepanel .treeview-menu > li > a {
+    padding: 8px 11px;
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.adm-sidepanel .treeview-menu > li > a > .fa {
+    width: 15px;
+    flex: 0 0 15px;
+    font-size: 12px;
+    color: #93a5b5;
+}
+
+.adm-sidepanel .treeview-menu > li.active > a {
+    background: var(--accent-soft);
+    color: #12405f;
+    font-weight: 700;
+}
+
+/* ---------- Main + topbar ---------- */
+.adm-main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface); /* samakan dengan panel menu kiri */
+}
+
+.adm-topbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 28px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+.adm-crumb {
+    font-size: 12.5px;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.adm-crumb b { color: var(--ink); }
+
+.adm-top-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.adm-topbtn {
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    position: relative;
+    font-size: 15px;
+    cursor: pointer;
+    transition: .15s;
+}
+
+.adm-topbtn:hover { background: var(--paper-2); }
+
+.adm-topbtn .label {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    font-size: 9px;
+    padding: 2px 5px;
+    border-radius: 8px;
+    background: var(--merah);
+}
+
+.adm-topbtn .label:empty { display: none; }
+
+.adm-menu-btn { display: none; }
+
+/* user chip */
+.adm-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--ink);
+    padding: 4px 12px 4px 5px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    transition: .15s;
+}
+
+.adm-user:hover, .adm-user:focus {
+    background: var(--paper-2);
+    text-decoration: none;
+    color: var(--ink);
+}
+
+.adm-user img {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+}
+
+.adm-user .nm {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.adm-user .ps {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.25;
+}
+
+/* notifikasi dropdown */
+.adm-notif .dropdown-menu {
+    width: 320px;
+    padding: 0;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    right: 0;
+    left: auto;
+}
+
+.adm-notif-head {
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    background: var(--paper-2);
+    border-bottom: 1px solid var(--line);
+}
+
+.adm-notif-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.adm-notif-list li { border-bottom: 1px solid var(--line); }
+
+.adm-notif-list li.bg-warning { background: var(--emas-soft); }
+
+.adm-notif-list li a {
+    display: block;
+    padding: 10px 14px;
+    color: var(--ink);
+    text-decoration: none;
+}
+
+.adm-notif-list li a:hover { background: var(--paper-2); }
+
+.adm-notif-list li a h4 {
+    font-size: 13px;
+    font-weight: 700;
+    margin: 4px 0;
+}
+
+.adm-notif-list li a p {
+    font-size: 12px;
+    color: var(--muted);
+    margin: 0;
+}
+
+.adm-notif-list li a small {
+    font-size: 11px;
+    color: var(--muted);
+}
+
+.adm-notif-foot {
+    padding: 9px 14px;
+    text-align: center;
+    border-top: 1px solid var(--line);
+}
+
+.adm-notif-foot a {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 12.5px;
+}
+
+/* ---------- Content & footer ---------- */
+.adm-content {
+    padding: 24px 28px 32px;
+    width: 100%;
+    flex: 1;
+}
+
+.adm-footer {
+    padding: 13px 28px;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 12.5px;
+    background: var(--surface);
+}
+
+/* page head baru */
+.adm-page-head { margin-bottom: 18px; }
+
+.adm-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.adm-eyebrow::before {
+    content: "";
+    width: 18px;
+    height: 2px;
+    background: var(--emas);
+}
+
+.adm-page-head h1 {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    margin: 0;
+}
+
+/* page head lama (halaman yang masih memakai .content-header) */
+.adm-body .content-header {
+    margin: 0 0 16px;
+    padding: 0;
+    position: relative;
+}
+
+.adm-body .content-header h1 {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    margin: 0;
+}
+
+.adm-body .content-header h1 > small {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+/* =====================================================================
+   Skin komponen existing (Bootstrap 3 / AdminLTE markup / DataTables)
+   ===================================================================== */
+
+/* box AdminLTE -> kartu */
+.adm-body .box {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 14px;
+    position: relative;
+}
+
+.adm-body .box > .box-header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--line);
+    border-radius: var(--radius) var(--radius) 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.adm-body .box-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0;
+    display: inline-block;
+}
+
+.adm-body .box .box-body { padding: 16px 20px; }
+
+.adm-body .box.collapsed-box > .box-body,
+.adm-body .box.collapsed-box > .box-footer { display: none; }
+
+.adm-body .box.collapsed-box > .box-header {
+    border-bottom: none;
+    border-radius: var(--radius);
+}
+
+.adm-body .btn-box-tool {
+    background: none;
+    border: none;
+    color: var(--muted);
+    padding: 4px 8px;
+}
+
+.adm-body .btn-box-tool:hover { color: var(--primary); }
+
+/* box solid berwarna (mis. box-primary) -> header biru */
+.adm-body .box.box-primary > .box-header {
+    background: var(--primary);
+    color: #fff;
+}
+
+.adm-body .box.box-primary > .box-header .box-title { color: #fff; }
+
+.adm-body .box.box-primary > .box-header .btn-box-tool { color: rgba(255,255,255,.85); }
+
+.adm-body .box.box-primary > .box-header .btn-box-tool:hover { color: #fff; }
+
+/* kartu pembungkus grid (pola #divGrid > .box-body dipakai semua modul) */
+.adm-body #divGrid > .box-body {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 12px 16px 16px;
+}
+
+/* tombol */
+.adm-body .btn {
+    border-radius: 9px;
+    font-weight: 600;
+}
+
+.adm-body .btn-primary {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.adm-body .btn-primary:hover,
+.adm-body .btn-primary:focus,
+.adm-body .btn-primary:active,
+.adm-body .btn-primary:active:hover {
+    background: var(--primary-2);
+    border-color: var(--primary-2);
+}
+
+.adm-body .btn-success {
+    background: #2F8050;
+    border-color: #2F8050;
+}
+
+.adm-body .btn-success:hover,
+.adm-body .btn-success:focus,
+.adm-body .btn-success:active,
+.adm-body .btn-success:active:hover {
+    background: #276B43;
+    border-color: #276B43;
+}
+
+.adm-body .btn-warning {
+    background: var(--emas);
+    border-color: var(--emas);
+}
+
+.adm-body .btn-warning:hover,
+.adm-body .btn-warning:focus,
+.adm-body .btn-warning:active,
+.adm-body .btn-warning:active:hover {
+    background: #9a7009;
+    border-color: #9a7009;
+}
+
+.adm-body .btn-danger {
+    background: var(--merah);
+    border-color: var(--merah);
+}
+
+.adm-body .btn-danger:hover,
+.adm-body .btn-danger:focus,
+.adm-body .btn-danger:active {
+    background: #9a3422;
+    border-color: #9a3422;
+}
+
+/* form */
+.adm-body .form-control {
+    border-radius: 8px;
+    border-color: var(--line-2);
+    box-shadow: none;
+    color: var(--ink);
+}
+
+.adm-body .form-control:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(46,109,160,.15);
+}
+
+.adm-body .control-label { color: var(--muted); }
+
+/* tabel & DataTables */
+.adm-body .table thead th {
+    background: var(--paper-2);
+    border-bottom: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    font-weight: 700;
+    padding: 9px 10px;
+}
+
+.adm-body .table-bordered,
+.adm-body .table-bordered > thead > tr > th,
+.adm-body .table-bordered > tbody > tr > td,
+.adm-body .table-bordered > tbody > tr > th {
+    border-color: var(--line);
+}
+
+.adm-body .table > tbody > tr > td {
+    padding: 9px 10px;
+    vertical-align: middle;
+}
+
+.adm-body .table tbody tr:hover { background: #F8FAFC; }
+
+.adm-body .table tbody tr.selected { background: var(--accent-soft) !important; }
+
+.adm-body .dataTables_wrapper .dataTables_info,
+.adm-body .dataTables_wrapper .dataTables_length {
+    color: var(--muted);
+    font-size: 12.5px;
+}
+
+.adm-body .dataTables_wrapper .dataTables_length select {
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    padding: 3px 6px;
+}
+
+.adm-body .pagination > li > a,
+.adm-body .pagination > li > span {
+    color: var(--primary);
+    border-color: var(--line);
+    margin-left: 4px;
+    border-radius: 8px !important;
+    font-weight: 600;
+}
+
+.adm-body .pagination > li > a:hover { background: var(--accent-soft); }
+
+.adm-body .pagination > .active > a,
+.adm-body .pagination > .active > a:hover,
+.adm-body .pagination > .active > a:focus {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.adm-body .pagination > .disabled > a,
+.adm-body .pagination > .disabled > a:hover {
+    color: #aab8c4;
+    border-color: var(--line);
+}
+
+/* select2 */
+.adm-body .select2-container--default .select2-selection--single {
+    border: 1px solid var(--line-2);
+    border-radius: 8px;
+    height: 34px;
+}
+
+.adm-body .select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 32px;
+}
+
+.adm-body .select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 32px;
+}
+
+.adm-body .select2-dropdown {
+    border-color: var(--line-2);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.adm-body .select2-container--default .select2-results__option--highlighted[aria-selected] {
+    background: var(--primary);
+}
+
+/* modal */
+.adm-body .modal-content {
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    box-shadow: 0 20px 60px -20px rgba(15,30,45,.45);
+    overflow: hidden;
+}
+
+.adm-body .modal-header {
+    background: var(--primary);
+    color: #fff;
+    border-bottom: none;
+    cursor: move;
+}
+
+.adm-body .modal-header .close {
+    color: #fff;
+    opacity: .8;
+    text-shadow: none;
+    cursor: pointer;
+}
+
+.adm-body .modal-title { font-weight: 700; }
+
+.adm-body .modal-footer { border-top: 1px solid var(--line); }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 920px) {
+    .adm-app { grid-template-columns: 1fr; }
+
+    .adm-sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        z-index: 60;
+        width: 316px;
+        max-width: 88vw;
+        transform: translateX(-100%);
+        transition: transform .25s;
+        box-shadow: 0 0 40px rgba(0,0,0,.25);
+    }
+
+    .adm-sidebar.open { transform: none; }
+
+    .adm-scrim.show {
+        display: block;
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        background: rgba(13,24,34,.45);
+        z-index: 50;
+    }
+
+    .adm-menu-btn { display: inline-flex; }
+
+    .adm-topbar {
+        padding: 10px 14px;
+        gap: 10px;
+    }
+
+    .adm-content { padding: 16px 14px 28px; }
+
+    .adm-user .nm, .adm-user .ps { display: none; }
+
+    .adm-user { padding: 4px 5px; }
+}
+
+/* =====================================================================
+   Alert & dialog (bootstrap-growl + jQuery MessageBox)
+   ===================================================================== */
+
+/* toast notifikasi (showSuccessMesgGrowl / showErrorMesgGrowl / showInfoMesgGrowl) */
+.adm-body .bootstrap-growl.alert {
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-left-width: 4px;
+    border-radius: 12px;
+    box-shadow: 0 10px 34px -10px rgba(20,35,50,.3);
+    font-weight: 600;
+    font-size: 13.5px;
+    padding: 14px 36px 14px 46px;
+}
+
+.adm-body .bootstrap-growl.alert::before {
+    font-family: FontAwesome;
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 17px;
+}
+
+.adm-body .bootstrap-growl.alert-success { border-left-color: #2F8050; }
+.adm-body .bootstrap-growl.alert-success::before { content: "\f058"; color: #2F8050; }
+
+.adm-body .bootstrap-growl.alert-danger { border-left-color: var(--merah); }
+.adm-body .bootstrap-growl.alert-danger::before { content: "\f057"; color: var(--merah); }
+
+.adm-body .bootstrap-growl.alert-info { border-left-color: var(--accent); }
+.adm-body .bootstrap-growl.alert-info::before { content: "\f05a"; color: var(--accent); }
+
+.adm-body .bootstrap-growl .close {
+    color: var(--muted);
+    opacity: .7;
+    text-shadow: none;
+}
+
+/* dialog konfirmasi (showConfirmMesg) */
+.adm-body .messagebox_overlay { background: rgba(13, 28, 42, .45); }
+
+.adm-body .messagebox {
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    box-shadow: 0 24px 70px -24px rgba(13,28,42,.55);
+    overflow: hidden;
+    font-family: inherit;
+    padding: 0;
+}
+
+.adm-body .messagebox_title {
+    background: var(--primary);
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 13px 18px;
+}
+
+.adm-body .messagebox_content {
+    padding: 22px 18px;
+    color: var(--ink);
+    font-size: 13.5px;
+}
+
+.adm-body .messagebox_buttons {
+    padding: 12px 18px 16px;
+    background: var(--paper);
+    border-top: 1px solid var(--line);
+    text-align: right;
+}
+
+.adm-body .messagebox_buttons_button {
+    border-radius: 9px;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 7px 18px;
+    min-width: 84px;
+    border: none;
+    cursor: pointer;
+    transition: .13s;
+}
+
+.adm-body .messagebox_button_done {
+    background: var(--primary);
+    color: #fff;
+}
+
+.adm-body .messagebox_button_done:hover,
+.adm-body .messagebox_button_done:focus {
+    background: var(--primary-2);
+    color: #fff;
+}
+
+.adm-body .messagebox_button_fail {
+    background: #fff;
+    color: var(--ink);
+    border: 1px solid var(--line-2);
+}
+
+.adm-body .messagebox_button_fail:hover,
+.adm-body .messagebox_button_fail:focus {
+    background: var(--paper-2);
+}

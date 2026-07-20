@@ -1,0 +1,392 @@
+﻿@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>DCS - @ViewData["Title"]</title>
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="~/lib/font-awesome/css/font-awesome.min.css">
+    <!-- Google Font -->
+    <link rel="stylesheet" href="~/lib/google-font/google-font.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Slick -->
+    <link rel="stylesheet" href="~/lib/slick-1.8.1/slick/slick.css" />
+    <link rel="stylesheet" href="~/lib/slick-1.8.1/slick/slick-theme.css" />
+    <style>
+        :root {
+            --primary: #14456E;
+            --primary-2: #1B578A;
+            --accent: #2E6DA0;
+            --paper: #F7F9FB;
+            --ink: #16212B;
+            --muted: #66788A;
+            --line: #DFE5EB;
+            --line-2: #CBD5DF;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+            color: var(--ink);
+            font-size: 14px;
+            -webkit-font-smoothing: antialiased;
+            background-color: var(--paper);
+            background-image:
+                radial-gradient(ellipse 900px 620px at 8% -12%, rgba(46,109,160,.26), transparent 55%),
+                radial-gradient(ellipse 760px 560px at 102% 4%, rgba(184,134,11,.12), transparent 52%),
+                radial-gradient(ellipse 920px 700px at 96% 112%, rgba(20,69,110,.24), transparent 55%),
+                radial-gradient(ellipse 700px 520px at -4% 104%, rgba(46,109,160,.16), transparent 52%),
+                radial-gradient(rgba(20,69,110,.07) 1px, transparent 1px);
+            background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat;
+            background-size: auto, auto, auto, auto, 24px 24px;
+        }
+
+        .lg-wrap {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .lg-card {
+            display: flex;
+            width: 720px;
+            max-width: 100%;
+            min-height: 460px;
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(15,30,45,.05), 0 30px 70px -30px rgba(15,30,45,.35);
+        }
+
+        /* ---------- panel kiri: slider foto ---------- */
+        .lg-side {
+            flex: 1 1 46%;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(180deg, #175a8c, #0d2c47);
+        }
+
+        .lg-side .slider,
+        .lg-side .slick-list,
+        .lg-side .slick-track,
+        .lg-side .slick-slide,
+        .lg-side .slick-slide > div {
+            height: 100%;
+        }
+
+        .lg-side .slick-slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .lg-side-overlay {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 90px 28px 24px;
+            background: linear-gradient(180deg, transparent, rgba(10,28,44,.85));
+            color: #fff;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        .lg-side-overlay b {
+            display: block;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: -.01em;
+        }
+
+        .lg-side-overlay span {
+            font-size: 12px;
+            color: #b9d2e6;
+            font-weight: 600;
+        }
+
+        /* ---------- panel kanan: form ---------- */
+        .lg-form {
+            flex: 1 1 54%;
+            padding: 36px 40px 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .lg-form img.logo {
+            height: 46px;
+            width: auto;
+            align-self: center;
+        }
+
+        .lg-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            align-self: center;
+            font-size: 13px;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--primary);
+            font-weight: 800;
+            margin: 14px 0 6px;
+        }
+
+        .lg-eyebrow::before,
+        .lg-eyebrow::after {
+            content: "";
+            width: 18px;
+            height: 2px;
+            background: #B8860B;
+        }
+
+        .lg-form .sub {
+            color: var(--muted);
+            font-size: 12.5px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .lg-field {
+            margin-bottom: 14px;
+        }
+
+        .lg-field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin-bottom: 5px;
+        }
+
+        .lg-input {
+            position: relative;
+        }
+
+        .lg-input .fa {
+            position: absolute;
+            left: 13px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9AACBC;
+            font-size: 13px;
+        }
+
+        .lg-input input.form-control {
+            height: 38px;
+            padding: 8px 38px 8px 36px;
+            border-radius: 9px;
+            border: 1px solid var(--line-2);
+            box-shadow: none;
+            font-size: 13.5px;
+            color: var(--ink);
+            transition: .15s;
+        }
+
+        .lg-input input.form-control:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(46,109,160,.15);
+        }
+
+        .lg-eye {
+            position: absolute;
+            right: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 30px;
+            height: 30px;
+            border: none;
+            background: none;
+            color: #9AACBC;
+            border-radius: 7px;
+            cursor: pointer;
+        }
+
+        .lg-eye:hover { color: var(--primary); }
+
+        .btn-signin {
+            width: 100%;
+            height: 40px;
+            margin-top: 6px;
+            border: none;
+            border-radius: 9px;
+            background: var(--primary);
+            color: #fff;
+            font-size: 13.5px;
+            font-weight: 700;
+            letter-spacing: .02em;
+            transition: .15s;
+        }
+
+        .btn-signin:hover, .btn-signin:focus {
+            background: var(--primary-2);
+            color: #fff;
+        }
+
+        .btn-signin[disabled] { opacity: .7; }
+
+        .lg-foot {
+            margin-top: auto;
+            padding-top: 16px;
+            text-align: center;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        /* ---------- responsive ---------- */
+        @@media (max-width: 760px) {
+            .lg-side { display: none; }
+
+            .lg-card { min-height: 0; }
+
+            .lg-form { padding: 30px 26px 18px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="lg-wrap">
+        <div class="lg-card">
+
+            <!-- panel kiri: slider produk Hino -->
+            <div class="lg-side">
+                <div class="slider">
+                    <div><img src="~/dist/img/slider-1.jpg" title="HINO300 Dutro"></div>
+                    <div><img src="~/dist/img/slider-2.jpg" title="HINO500 Ranger"></div>
+                    <div><img src="~/dist/img/slider-3.jpg" title="HINO700 Profia"></div>
+                    <div><img src="~/dist/img/slider-4.jpg" title="HINO Bus"></div>
+                </div>
+                <div class="lg-side-overlay">
+                    <b>PT Hino Motors Manufacturing Indonesia</b>
+                    <span>Kawasan Industri Kota Bukit Indah, Purwakarta</span>
+                </div>
+            </div>
+
+            <!-- panel kanan: form login -->
+            <div class="lg-form">
+                <img class="logo" src="~/dist/img/Hino-logo.png" alt="Hino">
+                <div class="lg-eyebrow">Document Control System</div>
+                <div class="sub">Sign in to your account to continue.</div>
+
+                <div class="lg-field">
+                    <label for="username">Username</label>
+                    <div class="lg-input">
+                        <i class="fa fa-user"></i>
+                        <input type="text" class="form-control" id="username" placeholder="Username" autocomplete="username" autofocus>
+                    </div>
+                </div>
+
+                <div class="lg-field">
+                    <label for="password">Password</label>
+                    <div class="lg-input">
+                        <i class="fa fa-lock"></i>
+                        <input type="password" class="form-control" id="password" placeholder="Password" autocomplete="current-password">
+                        <button type="button" class="lg-eye" onclick="togglePassword()" tabindex="-1" title="Show / hide password">
+                            <i class="fa fa-eye" id="eyeIcon"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button id="btn_login" type="submit" class="btn-signin" data-loading-text="Signing in..." onclick="Validate()">
+                    Sign In&nbsp; <i class="fa fa-arrow-right"></i>
+                </button>
+
+                <div class="lg-foot">2022 © Hino Motors Manufacturing Indonesia</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.min.js"></script>
+    <script src="~/lib/bootstrap-growl/jquery.bootstrap-growl.js"></script>
+    <script src="~/js/site.js"></script>
+    <script src="~/lib/slick-1.8.1/slick/slick.min.js"></script>
+
+    <script>
+
+        $(document).ready(function(){
+
+            $('.slider').slick({
+                dots: false,
+                arrows: false,
+                infinite: true,
+                autoplay: true,
+                autoplaySpeed: 5000,
+                fade: true,
+                speed: 900
+            });
+
+            $('#password').keypress(function (e) {
+                if (e.which == 13) {
+                    Validate();
+                    return false;
+                }
+            });
+        });
+
+        function togglePassword() {
+            var input = document.getElementById('password');
+            var icon = document.getElementById('eyeIcon');
+            var show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            icon.className = show ? 'fa fa-eye-slash' : 'fa fa-eye';
+        }
+
+        function Validate() {
+            $("#btn_login").button("loading");
+            $.ajax(
+            {
+                type: "POST",
+                url: '@Url.Action("Validate", "Auth")',
+                data: {
+                    USERNAME: $('#username').val(),
+                    PASSWORD: $('#password').val(),
+                        param: '@ViewData["ParamURL"]'
+                },
+                error: function (result) {
+                    $("#btn_login").button("reset");
+
+                    if (result.responseText) {
+                        $.bootstrapGrowl(result.responseText, {
+                            type: 'danger',
+                            allow_dismiss: true,
+                            align: 'right',
+                            delay: 0
+                        });
+                    }
+                },
+                success: function (result) {
+                    console.log(result);
+                    $("#btn_login").button("reset");
+                    if (result.status == true) {
+                            if (result.data != null) {
+                                window.location.href = result.data;
+                            } else {
+                                window.location.href = '@Url.Action("Index", "Home")';
+                            }
+                    }
+                    else {
+                        showErrorMesgGrowl(result.message);
+                    }
+                }
+            });
+        }
+
+    </script>
+</body>
+</html>

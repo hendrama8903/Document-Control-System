@@ -1,0 +1,187 @@
+﻿<script type="text/javascript">
+    var gScreenMode = null;
+    var gId = null;
+    
+    $(document).ready(function() {
+        setDataSelect2WithParam("addEditDivision", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "- Choose -", "DIVISION");
+        setDataSelect2("addEditWorkflow", "@Url.Action("GetWorkflowName", "DepartmentMaster")", "- Choose -");
+
+        $("#btn_add").on("click", function() {
+            onAddPrepare();
+        });
+
+        $("#btn_edit").on("click", function() {
+            onEditPrepare();
+        });
+
+        $("#btn_delete").on("click", function() {
+            onDeletePrepare();
+        });
+
+        $("#btn_save").on("click", function() {
+            confirmAddEditData();
+        });
+    });
+
+    function onSearch() {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        grid.clearSelection();
+        grid.refresh();
+    }
+
+    function onAddPrepare() {
+        gScreenMode = 'ADD';
+        $('#modal-title').html("Add Division Master");
+        $('#addEditDivisionNm').val("");
+        $('#addEditDivisionCd').val("");
+
+        $('#addEditDivisionNm').prop('disabled', false);
+        $('#addEditDivisionCd').prop('disabled', false);
+
+        $("#modalAddEdit").modal();
+        $('#modalAddEdit').on('shown.bs.modal', function() {
+            $('#addEditDivisionNm').focus();
+        });
+    }
+
+    function onEditPrepare() {
+
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gId = row.DIVISION_ID;
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetByKey", "DivisionMaster")",
+            async: false,
+            data: {
+                DIVISION_ID: gId
+            },
+            success: function(result) {
+                if (result.status == true) {
+                    var data = result.data;
+                    gScreenMode = 'EDIT';
+                    $('#modal-title').html("Edit Division Master");
+                    $('#addEditId').val(data.DIVISION_ID);
+                    $('#addEditDivisionCd').val(data.DIVISION_CODE);
+                    $('#addEditDivisionNm').val(data.DIVISION_NAME);
+
+                    $("#addEditId").prop("disabled", true);
+                    $("#addEditDivisionCd").prop("disabled", true);
+                    $("#addEditDivisionNm").prop("disabled", false);
+
+                    $("#modalAddEdit").modal();
+                    $('#modalAddEdit').on('shown.bs.modal', function() {
+                        $('#addEditDivisionNm').focus();
+                    });
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function(result) {
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function onDeletePrepare() {
+        if (getSelectedRowsData().length < 1) {
+            return;
+        }
+        showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
+    }
+
+    function confirmAddEditData() {
+        showConfirmMesg("Are you sure you want to continue process?", addEditData, "Confirmation");
+    }
+
+     function addEditData() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("AddEdit", "DivisionMaster")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                screenMode: gScreenMode,
+                DIVISION_ID: $('#addEditId').val(),
+                DIVISION_CODE: $('#addEditDivisionCd').val(),
+                DIVISION_NAME: $('#addEditDivisionNm').val()
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    $("#modalAddEdit").modal('hide');
+                }else {
+                   showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    //function deleteData() {
+    //    popUpProgressShow();
+    //    $.ajax({
+    //        type: "POST",
+    //        url: "@Url.Action("Delete", "DivisionMaster")",
+    //        dataType: 'json',
+    //        traditional: true,
+    //        data: {
+    //            DIVISION_ID: gId,
+    //        },
+    //        success: function(result) {
+    //            if (result.status == true) {
+    //                showSuccessMesgGrowl(result.message);
+    //                initialMode = false;
+    //                onSearch();
+    //                popUpProgressHide();
+    //            } else {
+    //                showErrorMesgGrowl(result.message);
+    //                popUpProgressHide();
+    //            }
+    //        },
+    //        error: function(result) {
+    //            showErrorMesgGrowl(result);
+    //            popUpProgressHide();
+    //        }
+    //    });
+    //}
+    function deleteData() {
+        popUpProgressShow();
+        var selectedIds = getSelectedRowsData().map(function (row) {
+            return row.DIVISION_ID;
+        });
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("Delete", "DivisionMaster")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                divisionIds: selectedIds // Send array of division IDs to the server
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    popUpProgressHide();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                    popUpProgressHide();
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+                popUpProgressHide();
+            }
+        });
+    }
+
+
+</script>

@@ -1,0 +1,217 @@
+<link rel="stylesheet" href="~/css/devextreme/dx.light.css" />
+<script src="~/js/devextreme/dx.web.js"></script>
+
+<style>
+    /* pastikan editor filter row terlihat jelas (hindari bentrok styling tema) */
+    #datagrid .dx-datagrid-filter-row .dx-texteditor {
+        border: 1px solid #d9d9d9;
+        border-radius: 6px;
+        background: #fff;
+    }
+
+    #datagrid .dx-datagrid-filter-row .dx-texteditor-input {
+        padding: 5px 8px;
+        min-height: 28px;
+    }
+</style>
+
+<div class="box-body">
+    <div id="datagrid"></div>
+</div>
+
+<script type="text/javascript">
+    function getSelectedRowData() {
+        var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
+        return rows.length > 0 ? rows[0] : null;
+    }
+
+    function updateActionButtons() {
+        var selected = getSelectedRowData() != null;
+
+        $("#btn_edit").prop("disabled", !selected);
+        $("#btn_delete").prop("disabled", !selected);
+        $("#btn_position").prop("disabled", !selected);
+    }
+
+    function computeGridHeight() {
+        var gridTop = $("#datagrid").offset().top;
+        var footerHeight = $("#divFooter").outerHeight(true) || 0;
+
+        return Math.max(300, $(window).height() - gridTop - footerHeight - 40);
+    }
+
+    $(document).ready(function () {
+        $("#btn_add").prop("disabled", false);
+        $("#btn_edit").prop("disabled", true);
+        $("#btn_delete").prop("disabled", true);
+        $("#btn_position").prop("disabled", true);
+
+        var gridStore = new DevExpress.data.CustomStore({
+            key: "USERNAME",
+            loadMode: "raw",
+            load: function () {
+                var d = $.Deferred();
+
+                $.ajax({
+                    type: "POST",
+                    url: "@Url.Action("Search", "User")",
+                    data: {
+                        draw: 1,
+                        start: 0,
+                        length: 100000,
+                        initialMode: false
+                    }
+                }).done(function (result) {
+                    d.resolve(result.data == "" ? [] : result.data);
+                }).fail(function () {
+                    d.reject("Data loading error");
+                });
+
+                return d.promise();
+            }
+        });
+
+        $("#datagrid").dxDataGrid({
+            dataSource: gridStore,
+            showBorders: true,
+            columnAutoWidth: true,
+            wordWrapEnabled: false,
+            sorting: { mode: "none" },
+            noDataText: "Data not found.",
+            height: computeGridHeight(),
+            filterRow: { visible: true, applyFilter: "auto" },
+            headerFilter: { visible: true },
+            toolbar: { visible: false },
+            selection: {
+                mode: "multiple",
+                showCheckBoxesMode: "always",
+                allowSelectAll: false
+            },
+            paging: { pageSize: 10 },
+            pager: {
+                visible: true,
+                displayMode: "compact",
+                showPageSizeSelector: true,
+                allowedPageSizes: [10, 25, 50, 100],
+                showInfo: true,
+                showNavigationButtons: true
+            },
+            columnChooser: {
+                enabled: true,
+                mode: "select"
+            },
+            columnFixing: { enabled: true },
+            onSelectionChanged: function (e) {
+                if (e.selectedRowKeys.length > 1) {
+                    e.component.selectRows(e.currentSelectedRowKeys, false);
+                    return;
+                }
+                updateActionButtons();
+            },
+            columns: [
+                { type: "selection", width: 40, fixed: true, fixedPosition: "left" },
+                {
+                    caption: "No",
+                    width: 50,
+                    alignment: "center",
+                    allowHiding: false,
+                    allowFiltering: false,
+                    fixed: true,
+                    fixedPosition: "left",
+                    cellTemplate: function (container, options) {
+                        var pageIndex = options.component.pageIndex();
+                        var pageSize = options.component.pageSize();
+                        container.text(pageIndex * pageSize + options.row.rowIndex + 1);
+                    }
+                },
+                { dataField: "USERNAME", caption: "Username", fixed: true, fixedPosition: "left" },
+                { dataField: "REG_NO", caption: "Reg No" },
+                { dataField: "FULL_NAME", caption: "Full Name" },
+                { dataField: "EMAIL", caption: "Email" },
+                { dataField: "PHONE", caption: "Phone" },
+                { dataField: "ROLE_NAME", caption: "Role" },
+                {
+                    caption: "Login Type",
+                    alignment: "center",
+                    calculateCellValue: function (row) {
+                        return row.AD_USER == "1" ? "AD" : "Local";
+                    }
+                },
+                { dataField: "POSITION_NAME", caption: "Position" },
+                {
+                    caption: "Division",
+                    calculateCellValue: function (row) {
+                        return row.DIVISION != null ? row.DIVISION + " - " + row.DIVISION_NAME : "";
+                    }
+                },
+                {
+                    caption: "Department",
+                    calculateCellValue: function (row) {
+                        return row.DEPARTMENT_CODE != null ? row.DEPARTMENT_CODE + " - " + row.DEPARTMENT_NAME : "";
+                    }
+                },
+                {
+                    caption: "Section",
+                    calculateCellValue: function (row) {
+                        return row.SECTION_CODE != null ? row.SECTION_CODE + " - " + row.SECTION_NAME : "";
+                    }
+                },
+                { dataField: "CREATED_BY", caption: "Created By", visible: false },
+                {
+                    dataField: "CREATED_DT",
+                    caption: "Created Date",
+                    alignment: "right",
+                    visible: false,
+                    cellTemplate: function (container, options) {
+                        var value = options.data.CREATED_DT;
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
+                    }
+                },
+                { dataField: "CHANGED_BY", caption: "Changed By", visible: false },
+                {
+                    dataField: "CHANGED_DT",
+                    caption: "Changed Date",
+                    alignment: "right",
+                    visible: false,
+                    cellTemplate: function (container, options) {
+                        var value = options.data.CHANGED_DT;
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
+                    }
+                },
+                {
+                    caption: "Action",
+                    alignment: "center",
+                    width: 70,
+                    allowHiding: false,
+                    allowFiltering: false,
+                    fixed: true,
+                    fixedPosition: "right",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+
+                        if (row.FILE_PATH == null) {
+                            return;
+                        }
+
+                        $("<button>")
+                            .attr({ type: "button", title: "Download" })
+                            .addClass("btn btn-primary btn-sm")
+                            .html('<i class="fa fa-download"></i>')
+                            .on("click", function () {
+                                onDonload(row.FILE_PATH);
+                            })
+                            .appendTo(container);
+                    }
+                }
+            ]
+        });
+
+        $("#btn_columns").on("click", function () {
+            $("#datagrid").dxDataGrid("instance").showColumnChooser();
+        });
+
+        $(window).on("resize", function () {
+            $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+        });
+    });
+</script>

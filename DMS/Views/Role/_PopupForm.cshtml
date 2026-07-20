@@ -1,0 +1,133 @@
+﻿<div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modal-title">Add / Edit @ViewData["Title"]</h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-lg-12 form-horizontal" style="margin-top:15px; margin-left:15px">
+                        @*<input class="form-control hidden" id="addEditRoleId" type="text" />*@
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Role ID <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="addEditRoleId" type="text" maxlength="50"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Role Name <span class="text-red"> *</span></label>
+                                    <div class="col-sm-8">
+                                        <input class="form-control" id="addEditRoleName" type="text" maxlength="255"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-3 control-label">Role Description</label>
+                                    <div class="col-sm-8">
+                                        <textarea class="form-control" rows="4" id="addEditRoleDesc" maxlength="255"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <div class="col-xs-12 text-right">
+                    <button type="button" class="btn btn-primary" id="btn_save" style="width: 80px;">Save</button>
+                    <button type="button" class="btn btn-danger" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* checkbox + label authorization (menu & function) selalu jadi satu grup flex,
+       supaya tidak dipisah oleh justify-content:space-between milik .box-header */
+    #accordion .adm-auth-check {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+    }
+
+    #accordion .box.box-primary > .box-header .adm-auth-check label {
+        color: #fff;
+        margin: 0;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    #accordion .box > .box-header {
+        padding: 8px 16px;
+    }
+
+    #accordion .btn-box-tool {
+        font-size: 11px;
+        padding: 2px 6px;
+    }
+
+    #accordion .box .box-body {
+        padding: 8px 16px;
+    }
+
+    #accordion .box-body .adm-auth-check {
+        display: flex;
+        padding: 3px 0;
+    }
+
+    #accordion .box-body .adm-auth-check label {
+        margin: 0;
+        cursor: pointer;
+        font-weight: normal;
+    }
+
+    #accordion .box-body .adm-auth-check.adm-auth-function {
+        margin-left: 25px;
+    }
+
+    #accordion .adm-auth-check input[type="checkbox"] {
+        margin: 0;
+        cursor: pointer;
+    }
+</style>
+
+<div class="modal fade" id="modalAuth" role="dialog" aria-labelledby="basicModal" aria-hidden="true">
+    <div class="modal-dialog modal-scrollable">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modal-title-auth">Authorization</h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body" id="accordion">
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <div class="col-xs-12 text-right">
+                    <button type="button" class="btn btn-primary" id="btn_save_auth" style="width: 80px;">Save</button>
+                    <button type="button" class="btn btn-grey" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

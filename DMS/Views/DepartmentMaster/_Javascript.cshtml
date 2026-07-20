@@ -1,0 +1,175 @@
+﻿<script type="text/javascript">
+    var gScreenMode = null;
+    var gId = null;
+    var selectedIds = [];
+    
+    $(document).ready(function() {
+        setDataSelect2WithParam("addEditDivision", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "- Choose -", "DIVISION");
+        setDataSelect2("addEditWorkflow", "@Url.Action("GetWorkflowName", "DepartmentMaster")", "- Choose -");
+
+        $("#btn_add").on("click", function() {
+            onAddPrepare();
+        });
+
+        $("#btn_edit").on("click", function() {
+            onEditPrepare();
+        });
+
+        $("#btn_delete").on("click", function() {
+            onDeletePrepare();
+        });
+
+        $("#btn_save").on("click", function() {
+            confirmAddEditData();
+        });
+    });
+
+    function onSearch() {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        grid.clearSelection();
+        grid.refresh();
+    }
+
+    function onAddPrepare() {
+        gScreenMode = 'ADD';
+        $('#modal-title').html("Add Department Master");
+        $('#addEditDepartment').val("");
+        $('#addEditName').val("");
+        $('#addEditDivision').val("").trigger("change");
+        $('#addEditWorkflow').val("").trigger("change");
+
+        $('#addEditDepartment').prop('disabled', false);
+        $('#addEditName').prop('disabled', false);
+        $('#addEditDivision').prop('disabled', false);
+        $('#addEditWorkflow').prop('disabled', false);
+
+        $("#modalAddEdit").modal();
+        $('#modalAddEdit').on('shown.bs.modal', function() {
+            $('#addEditDepartment').focus();
+        });
+    }
+
+    function onEditPrepare() {
+
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gId = row.DEPARTMENT_ID;
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetByKey", "DepartmentMaster")",
+            async: false,
+            data: {
+                DEPARTMENT_ID: gId
+            },
+            success: function(result) {
+                if (result.status == true) {
+                    var data = result.data;
+                    gScreenMode = 'EDIT';
+                    $('#modal-title').html("Edit Department Master");
+                    $('#addEditId').val(data.DEPARTMENT_ID);
+                    $('#addEditDepartment').val(data.DEPARTMENT_CODE);
+                    $('#addEditName').val(data.DEPARTMENT_NAME);
+                    $('#addEditDivision').select2("trigger", "select", { data: { id: data.DIVISION, text: data.DIVISION } });
+                    $('#addEditWorkflow').select2("trigger", "select", { data: { id: data.WORKFLOW_ID, text: data.WORKFLOW_NAME } });
+
+                    $("#addEditId").prop("disabled", true);
+                    $("#addEditDepartment").prop("disabled", true);
+                    $("#addEditName").prop("disabled", false);
+                    $("#addEditDivision").prop("disabled", false);
+                    $('#addEditWorkflow').prop('disabled', false);
+
+                    $("#modalAddEdit").modal();
+                    $('#modalAddEdit').on('shown.bs.modal', function() {
+                        $('#addEditName').focus();
+                    });
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function(result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function onDeletePrepare() {
+        selectedIds = getSelectedRowsData().map(function (row) {
+            return row.DEPARTMENT_ID;
+        });
+
+        if (selectedIds.length < 1) {
+            return;
+        }
+
+        showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
+    }
+
+    function confirmAddEditData() {
+        showConfirmMesg("Are you sure you want to continue process?", addEditData, "Confirmation");
+    }
+
+     function addEditData() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("AddEdit", "DepartmentMaster")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                screenMode: gScreenMode,
+                DEPARTMENT_ID: $('#addEditId').val(),
+                DEPARTMENT_CODE: $('#addEditDepartment').val(),
+                DEPARTMENT_NAME: $('#addEditName').val(),
+                DIVISION: $('#addEditDivision').val(),
+                WORKFLOW_ID: $('#addEditWorkflow').val()
+            },
+            success: function (result) {
+                //popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    $("#modalAddEdit").modal('hide');
+                }else {
+                   showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function deleteData() {
+        console.log(selectedIds);
+        popUpProgressShow();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("DeleteMultiple", "DepartmentMaster")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                selectedIds: selectedIds
+            },
+            success: function(result) {
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    popUpProgressHide();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                    popUpProgressHide();
+                }
+            },
+            error: function(result) {
+                showErrorMesgGrowl(result);
+                popUpProgressHide();
+            }
+        });
+    }
+
+</script>

@@ -1,0 +1,23 @@
+﻿@using Microsoft.AspNetCore.Http
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+
+<ul class="sidebar-menu" data-widget="tree">
+    @Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("menuString"))
+</ul>
+<script type="text/javascript">
+    $(document).ready(function() {
+        var currentUrl = "@HttpContextAccessor.HttpContext.Request.Path.Value";
+        var currentUrl = currentUrl.split('/');
+        var currentUrl = '/' + currentUrl[1] + '/Index';
+        var parentId = $('li[id="sidebarMenu' + currentUrl + '"]').attr('data-parentId');
+
+        if (currentUrl === '/Home/Index') {
+            currentUrl = "/";
+        }
+
+        $('li[id="sidebarMenu' + currentUrl + '"]').addClass('active');
+        if (parentId != 0) {
+            $('li[id="parentId' + parentId + '"]').addClass('active treeview menu open');
+        }
+    });
+</script>

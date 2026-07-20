@@ -1,0 +1,94 @@
+﻿<div class="modal fade" id="modalLogDetail" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modal-title-function">Approval List</h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="row" style="margin-top: 15px;">
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <div class="col-lg-2">
+                                <p><b>Process ID</b></p>
+                            </div>
+                            <div class="col-lg-2">
+                                <p id="txtProcessID"></p>
+                            </div>
+                            <div class="col-lg-2">
+                                <p><b>Module Name</b></p>
+                            </div>
+                            <div class="col-lg-2">
+                                <p id="txtModuleName"></p>
+                            </div>
+                            <div class="col-lg-2">
+                                <p><b>Status</b></p>
+                            </div>
+                            <div class="col-lg-2">
+                                <p id="txtStatus"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <div class="col-lg-2">
+                                <p><b>Start Date Time</b></p>
+                            </div>
+                            <div class="col-lg-2">
+                                <p id="txtStartDate"></p>
+                            </div>
+                            <div class="col-lg-2">
+                                <p><b>Function Name</b></p>
+                            </div>
+                            <div class="col-lg-2">
+                                <p id="txtFunction"></p>
+                            </div>
+                            <div class="col-lg-2">
+                                <p><b>User Name</b></p>
+                            </div>
+                            <div class="col-lg-2">
+                                <p id="txtUsername"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <div class="col-lg-2">
+                                <p><b>End Date Time</b></p>
+                            </div>
+                            <div class="col-lg-2">
+                                <p id="txtStartEnd"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-12">
+                    <hr>
+                </div>
+                <div class="row" style="margin-top: 15px;">
+                    <div class="col-lg-12">
+                        <table id="logDetailGrid" class="table table-bordered table-condensed" width="100%">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: center;">Seq. No</th>
+                                    <th style="text-align: center;">Message Date Time</th>
+                                    <th style="text-align: center;">Location</th>
+                                    <th style="text-align: center;">Message Type</th>
+                                    <th style="text-align: center;">Message Detail</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="btn_close" style="width: 80px;" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>

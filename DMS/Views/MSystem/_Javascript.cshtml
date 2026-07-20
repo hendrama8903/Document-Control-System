@@ -1,0 +1,174 @@
+﻿<script type="text/javascript">
+    var gScreenMode = null;
+    var gId = null;
+
+    $(document).ready(function () {
+        $("#btn_add").on("click", function () {
+            onAddPrepare();
+        });
+
+        $("#btn_edit").on("click", function () {
+            onEditPrepare();
+        });
+
+        $("#btn_delete").on("click", function () {
+            onDeletePrepare();
+        });
+
+        $("#btn_save").on("click", function () {
+            confirmAddEditData();
+        });
+
+        //$("#btn_save_permission").on("click", function () {
+        //    confirmAddEditPermission();
+        //});
+    });
+
+    function onSearch() {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        grid.clearSelection();
+        grid.refresh();
+    }
+
+    function onAddPrepare() {
+        gScreenMode = 'ADD';
+        $('#modal-title').html("Add Role");
+        $('#addEditSystemType').val("");
+        $('#addEditSystemValue').val("");
+        $('#addEditSystemCode').val("");
+        $('#addEditSystemStatus').val("1").trigger("change");
+
+        $('#addEditSystemType').prop('disabled', false);
+        $('#addEditSystemValue').prop('disabled', false);
+        $('#addEditSystemCode').prop('disabled', false);
+        $('#addEditSystemStatus').prop('disabled', false);
+
+        $("#modalAddEdit").modal();
+        $('#modalAddEdit').on('shown.bs.modal', function () {
+            $('#addEditSystemType').focus();
+        });
+    }
+
+    function onEditPrepare() {
+
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gSystemType = row.SYSTEM_TYPE;
+        gSystemCode = row.SYSTEM_CODE;
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetByKey", "MSystem")",
+            async: false,
+            data: {
+                SYSTEM_TYPE: gSystemType,
+                SYSTEM_CODE: gSystemCode,
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    var data = result.data;
+
+                    gScreenMode = 'EDIT';
+                    $('#modal-title').html("Edit Role");
+                    $('#addEditSystemType').val(data.SYSTEM_TYPE);
+                    $('#addEditSystemValue').val(data.SYSTEM_VALUE);
+                    $('#addEditSystemCode').val(data.SYSTEM_CODE);
+                    $('#addEditSystemStatus').val(data.STATUS).trigger("change");
+
+                    $('#addEditSystemType').prop('disabled', true);
+                    $('#addEditSystemValue').prop('disabled', false);
+                    $('#addEditSystemCode').prop('disabled', true);
+                    $('#addEditSystemStatus').prop('disabled', false);
+
+                    $("#modalAddEdit").modal();
+                    $('#modalAddEdit').on('shown.bs.modal', function () {
+                        $('#addEditSystemValue').focus();
+                    });
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function(result){
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function onDeletePrepare() {
+
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gSystemType = row.SYSTEM_TYPE;
+        gSystemCode = row.SYSTEM_CODE;
+
+        showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
+    }
+
+    function confirmAddEditData() {
+        showConfirmMesg("Are you sure you want to continue process?", addEditData, "Confirmation");
+    }
+
+    function addEditData() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("AddEdit", "MSystem")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                screenMode: gScreenMode,
+                SYSTEM_TYPE: $('#addEditSystemType').val(),
+                SYSTEM_VALUE: $('#addEditSystemValue').val(),
+                SYSTEM_CODE: $('#addEditSystemCode').val(),
+                STATUS: $('#addEditSystemStatus').val(),
+            },
+            success: function (result) {
+                //popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    $("#modalAddEdit").modal('hide');
+                }else {
+                   showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function deleteData() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("Delete", "MSystem")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                SYSTEM_TYPE: gSystemType,
+                SYSTEM_CODE: gSystemCode,
+            },
+            success: function (result) {
+                //popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                }else {
+                   showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+</script>

@@ -1,0 +1,295 @@
+﻿@using Microsoft.AspNetCore.Http
+
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+
+<link rel="stylesheet" href="~/css/devextreme/dx.light.css" />
+<script src="~/js/devextreme/dx.web.js"></script>
+
+<style>
+    /* pastikan editor filter row terlihat jelas (hindari bentrok styling tema) */
+    #datagrid .dx-datagrid-filter-row .dx-texteditor {
+        border: 1px solid #d9d9d9;
+        border-radius: 6px;
+        background: #fff;
+    }
+
+    #datagrid .dx-datagrid-filter-row .dx-texteditor-input {
+        padding: 5px 8px;
+        min-height: 28px;
+    }
+</style>
+
+<div class="box-body">
+    <div id="datagrid"></div>
+</div>
+
+<script type="text/javascript">
+    var SESSION_DEPARTMENT_ID_LOGIN = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetInt32("DEPARTMENT_ID"))";
+
+    function getSelectedRowData() {
+        var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
+        return rows.length > 0 ? rows[0] : null;
+    }
+
+    function updateActionButtons() {
+        var row = getSelectedRowData();
+        var selected = row != null;
+
+        $("#btn_edit").prop("disabled", !selected);
+        $("#btn_delete").prop("disabled", !(selected && (row.STATUS == 1 || row.STATUS == 0) && row.DEPARTMENT_ID == SESSION_DEPARTMENT_ID_LOGIN));
+        $("#btn_receive").prop("disabled", !(selected && row.STATUS == 1));
+        $("#btn_reject").prop("disabled", !(selected && row.STATUS == 1));
+        $("#btn_distribution").prop("disabled", !selected);
+        $("#btn_send").prop("disabled", !(selected && (row.STATUS == 2 || row.STATUS == 6)));
+    }
+
+    function computeGridHeight() {
+        var gridTop = $("#datagrid").offset().top;
+        var footerHeight = $("#divFooter").outerHeight(true) || 0;
+
+        return Math.max(300, $(window).height() - gridTop - footerHeight - 40);
+    }
+
+    $(document).ready(function () {
+        $("#btn_add").prop("disabled", false);
+        $("#btn_edit").prop("disabled", true);
+        $("#btn_delete").prop("disabled", true);
+        $("#btn_receive").prop("disabled", true);
+        $("#btn_reject").prop("disabled", true);
+        $("#btn_distribution").prop("disabled", true);
+        $("#btn_send").prop("disabled", true);
+
+        var gridStore = new DevExpress.data.CustomStore({
+            key: "DOCUMENT_CTRL_ID",
+            loadMode: "raw",
+            load: function () {
+                var d = $.Deferred();
+
+                $.ajax({
+                    type: "POST",
+                    url: "@Url.Action("Search", "P4DMaintenance")",
+                    data: {
+                        draw: 1,
+                        start: 0,
+                        length: 100000,
+                        initialMode: false
+                    }
+                }).done(function (result) {
+                    d.resolve(result.data == "" ? [] : result.data);
+                }).fail(function () {
+                    d.reject("Data loading error");
+                });
+
+                return d.promise();
+            }
+        });
+
+        $("#datagrid").dxDataGrid({
+            dataSource: gridStore,
+            showBorders: true,
+            columnAutoWidth: true,
+            wordWrapEnabled: false,
+            sorting: { mode: "none" },
+            noDataText: "Data not found.",
+            height: computeGridHeight(),
+            filterRow: { visible: true, applyFilter: "auto" },
+            headerFilter: { visible: true },
+            toolbar: { visible: false },
+            selection: {
+                mode: "multiple",
+                showCheckBoxesMode: "always",
+                allowSelectAll: false
+            },
+            paging: { pageSize: 10 },
+            pager: {
+                visible: true,
+                displayMode: "compact",
+                showPageSizeSelector: true,
+                allowedPageSizes: [10, 25, 50, 100],
+                showInfo: true,
+                showNavigationButtons: true
+            },
+            columnChooser: {
+                enabled: true,
+                mode: "select"
+            },
+            columnFixing: { enabled: true },
+            onSelectionChanged: function (e) {
+                if (e.selectedRowKeys.length > 1) {
+                    e.component.selectRows(e.currentSelectedRowKeys, false);
+                    return;
+                }
+                updateActionButtons();
+            },
+            columns: [
+                { type: "selection", width: 40, fixed: true, fixedPosition: "left" },
+                {
+                    caption: "No",
+                    width: 50,
+                    alignment: "center",
+                    allowHiding: false,
+                    allowFiltering: false,
+                    fixed: true,
+                    fixedPosition: "left",
+                    cellTemplate: function (container, options) {
+                        var pageIndex = options.component.pageIndex();
+                        var pageSize = options.component.pageSize();
+                        container.text(pageIndex * pageSize + options.row.rowIndex + 1);
+                    }
+                },
+                { dataField: "DOCUMENT_CODE", caption: "Document No", fixed: true, fixedPosition: "left" },
+                { dataField: "DOCUMENT_NAME", caption: "Document Name" },
+                {
+                    dataField: "STATUS_VAL",
+                    caption: "Status",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+                        var labelClass = "label label-danger";
+
+                        if (row.STATUS == 0) {
+                            labelClass = "label label-info";
+                        } else if (row.STATUS == 1 || row.STATUS == 6) {
+                            labelClass = "label label-warning";
+                        } else if (row.STATUS == 2 || row.STATUS == 5) {
+                            labelClass = "label label-success";
+                        }
+
+                        $("<span>").addClass(labelClass).text(row.STATUS_VAL).appendTo(container);
+                    }
+                },
+                { dataField: "REVISION", caption: "Revision", alignment: "center" },
+                {
+                    caption: "Division",
+                    calculateCellValue: function (row) {
+                        return row.DIVISION + " - " + row.DIVISION_NAME;
+                    }
+                },
+                {
+                    caption: "Department",
+                    calculateCellValue: function (row) {
+                        return row.DEPARTMENT_CODE + " - " + row.DEPARTMENT_NAME;
+                    }
+                },
+                { dataField: "DOCUMENT_TYPE", caption: "Document Type" },
+                {
+                    dataField: "DOCUMENT_DATE",
+                    caption: "Date",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.DOCUMENT_DATE;
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
+                    }
+                },
+                { dataField: "LOCATION", caption: "Location" },
+                { dataField: "ITEM_CHANGED", caption: "Item Changed" },
+                { dataField: "REASON", caption: "Reason" },
+                { dataField: "CREATED_BY", caption: "Created By", visible: false },
+                {
+                    dataField: "CREATED_DT",
+                    caption: "Created Date",
+                    alignment: "right",
+                    visible: false,
+                    cellTemplate: function (container, options) {
+                        var value = options.data.CREATED_DT;
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY hh:mm:ss") : "");
+                    }
+                },
+                { dataField: "CHANGED_BY", caption: "Changed By", visible: false },
+                {
+                    dataField: "CHANGED_DT",
+                    caption: "Changed Date",
+                    alignment: "right",
+                    visible: false,
+                    cellTemplate: function (container, options) {
+                        var value = options.data.CHANGED_DT;
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY hh:mm:ss") : "");
+                    }
+                },
+                {
+                    caption: "Action",
+                    alignment: "center",
+                    width: 110,
+                    allowHiding: false,
+                    allowFiltering: false,
+                    fixed: true,
+                    fixedPosition: "right",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+
+                        container.css("white-space", "nowrap");
+
+                        $("<button>")
+                            .attr({ type: "button", title: "View" })
+                            .addClass("btn btn-primary btn-sm")
+                            .html('<i class="fa fa-eye"></i>')
+                            .on("click", function () {
+                                onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+                            })
+                            .appendTo(container);
+
+                        $("<button>")
+                            .attr({ type: "button", title: "Print" })
+                            .addClass("btn btn-primary btn-sm")
+                            .css("margin-left", "3px")
+                            .html('<i class="fa fa-print"></i>')
+                            .on("click", function () {
+                                onPrintAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID, row.APPROVAL_ID);
+                            })
+                            .appendTo(container);
+                    }
+                },
+                {
+                    caption: "History",
+                    alignment: "center",
+                    width: 70,
+                    allowFiltering: false,
+                    fixed: true,
+                    fixedPosition: "right",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+
+                        $("<button>")
+                            .attr({ type: "button", title: "History" })
+                            .addClass("btn btn-primary btn-sm")
+                            .html('<i class="fa fa-history"></i>')
+                            .on("click", function () {
+                                onclickHistory(row.DOCUMENT_CODE);
+                            })
+                            .appendTo(container);
+                    }
+                },
+                {
+                    caption: "Log",
+                    alignment: "center",
+                    width: 60,
+                    allowFiltering: false,
+                    fixed: true,
+                    fixedPosition: "right",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+
+                        $("<button>")
+                            .attr({ type: "button", title: "Log" })
+                            .addClass("btn btn-primary btn-sm")
+                            .html('<i class="fa fa-file-text"></i>')
+                            .on("click", function () {
+                                onclickLog(row.DOCUMENT_TRANSACTION_ID);
+                            })
+                            .appendTo(container);
+                    }
+                }
+            ]
+        });
+
+        $("#btn_columns").on("click", function () {
+            $("#datagrid").dxDataGrid("instance").showColumnChooser();
+        });
+
+        $(window).on("resize", function () {
+            $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+        });
+
+        $('body').tooltip({ selector: '[data-toggle="tooltip"]' });
+    });
+</script>

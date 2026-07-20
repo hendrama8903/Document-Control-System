@@ -1,0 +1,31 @@
+{
+  "Appsettings": {
+    "Token": "REPLACE_WITH_JWT_SECRET_KEY"
+  },
+  "AWSConfiguration": {
+    "accessKey": "REPLACE_WITH_AWS_ACCESS_KEY",
+    "secretKey": "REPLACE_WITH_AWS_SECRET_KEY",
+    "bucketName": "REPLACE_WITH_BUCKET_NAME",
+    "region": "ap-southeast-1"
+  },
+  "EmailConfiguration": {
+    "username": "REPLACE_WITH_SMTP_USERNAME",
+    "password": "REPLACE_WITH_SMTP_PASSWORD",
+    "smtpServer": "smtp.office365.com",
+    "port": 587
+  },
+  "ConnectionStrings": {
+    "defaultConnection": "Server=localhost\\SQLEXPRESS;Database=DMS_NEW;User Id=sa;Password=REPLACE_WITH_DB_PASSWORD;TrustServerCertificate=True;"
+  },
+  "ActiveDirectory": {
+    "Domain": "REPLACE_WITH_AD_DOMAIN"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Warning",
+      "Microsoft": "Error",
+      "DMS": "Debug"
+    }
+  },
+  "AllowedHosts": "*"
+}

@@ -1,0 +1,325 @@
+﻿<script type="text/javascript">
+    //RECOMMIT DINA
+    var gScreenMode = null;
+    var gId = null;
+    var gDocumentId = null;
+    var gDocumentTransactionId = null;
+    var gDocumentCtrlId = null;
+    var gDepartmentId = null;
+    var gDocumentNo = null;
+    var gIsApproved = null;
+    var gFilePath = null;
+
+    $(document).ready(function () {
+        setDataSelect2WithParam("addEditDivision", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "- Choose -", "DIVISION");
+
+        $("#btn_request").on("click", function () {
+            onAddPrepare();
+        });
+
+        $("#btn_save").on("click", function () {
+            confirmAddEditData();
+        });
+
+        $("#btn_publish").on("click", function () {
+            confirmPublish();
+        });
+
+        $("#btn_cancel").on("click", function () {
+            reset();
+        });
+
+        //$("#btn_download").on("click", function () {
+        //    onDownload();
+        //});
+    });
+
+    function maxLengthCheck(object) {
+        if (object.value.length > object.maxLength)
+            object.value = object.value.slice(0, object.maxLength)
+    }
+
+    function onSearch() {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        grid.clearSelection();
+        grid.refresh();
+    }
+
+    function onAddPrepare() {
+        //alert();
+        gScreenMode = 'ADD';
+        $('#modal-title').html("Request Document");
+        //$('#addEditDocumentNo').val("");
+        $('#addEditDocumentId').val("");
+        $('#addEditDivision').val("").trigger("change");
+        $('#addEditDepartment').val("").trigger("change");
+        $('#addEditDocumentName').val("").trigger("change");
+
+        //$('#addEditDocumentNo').prop('disabled', false);
+        $('#addEditDivision').prop('disabled', false);
+        $('#addEditDepartment').prop('disabled', true);
+        $('#addEditDocumentName').prop('disabled', true);
+
+        $("#modalRequestDocument").modal();
+        $('#modalRequestDocument').on('shown.bs.modal', function () {
+            $('#addEditDivision').focus();
+        });
+
+    }
+
+    function setDepartment(val) {
+        var division = val;
+
+        if (division == null || division == "") {
+            $('#addEditDepartment').prop('disabled', true);
+        } else {
+            $('#addEditDepartment').prop('disabled', false);
+        }
+
+        $('#addEditDocumentName').prop('disabled', true);
+        $('#addEditDocumentName').val("").trigger("change");
+        $('#addEditDepartment').val("").trigger("change");
+
+        setDataSelect2WithParam("addEditDepartment", "@Url.Action("GetDepartmentIdAndNameByDivision", "DepartmentMaster")", "- Choose -", division);
+    }
+
+    function setDocumentName(val) {
+        var departmentCode = val;
+
+        if (departmentCode == null || departmentCode == "") {
+            $('#addEditDocumentName').prop('disabled', true);
+        } else {
+            $('#addEditDocumentName').prop('disabled', false);
+        }
+
+        $('#addEditDocumentName').val("").trigger("change");
+
+        setDataSelect2WithParam("addEditDocumentName", "@Url.Action("GetDocumentTransactionSentByDepartment", "P4DMaintenance")", "- Choose -", $('#addEditDepartment').val());
+    }
+
+    function confirmAddEditData() {
+        showConfirmMesg("Are you sure you want to continue process?", addEditData, "Confirmation");
+    }
+
+    function addEditData() {
+        popUpProgressShow();
+        var data = new FormData();
+        data.append("screenMode", gScreenMode);
+
+        if (gScreenMode == "ADD") {
+            //    var documentId = $('#addEditDocumentId').val();
+            //    var documentNo = $('#addEditDocumentNo').val();
+            var documentName = $('#addEditDocumentName').val();
+            var division = $('#addEditDivision').val();
+            var department = $('#addEditDepartment').val();
+
+            //if (gDocumentId == null || gDocumentId == "null") {
+            //    data.append("DOCUMENT_ID", "");
+            //} else {
+            //    data.append("DOCUMENT_ID", gDocumentId);
+            //}
+            //if (documentNo == null || documentNo == "null") {
+            //    data.append("DOCUMENT_NO", "");
+            //} else {
+            //    data.append("DOCUMENT_NO", $('#addEditDocumentNo').val());
+            //}
+            if (documentName == null || documentName == "null") {
+                data.append("DOCUMENT_TRANSACTION_ID", "");
+            } else {
+                data.append("DOCUMENT_TRANSACTION_ID", $('#addEditDocumentName').val());
+            }
+            if (division == null || division == "null") {
+                data.append("DIVISION", "");
+            } else {
+                data.append("DIVISION", $('#addEditDivision').val());
+            }
+            if (department == null || department == "null") {
+                data.append("DEPARTMENT", "");
+            } else {
+                data.append("DEPARTMENT", $('#addEditDepartment').val());
+            }
+        }
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("AddEdit", "UserDashboard")",
+            contentType: false,
+            processData: false,
+            data: data,
+            success: function (result) {
+                //popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    popUpProgressHide();
+                    $("#modalRequestDocument").modal('hide');
+
+                    //if (gScreenMode == "ADD") {
+                    //    $("#modalAddEdit").modal('hide');
+                    //} else if (gScreenMode == "EDIT") { $("#modalEdit").modal('hide'); }
+                } else {
+                    showErrorMesgGrowl(result.message);
+                    popUpProgressHide();
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+                popUpProgressHide();
+            }
+        });
+    }
+
+    $(document).on('change', '#addEditDocumentUpload', function (e) {
+        ex = e;
+    });
+
+    function reset() {
+        //$('#addEditDocumentNo').val("");
+        //$('#addEditDocumentId').val("");
+        $('#addEditDocumentName').val("");
+        $('#addEditDivision').val("");
+        $('#addEditDepartment').val("");
+        $('#addEditDocumentName').text("");
+        $('#addEditDivision').text("");
+        $('#addEditDepartment').text("");
+    }
+
+    //function onDeletePrepare() {
+
+    //    $("input[name='chkRow']").each(function () {
+    //        if ($(this).prop('checked')) {
+    //            gDocumentId = $(".grid-checkbox-body:checked").attr('data-id');
+    //        }
+    //    });
+    //    showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
+    //}
+
+    function onclickDownload(element) {
+        //alert(element.getAttribute('data-doc'));
+
+        if (element.getAttribute('data-doc') !== "null" || element.getAttribute('data-doc') !== null || element.getAttribute('data-doc') !== "") {
+            //var data = new FormData();
+            //data.append("FILE_PATH", element.getAttribute('data-doc'));
+
+            var link = '@Html.Raw(Url.Action("DownloadDocument", "UserDashboard", new { path = "-1" }))';
+            link = link.replace("-1", element.getAttribute('data-doc'));
+            window.location.href = link;
+        } else {
+            showErrorMesgGrowl("This data does not have an uploaded document");
+        }
+        //data: {
+        //    DOCUMENT_NO: $("#addEditDocumentNo").val()
+        //},
+    }
+
+    function onDownloadAttachment(attachment, documentId) {
+        gAttachmentPath = attachment;
+        gDocumentId = documentId;
+        downloadAttachment();
+    }
+
+    function downloadAttachment() {
+        if (gAttachmentPath !== "null" && gAttachmentPath !== null) {
+            var link = '@Html.Raw(Url.Action("downloadAttachment", "DocumentMaintenance", new { FILE_PATH = "-1", DOCUMENT_TRANSACTION_ID = "-2" }))';
+            link = link.replace("-1", gAttachmentPath);
+            link = link.replace("-2", gDocumentId);
+            window.location.href = link;
+        } else {
+            showErrorMesgGrowl("This data does not have an attachment");
+        }
+    }
+
+    function onViewAttachment(attachment, documentId) {
+        gAttachmentPath = attachment;
+        gDocumentId = documentId;
+        viewAttachment();
+    }
+
+    function viewAttachment() {
+        if (gAttachmentPath !== "null" && gAttachmentPath !== null) {
+            var link = '@Html.Raw(Url.Action("ViewAttachment", "DocumentMaintenance", new { FILE_PATH = "-1", DOCUMENT_TRANSACTION_ID = "-2", type = "-3" }))';
+            link = link.replace("-1", gAttachmentPath);
+            link = link.replace("-2", gDocumentId);
+            link = link.replace("-3", "3");
+            window.open(link, '_blank');
+        } else {
+            showErrorMesgGrowl("This data does not have an attachment");
+        }
+    }
+
+    function onPrintAttachment(attachment, documentId, approvalId) {
+        gAttachmentPath = attachment;
+        gDocumentId = documentId;
+        gApprovalId = approvalId;
+        printAttachment();
+    }
+
+    function printAttachment() {
+        popUpProgressShow();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("printAttachment", "DocumentMaintenance")",
+            data: {
+                FILE_PATH: gAttachmentPath,
+                DOCUMENT_TRANSACTION_ID: gDocumentId,
+                type: "3"
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    popUpProgressHide();
+                    printJS({ printable: result.data, type: 'pdf', showModal: true });
+                } else {
+                    popUpProgressHide();
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function confirmPublish() {
+        showConfirmMesg("Are you sure already published document ?", insertLog, "Confirmation");
+    }
+
+    function insertLog() {
+        popUpProgressShow();
+
+        var row = getSelectedRowData();
+        if (row == null) {
+            popUpProgressHide();
+            return;
+        }
+
+        gDocumentTransactionId = row.DOCUMENT_TRANSACTION_ID;
+        gDocumentCtrlId = row.DOCUMENT_CTRL_ID;
+        gDepartmentId = row.DEPARTMENT_ID;
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("PublishDocument", "UserDashboard")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                DOCUMENT_TRANSACTION_ID: gDocumentTransactionId,
+                DOCUMENT_CTRL_ID: gDocumentCtrlId,
+                DEPARTMENT_ID: gDepartmentId,
+            },
+            success: function (result) {
+                popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+</script>

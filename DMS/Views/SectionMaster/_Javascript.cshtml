@@ -1,0 +1,287 @@
+﻿<script type="text/javascript">
+    var gScreenMode = null;
+    var gDocumentId = null;
+    var gTemplate = null;
+    var selectedIds = [];
+
+    $(document).ready(function() {
+        setDataSelect2WithParam("addEditDivision", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "- Choose -", "DIVISION");
+
+        $('#addEditValidFrom').datepicker({
+            autoclose: true,
+            todayHighlight: true,
+            format: "dd-mm-yyyy",
+        });
+
+        $('#addEditValidTo').datepicker({
+            autoclose: true,
+            todayHighlight: true,
+            format: "dd-mm-yyyy",
+        });
+
+        $("#btn_add").on("click", function() {
+            onAddPrepare();
+        });
+
+        $("#btn_edit").on("click", function() {
+            onEditPrepare();
+        });
+
+        $("#btn_delete").on("click", function() {
+            onDeletePrepare();
+        });
+
+        $("#btn_save").on("click", function() {
+            confirmAddEditData();
+        });
+
+        $("#btn_delete_template").on("click", function() {
+            confirmDeleteAttachment()
+        });
+
+    });
+
+    function onSearch() {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        grid.clearSelection();
+        grid.refresh();
+    }
+
+    function onAddPrepare() {
+        gScreenMode = 'ADD';
+        $('#modal-title').html("Add Section Master");
+        $('#addEditSectionCode').val("");
+        $('#addEditSectionName').val("");
+        $('#addEditDivision').val("").trigger("change");
+        $('#addEditDepartmentCode').val("").trigger("change");
+
+        $('#addEditSectionCode').prop('disabled', false);
+        $('#addEditSectionName').prop('disabled', false);
+        $('#addEditDivision').prop('disabled', false);
+        $('#addEditDepartmentCode').prop('disabled', true);
+
+        $('#addEditValidFrom').prop('disabled', false);
+        $('#addEditValidTo').prop('disabled', false);
+
+        $('#addEditValidFrom').val("");
+        $('#addEditValidTo').datepicker("setDate", new Date(9999, 11, 31));
+
+        gTemplate = null;
+
+        $("#modalAddEdit").modal();
+        $('#modalAddEdit').on('shown.bs.modal', function() {
+            $('#addEditDocumentCode').focus();
+        });
+    }
+    function addEditData() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("AddEdit", "SectionMaster")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                screenMode: gScreenMode,
+                SECTION_ID  : $('#addEditSectionId').val(),
+                SECTION_CODE: $('#addEditSectionCode').val(),
+                SECTION_NAME: $('#addEditSectionName').val(),
+                DEPARTMENT_CODE: $('#addEditDepartmentCode').val(),
+                VALID_FROM: moment($('#addEditValidFrom').val(), "DD-MM-YYYY").format("YYYY-MM-DD"),
+                VALID_TO: moment($('#addEditValidTo').val(), "DD-MM-YYYY").format("YYYY-MM-DD"),
+            },
+            success: function (result) {
+                //popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    $("#modalAddEdit").modal('hide');
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function onEditPrepare() {
+
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gDocumentId = row.SECTION_ID;
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetByKey", "SectionMaster")",
+            async: false,
+            data: {
+                SECTION_ID: gDocumentId
+            },
+            success: function(result) {
+                if (result.status == true) {
+                    var data = result.data;
+
+                    gScreenMode = 'EDIT';
+                    $('#modal-title').html("Edit Section Master");
+                    $('#addEditSectionId').val(data.SECTION_ID);
+                    $('#addEditSectionCode').val(data.SECTION_CODE);
+                    $('#addEditSectionName').val(data.SECTION_NAME);
+                    $('#addEditDivision').select2("trigger", "select", { data: { id: data.DIVISION, text: data.DIVISION } });
+                    $('#addEditDepartmentCode').select2("trigger", "select", { data: { id: data.DEPARTMENT_CODE, text: data.DEPARTMENT_CODE } });
+
+                    $('#addEditValidFrom').val(moment(data.VALID_FROM).format("DD-MM-YYYY"));
+                    $('#addEditValidTo').val(moment(data.VALID_TO).format("DD-MM-YYYY"));
+
+                    $('#addEditSectionCode').prop('disabled', true);
+                    $('#addEditValidFrom').prop('disabled', false);
+                    $('#addEditValidTo').prop('disabled', false);
+                    $('#addEditSectionName').prop('disabled', false);
+                    $('#addEditDivision').prop('disabled', false);
+                    $('#addEditDepartmentCode').prop('disabled', false);
+
+                    $("#modalAddEdit").modal();
+                    $('#modalAddEdit').on('shown.bs.modal', function() {
+                        $('#addEditSectionName').focus();
+                    });
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function(result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function onDeletePrepare() {
+        selectedIds = getSelectedRowsData().map(function (row) {
+            return row.SECTION_ID;
+        });
+
+        if (selectedIds.length < 1) {
+            return;
+        }
+
+        showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
+    }
+
+    function confirmAddEditData() {
+        showConfirmMesg("Are you sure you want to continue process?", addEditData, "Confirmation");
+    }
+
+    $(document).on('change', '#template', function(e) {
+        ex = e;
+    });
+
+    function deleteData() {
+        popUpProgressHide();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("DeleteMultiple", "SectionMaster")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                selectedIds: selectedIds
+            },
+            success: function(result) {
+                //popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    popUpProgressHide();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                    popUpProgressHide();
+                }
+            },
+            error: function(result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+                popUpProgressHide();
+            }
+        });
+    }
+
+    // function setDepartmentCode(val) {
+    //    gModelCode  = val;
+
+    //    $('#addEditDepartmentCode').val("").trigger("change");
+    //    $('#addEditDepartmentCode').prop('disabled', false);
+    //    setDataSelect2WithParam("addEditDepartmentCode", "@Url.Action("GetListDepartmentByDivision", "DepartmentMaster")", "- Choose -", gModelCode);
+    //}
+    // function getDepartmentCode(DEPARTMENT_CODE) {
+    //    $.ajax({
+    //        type: "POST",
+    //        url: "@Url.Action("Search", "DepartmentMaster")",
+    //        dataType: 'json',
+    //        data: {
+    //            DEPARTMENT_CODE: DEPARTMENT_CODE,
+    //            length: 10
+    //        },
+    //        success: function(result) {
+    //            //popUpProgressHide();
+    //            if (result.data != null) {
+    //                $('#addEditDepartmentCode').val(result.data[0].DEPARTMENT_CODE);
+    //            } else {
+    //                console.log(result.message);
+    //            }
+    //        },
+    //        error: function(result) {
+    //            //popUpProgressHide();
+    //            showErrorMesgGrowl(result);
+    //        }
+    //    });
+    //}
+    //  function getDepartmentCode(val) {
+    //    //console.log(val)
+    //    $('#addEditDepartmentCode').prop('disabled', false);
+    //    //const myArray = val.split("|");
+    //    //console.log(myArray[0])
+    //    $("#addEditDepartmentCode").select2({
+    //        placeholder: "- Choose -",
+    //        ajax: {
+    //            url: "@Url.Action("GetDepartmentbyDivision", "DepartmentMaster")",
+    //            dataType: 'json',
+    //            data: function (params) {
+    //                return {
+    //                    q: params.term, // search term
+    //                    pageLimit: 10,
+    //                    page: params.page, // page number
+    //                    DIVISION: myArray[0],
+    //                    DEPARTMENT_CODE: myArray[1]
+    //                };
+    //            },
+    //            processResults: function (data, page) {
+    //                var more = data.items.length >= 10;
+    //                //var more = (page * 10) < data.total; // whether or not there are more results available
+    //                return {
+    //                    results: $.map(data.items, function (item) {
+    //                        return {
+    //                            text: item.text,
+    //                            id: item.id,
+    //                        }
+    //                    }),
+    //                    pagination: {
+    //                        more: more
+    //                    }
+    //                };
+    //            }
+    //        },
+    //        debug: true,
+    //        width: '100%'
+    //    });
+    //}
+     function setDepartmentCode(val) {
+        gModelCode  = val;
+
+        $('#addEditDepartmentCode').val("").trigger("change");
+        $('#addEditDepartmentCode').prop('disabled', false);
+        setDataSelect2WithParam("addEditDepartmentCode", "@Url.Action("GetListDepartmentByDivision", "DepartmentMaster")", "- Choose -", gModelCode);
+    }
+
+</script>
