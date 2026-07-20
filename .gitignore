@@ -474,3 +474,7 @@ $RECYCLE.BIN/
 /DMS/wwwroot/Document/
 /DMS/wwwroot/Download/
 
+# Personal project tracker / schedule files - not source code
+/DMS_Project_Tracker.xlsx
+/Jadwal_Kadai.xlsx
+
