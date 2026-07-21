@@ -1,5 +1,6 @@
 ﻿using DMS.Hubs;
 using DMS.Models;
+using DMS.Services;
 using Hangfire;
 using Hangfire.SqlServer;
 using MDC.Models;
@@ -121,7 +122,10 @@ namespace DMS
                 Authorization = new[] { new HangfireAuthorization() }
             });
 
-       
+            RecurringJob.AddOrUpdate<DocumentReviewReminderService>(
+                "document-review-reminder",
+                x => x.SendRemindersAsync(),
+                Cron.Daily);
 
             app.UseEndpoints(endpoints =>
             {

@@ -1,0 +1,116 @@
+<script type="text/javascript">
+    var gLastPreviewHadValidRows = false;
+
+    $(document).ready(function () {
+        $("#btn_preview").on("click", function () {
+            runImport(false);
+        });
+
+        $("#btn_import").on("click", function () {
+            if (!gLastPreviewHadValidRows) {
+                return;
+            }
+            showConfirmMesg("Are you sure you want to import the valid rows into the system?", function () {
+                runImport(true);
+            }, "Confirmation");
+        });
+    });
+
+    function runImport(commitMode) {
+        var excelInput = document.getElementById("excelFile");
+        var zipInput = document.getElementById("zipFile");
+
+        if (excelInput.files.length == 0) {
+            showErrorMesgGrowl("Please choose the Excel metadata file.");
+            return;
+        }
+        if (zipInput.files.length == 0) {
+            showErrorMesgGrowl("Please choose the ZIP file.");
+            return;
+        }
+
+        var formData = new FormData();
+        formData.append("excelFile", excelInput.files[0]);
+        formData.append("zipFile", zipInput.files[0]);
+        formData.append("commitMode", commitMode);
+
+        popUpProgressShow();
+        $("#btn_preview").prop("disabled", true);
+        $("#btn_import").prop("disabled", true);
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("ProcessImport", "LegacyDocumentImport")",
+            contentType: false,
+            processData: false,
+            data: formData,
+            success: function (result) {
+                popUpProgressHide();
+                $("#btn_preview").prop("disabled", false);
+
+                if (result.status != true) {
+                    showErrorMesgGrowl(result.message);
+                    return;
+                }
+
+                if (commitMode) {
+                    renderImportReport(result.data, result.successCount, result.failCount);
+                    showSuccessMesgGrowl(result.successCount + " document(s) imported successfully.");
+                    gLastPreviewHadValidRows = false;
+                    $("#btn_import").prop("disabled", true);
+                } else {
+                    renderPreview(result.data, result.validCount, result.invalidCount);
+                    gLastPreviewHadValidRows = result.validCount > 0;
+                    $("#btn_import").prop("disabled", !gLastPreviewHadValidRows);
+                }
+            },
+            error: function (result) {
+                popUpProgressHide();
+                $("#btn_preview").prop("disabled", false);
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function renderPreview(rows, validCount, invalidCount) {
+        $("#resultSummary").show();
+        $("#badgeValid").text(validCount + " valid");
+        $("#badgeInvalid").text(invalidCount + " need attention");
+
+        var tbody = $("#tblImportResultBody");
+        tbody.empty();
+
+        rows.forEach(function (row) {
+            var tr = $("<tr>");
+            tr.append($("<td>").text(row.rowNumber));
+            tr.append($("<td>").text(row.documentCode || "-"));
+            tr.append($("<td>").text(row.documentName || "-"));
+            tr.append($("<td>").addClass(row.valid ? "li-status-ok" : "li-status-bad").text(row.valid ? "Valid" : "Invalid"));
+            tr.append($("<td>").text((row.errors || []).join("; ")));
+            tbody.append(tr);
+        });
+
+        $("#tblImportResult").show();
+    }
+
+    function renderImportReport(rows, successCount, failCount) {
+        $("#resultSummary").show();
+        $("#badgeValid").text(successCount + " imported");
+        $("#badgeInvalid").text(failCount + " failed");
+
+        var tbody = $("#tblImportResultBody");
+        tbody.empty();
+
+        rows.forEach(function (row) {
+            var tr = $("<tr>");
+            tr.append($("<td>").text(row.rowNumber));
+            tr.append($("<td>").text(row.documentCode || "-"));
+            tr.append($("<td>").text("-"));
+            tr.append($("<td>").addClass(row.status ? "li-status-ok" : "li-status-bad").text(row.status ? "Imported" : "Failed"));
+            tr.append($("<td>").text(row.message || ""));
+            tbody.append(tr);
+        });
+
+        $("#tblImportResult").show();
+    }
+</script>

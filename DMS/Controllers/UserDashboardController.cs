@@ -65,7 +65,7 @@ namespace DMS.Controllers
             ViewData["Publish"] = HttpContext.Session.GetString("functionList").Contains("USERDASHBOARD-PUBLISH");
 
 
-            ViewData["Title"] = "My Dashboard";
+            ViewData["Title"] = "Document Request";
 
             return View();
         }

@@ -1,0 +1,144 @@
+<style>
+    .li-steps {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .li-step {
+        flex: 1 1 220px;
+        background: var(--surface, #fff);
+        border: 1px solid var(--line, #DFE5EB);
+        border-radius: 10px;
+        padding: 14px 16px;
+    }
+
+        .li-step .li-step-no {
+            display: inline-flex;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--primary, #14456E);
+            color: #fff;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            margin-right: 6px;
+        }
+
+        .li-step h4 {
+            display: inline;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .li-step p {
+            margin: 8px 0 0;
+            font-size: 12.5px;
+            color: var(--muted, #66788A);
+        }
+
+    .li-upload-row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        margin-bottom: 16px;
+    }
+
+    .li-upload-field { flex: 1 1 260px; }
+
+    .li-summary {
+        display: flex;
+        gap: 10px;
+        margin: 12px 0;
+    }
+
+    .li-badge {
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 12.5px;
+        font-weight: 700;
+    }
+
+    .li-badge.ok { background: #E3F3E7; color: #2E7D3B; }
+    .li-badge.bad { background: #F4E3DF; color: #B5402C; }
+
+    #tblImportResult td, #tblImportResult th { vertical-align: middle; font-size: 12.5px; }
+
+    .li-status-ok { color: #2E7D3B; font-weight: 700; }
+    .li-status-bad { color: #B5402C; font-weight: 700; }
+</style>
+
+<section class="content">
+    <div class="row">
+        <div class="col-xs-12">
+            <div class="content-header">
+                <h1>@ViewData["Title"]</h1>
+            </div>
+
+            <div class="li-steps">
+                <div class="li-step">
+                    <h4><span class="li-step-no">1</span>Download Template</h4>
+                    <p>Isi 1 baris per dokumen: nomor dokumen asli, revisi, division/department, dst.</p>
+                </div>
+                <div class="li-step">
+                    <h4><span class="li-step-no">2</span>Siapkan ZIP</h4>
+                    <p>Kumpulkan semua file PDF/Excel dalam satu ZIP. Nama file harus sama persis dengan kolom "File Name" di template.</p>
+                </div>
+                <div class="li-step">
+                    <h4><span class="li-step-no">3</span>Preview &amp; Import</h4>
+                    <p>Upload Excel + ZIP untuk divalidasi dulu. Perbaiki baris yang bermasalah sebelum klik Import.</p>
+                </div>
+            </div>
+
+            <div class="box box-primary">
+                <div class="box-header with-border">
+                    <h3 class="box-title">Upload</h3>
+                </div>
+                <div class="box-body">
+                    <a class="btn btn-default btn-sm" href="@Url.Action("DownloadTemplate")"><i class="fa fa-download"></i> Download Template Excel</a>
+
+                    <div class="li-upload-row" style="margin-top:16px;">
+                        <div class="li-upload-field">
+                            <label>File Excel (metadata)</label>
+                            <input type="file" id="excelFile" class="form-control" accept=".xlsx" />
+                        </div>
+                        <div class="li-upload-field">
+                            <label>File ZIP (kumpulan dokumen)</label>
+                            <input type="file" id="zipFile" class="form-control" accept=".zip" />
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-primary" id="btn_preview"><i class="fa fa-search"></i> Preview</button>
+                            <button type="button" class="btn btn-success" id="btn_import" disabled><i class="fa fa-upload"></i> Import</button>
+                        </div>
+                    </div>
+
+                    <div id="resultSummary" class="li-summary" style="display:none;">
+                        <span class="li-badge ok" id="badgeValid"></span>
+                        <span class="li-badge bad" id="badgeInvalid"></span>
+                    </div>
+
+                    <div style="overflow-x:auto;">
+                        <table class="table table-bordered" id="tblImportResult" style="display:none;">
+                            <thead>
+                                <tr>
+                                    <th style="width:60px;">Row</th>
+                                    <th>Document Code</th>
+                                    <th>Document Name</th>
+                                    <th style="width:90px;">Status</th>
+                                    <th>Detail</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tblImportResultBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@Html.Partial("_Javascript")

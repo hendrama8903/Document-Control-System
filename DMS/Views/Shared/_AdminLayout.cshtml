@@ -7,7 +7,7 @@
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>DCS - @ViewData["Title"]</title>
+    <title>DMS - @ViewData["Title"]</title>
     <meta content="width=device-width, initial-scale=1" name="viewport">
     <!-- Bootstrap -->
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css">
@@ -57,15 +57,15 @@
                         <path d="M12 3.2 2.5 10.6a1 1 0 0 0 .62 1.8H4.5v7.1a1 1 0 0 0 1 1H9a1 1 0 0 0 1-1v-4.6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4.6a1 1 0 0 0 1 1h3.5a1 1 0 0 0 1-1v-7.1h1.38a1 1 0 0 0 .62-1.8L12 3.2Z" />
                     </svg>
                 </a>
-                <div class="adm-rail-vtext">DOCUMENT <em>CONTROL</em> SYSTEM</div>
+                <div class="adm-rail-vtext">DOCUMENT <em>MANAGEMENT</em> SYSTEM</div>
                 <button type="button" class="adm-rail-collapse" onclick="admToggleCollapse()" title="Show / hide menu">
                     <i class="fa fa-angle-double-left"></i>
                 </button>
             </div>
             <div class="adm-sidepanel">
                 <div class="adm-brand">
-                    <b>DCS</b>
-                    <span>Document Control System</span>
+                    <b>DMS</b>
+                    <span>Document Management System</span>
                 </div>
                 @Html.Partial("_MainMenu")
             </div>
@@ -77,7 +77,7 @@
                 <button type="button" class="adm-topbtn adm-menu-btn" onclick="admToggleNav(true)">
                     <i class="fa fa-bars"></i>
                 </button>
-                <div class="adm-crumb">DCS &nbsp;/&nbsp; <b>@ViewData["Title"]</b></div>
+                <div class="adm-crumb">DMS &nbsp;/&nbsp; <b>@ViewData["Title"]</b></div>
                 <div class="adm-top-right">
                     <div class="dropdown adm-notif" id="notificationHeader">
                         <button type="button" class="adm-topbtn dropdown-toggle" data-toggle="dropdown" aria-expanded="false" onclick="GetListNotif()">

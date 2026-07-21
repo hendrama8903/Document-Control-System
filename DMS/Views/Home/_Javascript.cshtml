@@ -3,8 +3,11 @@
         "NEW": "#B8860B",
         "APPROVED": "#2E7D3B",
         "REJECTED": "#B5402C",
-        "DELETED": "#66788A"
+        "OBSOLETE": "#8A98A6",
+        "DELETED": "#8A98A6"
     };
+
+    var categoryPalette = ["#2E6DA0", "#0E8A8A", "#B8860B", "#8C6FC9", "#D97B29", "#8A98A6", "#5B7FBD"];
 
     function getStatusColor(statusText) {
         var key = (statusText || "").toUpperCase();
@@ -16,6 +19,27 @@
             return "";
         }
         return moment(value).format("DD-MM-YYYY HH:mm");
+    }
+
+    function formatFromNow(value) {
+        if (!value) {
+            return "";
+        }
+        return moment(value).fromNow();
+    }
+
+    function formatNumber(value) {
+        return (value || 0).toLocaleString();
+    }
+
+    // File-type icon derived from the stored FILE_PATH extension — real data, not decoration.
+    function getFileIcon(filePath) {
+        var ext = (filePath || "").split(".").pop().toLowerCase();
+        if (ext === "pdf") { return { icon: "fa-file-pdf-o", color: "#B5402C" }; }
+        if (ext === "doc" || ext === "docx") { return { icon: "fa-file-word-o", color: "#2E6DA0" }; }
+        if (ext === "xls" || ext === "xlsx") { return { icon: "fa-file-excel-o", color: "#2E7D3B" }; }
+        if (ext === "ppt" || ext === "pptx") { return { icon: "fa-file-powerpoint-o", color: "#D97B29" }; }
+        return { icon: "fa-file-o", color: "#8A98A6" };
     }
 
     $(document).ready(function () {
@@ -40,16 +64,68 @@
     }
 
     function renderDashboard(data) {
-        $("#statTotalDocuments").text(data.totalDocuments);
-        $("#statNew").text(data.totalNew);
-        $("#statApproved").text(data.totalApproved);
-        $("#statRejected").text(data.totalRejected);
-        $("#statTotalUsers").text(data.totalUsers);
+        $("#kpiTotalDocuments").text(formatNumber(data.kpi.totalDocuments.value));
+        $("#kpiPendingApprovals").text(formatNumber(data.kpi.pendingApprovals.value));
+        $("#kpiRejected").text(formatNumber(data.kpi.rejectedDocuments.value));
+        $("#kpiUploadedToday").text(formatNumber(data.kpi.uploadedToday.value));
+        $("#kpiPublished").text(formatNumber(data.kpi.publishedDocuments.value));
+        $("#kpiDueForReview").text(formatNumber(data.kpi.dueForReview.value));
 
+        renderCategoryChart(data.categorySummary);
         renderStatusChart(data.statusSummary);
-        renderDivisionChart(data.divisionSummary);
-        renderRecentDocuments(data.recentDocuments);
-        renderCtrlStatusList(data.ctrlStatusSummary);
+        renderRejectedTable(data.recentlyRejected);
+        renderPendingApprovals(data.pendingApprovals);
+        renderToggleDonut("distributionToggle", "chartDistribution", data.distribution);
+        renderToggleDonut("receivedToggle", "chartReceived", data.received);
+    }
+
+    function donutCenterTemplate(caption) {
+        return function (pieChart, element) {
+            var total = 0;
+            pieChart.getAllSeries()[0].getVisiblePoints().forEach(function (p) { total += p.originalValue; });
+
+            $(element).append(
+                $("<div>").addClass("dash-donut-center").append(
+                    $("<div>").addClass("dash-donut-value").text(formatNumber(total)),
+                    $("<div>").addClass("dash-donut-caption").text(caption)
+                )
+            );
+        };
+    }
+
+    function renderCategoryChart(categorySummary) {
+        if (!categorySummary || categorySummary.length == 0) {
+            $("#chartCategory").html('<div class="dash-empty-text">No document data yet.</div>');
+            return;
+        }
+
+        $("#chartCategory").dxPieChart({
+            type: "doughnut",
+            dataSource: categorySummary,
+            palette: categoryPalette,
+            innerRadius: 0.68,
+            centerTemplate: donutCenterTemplate("Total"),
+            series: {
+                argumentField: "category",
+                valueField: "count",
+                label: { visible: false }
+            },
+            legend: {
+                orientation: "vertical",
+                horizontalAlignment: "right",
+                verticalAlignment: "center",
+                itemTextPosition: "right",
+                customizeText: function (item) {
+                    return item.argument + "  " + formatNumber(item.value) + " (" + item.percent + "%)";
+                }
+            },
+            tooltip: {
+                enabled: true,
+                customizeTooltip: function (pointInfo) {
+                    return { text: pointInfo.argument + ": " + formatNumber(pointInfo.value) };
+                }
+            }
+        });
     }
 
     function renderStatusChart(statusSummary) {
@@ -59,108 +135,151 @@
         }
 
         $("#chartStatus").dxPieChart({
+            type: "doughnut",
             dataSource: statusSummary,
             palette: statusSummary.map(function (item) { return getStatusColor(item.status); }),
+            innerRadius: 0.68,
+            centerTemplate: donutCenterTemplate("Total"),
             series: {
                 argumentField: "status",
                 valueField: "count",
-                label: {
-                    visible: true,
-                    connectorWidth: 1,
-                    customizeText: function (pointInfo) {
-                        return pointInfo.argument + ": " + pointInfo.value;
-                    }
-                }
+                label: { visible: false }
             },
             legend: {
-                horizontalAlignment: "center",
-                verticalAlignment: "bottom"
+                orientation: "vertical",
+                horizontalAlignment: "right",
+                verticalAlignment: "center",
+                itemTextPosition: "right",
+                customizeText: function (item) {
+                    return item.argument + "  " + formatNumber(item.value) + " (" + item.percent + "%)";
+                }
             },
             tooltip: {
                 enabled: true,
                 customizeTooltip: function (pointInfo) {
-                    return { text: pointInfo.argument + ": " + pointInfo.value };
+                    return { text: pointInfo.argument + ": " + formatNumber(pointInfo.value) };
                 }
             }
         });
     }
 
-    function renderDivisionChart(divisionSummary) {
-        if (!divisionSummary || divisionSummary.length == 0) {
-            $("#chartDivision").html('<div class="dash-empty-text">No document data yet.</div>');
+    function renderGenericDonut(elementId, dataset, caption) {
+        if (!dataset || dataset.length == 0) {
+            $("#" + elementId).html('<div class="dash-empty-text">No data yet.</div>');
             return;
         }
 
-        $("#chartDivision").dxChart({
-            dataSource: divisionSummary,
-            commonSeriesSettings: {
-                argumentField: "division",
-                type: "bar",
-                color: "#14456E"
+        $("#" + elementId).dxPieChart({
+            type: "doughnut",
+            dataSource: dataset,
+            palette: categoryPalette,
+            innerRadius: 0.68,
+            centerTemplate: donutCenterTemplate(caption),
+            series: {
+                argumentField: "name",
+                valueField: "count",
+                label: { visible: false }
             },
-            series: [{ valueField: "count", name: "Documents" }],
-            argumentAxis: {
-                label: {
-                    overlappingBehavior: "rotate",
-                    rotationAngle: 45
+            legend: {
+                orientation: "vertical",
+                horizontalAlignment: "right",
+                verticalAlignment: "center",
+                itemTextPosition: "right",
+                customizeText: function (item) {
+                    return item.argument + "  " + formatNumber(item.value) + " (" + Math.round(item.percent * 100) + "%)";
                 }
             },
-            valueAxis: {
-                allowDecimals: false
-            },
-            legend: { visible: false },
             tooltip: {
                 enabled: true,
                 customizeTooltip: function (pointInfo) {
-                    return { text: pointInfo.argumentText + ": " + pointInfo.valueText };
+                    return { text: pointInfo.argument + ": " + formatNumber(pointInfo.value) };
                 }
             }
         });
     }
 
-    function renderRecentDocuments(recentDocuments) {
-        var tbody = $("#tblRecentDocumentsBody");
+    // Toggle group (Division / Department) driving a donut chart from data already fetched — no re-fetch on click.
+    function renderToggleDonut(toggleGroupId, chartId, dataset) {
+        var group = $("#" + toggleGroupId);
+
+        function draw() {
+            var view = group.find(".dash-toggle-btn.active").data("view");
+            var source = view === "division" ? dataset.byDivision : dataset.byDepartment;
+            renderGenericDonut(chartId, source, view === "division" ? "Division" : "Department");
+        }
+
+        group.find(".dash-toggle-btn").off("click.dashToggle").on("click.dashToggle", function () {
+            group.find(".dash-toggle-btn").removeClass("active");
+            $(this).addClass("active");
+            draw();
+        });
+
+        draw();
+    }
+
+    function docCell(documentName, documentCode, filePath) {
+        var fileIcon = getFileIcon(filePath);
+        var cell = $("<div>").addClass("dash-doc-cell");
+        cell.append($("<span>").addClass("dash-doc-icon").css("color", fileIcon.color).append($("<i>").addClass("fa " + fileIcon.icon)));
+        var text = $("<div>").addClass("dash-doc-text");
+        text.append($("<span>").addClass("dash-doc-name").attr("title", documentName || "").text(documentName || "-"));
+        text.append($("<span>").addClass("dash-doc-code").text(documentCode || ""));
+        cell.append(text);
+        return cell;
+    }
+
+    function renderRejectedTable(recentlyRejected) {
+        var tbody = $("#tblRejectedBody");
         tbody.empty();
 
-        if (!recentDocuments || recentDocuments.length == 0) {
-            tbody.append('<tr><td colspan="4" class="dash-empty-text">No document data yet.</td></tr>');
+        if (!recentlyRejected || recentlyRejected.length == 0) {
+            tbody.append('<tr><td colspan="3" class="dash-empty-text">No rejected documents.</td></tr>');
             return;
         }
 
-        recentDocuments.forEach(function (doc) {
-            var badgeClass = "label label-default";
-            if (doc.statusCode == "1") {
-                badgeClass = "label label-success";
-            } else if (doc.statusCode == "2") {
-                badgeClass = "label label-danger";
-            } else if (doc.statusCode == "0") {
-                badgeClass = "label label-warning";
-            }
-
+        recentlyRejected.forEach(function (item) {
             var row = $("<tr>");
-            row.append($("<td>").text(doc.documentCode || ""));
-            row.append($("<td>").text(doc.documentName || ""));
-            row.append($("<td>").html('<span class="' + badgeClass + '">' + (doc.status || "") + '</span>'));
-            row.append($("<td>").text(formatDashDate(doc.changedDate)));
-
+            row.append($("<td>").append(docCell(item.documentName, item.documentCode, item.filePath)));
+            row.append($("<td>").append($("<span>").addClass("dash-badge dash-badge-danger").text(formatFromNow(item.rejectedDate))));
+            row.append($("<td>").text(item.owner || "-"));
             tbody.append(row);
         });
     }
 
-    function renderCtrlStatusList(ctrlStatusSummary) {
-        var list = $("#listCtrlStatus");
+    function renderPendingApprovals(pendingApprovals) {
+        var list = $("#listPendingApprovals");
         list.empty();
 
-        if (!ctrlStatusSummary || ctrlStatusSummary.length == 0) {
-            list.append('<li class="dash-empty-text">No document control activity yet.</li>');
+        if (!pendingApprovals || pendingApprovals.length == 0) {
+            list.append('<li><div class="dash-empty-text" style="width:100%;">No documents waiting on approval.</div></li>');
             return;
         }
 
-        ctrlStatusSummary.forEach(function (item) {
+        pendingApprovals.forEach(function (item) {
+            var fileIcon = getFileIcon(item.filePath);
             var li = $("<li>");
-            li.append($("<span>").text(item.status));
-            li.append($("<span>").addClass("dash-ctrl-count").text(item.count));
+
+            li.append(
+                $("<span>").addClass("dash-list-icon")
+                    .css("background", fileIcon.color + "1A")
+                    .css("color", fileIcon.color)
+                    .append($("<i>").addClass("fa " + fileIcon.icon))
+            );
+
+            var body = $("<div>").addClass("dash-list-body");
+            body.append($("<div>").addClass("dash-list-title").attr("title", item.documentName || "").text(item.documentName || "-"));
+            body.append($("<div>").addClass("dash-list-meta").text("Submitted by " + (item.submittedBy || "-") + " • " + formatDashDate(item.submittedDate)));
+            li.append(body);
+
+            var side = $("<div>").addClass("dash-list-side");
+            if (item.category) {
+                side.append($("<span>").addClass("dash-badge").text(item.category));
+            }
+            side.append($("<span>").addClass("dash-list-time").text(formatFromNow(item.submittedDate)));
+            li.append(side);
+
             list.append(li);
         });
     }
+
 </script>

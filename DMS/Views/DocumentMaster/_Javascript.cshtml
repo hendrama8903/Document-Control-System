@@ -40,6 +40,7 @@
         $('#addEditDocumentCode').val("");
         $('#addEditDocumentName').val("");
         $('#addEditLevel').val("").trigger("change");
+        $('#addEditReviewCycleMonths').val("");
         $('#fileNameContainer :input[type="text"]').val("");
 
         $('#addEditDocumentCode').prop('disabled', false);
@@ -83,6 +84,7 @@
                     $('#addEditDocumentCode').val(data.DOCUMENT_CODE);
                     $('#addEditDocumentName').val(data.DOCUMENT_NAME);
                     $('#addEditLevel').select2("trigger", "select", { data: { id: data.LEVEL, text: data.LEVEL_VAL } });
+                    $('#addEditReviewCycleMonths').val(data.REVIEW_CYCLE_MONTHS);
 
                     gFilePath = data.FILE_PATH;
                     $('#inputContainer :input[type="text"]').val(data.FILE_PATH);
@@ -160,6 +162,9 @@
         } else {
             data.append("DOCUMENT_ID", gDocumentId);
         }
+
+        var reviewCycleMonths = $('#addEditReviewCycleMonths').val();
+        data.append("REVIEW_CYCLE_MONTHS", reviewCycleMonths == "" ? "" : reviewCycleMonths);
 
         if (gFilePath !== null) {
             data.append("FILE_PATH", gFilePath);

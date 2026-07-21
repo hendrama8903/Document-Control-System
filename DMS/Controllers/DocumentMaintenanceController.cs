@@ -1246,8 +1246,28 @@ namespace DMS.Controllers
                 bool isObsolete = documentMaintenanceRepo
                     .Search(new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = documentMaintenance.DOCUMENT_TRANSACTION_ID }, null, db, 1, 1)
                     .FirstOrDefault() == null;
-                string watermarkText = isObsolete ? "OBSOLETE" : "CONTROLLED COPY";
-                bool shouldWatermark = isObsolete || type == "3";
+                // Document control staff (DOCUMENT_CONTROL_ACCESS) are viewing/printing the
+                // controlling master copy, so they get "MASTER" instead of "CONTROLLED COPY" -
+                // and see it on every view/print, not just on download like everyone else.
+                bool isDocumentControlViewer = GetDocumentAccessControl() == true;
+                string watermarkText;
+                bool shouldWatermark;
+
+                if (isObsolete)
+                {
+                    watermarkText = "OBSOLETE";
+                    shouldWatermark = true;
+                }
+                else if (isDocumentControlViewer)
+                {
+                    watermarkText = "MASTER";
+                    shouldWatermark = true;
+                }
+                else
+                {
+                    watermarkText = "CONTROLLED COPY";
+                    shouldWatermark = type == "3";
+                }
 
                 string[] split = documentMaintenance.FILE_PATH.Split("/");
                 string fileName = split[4];
@@ -2697,6 +2717,10 @@ namespace DMS.Controllers
                 if (!System.IO.File.Exists(fullPath))
                     return Json(new { status = false, message = "File Not Found" });
 
+                // Document control staff printing the current document get "MASTER"
+                // instead of "CONTROLLED COPY" - see ViewAttachment for the same rule.
+                bool isDocumentControlViewer = GetDocumentAccessControl() == true;
+
                 string[] split = documentMaintenance.FILE_PATH.Split("/");
                 string fileName = split[4];
                 string extension = GetFileExtension(fileName);
@@ -2720,7 +2744,9 @@ namespace DMS.Controllers
 
                     if (System.IO.File.Exists(cachedPdfFullPath))
                     {
-                        if (type == "3")
+                        if (isDocumentControlViewer)
+                            AddWatermark(cachedPdfFullPath, cachedPdfFullPath, "MASTER");
+                        else if (type == "3")
                             AddWatermark(cachedPdfFullPath, cachedPdfFullPath, "CONTROLLED COPY");
 
                         pengesahanModifiedfileNames = cachedPdfRelative;
@@ -2748,7 +2774,9 @@ namespace DMS.Controllers
                             .Replace("." + extension, ".pdf");
 
                         string pdfFullPath = webRootPath + pengesahanModifiedfileNames;
-                        if (type == "3")
+                        if (isDocumentControlViewer)
+                            AddWatermark(pdfFullPath, pdfFullPath, "MASTER");
+                        else if (type == "3")
                             AddWatermark(pdfFullPath, pdfFullPath, "CONTROLLED COPY");
                     }
                 }

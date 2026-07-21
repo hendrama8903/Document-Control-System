@@ -67,11 +67,12 @@ namespace DMS.Models.Repo
                 new SqlParameter ( "@DOCUMENT_NAME", CheckNullValue(data.DOCUMENT_NAME) ),
                 new SqlParameter ( "@LEVEL", CheckNullValue(data.LEVEL) ),
                 new SqlParameter ( "@FILE_PATH", CheckNullValue(data.FILE_PATH) ),
+                new SqlParameter ( "@REVIEW_CYCLE_MONTHS", CheckNullValue(data.REVIEW_CYCLE_MONTHS) ),
                 new SqlParameter ( "@LOGIN_USER", loginUser ),
                 returnMsg
             };
 
-            string query = "EXEC @RETURN_VAL = [dbo].[sp_DocumentMaster_Insert] @DOCUMENT_CODE, @DOCUMENT_NAME, @LEVEL, @FILE_PATH, @LOGIN_USER, @RETURN_MSG OUTPUT";
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_DocumentMaster_Insert] @DOCUMENT_CODE, @DOCUMENT_NAME, @LEVEL, @FILE_PATH, @REVIEW_CYCLE_MONTHS, @LOGIN_USER, @RETURN_MSG OUTPUT";
             int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
@@ -91,11 +92,12 @@ namespace DMS.Models.Repo
                 new SqlParameter ( "@DOCUMENT_NAME", CheckNullValue(data.DOCUMENT_NAME) ),
                 new SqlParameter ( "@LEVEL", CheckNullValue(data.LEVEL) ),
                 new SqlParameter ( "@FILE_PATH", CheckNullValue(data.FILE_PATH) ),
+                new SqlParameter ( "@REVIEW_CYCLE_MONTHS", CheckNullValue(data.REVIEW_CYCLE_MONTHS) ),
                 new SqlParameter ( "@LOGIN_USER", loginUser ),
                 returnMsg
             };
 
-            string query = "EXEC @RETURN_VAL = [dbo].[sp_DocumentMaster_Update] @DOCUMENT_ID, @DOCUMENT_CODE, @DOCUMENT_NAME, @LEVEL, @FILE_PATH, @LOGIN_USER, @RETURN_MSG OUTPUT";
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_DocumentMaster_Update] @DOCUMENT_ID, @DOCUMENT_CODE, @DOCUMENT_NAME, @LEVEL, @FILE_PATH, @REVIEW_CYCLE_MONTHS, @LOGIN_USER, @RETURN_MSG OUTPUT";
             int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());

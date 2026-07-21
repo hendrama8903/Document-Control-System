@@ -653,6 +653,33 @@ body.adm-body {
     border-color: #9a3422;
 }
 
+/* Reject is a workflow action, not a permanent deletion — kept visually
+   distinct from Delete (btn-danger) so the two aren't mistaken for each other. */
+.adm-body .btn.btn-reject {
+    background: #B8722E;
+    border-color: #B8722E;
+    color: #fff;
+}
+
+.adm-body .btn.btn-reject:hover,
+.adm-body .btn.btn-reject:focus,
+.adm-body .btn.btn-reject:active {
+    background: #96591F;
+    border-color: #96591F;
+}
+
+/* Disabled buttons: flat grey instead of a dimmed brand color, so
+   enabled vs. disabled is unambiguous regardless of button color. */
+.adm-body .btn:disabled,
+.adm-body .btn.disabled {
+    background: #DCE1E7 !important;
+    border-color: #DCE1E7 !important;
+    color: #8A98A6 !important;
+    opacity: 1;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
 /* form */
 .adm-body .form-control {
     border-radius: 8px;
@@ -672,7 +699,7 @@ body.adm-body {
 .adm-body .table thead th {
     background: var(--paper-2);
     border-bottom: 1px solid var(--line);
-    color: var(--muted);
+    color: #4E5E6E;
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: .05em;

@@ -18,5 +18,6 @@ namespace DMS.Models.DB
         public int? LEVEL { get; set; }
         public string? LEVEL_VAL { get; set; }
         public string? FILE_PATH { get; set; }
+        public int? REVIEW_CYCLE_MONTHS { get; set; }
     }
 }

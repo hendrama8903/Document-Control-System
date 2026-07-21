@@ -126,6 +126,15 @@
                 { dataField: "DOCUMENT_CODE", caption: "Document Code", fixed: true, fixedPosition: "left" },
                 { dataField: "DOCUMENT_NAME", caption: "Document Name" },
                 { dataField: "LEVEL_VAL", caption: "Level", alignment: "center" },
+                {
+                    dataField: "REVIEW_CYCLE_MONTHS",
+                    caption: "Review Cycle",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.REVIEW_CYCLE_MONTHS;
+                        container.text(value ? value + " months" : "-");
+                    }
+                },
                 { dataField: "FILE_PATH", caption: "File Path" },
                 { dataField: "CREATED_BY", caption: "Created By", visible: false },
                 {
