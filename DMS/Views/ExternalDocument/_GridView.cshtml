@@ -1,0 +1,234 @@
+<link rel="stylesheet" href="~/css/devextreme/dx.light.css" />
+<script src="~/js/devextreme/dx.web.js"></script>
+
+<style>
+    #datagrid .dx-datagrid-filter-row .dx-texteditor {
+        border: 1px solid #d9d9d9;
+        border-radius: 6px;
+        background: #fff;
+    }
+
+    #datagrid .dx-datagrid-filter-row .dx-texteditor-input {
+        padding: 5px 8px;
+        min-height: 28px;
+    }
+</style>
+
+<div class="box-body">
+    <div id="datagrid"></div>
+</div>
+
+<script type="text/javascript">
+    function getSelectedRowData() {
+        var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
+        return rows.length > 0 ? rows[0] : null;
+    }
+
+    function updateActionButtons() {
+        var row = getSelectedRowData();
+        var selected = row != null;
+
+        $("#btn_edit").prop("disabled", !selected);
+        $("#btn_delete").prop("disabled", !selected);
+    }
+
+    function computeGridHeight() {
+        var gridTop = $("#datagrid").offset().top;
+        var footerHeight = $("#divFooter").outerHeight(true) || 0;
+
+        return Math.max(300, $(window).height() - gridTop - footerHeight - 40);
+    }
+
+    $(document).ready(function () {
+        $("#btn_add").prop("disabled", false);
+        $("#btn_edit").prop("disabled", true);
+        $("#btn_delete").prop("disabled", true);
+
+        var gridStore = new DevExpress.data.CustomStore({
+            key: "EXTERNAL_DOCUMENT_ID",
+            loadMode: "raw",
+            load: function () {
+                var d = $.Deferred();
+
+                $.ajax({
+                    type: "POST",
+                    url: "@Url.Action("Search", "ExternalDocument")",
+                    data: {
+                        draw: 1,
+                        start: 0,
+                        length: 100000,
+                        initialMode: false
+                    }
+                }).done(function (result) {
+                    d.resolve(result.data == "" ? [] : result.data);
+                }).fail(function () {
+                    d.reject("Data loading error");
+                });
+
+                return d.promise();
+            }
+        });
+
+        $("#datagrid").dxDataGrid({
+            dataSource: gridStore,
+            showBorders: true,
+            columnAutoWidth: true,
+            wordWrapEnabled: false,
+            sorting: { mode: "none" },
+            noDataText: "Data not found.",
+            height: computeGridHeight(),
+            filterRow: { visible: true, applyFilter: "auto" },
+            headerFilter: { visible: true },
+            toolbar: { visible: false },
+            selection: {
+                mode: "multiple",
+                showCheckBoxesMode: "always",
+                allowSelectAll: false
+            },
+            paging: { pageSize: 10 },
+            pager: {
+                visible: true,
+                displayMode: "compact",
+                showPageSizeSelector: true,
+                allowedPageSizes: [10, 25, 50, 100],
+                showInfo: true,
+                showNavigationButtons: true
+            },
+            columnChooser: {
+                enabled: true,
+                mode: "select"
+            },
+            columnFixing: { enabled: true },
+            onSelectionChanged: function (e) {
+                if (e.selectedRowKeys.length > 1) {
+                    e.component.selectRows(e.currentSelectedRowKeys, false);
+                    return;
+                }
+                updateActionButtons();
+            },
+            columns: [
+                { type: "selection", width: 40, fixed: true, fixedPosition: "left" },
+                {
+                    caption: "No",
+                    width: 50,
+                    alignment: "center",
+                    allowHiding: false,
+                    allowFiltering: false,
+                    fixed: true,
+                    fixedPosition: "left",
+                    cellTemplate: function (container, options) {
+                        var pageIndex = options.component.pageIndex();
+                        var pageSize = options.component.pageSize();
+                        container.text(pageIndex * pageSize + options.row.rowIndex + 1);
+                    }
+                },
+                { dataField: "DOCUMENT_NAME", caption: "Document Name", fixed: true, fixedPosition: "left" },
+                { dataField: "EXTERNAL_TYPE", caption: "External Type" },
+                { dataField: "REVISION_EDITION", caption: "Revision/Edition", alignment: "center" },
+                {
+                    dataField: "RECEIVED_DATE",
+                    caption: "Received Date",
+                    alignment: "right",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.RECEIVED_DATE;
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
+                    }
+                },
+                { dataField: "STORAGE_LOCATION", caption: "Storage Location" },
+                { dataField: "STORAGE_PIC", caption: "Storage PIC" },
+                { dataField: "REVIEW_FREQUENCY", caption: "Review Frequency" },
+                { dataField: "REVIEW_SOURCE", caption: "Review Source" },
+                {
+                    dataField: "LAST_CHECK_DATE",
+                    caption: "Last Check Date",
+                    alignment: "right",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.LAST_CHECK_DATE;
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
+                    }
+                },
+                {
+                    dataField: "NEXT_REVIEW_DATE",
+                    caption: "Next Review Date",
+                    alignment: "right",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.NEXT_REVIEW_DATE;
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
+                    }
+                },
+                { dataField: "STATUS_DISPLAY", caption: "Status", alignment: "center" },
+                { dataField: "INTERNAL_IMPACT_DISPLAY", caption: "Internal Impact" },
+                {
+                    caption: "Impacted Document",
+                    calculateCellValue: function (data) {
+                        if (!data.IMPACTED_DOCUMENT_CODE) return "";
+                        return data.IMPACTED_DOCUMENT_CODE + " - " + data.IMPACTED_DOCUMENT_NAME;
+                    }
+                },
+                { dataField: "DIVISION_NAME", caption: "Division", visible: false },
+                { dataField: "DEPARTMENT_NAME", caption: "Department", visible: false },
+                { dataField: "CREATED_BY", caption: "Created By", visible: false },
+                {
+                    dataField: "CREATED_DT",
+                    caption: "Created Date",
+                    alignment: "right",
+                    visible: false,
+                    cellTemplate: function (container, options) {
+                        var value = options.data.CREATED_DT;
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
+                    }
+                },
+                { dataField: "CHANGED_BY", caption: "Changed By", visible: false },
+                {
+                    dataField: "CHANGED_DT",
+                    caption: "Changed Date",
+                    alignment: "right",
+                    visible: false,
+                    cellTemplate: function (container, options) {
+                        var value = options.data.CHANGED_DT;
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
+                    }
+                },
+                {
+                    caption: "Action",
+                    alignment: "center",
+                    width: 70,
+                    allowHiding: false,
+                    allowFiltering: false,
+                    fixed: true,
+                    fixedPosition: "right",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+
+                        if (row.FILE_PATH == null || "@ViewData["Download-FilePath"]" == "False") {
+                            return;
+                        }
+
+                        $("<button>")
+                            .attr({ type: "button", title: "Download" })
+                            .addClass("btn btn-primary btn-sm")
+                            .html('<i class="fa fa-download"></i>')
+                            .on("click", function () {
+                                onDownload(row.FILE_PATH);
+                            })
+                            .appendTo(container);
+                    }
+                }
+            ]
+        });
+
+        $("#btn_columns").on("click", function () {
+            $("#datagrid").dxDataGrid("instance").showColumnChooser();
+        });
+
+        $("#btn_export").on("click", function () {
+            window.location.href = "@Url.Action("DownloadExcel", "ExternalDocument")";
+        });
+
+        $(window).on("resize", function () {
+            $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+        });
+
+        $('body').tooltip({ selector: '[data-toggle="tooltip"]' });
+    });
+</script>

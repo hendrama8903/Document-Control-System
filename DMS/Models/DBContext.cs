@@ -44,6 +44,7 @@ namespace DMS.Models
         public virtual DbSet<DocumentReport>? DocumentReport { get; set; }
         public virtual DbSet<DocumentMasterlist>? DocumentMasterlist { get; set; }
         public virtual DbSet<Select2DivisionUser>? Select2DivisionUser { get; set; }
+        public virtual DbSet<ExternalDocument>? ExternalDocument { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {

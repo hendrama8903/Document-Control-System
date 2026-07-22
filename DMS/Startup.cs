@@ -127,6 +127,11 @@ namespace DMS
                 x => x.SendRemindersAsync(),
                 Cron.Daily);
 
+            RecurringJob.AddOrUpdate<ExternalDocumentReviewReminderService>(
+                "external-document-review-reminder",
+                x => x.SendRemindersAsync(),
+                Cron.Daily);
+
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapHub<NotificationsHub>("/notificationsHub");
