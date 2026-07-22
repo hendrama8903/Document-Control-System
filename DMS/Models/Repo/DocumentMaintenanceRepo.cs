@@ -99,6 +99,38 @@ namespace DMS.Models.Repo
             return result;
         }
 
+        public DBResult ImportLegacyHistoryInsert(DocumentMaintenance data, string loginUser, DBContext db)
+        {
+            SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
+            SqlParameter returnMsg = CreateSqlParameterOutputString("@RETURN_MSG");
+
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                returnVal,
+                new SqlParameter ( "@DOCUMENT_CODE", CheckNullValue(data.DOCUMENT_CODE) ),
+                new SqlParameter ( "@DOCUMENT_TRANSACTION_NAME", CheckNullValue(data.DOCUMENT_TRANSACTION_NAME) ),
+                new SqlParameter ( "@DOCUMENT_ID", CheckNullValue(data.DOCUMENT_ID) ),
+                new SqlParameter ( "@LEVEL_CODE", CheckNullValue(data.LEVEL_CODE) ),
+                new SqlParameter ( "@DIVISION", CheckNullValue(data.DIVISION) ),
+                new SqlParameter ( "@DEPARTMENT", CheckNullValue(data.DEPARTMENT_ID) ),
+                new SqlParameter ( "@CLASSIFIED", CheckNullValue(data.CLASSIFIED) ),
+                new SqlParameter ( "@REVISION", CheckNullValue(data.REVISION) ),
+                new SqlParameter ( "@DOCUMENT_DATE", CheckNullValue(data.DOCUMENT_DATE) ),
+                new SqlParameter ( "@FILE_PATH", CheckNullValue(data.FILE_PATH) ),
+                new SqlParameter ( "@DOCUMENT_CREATOR", CheckNullValue(data.DOCUMENT_CREATOR) ),
+                new SqlParameter ( "@REASON", CheckNullValue(data.REASON) ),
+                new SqlParameter ( "@CREATED_BY", loginUser ),
+                returnMsg
+            };
+
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_DocumentMaintenance_ImportLegacyHistoryInsert] @DOCUMENT_CODE, @DOCUMENT_TRANSACTION_NAME, @DOCUMENT_ID, @LEVEL_CODE, " +
+                "@DIVISION, @DEPARTMENT, @CLASSIFIED, @REVISION, @DOCUMENT_DATE, @FILE_PATH, @DOCUMENT_CREATOR, @REASON, @CREATED_BY, @RETURN_MSG OUTPUT";
+            int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
+
+            DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
+            return result;
+        }
+
         public void MarkReviewReminded(int documentTransactionId, DBContext db)
         {
             List<SqlParameter> param = new List<SqlParameter>

@@ -247,39 +247,6 @@
         }
     }
 
-    function onPrintAttachment(attachment, documentId, approvalId) {
-        gAttachmentPath = attachment;
-        gDocumentId = documentId;
-        gApprovalId = approvalId;
-        printAttachment();
-    }
-
-    function printAttachment() {
-        popUpProgressShow();
-        $.ajax({
-            type: "POST",
-            url: "@Url.Action("printAttachment", "DocumentMaintenance")",
-            data: {
-                FILE_PATH: gAttachmentPath,
-                DOCUMENT_TRANSACTION_ID: gDocumentId,
-                type: "3"
-            },
-            success: function (result) {
-                if (result.status == true) {
-                    popUpProgressHide();
-                    printJS({ printable: result.data, type: 'pdf', showModal: true });
-                } else {
-                    popUpProgressHide();
-                    showErrorMesgGrowl(result.message);
-                }
-            },
-            error: function (result) {
-                popUpProgressHide();
-                showErrorMesgGrowl(result);
-            }
-        });
-    }
-
     function confirmPublish() {
         showConfirmMesg("Are you sure already published document ?", insertLog, "Confirmation");
     }

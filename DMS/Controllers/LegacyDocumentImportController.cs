@@ -70,6 +70,14 @@ namespace DMS.Controllers
                 ISheet referenceSheet = workbook.CreateSheet("Reference");
                 int refRow = 0;
 
+                IRow noteTitle = referenceSheet.CreateRow(refRow++);
+                noteTitle.CreateCell(0).SetCellValue("Document Revision History");
+                IRow noteLine1 = referenceSheet.CreateRow(refRow++);
+                noteLine1.CreateCell(0).SetCellValue("A Document Code may repeat across multiple rows, one row per past revision (e.g. Revision 0, 1, 2...).");
+                IRow noteLine2 = referenceSheet.CreateRow(refRow++);
+                noteLine2.CreateCell(0).SetCellValue("File Name is required only on the row with the highest Revision for that Document Code (it becomes the active document). Older revision rows may leave File Name blank.");
+                refRow += 1;
+
                 IRow catTitle = referenceSheet.CreateRow(refRow++);
                 catTitle.CreateCell(0).SetCellValue("Category Code");
                 catTitle.CreateCell(1).SetCellValue("Category Name");
@@ -155,6 +163,14 @@ namespace DMS.Controllers
                     return Json(new { status = false, message = "No data rows found in the Excel file." });
                 }
 
+                IList<DocumentMaintenance> existingDocs = documentMaintenanceRepo.Search(new DocumentMaintenance(), null, db, null, null);
+                Dictionary<string, int> existingCodeRevisions = existingDocs
+                    .Where(x => !string.IsNullOrEmpty(x.DOCUMENT_CODE))
+                    .GroupBy(x => x.DOCUMENT_CODE.ToUpper())
+                    .ToDictionary(g => g.Key, g => g.Max(x => x.REVISION ?? 0));
+
+                AssignRevisionGroups(rows, existingCodeRevisions);
+
                 using (ZipArchive archive = new ZipArchive(zipFile.OpenReadStream(), ZipArchiveMode.Read))
                 {
                     Dictionary<string, ZipArchiveEntry> zipEntries = archive.Entries
@@ -166,16 +182,10 @@ namespace DMS.Controllers
                     IList<DivisionMaster> divisions = divisionMasterRepo.Search(new DivisionMaster(), db, null, null);
                     IList<DepartmentMaster> departments = departmentMasterRepo.Search(new DepartmentMaster(), db, null, null);
                     IList<MSystem> classifications = mSystemRepo.Search(new MSystem { SYSTEM_TYPE = "CLASSIFIED" }, db, null, null);
-                    IList<DocumentMaintenance> existingDocs = documentMaintenanceRepo.Search(new DocumentMaintenance(), null, db, null, null);
-                    HashSet<string> existingCodes = existingDocs
-                        .Where(x => !string.IsNullOrEmpty(x.DOCUMENT_CODE))
-                        .Select(x => x.DOCUMENT_CODE.ToUpper())
-                        .ToHashSet();
-                    HashSet<string> seenInBatch = new HashSet<string>();
 
                     foreach (LegacyDocumentImportRow row in rows)
                     {
-                        ValidateRow(row, zipEntries, categories, divisions, departments, classifications, existingCodes, seenInBatch);
+                        ValidateRow(row, zipEntries, categories, divisions, departments, classifications);
                     }
 
                     if (!commitMode)
@@ -185,11 +195,14 @@ namespace DMS.Controllers
                             status = true,
                             data = rows.Select(x => new
                             {
-                                x.RowNumber,
-                                x.FileName,
-                                x.DocumentCode,
-                                x.DocumentName,
-                                x.Valid,
+                                rowNumber = x.RowNumber,
+                                fileName = x.FileName,
+                                documentCode = x.DocumentCode,
+                                documentName = x.DocumentName,
+                                valid = x.Valid,
+                                isCurrentRevision = x.IsCurrentRevision,
+                                isHistoryOnlyAppend = x.IsHistoryOnlyAppend,
+                                revision = x.Revision,
                                 errors = x.Errors
                             }),
                             validCount = rows.Count(x => x.Valid),
@@ -210,69 +223,156 @@ namespace DMS.Controllers
 
                     List<ImportRowResult> results = new List<ImportRowResult>();
 
-                    foreach (LegacyDocumentImportRow row in rows)
+                    // Process per Document Code group so the current (highest) revision is
+                    // always saved first - history rows for that same document only get
+                    // inserted if the active document was saved successfully.
+                    var groups = rows
+                        .GroupBy(x => (x.DocumentCode ?? "").Trim().ToUpper())
+                        .Select(g => g.OrderByDescending(x => x.IsCurrentRevision).ThenBy(x => x.Revision ?? 0).ToList());
+
+                    foreach (List<LegacyDocumentImportRow> group in groups)
                     {
-                        if (!row.Valid)
-                        {
-                            results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = false, Message = string.Join("; ", row.Errors) });
-                            continue;
-                        }
+                        bool currentRevisionSaved = false;
 
-                        try
+                        foreach (LegacyDocumentImportRow row in group)
                         {
-                            ZipArchiveEntry entry = zipEntries[row.FileName.ToLower()];
-                            string extension = Path.GetExtension(entry.Name);
-                            string safeName = row.DocumentCode.Replace(" ", "_").Replace("/", "_");
-                            string savedFileName = safeName + "-" + DateTime.Now.ToFileTime() + extension;
-                            string savedFullPath = fullFolderPath + savedFileName;
-
-                            using (Stream entryStream = entry.Open())
-                            using (FileStream fileStream = new FileStream(savedFullPath, FileMode.Create))
+                            if (!row.Valid)
                             {
-                                entryStream.CopyTo(fileStream);
+                                results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = false, Message = string.Join("; ", row.Errors) });
+                                continue;
                             }
 
-                            DocumentMaintenance data = new DocumentMaintenance
+                            if (row.IsCurrentRevision)
                             {
-                                DOCUMENT_CODE = row.DocumentCode,
-                                DOCUMENT_TRANSACTION_NAME = row.DocumentName,
-                                DOCUMENT_ID = row.ResolvedDocumentId,
-                                LEVEL_CODE = row.ResolvedLevelCode,
-                                DIVISION = row.DivisionCode,
-                                DEPARTMENT_ID = row.ResolvedDepartmentId,
-                                CLASSIFIED = int.Parse(row.ClassificationCode),
-                                REVISION = row.Revision,
-                                DOCUMENT_DATE = row.DocumentDate,
-                                FILE_PATH = folderPath + savedFileName,
-                                DOCUMENT_CREATOR = string.IsNullOrEmpty(row.DocumentCreator) ? username : row.DocumentCreator,
-                                REASON = "Digitalisasi dokumen lama"
-                            };
+                                string savedFullPath = null;
 
-                            DBResult result = documentMaintenanceRepo.ImportLegacyInsert(data, username, db);
+                                try
+                                {
+                                    ZipArchiveEntry entry = zipEntries[row.FileName.ToLower()];
+                                    string extension = Path.GetExtension(entry.Name);
+                                    string safeName = row.DocumentCode.Replace(" ", "_").Replace("/", "_");
+                                    string savedFileName = safeName + "-" + DateTime.Now.ToFileTime() + extension;
+                                    savedFullPath = fullFolderPath + savedFileName;
 
-                            if (result.status)
-                            {
-                                results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = true, Message = "Imported" });
+                                    using (Stream entryStream = entry.Open())
+                                    using (FileStream fileStream = new FileStream(savedFullPath, FileMode.Create))
+                                    {
+                                        entryStream.CopyTo(fileStream);
+                                    }
+
+                                    DocumentMaintenance data = new DocumentMaintenance
+                                    {
+                                        DOCUMENT_CODE = row.DocumentCode,
+                                        DOCUMENT_TRANSACTION_NAME = row.DocumentName,
+                                        DOCUMENT_ID = row.ResolvedDocumentId,
+                                        LEVEL_CODE = row.ResolvedLevelCode,
+                                        DIVISION = row.DivisionCode,
+                                        DEPARTMENT_ID = row.ResolvedDepartmentId,
+                                        CLASSIFIED = int.Parse(row.ClassificationCode),
+                                        REVISION = row.Revision,
+                                        DOCUMENT_DATE = row.DocumentDate,
+                                        FILE_PATH = folderPath + savedFileName,
+                                        DOCUMENT_CREATOR = string.IsNullOrEmpty(row.DocumentCreator) ? username : row.DocumentCreator,
+                                        REASON = "Digitalisasi dokumen lama"
+                                    };
+
+                                    DBResult result = documentMaintenanceRepo.ImportLegacyInsert(data, username, db);
+                                    currentRevisionSaved = result.status;
+
+                                    if (result.status)
+                                    {
+                                        results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = true, Message = "Imported" });
+                                    }
+                                    else
+                                    {
+                                        if (System.IO.File.Exists(savedFullPath))
+                                        {
+                                            System.IO.File.Delete(savedFullPath);
+                                        }
+                                        results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = false, Message = result.message });
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = false, Message = ex.Message });
+                                }
                             }
                             else
                             {
-                                if (System.IO.File.Exists(savedFullPath))
+                                // History-only append groups (Document Code already has an active
+                                // document outside this batch) never have a "current" row to wait
+                                // on - they go straight to the history insert below.
+                                if (!row.IsHistoryOnlyAppend && !currentRevisionSaved)
                                 {
-                                    System.IO.File.Delete(savedFullPath);
+                                    results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = false, Message = "Skipped: the current revision for Document Code '" + row.DocumentCode + "' was not saved successfully." });
+                                    continue;
                                 }
-                                results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = false, Message = result.message });
+
+                                try
+                                {
+                                    string historyFilePath = null;
+
+                                    if (!string.IsNullOrWhiteSpace(row.FileName) && zipEntries.TryGetValue(row.FileName.ToLower(), out ZipArchiveEntry historyEntry))
+                                    {
+                                        string extension = Path.GetExtension(historyEntry.Name);
+                                        string safeName = row.DocumentCode.Replace(" ", "_").Replace("/", "_");
+                                        string savedFileName = safeName + "-rev" + row.Revision + "-" + DateTime.Now.ToFileTime() + extension;
+                                        string savedFullPath = fullFolderPath + savedFileName;
+
+                                        using (Stream entryStream = historyEntry.Open())
+                                        using (FileStream fileStream = new FileStream(savedFullPath, FileMode.Create))
+                                        {
+                                            entryStream.CopyTo(fileStream);
+                                        }
+
+                                        historyFilePath = folderPath + savedFileName;
+                                    }
+
+                                    DocumentMaintenance historyData = new DocumentMaintenance
+                                    {
+                                        DOCUMENT_CODE = row.DocumentCode,
+                                        DOCUMENT_TRANSACTION_NAME = row.DocumentName,
+                                        DOCUMENT_ID = row.ResolvedDocumentId,
+                                        LEVEL_CODE = row.ResolvedLevelCode,
+                                        DIVISION = row.DivisionCode,
+                                        DEPARTMENT_ID = row.ResolvedDepartmentId,
+                                        CLASSIFIED = int.Parse(row.ClassificationCode),
+                                        REVISION = row.Revision,
+                                        DOCUMENT_DATE = row.DocumentDate,
+                                        FILE_PATH = historyFilePath,
+                                        DOCUMENT_CREATOR = string.IsNullOrEmpty(row.DocumentCreator) ? username : row.DocumentCreator,
+                                        REASON = "Digitalisasi dokumen lama (histori)"
+                                    };
+
+                                    DBResult historyResult = documentMaintenanceRepo.ImportLegacyHistoryInsert(historyData, username, db);
+
+                                    if (historyResult.status)
+                                    {
+                                        results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = true, Message = "Imported as history (revision " + row.Revision + ")" });
+                                    }
+                                    else
+                                    {
+                                        results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = false, Message = historyResult.message });
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = false, Message = ex.Message });
+                                }
                             }
-                        }
-                        catch (Exception ex)
-                        {
-                            results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = false, Message = ex.Message });
                         }
                     }
 
                     return Json(new
                     {
                         status = true,
-                        data = results,
+                        data = results.Select(x => new
+                        {
+                            rowNumber = x.RowNumber,
+                            documentCode = x.DocumentCode,
+                            status = x.Status,
+                            message = x.Message
+                        }),
                         successCount = results.Count(x => x.Status),
                         failCount = results.Count(x => !x.Status)
                     });
@@ -320,13 +420,90 @@ namespace DMS.Controllers
             public string Message { get; set; }
         }
 
+        // Groups rows by Document Code and marks the highest-Revision row in each group as
+        // IsCurrentRevision - that row becomes the active document; the rest become history
+        // entries carrying the document's past revisions (see plan: legacy import history migration).
+        //
+        // If the Document Code already has an active document in the system (existingCodeRevisions),
+        // the whole group is instead treated as a history-only backfill: no row becomes "current"
+        // (the real active document lives outside this batch), and every row's Revision must be
+        // lower than the currently active revision - this lets a document already imported/created
+        // earlier still receive its missing older history afterwards.
+        private void AssignRevisionGroups(List<LegacyDocumentImportRow> rows, Dictionary<string, int> existingCodeRevisions)
+        {
+            var groups = rows
+                .Where(x => !string.IsNullOrWhiteSpace(x.DocumentCode))
+                .GroupBy(x => x.DocumentCode.Trim().ToUpper());
+
+            foreach (var group in groups)
+            {
+                List<LegacyDocumentImportRow> groupRows = group.ToList();
+                string codeUpper = group.Key;
+
+                HashSet<int> duplicateRevisions = groupRows
+                    .Where(x => x.Revision != null)
+                    .GroupBy(x => x.Revision.Value)
+                    .Where(g => g.Count() > 1)
+                    .Select(g => g.Key)
+                    .ToHashSet();
+
+                foreach (LegacyDocumentImportRow row in groupRows)
+                {
+                    if (row.Revision != null && duplicateRevisions.Contains(row.Revision.Value))
+                    {
+                        row.AddError("Revision " + row.Revision + " is used by more than one row for Document Code '" + row.DocumentCode + "'.");
+                    }
+                }
+
+                if (groupRows.Count > 1)
+                {
+                    LegacyDocumentImportRow first = groupRows[0];
+                    foreach (LegacyDocumentImportRow row in groupRows.Skip(1))
+                    {
+                        if (!string.Equals(row.DocumentName, first.DocumentName, StringComparison.OrdinalIgnoreCase) ||
+                            !string.Equals(row.CategoryCode, first.CategoryCode, StringComparison.OrdinalIgnoreCase) ||
+                            !string.Equals(row.DivisionCode, first.DivisionCode, StringComparison.OrdinalIgnoreCase) ||
+                            !string.Equals(row.DepartmentCode, first.DepartmentCode, StringComparison.OrdinalIgnoreCase) ||
+                            !string.Equals(row.ClassificationCode, first.ClassificationCode, StringComparison.OrdinalIgnoreCase))
+                        {
+                            row.AddError("Row is not consistent with other revision rows for Document Code '" + row.DocumentCode + "' (Document Name/Category/Division/Department/Classification must match).");
+                        }
+                    }
+                }
+
+                if (existingCodeRevisions.TryGetValue(codeUpper, out int activeRevision))
+                {
+                    foreach (LegacyDocumentImportRow row in groupRows)
+                    {
+                        row.IsHistoryOnlyAppend = true;
+
+                        if (row.Revision != null && row.Revision.Value >= activeRevision)
+                        {
+                            row.AddError("Revision " + row.Revision + " is not lower than the currently active revision (" + activeRevision + ") for Document Code '" + row.DocumentCode + "'. Legacy Import can only backfill older history for a document that already exists - use Document Maintenance to revise the active document instead.");
+                        }
+                    }
+                }
+                else
+                {
+                    int? maxRevision = groupRows.Max(x => x.Revision);
+                    if (maxRevision != null)
+                    {
+                        groupRows.First(x => x.Revision == maxRevision).IsCurrentRevision = true;
+                    }
+                }
+            }
+        }
+
         private void ValidateRow(LegacyDocumentImportRow row, Dictionary<string, ZipArchiveEntry> zipEntries,
             IList<DocumentMaster> categories, IList<DivisionMaster> divisions, IList<DepartmentMaster> departments,
-            IList<MSystem> classifications, HashSet<string> existingCodes, HashSet<string> seenInBatch)
+            IList<MSystem> classifications)
         {
             if (string.IsNullOrWhiteSpace(row.FileName))
             {
-                row.AddError("File Name is required.");
+                if (row.IsCurrentRevision)
+                {
+                    row.AddError("File Name is required for the current (highest) revision row.");
+                }
             }
             else if (!zipEntries.ContainsKey(row.FileName.ToLower()))
             {
@@ -336,18 +513,6 @@ namespace DMS.Controllers
             if (string.IsNullOrWhiteSpace(row.DocumentCode))
             {
                 row.AddError("Document Code is required.");
-            }
-            else
-            {
-                string codeUpper = row.DocumentCode.ToUpper();
-                if (existingCodes.Contains(codeUpper))
-                {
-                    row.AddError("Document Code '" + row.DocumentCode + "' is already registered in the system.");
-                }
-                else if (!seenInBatch.Add(codeUpper))
-                {
-                    row.AddError("Document Code '" + row.DocumentCode + "' appears more than once in this batch.");
-                }
             }
 
             if (string.IsNullOrWhiteSpace(row.DocumentName))
@@ -394,13 +559,20 @@ namespace DMS.Controllers
                 {
                     row.AddError("Department Code '" + row.DepartmentCode + "' does not match any Department.");
                 }
-                else if (!string.IsNullOrWhiteSpace(row.DivisionCode) && !string.Equals(matchedDepartment.DIVISION, row.DivisionCode, StringComparison.OrdinalIgnoreCase))
-                {
-                    row.AddError("Department '" + row.DepartmentCode + "' does not belong to Division '" + row.DivisionCode + "'.");
-                }
                 else
                 {
-                    row.ResolvedDepartmentId = matchedDepartment.DEPARTMENT_ID;
+                    // DepartmentMasterRepo.Search (sp_DepartmentMaster_Search) returns DIVISION
+                    // formatted as "{code} - {name}" for dropdown display elsewhere in the app -
+                    // extract just the code before comparing against the Excel's raw Division Code.
+                    string matchedDivisionCode = matchedDepartment.DIVISION?.Split(" - ", 2)[0].Trim();
+                    if (!string.IsNullOrWhiteSpace(row.DivisionCode) && !string.Equals(matchedDivisionCode, row.DivisionCode, StringComparison.OrdinalIgnoreCase))
+                    {
+                        row.AddError("Department '" + row.DepartmentCode + "' does not belong to Division '" + row.DivisionCode + "'.");
+                    }
+                    else
+                    {
+                        row.ResolvedDepartmentId = matchedDepartment.DEPARTMENT_ID;
+                    }
                 }
             }
 

@@ -1,0 +1,96 @@
+<script type="text/javascript">
+    var gSeqType = null;
+    var gSeqCode = null;
+
+    $(document).ready(function() {
+        $("#btn_edit").on("click", function() {
+            onEditPrepare();
+        });
+
+        $("#btn_save").on("click", function() {
+            confirmEditData();
+        });
+    });
+
+    function onSearch() {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        grid.clearSelection();
+        grid.refresh();
+    }
+
+    function onEditPrepare() {
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gSeqType = row.SEQ_TYPE;
+        gSeqCode = row.SEQ_CODE;
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetByKey", "MSequence")",
+            async: false,
+            data: {
+                SEQ_TYPE: gSeqType,
+                SEQ_CODE: gSeqCode
+            },
+            success: function(result) {
+                if (result.status == true) {
+                    var data = result.data;
+
+                    $('#modal-title').html("Edit Document Numbering");
+                    $('#editSeqCode').val(data.SEQ_CODE);
+                    $('#editSeqType').val(data.SEQ_TYPE);
+                    $('#editSeqNo').val(data.SEQ_NO).attr("min", data.SEQ_NO);
+
+                    $("#modalAddEdit").modal();
+                    $('#modalAddEdit').on('shown.bs.modal', function() {
+                        $('#editSeqNo').focus();
+                    });
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function(result) {
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function confirmEditData() {
+        showConfirmMesg("Are you sure you want to continue process?", editData, "Confirmation");
+    }
+
+    function editData() {
+        popUpProgressShow();
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("Update", "MSequence")",
+            dataType: 'json',
+            data: {
+                OLD_SEQ_TYPE: gSeqType,
+                OLD_SEQ_CODE: gSeqCode,
+                SEQ_TYPE: $('#editSeqType').val(),
+                SEQ_CODE: $('#editSeqCode').val(),
+                SEQ_NO: $('#editSeqNo').val()
+            },
+            success: function(result) {
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    popUpProgressHide();
+                    $("#modalAddEdit").modal('hide');
+                } else {
+                    showErrorMesgGrowl(result.message);
+                    popUpProgressHide();
+                }
+            },
+            error: function(result) {
+                showErrorMesgGrowl(result);
+                popUpProgressHide();
+            }
+        });
+    }
+</script>

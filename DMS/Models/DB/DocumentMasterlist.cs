@@ -22,6 +22,7 @@ namespace DMS.Models.DB
         public string? ITEM_CHANGED { get; set; }
         public string? REASON { get; set; }
         public string? DOCUMENT_CREATOR { get; set; }
+        public string? FILE_PATH { get; set; }
         public string? CREATED_BY { get; set; }
         public DateTime? CREATED_DT { get; set; }
         public string? CHANGED_BY { get; set; }

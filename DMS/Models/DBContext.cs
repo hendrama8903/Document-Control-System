@@ -45,6 +45,7 @@ namespace DMS.Models
         public virtual DbSet<DocumentMasterlist>? DocumentMasterlist { get; set; }
         public virtual DbSet<Select2DivisionUser>? Select2DivisionUser { get; set; }
         public virtual DbSet<ExternalDocument>? ExternalDocument { get; set; }
+        public virtual DbSet<MSequence>? MSequence { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -52,6 +53,12 @@ namespace DMS.Models
             {
                 table.SYSTEM_TYPE,
                 table.SYSTEM_CODE
+            });
+
+            builder.Entity<MSequence>().HasKey(table => new
+            {
+                table.SEQ_TYPE,
+                table.SEQ_CODE
             });
 
             builder.Entity<AuthMenu>().HasKey(table => new

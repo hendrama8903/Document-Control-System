@@ -1,9 +1,7 @@
-            <!-- RECOMMIT DINA -->
 <link rel="stylesheet" href="~/css/devextreme/dx.light.css" />
 <script src="~/js/devextreme/dx.web.js"></script>
 
 <style>
-    /* pastikan editor filter row terlihat jelas (hindari bentrok styling tema) */
     #datagrid .dx-datagrid-filter-row .dx-texteditor {
         border: 1px solid #d9d9d9;
         border-radius: 6px;
@@ -28,8 +26,9 @@
 
     function updateActionButtons() {
         var row = getSelectedRowData();
+        var selected = row != null;
 
-        $("#btn_publish").prop("disabled", !(row != null && (row.STATUS == 2 || row.STATUS == 5) && row.PUBLISH_FLAG != 1));
+        $("#btn_edit").prop("disabled", !selected);
     }
 
     function computeGridHeight() {
@@ -40,16 +39,17 @@
     }
 
     $(document).ready(function () {
-        $("#btn_publish").prop("disabled", true);
+        $("#btn_edit").prop("disabled", true);
 
         var gridStore = new DevExpress.data.CustomStore({
+            key: ["SEQ_TYPE", "SEQ_CODE"],
             loadMode: "raw",
             load: function () {
                 var d = $.Deferred();
 
                 $.ajax({
                     type: "POST",
-                    url: "@Url.Action("Search", "UserDashboard")",
+                    url: "@Url.Action("Search", "MSequence")",
                     data: {
                         draw: 1,
                         start: 0,
@@ -119,71 +119,9 @@
                         container.text(pageIndex * pageSize + options.row.rowIndex + 1);
                     }
                 },
-                { dataField: "DOCUMENT_CODE", caption: "Document No", fixed: true, fixedPosition: "left" },
-                { dataField: "DOCUMENT_NAME", caption: "Document Name" },
-                {
-                    caption: "Status",
-                    alignment: "center",
-                    calculateCellValue: function (row) {
-                        return row.STATUS == 0 ? "REQUESTED" : row.STATUS_VAL;
-                    },
-                    cellTemplate: function (container, options) {
-                        var row = options.data;
-                        var labelClass = "label label-danger";
-                        var text = row.STATUS_VAL;
-
-                        if (row.STATUS == 0) {
-                            labelClass = "label label-info";
-                            text = "REQUESTED";
-                        } else if (row.STATUS == 1) {
-                            labelClass = "label label-warning";
-                        } else if (row.STATUS == 2 || row.STATUS == 5) {
-                            labelClass = "label label-success";
-                        }
-
-                        $("<span>").addClass(labelClass).text(text).appendTo(container);
-                    }
-                },
-                {
-                    caption: "Published",
-                    alignment: "center",
-                    calculateCellValue: function (row) {
-                        return row.PUBLISH_FLAG == 1 ? "YES" : "NO";
-                    },
-                    cellTemplate: function (container, options) {
-                        var published = options.data.PUBLISH_FLAG == 1;
-
-                        $("<span>")
-                            .addClass(published ? "label label-success" : "label label-warning")
-                            .text(published ? "YES" : "NO")
-                            .appendTo(container);
-                    }
-                },
-                { dataField: "REVISION", caption: "Revision", alignment: "center" },
-                {
-                    caption: "Division",
-                    calculateCellValue: function (row) {
-                        return row.DIVISION + " - " + row.DIVISION_NAME;
-                    }
-                },
-                {
-                    caption: "Department",
-                    calculateCellValue: function (row) {
-                        return row.DEPARTMENT_CODE + " - " + row.DEPARTMENT_NAME;
-                    }
-                },
-                { dataField: "CLASSIFIED_VAL", caption: "Classified" },
-                {
-                    dataField: "DOCUMENT_DATE",
-                    caption: "Date",
-                    alignment: "center",
-                    cellTemplate: function (container, options) {
-                        var value = options.data.DOCUMENT_DATE;
-                        container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
-                    }
-                },
-                { dataField: "ITEM_CHANGED", caption: "Item Changed" },
-                { dataField: "REASON", caption: "Reason" },
+                { dataField: "SEQ_CODE", caption: "Sequence Code (Document Prefix)", fixed: true, fixedPosition: "left" },
+                { dataField: "SEQ_TYPE", caption: "Type", alignment: "center", width: 100 },
+                { dataField: "SEQ_NO", caption: "Last Number Used", alignment: "center", width: 140 },
                 { dataField: "CREATED_BY", caption: "Created By", visible: false },
                 {
                     dataField: "CREATED_DT",
@@ -192,45 +130,17 @@
                     visible: false,
                     cellTemplate: function (container, options) {
                         var value = options.data.CREATED_DT;
-                        container.text(value != null ? moment(value).format("DD-MM-YYYY hh:mm:ss") : "");
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
                     }
                 },
-                { dataField: "CHANGED_BY", caption: "Changed By", visible: false },
+                { dataField: "CHANGED_BY", caption: "Changed By" },
                 {
                     dataField: "CHANGED_DT",
                     caption: "Changed Date",
                     alignment: "right",
-                    visible: false,
                     cellTemplate: function (container, options) {
                         var value = options.data.CHANGED_DT;
-                        container.text(value != null ? moment(value).format("DD-MM-YYYY hh:mm:ss") : "");
-                    }
-                },
-                {
-                    caption: "Action",
-                    alignment: "center",
-                    width: 60,
-                    allowHiding: false,
-                    allowFiltering: false,
-                    fixed: true,
-                    fixedPosition: "right",
-                    cellTemplate: function (container, options) {
-                        var row = options.data;
-
-                        if (row.STATUS == 0) {
-                            return;
-                        }
-
-                        container.css("white-space", "nowrap");
-
-                        $("<button>")
-                            .attr({ type: "button", title: "View" })
-                            .addClass("btn btn-primary btn-sm")
-                            .html('<i class="fa fa-eye"></i>')
-                            .on("click", function () {
-                                onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
-                            })
-                            .appendTo(container);
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY HH:mm") : "");
                     }
                 }
             ]

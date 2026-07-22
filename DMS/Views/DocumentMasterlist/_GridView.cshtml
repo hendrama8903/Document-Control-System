@@ -6,6 +6,19 @@
 </div>
 
 <script type="text/javascript">
+    function viewAttachment(filePath, documentTransactionId) {
+        if (filePath == null) {
+            showErrorMesgGrowl("This data does not have an attachment");
+            return;
+        }
+
+        var link = '@Html.Raw(Url.Action("ViewAttachment", "DocumentMaintenance", new { FILE_PATH = "-1", DOCUMENT_TRANSACTION_ID = "-2", type = "-3" }))';
+        link = link.replace("-1", filePath);
+        link = link.replace("-2", documentTransactionId);
+        link = link.replace("-3", "1");
+        window.open(link, '_blank');
+    }
+
     function computeGridHeight() {
         var gridTop = $("#datagrid").offset().top;
         var footerHeight = $("#divFooter").outerHeight(true) || 0;
@@ -152,6 +165,31 @@
                     cellTemplate: function (container, options) {
                         var value = options.data.CHANGED_DT;
                         container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
+                    }
+                },
+                {
+                    caption: "Action",
+                    alignment: "center",
+                    width: 70,
+                    allowHiding: false,
+                    allowFiltering: false,
+                    fixed: true,
+                    fixedPosition: "right",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+
+                        if (row.FILE_PATH == null) {
+                            return;
+                        }
+
+                        $("<button>")
+                            .attr({ type: "button", title: "View" })
+                            .addClass("btn btn-primary btn-sm")
+                            .html('<i class="fa fa-eye"></i>')
+                            .on("click", function () {
+                                viewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+                            })
+                            .appendTo(container);
                     }
                 }
             ]

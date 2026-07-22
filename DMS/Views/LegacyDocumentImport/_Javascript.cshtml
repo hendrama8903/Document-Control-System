@@ -16,6 +16,18 @@
         });
     });
 
+    function resetUploadForm() {
+        document.getElementById("excelFile").value = "";
+        document.getElementById("zipFile").value = "";
+
+        $("#resultSummary").hide();
+        $("#tblImportResult").hide();
+        $("#tblImportResultBody").empty();
+
+        gLastPreviewHadValidRows = false;
+        $("#btn_import").prop("disabled", true);
+    }
+
     function runImport(commitMode) {
         var excelInput = document.getElementById("excelFile");
         var zipInput = document.getElementById("zipFile");
@@ -54,10 +66,17 @@
                 }
 
                 if (commitMode) {
-                    renderImportReport(result.data, result.successCount, result.failCount);
-                    showSuccessMesgGrowl(result.successCount + " document(s) imported successfully.");
-                    gLastPreviewHadValidRows = false;
-                    $("#btn_import").prop("disabled", true);
+                    if (result.failCount > 0) {
+                        // Keep the grid so the user can see which rows failed and fix them.
+                        renderImportReport(result.data, result.successCount, result.failCount);
+                        showErrorMesgGrowl(result.successCount + " imported, " + result.failCount + " failed - see details below.");
+                        gLastPreviewHadValidRows = false;
+                        $("#btn_import").prop("disabled", true);
+                    } else {
+                        // Everything imported cleanly - reset the form for the next batch.
+                        showSuccessMesgGrowl(result.successCount + " document(s) imported successfully.");
+                        resetUploadForm();
+                    }
                 } else {
                     renderPreview(result.data, result.validCount, result.invalidCount);
                     gLastPreviewHadValidRows = result.validCount > 0;
@@ -86,7 +105,18 @@
             tr.append($("<td>").text(row.documentCode || "-"));
             tr.append($("<td>").text(row.documentName || "-"));
             tr.append($("<td>").addClass(row.valid ? "li-status-ok" : "li-status-bad").text(row.valid ? "Valid" : "Invalid"));
-            tr.append($("<td>").text((row.errors || []).join("; ")));
+
+            var detail = (row.errors || []).join("; ");
+            if (!detail) {
+                if (row.isCurrentRevision) {
+                    detail = "Current revision (rev " + row.revision + ") - will become the active document";
+                } else if (row.isHistoryOnlyAppend) {
+                    detail = "Historical revision (rev " + row.revision + ") - will be appended to the already-active document";
+                } else {
+                    detail = "Historical revision (rev " + row.revision + ")";
+                }
+            }
+            tr.append($("<td>").text(detail));
             tbody.append(tr);
         });
 
