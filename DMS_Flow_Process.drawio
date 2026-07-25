@@ -1,0 +1,159 @@
+<mxfile host="app.diagrams.net" agent="Claude" pages="2">
+  <diagram name="DMS Ezzio - Alur Proses Dokumen" id="dms-flow-process">
+    <mxGraphModel dx="1800" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2500" pageHeight="820" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <!-- Title -->
+        <mxCell id="title" value="DMS Ezzio - Alur Proses Dokumen (Staff -&gt; QMS/P4D -&gt; Publish)" style="text;html=1;fontSize=20;fontStyle=1;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="10" width="900" height="30" as="geometry" />
+        </mxCell>
+        <!-- Swimlane backgrounds -->
+        <mxCell id="lane1" value="STAFF (Pembuat Dokumen)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#999999;verticalAlign=top;align=left;spacingLeft=10;spacingTop=6;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="60" width="2420" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="lane2" value="QMS / DOCUMENT CONTROL (P4D)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EAF2FB;strokeColor=#6C8EBF;verticalAlign=top;align=left;spacingLeft=10;spacingTop=6;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="230" width="2420" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="lane3" value="DEPARTMENT HEAD / PIC (Publish)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EAF6EC;strokeColor=#82B366;verticalAlign=top;align=left;spacingLeft=10;spacingTop=6;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="40" y="420" width="2420" height="170" as="geometry" />
+        </mxCell>
+        <!-- STAFF lane nodes -->
+        <mxCell id="n1" value="Buat / Revisi Dokumen&#xa;(DocumentMaintenance)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="110" width="180" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n2" value="Approval Berjenjang&#xa;(ApprovalHeader / Detail)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="110" width="180" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n3" value="Disetujui?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="560" y="100" width="150" height="90" as="geometry" />
+        </mxCell>
+        <!-- QMS lane nodes -->
+        <mxCell id="n4" value="Daftarkan ke P4D&#xa;Status: DRAFT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="770" y="285" width="170" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n5" value="QMS Receive&#xa;atau Reject?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="270" width="150" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="n9" value="Status: REJECTED&#xa;(notifikasi ke pembuat)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="80" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="n6" value="Status: RECEIVED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="285" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n7" value="Assign Distribution&#xa;(pilih departemen tujuan)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1430" y="285" width="190" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n8" value="Send&#xa;Status: SENT / PARTIALLY SENT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1680" y="285" width="200" height="70" as="geometry" />
+        </mxCell>
+        <!-- DEPARTMENT lane nodes -->
+        <mxCell id="n10" value="Terima Dokumen&#xa;(salinan fisik / digital)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1940" y="475" width="180" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n11" value="Klik Publish&#xa;(UserDashboard)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="2160" y="475" width="170" height="70" as="geometry" />
+        </mxCell>
+        <!-- End node (back near top, aligned above n11) -->
+        <mxCell id="n13" value="Status Dokumen:&#xa;PUBLISHED / EFFECTIVE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="2160" y="80" width="200" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n12" value="Semua departemen&#xa;tujuan sudah Publish?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="2160" y="330" width="170" height="100" as="geometry" />
+        </mxCell>
+        <!-- Legend -->
+        <mxCell id="legendBox" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CCCCCC;" vertex="1" parent="1">
+          <mxGeometry x="80" y="620" width="500" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="legendTitle" value="Keterangan" style="text;html=1;fontStyle=1;fontSize=13;align=left;" vertex="1" parent="1">
+          <mxGeometry x="95" y="628" width="200" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legendProc" value="Proses" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="95" y="655" width="110" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="legendDec" value="Keputusan" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="220" y="650" width="110" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="legendEnd" value="Selesai / Diterima" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="345" y="655" width="110" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="legendRej" value="Ditolak" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="95" y="700" width="110" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="legendNote" value="Catatan: P4D = Proses distribusi dokumen fisik oleh QMS.&#xa;Publish = konfirmasi tiap departemen sudah menerima &amp; memberlakukan dokumen." style="text;html=1;fontSize=11;align=left;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="95" y="745" width="460" height="15" as="geometry" />
+        </mxCell>
+        <!-- Edges: main flow -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="n1" target="n2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="n2" target="n3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="Ya (Approved)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="n3" target="n4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="Tidak (Rejected) - revisi ulang" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#B85450;fontColor=#B85450;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="n3" target="n1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="635" y="40" />
+              <mxPoint x="170" y="40" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="n4" target="n5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="Receive" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="n5" target="n6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="Reject" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#B85450;fontColor=#B85450;" edge="1" parent="1" source="n5" target="n9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="Kembali ke Staff untuk revisi" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#B85450;fontColor=#B85450;" edge="1" parent="1" source="n9" target="n1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="170" y="60" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="n6" target="n7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="n7" target="n8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="n8" target="n10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="n10" target="n11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="n11" target="n12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" value="Ya" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" edge="1" parent="1" source="n12" target="n13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" value="Belum lengkap - menunggu&#xa;departemen lain publish" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;strokeColor=#B8860B;fontColor=#B8860B;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="n12" target="n12">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2400" y="380" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="LB2UiuJFg8HZl6m5-wWt" name="Halaman-2">
+    <mxGraphModel dx="1030" dy="527" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="LA714xlvFUcwf_Hr7scz-1" parent="1" style="swimlane;horizontal=0;whiteSpace=wrap;html=1;" value="Creator Document" vertex="1">
+          <mxGeometry height="200" width="840" x="40" y="40" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

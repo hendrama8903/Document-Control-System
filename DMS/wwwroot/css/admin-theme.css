@@ -6,10 +6,10 @@
    Semua kelas shell memakai prefix .adm- agar tidak bentrok Bootstrap.
    ===================================================================== */
 :root {
-    --primary: #14456E;
-    --primary-2: #1B578A;
-    --accent: #2E6DA0;
-    --accent-soft: #E1ECF5;
+    --primary: #0078D4;
+    --primary-2: #106EBE;
+    --accent: #2B88D8;
+    --accent-soft: #DEECF9;
     --paper: #F7F9FB;
     --paper-2: #EDF1F6;
     --surface: #FFFFFF;
@@ -41,7 +41,7 @@ body.adm-body {
 /* ---------- Shell ---------- */
 .adm-app {
     display: grid;
-    grid-template-columns: 316px 1fr;
+    grid-template-columns: 320px 1fr;
     min-height: 100vh;
     transition: grid-template-columns .26s cubic-bezier(.4,0,.2,1);
 }
@@ -61,12 +61,12 @@ body.adm-body {
 .adm-rail {
     flex: 0 0 56px;
     width: 56px;
-    background: linear-gradient(180deg, #175a8c, #0d2c47);
+    background: linear-gradient(180deg, #106EBE, #004578);
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 14px 0 12px;
-    color: #cfe0ef;
+    color: #C7E0F4;
 }
 
 .adm-rail-ic {
@@ -76,7 +76,7 @@ body.adm-body {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #cfe0ef;
+    color: #C7E0F4;
     font-size: 17px;
 }
 
@@ -101,7 +101,7 @@ body.adm-body {
     letter-spacing: .04em;
     white-space: nowrap;
     line-height: 1;
-    background: linear-gradient(180deg, #ffffff, #8ec6ec);
+    background: linear-gradient(180deg, #ffffff, #71AFE5);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -109,7 +109,7 @@ body.adm-body {
 
 .adm-rail-vtext em {
     font-style: normal;
-    -webkit-text-fill-color: #86b9dd;
+    -webkit-text-fill-color: #71AFE5;
     font-weight: 700;
 }
 
@@ -121,7 +121,7 @@ body.adm-body {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #cfe0ef;
+    color: #C7E0F4;
     border: 1px solid rgba(255,255,255,.2);
     background: none;
     cursor: pointer;
@@ -229,10 +229,10 @@ body.adm-body {
 
 .adm-sidepanel .sidebar-menu li.active > a {
     background: var(--accent-soft);
-    color: #12405f;
+    color: #004578;
 }
 
-.adm-sidepanel .sidebar-menu li.active > a > .fa { color: #175a8c; }
+.adm-sidepanel .sidebar-menu li.active > a > .fa { color: #005A9E; }
 
 /* chevron parent menu */
 .adm-sidepanel .pull-right-container { margin-left: auto; }
@@ -278,7 +278,7 @@ body.adm-body {
 
 .adm-sidepanel .treeview-menu > li.active > a {
     background: var(--accent-soft);
-    color: #12405f;
+    color: #004578;
     font-weight: 700;
 }
 
@@ -347,6 +347,30 @@ body.adm-body {
 }
 
 .adm-topbtn .label:empty { display: none; }
+
+.adm-notif.has-unread .adm-topbtn i {
+    display: inline-block;
+    animation: adm-bell-ring 2.2s ease-in-out infinite;
+    transform-origin: top center;
+}
+
+.adm-notif.has-unread .adm-topbtn .label {
+    animation: adm-badge-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes adm-bell-ring {
+    0%, 6%, 100% { transform: rotate(0); }
+    1% { transform: rotate(15deg); }
+    2% { transform: rotate(-13deg); }
+    3% { transform: rotate(10deg); }
+    4% { transform: rotate(-8deg); }
+    5% { transform: rotate(4deg); }
+}
+
+@keyframes adm-badge-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, .55); }
+    50% { box-shadow: 0 0 0 5px rgba(220, 53, 69, 0); }
+}
 
 .adm-menu-btn { display: none; }
 
@@ -690,7 +714,7 @@ body.adm-body {
 
 .adm-body .form-control:focus {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(46,109,160,.15);
+    box-shadow: 0 0 0 3px rgba(43,136,216,.15);
 }
 
 .adm-body .control-label { color: var(--muted); }
@@ -954,6 +978,30 @@ body.adm-body {
     background: #fff;
     color: var(--ink);
     border: 1px solid var(--line-2);
+}
+
+/* ---------- DevExtreme grid (semua halaman list/grid pakai id #datagrid) ---------- */
+#datagrid .dx-datagrid-headers {
+    font-weight: 700;
+    background-color: var(--paper-2);
+}
+
+#datagrid .dx-datagrid-headers .dx-datagrid-text-content {
+    font-weight: 700;
+    color: var(--ink);
+}
+
+#datagrid.dx-datagrid td,
+#datagrid.dx-datagrid th {
+    border-color: var(--line) !important;
+}
+
+#datagrid .dx-datagrid-headers td {
+    border-color: var(--line-2) !important;
+}
+
+#datagrid .dx-datagrid-rowsview .dx-row {
+    border-bottom: 1px solid var(--line);
 }
 
 .adm-body .messagebox_button_fail:hover,

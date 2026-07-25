@@ -47,6 +47,7 @@ namespace DMS.Models.DB
         public string? DOCUMENT_CREATOR { get; set; }
         public DateTime? DOCUMENT_REVISION_0_DATE { get; set; }
         public DateTime? NEXT_REVIEW_DATE { get; set; }
+        public string? P4D_STATUS_VAL { get; set; }
 
         [NotMapped]
         public string? NOT_EXIST_FLAG { get; set; }

@@ -2,6 +2,10 @@
     var gSeqType = null;
     var gSeqCode = null;
 
+    var gResetSeqType = null;
+    var gResetSeqCode = null;
+    var gResetCurrentSeqNo = null;
+
     $(document).ready(function() {
         $("#btn_edit").on("click", function() {
             onEditPrepare();
@@ -9,6 +13,23 @@
 
         $("#btn_save").on("click", function() {
             confirmEditData();
+        });
+
+        $("#btn_reset").on("click", function() {
+            onResetPrepare();
+        });
+
+        $("#btn_reset_save").on("click", function() {
+            confirmResetData();
+        });
+
+        $("#resetConfirmText").on("input", function() {
+            $("#btn_reset_save").prop("disabled", $(this).val() !== "RESET");
+        });
+
+        $("#modalReset").on("hidden.bs.modal", function() {
+            $("#resetConfirmText").val("");
+            $("#btn_reset_save").prop("disabled", true);
         });
     });
 
@@ -82,6 +103,86 @@
                     onSearch();
                     popUpProgressHide();
                     $("#modalAddEdit").modal('hide');
+                } else {
+                    showErrorMesgGrowl(result.message);
+                    popUpProgressHide();
+                }
+            },
+            error: function(result) {
+                showErrorMesgGrowl(result);
+                popUpProgressHide();
+            }
+        });
+    }
+
+    function onResetPrepare() {
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gResetSeqType = row.SEQ_TYPE;
+        gResetSeqCode = row.SEQ_CODE;
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetByKey", "MSequence")",
+            async: false,
+            data: {
+                SEQ_TYPE: gResetSeqType,
+                SEQ_CODE: gResetSeqCode
+            },
+            success: function(result) {
+                if (result.status == true) {
+                    var data = result.data;
+                    gResetCurrentSeqNo = data.SEQ_NO;
+
+                    $('#resetSeqCode').val(data.SEQ_CODE);
+                    $('#resetSeqType').val(data.SEQ_TYPE);
+                    $('#resetSeqNoCurrent').val(data.SEQ_NO);
+                    $('#resetSeqNoNew').val(data.SEQ_NO);
+                    $('#resetConfirmText').val("");
+                    $('#btn_reset_save').prop("disabled", true);
+
+                    $("#modalReset").modal();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function(result) {
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function confirmResetData() {
+        var newSeqNo = $('#resetSeqNoNew').val();
+        showConfirmMesg(
+            "Anda akan memaksa nomor \"" + gResetSeqCode + "\" dari " + gResetCurrentSeqNo + " menjadi " + newSeqNo +
+            ". Jika angka ini lebih kecil dari nomor tertinggi yang sudah pernah dipakai, sistem bisa menghasilkan document code duplikat. Lanjutkan?",
+            resetData,
+            "Confirmation"
+        );
+    }
+
+    function resetData() {
+        popUpProgressShow();
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("Reset", "MSequence")",
+            dataType: 'json',
+            data: {
+                SEQ_TYPE: gResetSeqType,
+                SEQ_CODE: gResetSeqCode,
+                SEQ_NO: $('#resetSeqNoNew').val()
+            },
+            success: function(result) {
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    popUpProgressHide();
+                    $("#modalReset").modal('hide');
                 } else {
                     showErrorMesgGrowl(result.message);
                     popUpProgressHide();

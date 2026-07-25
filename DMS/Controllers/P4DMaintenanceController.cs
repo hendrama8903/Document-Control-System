@@ -700,14 +700,6 @@ namespace DMS.Controllers
 
             try
             {
-                IList<DocumentDistribution> documentDistributions = P4DMaintenanceRepo.SearchDocumentDistribution(
-                    new DocumentDistribution { DOCUMENT_TRANSACTION_ID = data.DOCUMENT_TRANSACTION_ID }, db, 1, 1);
-
-                if (documentDistributions.Count < 1)
-                {
-                    return Json(new { status = false, message = "Cant receive document if no data in document distribution" });
-                }
-
                 result = P4DMaintenanceRepo.ApproveReject(data, GetLoginUsername(), db);
                 if (result.status)
                 {

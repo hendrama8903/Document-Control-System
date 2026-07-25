@@ -59,3 +59,90 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modalReset" tabindex="-1" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title"><i class="fa fa-exclamation-triangle text-red"></i> Force Reset Number</h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="alert alert-danger" style="margin: 0 15px 15px 15px;">
+                    <strong>Peringatan:</strong> Aksi ini melewati proteksi normal dan bisa membuat sistem menghasilkan
+                    document code yang <u>sudah pernah dipakai</u> jika angka diturunkan sampai di bawah nomor yang
+                    sudah pernah digunakan. Gunakan hanya jika Anda yakin belum ada dokumen yang memakai nomor tersebut.
+                </div>
+                <div class="row">
+                    <div class="col-lg-12 form-horizontal" style="margin-left:15px">
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-4 control-label">Sequence Code</label>
+                                    <div class="col-sm-7">
+                                        <input class="form-control" id="resetSeqCode" type="text" readonly />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-4 control-label">Type</label>
+                                    <div class="col-sm-7">
+                                        <input class="form-control" id="resetSeqType" type="text" readonly />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-4 control-label">Current Number</label>
+                                    <div class="col-sm-7">
+                                        <input class="form-control" id="resetSeqNoCurrent" type="text" readonly />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-4 control-label">New Number<span class="text-red"> *</span></label>
+                                    <div class="col-sm-7">
+                                        <input class="form-control" id="resetSeqNoNew" type="number" min="0" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-lg-12">
+                                <div class="form-group">
+                                    <label class="col-sm-4 control-label">Confirmation<span class="text-red"> *</span></label>
+                                    <div class="col-sm-7">
+                                        <input class="form-control" id="resetConfirmText" type="text" placeholder="Type RESET to enable Save" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <div class="col-xs-12 text-right">
+                    <button type="button" class="btn btn-danger" id="btn_reset_save" style="width: 80px;" disabled>Save</button>
+                    <button type="button" class="btn btn-default" id="btn_reset_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

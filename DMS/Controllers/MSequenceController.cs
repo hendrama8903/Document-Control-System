@@ -34,6 +34,7 @@ namespace DMS.Controllers
             }
 
             ViewData["Edit"] = HttpContext.Session.GetString("functionList").Contains("MSEQUENCE-EDIT");
+            ViewData["Reset"] = HttpContext.Session.GetString("functionList").Contains("MSEQUENCE-RESET");
 
             ViewData["Title"] = "Document Numbering";
 
@@ -90,6 +91,24 @@ namespace DMS.Controllers
             try
             {
                 DBResult result = mSequenceRepo.Update(data, OLD_SEQ_TYPE, OLD_SEQ_CODE, GetLoginUsername(), db);
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public JsonResult Reset(MSequence data)
+        {
+            if (!HttpContext.Session.GetString("functionList").Contains("MSEQUENCE-RESET"))
+            {
+                return Json(new { status = false, message = "You are not authorized to perform this action." });
+            }
+
+            try
+            {
+                DBResult result = mSequenceRepo.Reset(data, GetLoginUsername(), db);
                 return Json(result);
             }
             catch (Exception ex)

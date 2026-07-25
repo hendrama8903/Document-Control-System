@@ -23,6 +23,7 @@
     var gSourceNo = null;
     var documentLevel = null;
     var gAttachmentPath = null;
+    var approvalDetailData = null;
     var SESSION_POSITION_ID = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetInt32("POSITION_ID"))";
     var SESSION_DIVISION = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("DIVISION"))";
     var SESSION_DIVISION_NAME = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("DIVISION_NAME"))";
@@ -180,6 +181,8 @@
             success: function (result) {
                 if (result.status == true) {
                     var data = result.data;
+                    approvalDetailData = data;
+                    renderApprovalStepper();
 
                     $("#approvalgrid").dataTable().fnDestroy();
                     $('#approvalgrid').DataTable({
@@ -317,6 +320,78 @@
                 showErrorMesgGrowl(result);
             }
         });
+    }
+
+    // Visual progression Dibuat -> Menunggu Approval -> Approve/Reject, dibangun dari
+    // approvalHeaderData (langkah "Dibuat") + approvalDetailData (satu langkah per approver).
+    // Dipanggil setelah getApprovalDetail() selesai, karena getApprovalHeader() sudah
+    // dipanggil lebih dulu secara sinkron di onApprovalPrepare().
+    function renderApprovalStepper() {
+        if (approvalHeaderData == null || approvalDetailData == null) {
+            return;
+        }
+
+        var steps = [];
+        steps.push({
+            label: "Dibuat",
+            sub: approvalHeaderData["CREATOR_NAME"] || "",
+            date: approvalHeaderData["CREATED_DT"],
+            state: "done"
+        });
+
+        var sortedDetail = approvalDetailData.slice().sort(function (a, b) {
+            return a["WORKFLOW_SEQ"] - b["WORKFLOW_SEQ"];
+        });
+
+        var stopped = false;
+        sortedDetail.forEach(function (row) {
+            var state;
+
+            if (stopped) {
+                state = "upcoming";
+            } else if (row["STATUS"] == 1) {
+                state = "done";
+            } else if (row["STATUS"] == 0) {
+                state = (approvalHeaderData["CURRENT_SEQ"] == row["WORKFLOW_SEQ"] && approvalHeaderData["APPROVAL_STATUS"] == 0)
+                    ? "current" : "upcoming";
+            } else {
+                state = "rejected";
+                stopped = true;
+            }
+
+            steps.push({
+                label: row["APPROVER_NAME"],
+                sub: row["STATUS_DESC"] || "",
+                date: row["CHANGED_DT"],
+                state: state
+            });
+        });
+
+        var iconByState = {
+            done: "fa-check",
+            current: "fa-hourglass-half",
+            rejected: "fa-times",
+            upcoming: "fa-clock-o"
+        };
+
+        var html = "";
+        steps.forEach(function (step, idx) {
+            var dateHtml = step.date ? '<div class="stepper-date">' + moment(step.date).format("DD-MM-YYYY HH:mm") + "</div>" : "";
+
+            html += '<div class="stepper-step stepper-' + step.state + '">' +
+                        '<div class="stepper-icon"><i class="fa ' + iconByState[step.state] + '"></i></div>' +
+                        '<div class="stepper-label">' + step.label + "</div>" +
+                        '<div class="stepper-sub">' + step.sub + "</div>" +
+                        dateHtml +
+                    "</div>";
+
+            if (idx < steps.length - 1) {
+                var connectorState = (step.state == "done" || step.state == "rejected") ? step.state : "upcoming";
+                html += '<div class="stepper-connector stepper-connector-' + connectorState + '"></div>';
+            }
+        });
+
+        $("#approvalStepper").html(html);
     }
 
     function onApprovalForm(approval_seq, approver_name) {
@@ -1223,7 +1298,7 @@
                 if (result.status == true) {
                     var data = result.data;
                     //showErrorMesgGrowl(data.STATUS);
-                    if (data.STATUS == "1") {
+                    if (data.STATUS == "1" || data.STATUS == "5") {
                         showErrorMesgGrowl("Edit is not allowed");
                     } else {
                         gScreenMode = 'EDIT';

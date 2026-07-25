@@ -37,8 +37,8 @@
 
         $("#btn_edit").prop("disabled", !selected);
         $("#btn_delete").prop("disabled", !(selected && (row.STATUS == 1 || row.STATUS == 0) && row.DEPARTMENT_ID == SESSION_DEPARTMENT_ID_LOGIN));
-        $("#btn_receive").prop("disabled", !(selected && row.STATUS == 1));
-        $("#btn_reject").prop("disabled", !(selected && row.STATUS == 1));
+        $("#btn_receive").prop("disabled", !(selected && row.STATUS == 0));
+        $("#btn_reject").prop("disabled", !(selected && row.STATUS == 0));
         $("#btn_distribution").prop("disabled", !selected);
         $("#btn_send").prop("disabled", !(selected && (row.STATUS == 2 || row.STATUS == 6)));
     }

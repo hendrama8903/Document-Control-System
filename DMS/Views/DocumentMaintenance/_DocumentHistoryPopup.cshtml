@@ -98,6 +98,8 @@
                             labelClass = "label label-success";
                         } else if (row.STATUS == 4) {
                             labelClass = "label label-default";
+                        } else if (row.STATUS == 5) {
+                            labelClass = "label label-primary";
                         }
 
                         $("<span>").addClass(labelClass).text(row.STATUS_DISPLAY).appendTo(container);

@@ -62,7 +62,7 @@
 
     function updateActionButtons() {
         var row = getSelectedRowData();
-        var editable = row != null && row.STATUS != 1;
+        var editable = row != null && row.STATUS != 1 && row.STATUS != 5;
 
         $("#btn_edit").prop("disabled", !editable);
         $("#btn_delete").prop("disabled", !editable);
@@ -177,9 +177,40 @@
                             labelClass = "label label-info";
                         } else if (row.STATUS == 1) {
                             labelClass = "label label-success";
+                        } else if (row.STATUS == 4) {
+                            labelClass = "label label-default";
+                        } else if (row.STATUS == 5) {
+                            labelClass = "label label-primary";
                         }
 
                         $("<span>").addClass(labelClass).text(row.STATUS_DISPLAY).appendTo(container);
+                    }
+                },
+                {
+                    dataField: "P4D_STATUS_VAL",
+                    caption: "P4D Status",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.P4D_STATUS_VAL;
+
+                        if (value == null || value == "") {
+                            container.text("-");
+                            return;
+                        }
+
+                        var labelClass = "label label-danger";
+
+                        if (value == "DRAFT") {
+                            labelClass = "label label-info";
+                        } else if (value == "ON PROGRESS" || value == "PARTIALLY SENT") {
+                            labelClass = "label label-warning";
+                        } else if (value == "RECEIVED" || value == "SENT") {
+                            labelClass = "label label-success";
+                        } else if (value == "DELETED") {
+                            labelClass = "label label-default";
+                        }
+
+                        $("<span>").addClass(labelClass).text(value).appendTo(container);
                     }
                 },
                 { dataField: "REVISION", caption: "Revision", alignment: "center" },

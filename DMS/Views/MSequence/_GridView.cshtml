@@ -29,6 +29,7 @@
         var selected = row != null;
 
         $("#btn_edit").prop("disabled", !selected);
+        $("#btn_reset").prop("disabled", !selected);
     }
 
     function computeGridHeight() {
@@ -40,6 +41,7 @@
 
     $(document).ready(function () {
         $("#btn_edit").prop("disabled", true);
+        $("#btn_reset").prop("disabled", true);
 
         var gridStore = new DevExpress.data.CustomStore({
             key: ["SEQ_TYPE", "SEQ_CODE"],

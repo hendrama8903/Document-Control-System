@@ -292,6 +292,7 @@
         $('#addEditDocumentNo').val("").trigger("change");;
         $('#addEditDocumentId').val("");
         $('#addEditDocumentName').val("");
+        $('#addEditRevision').val("");
         $('#addEditDivision').val("");
         $('#addEditDepartment').val("");
 
@@ -302,6 +303,7 @@
 
         gFilePath = null;
         $('#divLocation').hide();
+        $('#divRevision').show();
 
         $("#modalAddEdit").modal();
         $('#modalAddEdit').on('shown.bs.modal', function () {
@@ -473,6 +475,7 @@
                     if (result.status == true) {
                         var data = result.data;
                         $("#addEditDocumentName").val(data.DOCUMENT_TRANSACTION_NAME);
+                        $("#addEditRevision").val(data.REVISION);
                         $("#addEditDivision").val(data.DIVISION + " - " + data.DIVISION_NAME);
                         $("#addEditDepartment").val(data.DEPARTMENT_CODE + " - " + data.DEPARTMENT_NAME);
                     } else {
@@ -488,6 +491,7 @@
             s
             $('#addEditDocumentId').val("");
             $('#addEditDocumentName').val("");
+            $('#addEditRevision').val("");
             $('#addEditDivision').val("");
             $('#addEditDepartment').val("");
         }
@@ -928,6 +932,7 @@
                         $('#addEditDocumentId').val(data.DOCUMENT_CTRL_ID);
                         $("#addEditDocumentNo").select2("trigger", "select", { data: { id: data.DOCUMENT_CODE, text: data.DOCUMENT_CODE } });
                         $('#addEditDocumentName').val(data.DOCUMENT_NAME);
+                        $('#addEditRevision').val(data.REVISION);
 
                         $('#divLocation').show();
                         $('#addEditLocation').val(data.LOCATION);

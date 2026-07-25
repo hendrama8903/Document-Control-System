@@ -1,45 +1,26 @@
 <script type="text/javascript">
     var statusColorMap = {
-        "NEW": "#B8860B",
+        "WAITING APPROVAL": "#B8860B",
         "APPROVED": "#2E7D3B",
         "REJECTED": "#B5402C",
+        "PUBLISHED (EFFECTIVE)": "#2B5FA8",
         "OBSOLETE": "#8A98A6",
-        "DELETED": "#8A98A6"
+        "DELETED": "#8A98A6",
+        "DRAFT": "#B8860B",
+        "RECEIVED": "#2E7D3B",
+        "SENT": "#2B5FA8",
+        "PARTIALLY SENT": "#5B7FBD"
     };
 
-    var categoryPalette = ["#2E6DA0", "#0E8A8A", "#B8860B", "#8C6FC9", "#D97B29", "#8A98A6", "#5B7FBD"];
+    var categoryPalette = ["#2B88D8", "#0E8A8A", "#B8860B", "#8C6FC9", "#D97B29", "#8A98A6", "#5B7FBD"];
 
     function getStatusColor(statusText) {
         var key = (statusText || "").toUpperCase();
-        return statusColorMap[key] || "#2E6DA0";
-    }
-
-    function formatDashDate(value) {
-        if (!value) {
-            return "";
-        }
-        return moment(value).format("DD-MM-YYYY HH:mm");
-    }
-
-    function formatFromNow(value) {
-        if (!value) {
-            return "";
-        }
-        return moment(value).fromNow();
+        return statusColorMap[key] || "#2B88D8";
     }
 
     function formatNumber(value) {
         return (value || 0).toLocaleString();
-    }
-
-    // File-type icon derived from the stored FILE_PATH extension — real data, not decoration.
-    function getFileIcon(filePath) {
-        var ext = (filePath || "").split(".").pop().toLowerCase();
-        if (ext === "pdf") { return { icon: "fa-file-pdf-o", color: "#B5402C" }; }
-        if (ext === "doc" || ext === "docx") { return { icon: "fa-file-word-o", color: "#2E6DA0" }; }
-        if (ext === "xls" || ext === "xlsx") { return { icon: "fa-file-excel-o", color: "#2E7D3B" }; }
-        if (ext === "ppt" || ext === "pptx") { return { icon: "fa-file-powerpoint-o", color: "#D97B29" }; }
-        return { icon: "fa-file-o", color: "#8A98A6" };
     }
 
     $(document).ready(function () {
@@ -64,6 +45,10 @@
     }
 
     function renderDashboard(data) {
+        var isQms = data.scope === "QMS";
+
+        applyDashboardLabels(isQms);
+
         $("#kpiTotalDocuments").text(formatNumber(data.kpi.totalDocuments.value));
         $("#kpiPendingApprovals").text(formatNumber(data.kpi.pendingApprovals.value));
         $("#kpiRejected").text(formatNumber(data.kpi.rejectedDocuments.value));
@@ -72,130 +57,120 @@
         $("#kpiDueForReview").text(formatNumber(data.kpi.dueForReview.value));
 
         renderCategoryChart(data.categorySummary);
-        renderStatusChart(data.statusSummary);
-        renderRejectedTable(data.recentlyRejected);
-        renderPendingApprovals(data.pendingApprovals);
-        renderToggleDonut("distributionToggle", "chartDistribution", data.distribution);
-        renderToggleDonut("receivedToggle", "chartReceived", data.received);
+        renderStatusChart(data.statusSummary, isQms);
+
+        // Chart Distribution/Received (P4D, org-wide) cuma relevan untuk QMS -
+        // untuk user biasa dashboard-nya murni dokumen dia sendiri di DocumentMaintenance.
+        $("#rowP4DCharts").toggle(isQms);
+        if (isQms) {
+            renderToggleDonut("distributionToggle", "chartDistribution", data.distribution);
+            renderToggleDonut("receivedToggle", "chartReceived", data.received);
+        }
     }
 
-    function donutCenterTemplate(caption) {
-        return function (pieChart, element) {
-            var total = 0;
-            pieChart.getAllSeries()[0].getVisiblePoints().forEach(function (p) { total += p.originalValue; });
+    // Label KPI/panel beda makna tergantung scope dashboard: "USER" = dokumen milik
+    // sendiri (DocumentMaintenance), "QMS" = seluruh dokumen di Document Control (P4D).
+    function applyDashboardLabels(isQms) {
+        if (isQms) {
+            $("#lblTotalDocuments").text("Total P4D Documents");
+            $("#lblPendingApprovals").text("Pending Review");
+            $("#lblRejected").text("Rejected in P4D");
+            $("#lblUploadedToday").text("Registered Today");
+            $("#lblPublished").text("Sent Documents");
+            $("#lblDueForReview").text("Received Documents");
+            $("#lnkPendingApprovals, #lnkRejected, #lnkUploadedToday, #lnkPublished, #lnkDueForReview")
+                .attr("href", "@Url.Action("Index", "P4DMaintenance")");
+            $("#titleCategoryChart").text("P4D Documents by Department");
+            $("#lnkCategoryChart").attr("href", "@Url.Action("Index", "P4DMaintenance")");
+            $("#titleStatusChart").text("Documents by Status");
+        } else {
+            $("#lblTotalDocuments").text("Total Documents");
+            $("#lblPendingApprovals").text("Pending Approvals");
+            $("#lblRejected").text("Rejected Documents");
+            $("#lblUploadedToday").text("Uploaded Today");
+            $("#lblPublished").text("Published Documents");
+            $("#lblDueForReview").text("Due for Review");
+            $("#lnkPendingApprovals, #lnkRejected, #lnkUploadedToday")
+                .attr("href", "@Url.Action("Index", "DocumentMaintenance")");
+            $("#lnkPublished").attr("href", "@Url.Action("Index", "P4DMaintenance")");
+            $("#lnkDueForReview").attr("href", "@Url.Action("Index", "DocumentReport")");
+            $("#titleCategoryChart").text("Documents by Category");
+            $("#lnkCategoryChart").attr("href", "@Url.Action("Index", "DocumentReport")");
+            $("#titleStatusChart").text("Documents by Level");
+        }
+    }
 
-            $(element).append(
-                $("<div>").addClass("dash-donut-center").append(
-                    $("<div>").addClass("dash-donut-value").text(formatNumber(total)),
-                    $("<div>").addClass("dash-donut-caption").text(caption)
-                )
-            );
-        };
+    // Donut chart pakai CSS conic-gradient murni - tanpa dependensi DevExtreme sama sekali,
+    // jadi tidak ada lagi risiko bentrok bundle/versi seperti sebelumnya (dx.web.js vs
+    // dx.viz.js, field legend yang tidak konsisten, legend hilang untuk chart 1 slice, dsb).
+    function renderCssDonut(elementId, items, caption) {
+        var container = $("#" + elementId);
+        container.empty();
+
+        if (!items || items.length == 0) {
+            container.html('<div class="dash-empty-text">No data yet.</div>');
+            return;
+        }
+
+        var total = items.reduce(function (sum, it) { return sum + it.count; }, 0) || 1;
+        var cursor = 0;
+        var gradientParts = items.map(function (it) {
+            var start = (cursor / total) * 100;
+            cursor += it.count;
+            var end = (cursor / total) * 100;
+            return it.color + " " + start + "% " + end + "%";
+        });
+
+        var wrap = $("<div>").addClass("dash-donut-wrap");
+
+        var donut = $("<div>").addClass("dash-donut")
+            .css("background", "conic-gradient(" + gradientParts.join(", ") + ")");
+        var hole = $("<div>").addClass("dash-donut-hole");
+        hole.append($("<div>").addClass("dash-donut-value").text(formatNumber(total)));
+        hole.append($("<div>").addClass("dash-donut-caption").text(caption));
+        donut.append(hole);
+
+        var legend = $("<ul>").addClass("dash-donut-legend");
+        items.forEach(function (it) {
+            var li = $("<li>").attr("title", it.label + ": " + formatNumber(it.count) + " (" + it.percent + "%)");
+            li.append($("<span>").addClass("dash-donut-swatch").css("background", it.color));
+            li.append($("<span>").addClass("dash-donut-label").text(it.label));
+            li.append($("<span>").addClass("dash-donut-count").text(formatNumber(it.count) + " (" + it.percent + "%)"));
+            legend.append(li);
+        });
+
+        wrap.append(donut, legend);
+        container.append(wrap);
     }
 
     function renderCategoryChart(categorySummary) {
-        if (!categorySummary || categorySummary.length == 0) {
-            $("#chartCategory").html('<div class="dash-empty-text">No document data yet.</div>');
-            return;
-        }
-
-        $("#chartCategory").dxPieChart({
-            type: "doughnut",
-            dataSource: categorySummary,
-            palette: categoryPalette,
-            innerRadius: 0.68,
-            centerTemplate: donutCenterTemplate("Total"),
-            series: {
-                argumentField: "category",
-                valueField: "count",
-                label: { visible: false }
-            },
-            legend: {
-                orientation: "vertical",
-                horizontalAlignment: "right",
-                verticalAlignment: "center",
-                itemTextPosition: "right",
-                customizeText: function (item) {
-                    return item.argument + "  " + formatNumber(item.value) + " (" + item.percent + "%)";
-                }
-            },
-            tooltip: {
-                enabled: true,
-                customizeTooltip: function (pointInfo) {
-                    return { text: pointInfo.argument + ": " + formatNumber(pointInfo.value) };
-                }
-            }
+        var items = (categorySummary || []).map(function (c, i) {
+            return { label: c.category, count: c.count, percent: c.percent, color: categoryPalette[i % categoryPalette.length] };
         });
+        renderCssDonut("chartCategory", items, "Total");
     }
 
-    function renderStatusChart(statusSummary) {
-        if (!statusSummary || statusSummary.length == 0) {
-            $("#chartStatus").html('<div class="dash-empty-text">No document data yet.</div>');
-            return;
-        }
-
-        $("#chartStatus").dxPieChart({
-            type: "doughnut",
-            dataSource: statusSummary,
-            palette: statusSummary.map(function (item) { return getStatusColor(item.status); }),
-            innerRadius: 0.68,
-            centerTemplate: donutCenterTemplate("Total"),
-            series: {
-                argumentField: "status",
-                valueField: "count",
-                label: { visible: false }
-            },
-            legend: {
-                orientation: "vertical",
-                horizontalAlignment: "right",
-                verticalAlignment: "center",
-                itemTextPosition: "right",
-                customizeText: function (item) {
-                    return item.argument + "  " + formatNumber(item.value) + " (" + item.percent + "%)";
-                }
-            },
-            tooltip: {
-                enabled: true,
-                customizeTooltip: function (pointInfo) {
-                    return { text: pointInfo.argument + ": " + formatNumber(pointInfo.value) };
-                }
-            }
+    // Untuk QMS ini menampilkan status P4D (pakai warna status yang konsisten dgn status
+    // di modul lain), untuk user biasa menampilkan Level dokumen (P4D tidak punya konsep
+    // Level, jadi dipakai warna kategori biasa yang cuma untuk membedakan tiap slice).
+    function renderStatusChart(statusSummary, isQms) {
+        var items = (statusSummary || []).map(function (s, i) {
+            return {
+                label: s.status,
+                count: s.count,
+                percent: s.percent,
+                color: isQms ? getStatusColor(s.status) : categoryPalette[i % categoryPalette.length]
+            };
         });
+        renderCssDonut("chartStatus", items, "Total");
     }
 
     function renderGenericDonut(elementId, dataset, caption) {
-        if (!dataset || dataset.length == 0) {
-            $("#" + elementId).html('<div class="dash-empty-text">No data yet.</div>');
-            return;
-        }
-
-        $("#" + elementId).dxPieChart({
-            type: "doughnut",
-            dataSource: dataset,
-            palette: categoryPalette,
-            innerRadius: 0.68,
-            centerTemplate: donutCenterTemplate(caption),
-            series: {
-                argumentField: "name",
-                valueField: "count",
-                label: { visible: false }
-            },
-            legend: {
-                orientation: "vertical",
-                horizontalAlignment: "right",
-                verticalAlignment: "center",
-                itemTextPosition: "right",
-                customizeText: function (item) {
-                    return item.argument + "  " + formatNumber(item.value) + " (" + Math.round(item.percent * 100) + "%)";
-                }
-            },
-            tooltip: {
-                enabled: true,
-                customizeTooltip: function (pointInfo) {
-                    return { text: pointInfo.argument + ": " + formatNumber(pointInfo.value) };
-                }
-            }
+        var total = (dataset || []).reduce(function (sum, d) { return sum + d.count; }, 0) || 1;
+        var items = (dataset || []).map(function (d, i) {
+            return { label: d.name, count: d.count, percent: Math.round((d.count * 100) / total), color: categoryPalette[i % categoryPalette.length] };
         });
+        renderCssDonut(elementId, items, caption);
     }
 
     // Toggle group (Division / Department) driving a donut chart from data already fetched — no re-fetch on click.
@@ -217,69 +192,5 @@
         draw();
     }
 
-    function docCell(documentName, documentCode, filePath) {
-        var fileIcon = getFileIcon(filePath);
-        var cell = $("<div>").addClass("dash-doc-cell");
-        cell.append($("<span>").addClass("dash-doc-icon").css("color", fileIcon.color).append($("<i>").addClass("fa " + fileIcon.icon)));
-        var text = $("<div>").addClass("dash-doc-text");
-        text.append($("<span>").addClass("dash-doc-name").attr("title", documentName || "").text(documentName || "-"));
-        text.append($("<span>").addClass("dash-doc-code").text(documentCode || ""));
-        cell.append(text);
-        return cell;
-    }
-
-    function renderRejectedTable(recentlyRejected) {
-        var tbody = $("#tblRejectedBody");
-        tbody.empty();
-
-        if (!recentlyRejected || recentlyRejected.length == 0) {
-            tbody.append('<tr><td colspan="3" class="dash-empty-text">No rejected documents.</td></tr>');
-            return;
-        }
-
-        recentlyRejected.forEach(function (item) {
-            var row = $("<tr>");
-            row.append($("<td>").append(docCell(item.documentName, item.documentCode, item.filePath)));
-            row.append($("<td>").append($("<span>").addClass("dash-badge dash-badge-danger").text(formatFromNow(item.rejectedDate))));
-            row.append($("<td>").text(item.owner || "-"));
-            tbody.append(row);
-        });
-    }
-
-    function renderPendingApprovals(pendingApprovals) {
-        var list = $("#listPendingApprovals");
-        list.empty();
-
-        if (!pendingApprovals || pendingApprovals.length == 0) {
-            list.append('<li><div class="dash-empty-text" style="width:100%;">No documents waiting on approval.</div></li>');
-            return;
-        }
-
-        pendingApprovals.forEach(function (item) {
-            var fileIcon = getFileIcon(item.filePath);
-            var li = $("<li>");
-
-            li.append(
-                $("<span>").addClass("dash-list-icon")
-                    .css("background", fileIcon.color + "1A")
-                    .css("color", fileIcon.color)
-                    .append($("<i>").addClass("fa " + fileIcon.icon))
-            );
-
-            var body = $("<div>").addClass("dash-list-body");
-            body.append($("<div>").addClass("dash-list-title").attr("title", item.documentName || "").text(item.documentName || "-"));
-            body.append($("<div>").addClass("dash-list-meta").text("Submitted by " + (item.submittedBy || "-") + " • " + formatDashDate(item.submittedDate)));
-            li.append(body);
-
-            var side = $("<div>").addClass("dash-list-side");
-            if (item.category) {
-                side.append($("<span>").addClass("dash-badge").text(item.category));
-            }
-            side.append($("<span>").addClass("dash-list-time").text(formatFromNow(item.submittedDate)));
-            li.append(side);
-
-            list.append(li);
-        });
-    }
 
 </script>

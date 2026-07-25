@@ -113,7 +113,21 @@
                     dataField: "STATUS",
                     caption: "Status",
                     alignment: "center",
-                    filterValue: "1",
+                    // Default view = "current, valid" documents: Approved and Published (Effective).
+                    // Filter row renders as a multi-select (anyof) so users can still narrow/widen it.
+                    filterValues: [1, 5],
+                    selectedFilterOperation: "anyof",
+                    lookup: {
+                        dataSource: [
+                            { value: 0, text: "Waiting Approval" },
+                            { value: 1, text: "Approved" },
+                            { value: 2, text: "Rejected" },
+                            { value: 4, text: "Obsolete" },
+                            { value: 5, text: "Published (Effective)" }
+                        ],
+                        valueExpr: "value",
+                        displayExpr: "text"
+                    },
                     cellTemplate: function (container, options) {
                         var row = options.data;
                         var labelClass = "label label-danger";
@@ -124,6 +138,8 @@
                             labelClass = "label label-success";
                         } else if (row.STATUS == 4) {
                             labelClass = "label label-default";
+                        } else if (row.STATUS == 5) {
+                            labelClass = "label label-primary";
                         }
 
                         $("<span>").addClass(labelClass).text(row.STATUS_DISPLAY).appendTo(container);

@@ -13,14 +13,16 @@
     .kpi-card {
         position: relative;
         flex: 1 1 0;
-        min-width: 150px;
+        min-width: 170px;
+        min-height: 130px;
         background: var(--surface);
-        border-radius: 12px;
+        border-radius: 14px;
         box-shadow: var(--shadow);
-        padding: 14px 16px;
+        padding: 22px 24px;
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        justify-content: center;
+        gap: 10px;
     }
 
     .kpi-more-detail {
@@ -51,14 +53,14 @@
     }
 
     .kpi-icon {
-        width: 32px;
-        height: 32px;
+        width: 46px;
+        height: 46px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         flex: none;
-        font-size: 14px;
+        font-size: 19px;
     }
 
         .kpi-icon.blue { background: var(--accent-soft); color: var(--accent); }
@@ -69,7 +71,7 @@
         .kpi-icon.purple { background: #EEE7F8; color: #6C3FB5; }
 
     .kpi-value {
-        font-size: 19px;
+        font-size: 30px;
         font-weight: 700;
         color: var(--ink);
         line-height: 1.15;
@@ -77,7 +79,7 @@
     }
 
     .kpi-label {
-        font-size: 11px;
+        font-size: 13px;
         color: var(--muted);
         white-space: nowrap;
         overflow: hidden;
@@ -93,10 +95,76 @@
 
         .box-header-action:hover { color: #fff; text-decoration: none; }
 
-    /* ---- Donut chart center total (rendered by devextreme centerTemplate) ---- */
-    .dash-donut-center { text-align: center; }
-        .dash-donut-center .dash-donut-value { font-size: 20px; font-weight: 700; color: var(--ink); }
-        .dash-donut-center .dash-donut-caption { font-size: 10.5px; color: var(--muted); }
+    /* ---- Donut chart (CSS conic-gradient murni, tanpa library) ---- */
+    .dash-donut-wrap {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        height: 100%;
+        flex-wrap: wrap;
+    }
+
+    .dash-donut {
+        position: relative;
+        width: 230px;
+        height: 230px;
+        border-radius: 50%;
+        flex: none;
+    }
+
+    .dash-donut-hole {
+        position: absolute;
+        inset: 22%;
+        background: var(--surface);
+        border-radius: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .dash-donut-value { font-size: 26px; font-weight: 700; color: var(--ink); }
+    .dash-donut-caption { font-size: 12px; color: var(--muted); }
+
+    .dash-donut-legend {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        flex: 1;
+        min-width: 140px;
+    }
+
+        .dash-donut-legend li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            font-size: 14px;
+            color: var(--ink);
+        }
+
+    .dash-donut-swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        flex: none;
+    }
+
+    .dash-donut-label {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .dash-donut-count {
+        flex: none;
+        color: var(--muted);
+        font-size: 13px;
+        white-space: nowrap;
+    }
 
     /* ---- Division / Department view toggle ---- */
     .dash-panel-toolbar {
@@ -129,115 +197,30 @@
 
         .dash-toggle-btn:focus { outline: none; }
 
-    /* ---- Compact data table (Recently Rejected, Top Downloaded) ---- */
-    .dash-table {
-        width: 100%;
-        font-size: 12.5px;
-        border-collapse: collapse;
-    }
-
-        .dash-table th {
-            text-align: left;
-            color: var(--muted);
-            font-weight: 600;
-            font-size: 10.5px;
-            text-transform: uppercase;
-            letter-spacing: .03em;
-            padding: 0 4px 8px;
-            border-bottom: 1px solid var(--line);
-        }
-
-        .dash-table td {
-            padding: 9px 4px;
-            border-bottom: 1px solid var(--line);
-            vertical-align: middle;
-        }
-
-        .dash-table tr:last-child td { border-bottom: none; }
-
-    .dash-doc-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
-    .dash-doc-icon { flex: none; width: 22px; text-align: center; font-size: 15px; }
-    .dash-doc-text { min-width: 0; }
-
-    .dash-doc-name {
-        font-weight: 600;
-        color: var(--ink);
-        display: block;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 220px;
-    }
-
-    .dash-doc-code { font-size: 11px; color: var(--muted); }
-
-    .dash-badge {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 999px;
-        font-size: 10.5px;
-        font-weight: 600;
-        background: var(--accent-soft);
-        color: var(--accent);
-        white-space: nowrap;
-    }
-
-    .dash-badge-danger { background: var(--merah-soft); color: var(--merah); }
-
-    /* ---- List panels (Pending Approvals, Recent Activities) ---- */
-    .dash-list { list-style: none; margin: 0; padding: 0; }
-
-        .dash-list li {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            padding: 11px 0;
-            border-bottom: 1px solid var(--line);
-        }
-
-            .dash-list li:last-child { border-bottom: none; }
-
-    .dash-list-icon {
-        width: 26px;
-        height: 26px;
-        border-radius: 7px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex: none;
-        font-size: 12px;
-        margin-top: 1px;
-    }
-
-    .dash-list-body { flex: 1; min-width: 0; }
-
-    .dash-list-title {
-        font-weight: 600;
-        color: var(--ink);
-        font-size: 12.5px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .dash-list-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
-
-    .dash-list-side {
-        flex: none;
-        text-align: right;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        gap: 4px;
-    }
-
-    .dash-list-time { font-size: 10.5px; color: var(--muted); white-space: nowrap; }
-
     .dash-empty-text {
         color: var(--muted);
         text-align: center;
         padding: 24px 0;
         font-size: 12.5px;
+    }
+
+    /* ---- Tinggi panel menyesuaikan konten (proporsional), halaman boleh scroll ---- */
+    .dash-viewport .box {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .dash-viewport .box-body {
+        display: flex;
+        flex-direction: column;
+    }
+
+    #chartCategory, #chartStatus {
+        min-height: 300px;
+    }
+
+    #chartDistribution, #chartReceived {
+        min-height: 260px;
     }
 </style>
 
@@ -257,149 +240,113 @@
                 <div class="kpi-icon blue"><i class="fa fa-file-text-o"></i></div>
                 <div class="kpi-value" id="kpiTotalDocuments">0</div>
             </div>
-            <div class="kpi-label">Total Documents</div>
+            <div class="kpi-label" id="lblTotalDocuments">Total Documents</div>
         </div>
         <div class="kpi-card">
-            <a class="kpi-more-detail" href="@Url.Action("Index", "DocumentMaintenance")" title="More Detail"><i class="fa fa-external-link"></i></a>
+            <a class="kpi-more-detail" id="lnkPendingApprovals" href="@Url.Action("Index", "DocumentMaintenance")" title="More Detail"><i class="fa fa-external-link"></i></a>
             <div class="kpi-top">
                 <div class="kpi-icon amber"><i class="fa fa-clock-o"></i></div>
                 <div class="kpi-value" id="kpiPendingApprovals">0</div>
             </div>
-            <div class="kpi-label">Pending Approvals</div>
+            <div class="kpi-label" id="lblPendingApprovals">Pending Approvals</div>
         </div>
         <div class="kpi-card">
-            <a class="kpi-more-detail" href="@Url.Action("Index", "DocumentMaintenance")" title="More Detail"><i class="fa fa-external-link"></i></a>
+            <a class="kpi-more-detail" id="lnkRejected" href="@Url.Action("Index", "DocumentMaintenance")" title="More Detail"><i class="fa fa-external-link"></i></a>
             <div class="kpi-top">
                 <div class="kpi-icon red"><i class="fa fa-times-circle"></i></div>
                 <div class="kpi-value" id="kpiRejected">0</div>
             </div>
-            <div class="kpi-label">Rejected Documents</div>
+            <div class="kpi-label" id="lblRejected">Rejected Documents</div>
         </div>
         <div class="kpi-card">
-            <a class="kpi-more-detail" href="@Url.Action("Index", "DocumentMaintenance")" title="More Detail"><i class="fa fa-external-link"></i></a>
+            <a class="kpi-more-detail" id="lnkUploadedToday" href="@Url.Action("Index", "DocumentMaintenance")" title="More Detail"><i class="fa fa-external-link"></i></a>
             <div class="kpi-top">
                 <div class="kpi-icon teal"><i class="fa fa-cloud-upload"></i></div>
                 <div class="kpi-value" id="kpiUploadedToday">0</div>
             </div>
-            <div class="kpi-label">Uploaded Today</div>
+            <div class="kpi-label" id="lblUploadedToday">Uploaded Today</div>
         </div>
         <div class="kpi-card">
-            <a class="kpi-more-detail" href="@Url.Action("Index", "P4DMaintenance")" title="More Detail"><i class="fa fa-external-link"></i></a>
+            <a class="kpi-more-detail" id="lnkPublished" href="@Url.Action("Index", "P4DMaintenance")" title="More Detail"><i class="fa fa-external-link"></i></a>
             <div class="kpi-top">
                 <div class="kpi-icon purple"><i class="fa fa-share-alt"></i></div>
                 <div class="kpi-value" id="kpiPublished">0</div>
             </div>
-            <div class="kpi-label">Published Documents</div>
+            <div class="kpi-label" id="lblPublished">Published Documents</div>
         </div>
         <div class="kpi-card">
-            <a class="kpi-more-detail" href="@Url.Action("Index", "DocumentReport")" title="More Detail"><i class="fa fa-external-link"></i></a>
+            <a class="kpi-more-detail" id="lnkDueForReview" href="@Url.Action("Index", "DocumentReport")" title="More Detail"><i class="fa fa-external-link"></i></a>
             <div class="kpi-top">
                 <div class="kpi-icon green"><i class="fa fa-calendar-check-o"></i></div>
                 <div class="kpi-value" id="kpiDueForReview">0</div>
             </div>
-            <div class="kpi-label">Due for Review</div>
+            <div class="kpi-label" id="lblDueForReview">Due for Review</div>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-4">
-            <div class="box box-primary">
-                <div class="box-header with-border">
-                    <h3 class="box-title">Documents by Category</h3>
-                    <a class="box-header-action" href="@Url.Action("Index", "DocumentReport")">View Full Report <i class="fa fa-angle-right"></i></a>
-                </div>
-                <div class="box-body">
-                    <div id="chartCategory" style="height:250px;"></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="box box-primary">
-                <div class="box-header with-border">
-                    <h3 class="box-title">Documents by Status</h3>
-                    <a class="box-header-action" href="@Url.Action("Index", "DocumentReport")">View Full Report <i class="fa fa-angle-right"></i></a>
-                </div>
-                <div class="box-body">
-                    <div id="chartStatus" style="height:250px;"></div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="box box-primary">
-                <div class="box-header with-border">
-                    <h3 class="box-title">Recently Rejected</h3>
-                    <a class="box-header-action" href="@Url.Action("Index", "DocumentMaintenance")">View All <i class="fa fa-angle-right"></i></a>
-                </div>
-                <div class="box-body" style="padding:12px 16px;">
-                    <table class="dash-table" id="tblRejected">
-                        <thead>
-                            <tr>
-                                <th>Document</th>
-                                <th>Rejected</th>
-                                <th>Owner</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tblRejectedBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-xs-12">
-            <div class="box box-primary">
-                <div class="box-header with-border">
-                    <h3 class="box-title">Pending Approvals</h3>
-                    <a class="box-header-action" href="@Url.Action("Index", "DocumentMaintenance")">View All <i class="fa fa-angle-right"></i></a>
-                </div>
-                <div class="box-body">
-                    <ul class="dash-list" id="listPendingApprovals"></ul>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-md-6">
-            <div class="box box-primary">
-                <div class="box-header with-border">
-                    <h3 class="box-title">Distributed Document By Department</h3>
-                    <a class="box-header-action" href="@Url.Action("Index", "P4DMaintenance")"><i class="fa fa-external-link"></i> More Detail</a>
-                </div>
-                <div class="box-body">
-                    <div class="dash-panel-toolbar">
-                        <div class="dash-toggle" id="distributionToggle">
-                            <button type="button" class="dash-toggle-btn" data-view="division">Division</button>
-                            <button type="button" class="dash-toggle-btn active" data-view="department">Department</button>
-                        </div>
+    <div class="dash-viewport">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title" id="titleCategoryChart">Documents by Category</h3>
+                        <a class="box-header-action" id="lnkCategoryChart" href="@Url.Action("Index", "DocumentReport")">View Full Report <i class="fa fa-angle-right"></i></a>
                     </div>
-                    <div id="chartDistribution" style="height:230px;"></div>
+                    <div class="box-body">
+                        <div id="chartCategory"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title" id="titleStatusChart">Documents by Status</h3>
+                        <a class="box-header-action" href="@Url.Action("Index", "DocumentReport")">View Full Report <i class="fa fa-angle-right"></i></a>
+                    </div>
+                    <div class="box-body">
+                        <div id="chartStatus"></div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="box box-primary">
-                <div class="box-header with-border">
-                    <h3 class="box-title">Received Document</h3>
-                    <a class="box-header-action" href="@Url.Action("Index", "P4DMaintenance")"><i class="fa fa-external-link"></i> More Detail</a>
-                </div>
-                <div class="box-body">
-                    <div class="dash-panel-toolbar">
-                        <div class="dash-toggle" id="receivedToggle">
-                            <button type="button" class="dash-toggle-btn active" data-view="division">Division</button>
-                            <button type="button" class="dash-toggle-btn" data-view="department">Department</button>
-                        </div>
+
+        <div class="row" id="rowP4DCharts">
+            <div class="col-md-6">
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">Distributed Document By Department</h3>
+                        <a class="box-header-action" href="@Url.Action("Index", "P4DMaintenance")"><i class="fa fa-external-link"></i> More Detail</a>
                     </div>
-                    <div id="chartReceived" style="height:230px;"></div>
+                    <div class="box-body">
+                        <div class="dash-panel-toolbar">
+                            <div class="dash-toggle" id="distributionToggle">
+                                <button type="button" class="dash-toggle-btn" data-view="division">Division</button>
+                                <button type="button" class="dash-toggle-btn active" data-view="department">Department</button>
+                            </div>
+                        </div>
+                        <div id="chartDistribution"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">Received Document</h3>
+                        <a class="box-header-action" href="@Url.Action("Index", "P4DMaintenance")"><i class="fa fa-external-link"></i> More Detail</a>
+                    </div>
+                    <div class="box-body">
+                        <div class="dash-panel-toolbar">
+                            <div class="dash-toggle" id="receivedToggle">
+                                <button type="button" class="dash-toggle-btn active" data-view="division">Division</button>
+                                <button type="button" class="dash-toggle-btn" data-view="department">Department</button>
+                            </div>
+                        </div>
+                        <div id="chartReceived"></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </section>
-
-<link rel="stylesheet" href="~/css/devextreme/dx.light.css" />
-<script src="~/js/devextreme/dx.web.js"></script>
-<script src="~/js/devextreme/dx.viz.js"></script>
 
 @Html.Partial("_Javascript")
