@@ -106,6 +106,32 @@
                     }
                 },
                 {
+                    dataField: "NEXT_REVIEW_DATE",
+                    caption: "Next Review Date",
+                    alignment: "right",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.NEXT_REVIEW_DATE;
+
+                        if (value == null) {
+                            container.text("");
+                            return;
+                        }
+
+                        var reviewDate = moment(value).startOf("day");
+                        var today = moment().startOf("day");
+                        var daysLeft = reviewDate.diff(today, "days");
+                        var labelClass = "label label-default";
+
+                        if (daysLeft < 0) {
+                            labelClass = "label label-danger";
+                        } else if (daysLeft <= 30) {
+                            labelClass = "label label-warning";
+                        }
+
+                        $("<span>").addClass(labelClass).text(reviewDate.format("DD-MM-YYYY")).appendTo(container);
+                    }
+                },
+                {
                     caption: "Division",
                     calculateCellValue: function (row) {
                         return row.DIVISION != null ? row.DIVISION + " - " + row.DIVISION_NAME : "";

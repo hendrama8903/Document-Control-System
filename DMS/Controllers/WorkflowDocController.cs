@@ -18,7 +18,6 @@ namespace DMS.Controllers
             this.db = db;
         }
 
-        private WorkflowRepo workflowRepo               = WorkflowRepo.Instance;
         private WorkflowDocRepo workflowDocRepo         = WorkflowDocRepo.Instance;
         private PositionMasterRepo positionMasterRepo   = PositionMasterRepo.Instance;
 
@@ -34,7 +33,8 @@ namespace DMS.Controllers
 
                 if (!menuURLList.Contains("/WorkflowDoc/Index"))
                 {
-                    return StatusCode(403);
+                    Response.StatusCode = 403;
+                    return View("Error403");
                 }
             }
 
@@ -87,19 +87,6 @@ namespace DMS.Controllers
                 //get position name 
                 PositionMaster result2    = positionMasterRepo.GetByKey(data2, db);
                 return Json(new { status = true, data = result, data2 = result2 });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { status = false, message = ex.Message });
-            }
-        }
-
-        public JsonResult GetByName(Workflow data)
-        {
-            try
-            {
-                IList<Workflow> result = workflowRepo.GetByName(data, db);
-                return Json(new { status = true, data = result });
             }
             catch (Exception ex)
             {
@@ -161,43 +148,6 @@ namespace DMS.Controllers
                 return Json(new { status = false, message = ex.Message });
             }
         }
-        public JsonResult GetWorkflowName(string q, string pageLimit, string page)
-        {
-            try
-            {
-                AjaxResult ajaxResult = new AjaxResult();
-                RepoResult repoResult = new RepoResult();
-
-                Workflow oWorkflow = new Workflow();
-                if (q != null)
-                    oWorkflow.WORKFLOW_NAME = '*' + q + '*';
-
-                int result, pageInt;
-
-                if (int.TryParse(page, out result))
-                {
-                    pageInt = int.Parse(page);
-                }
-                else
-                {
-                    pageInt = 1;
-                }
-
-                IList<Workflow> dataList = workflowRepo.Search(oWorkflow, db, pageInt, int.Parse(pageLimit));
-
-                var list = new List<Select2>();
-                foreach (var data in dataList)
-                {
-                    list.Add(new Select2() { text = data.WORKFLOW_NAME, id = data.WORKFLOW_NAME });
-                }
-                return Json(new { status = true, items = list });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { status = false, message = ex.Message });
-            }
-        }
-
         public JsonResult GetPositionName(string q, string pageLimit, string page)
         {
             try

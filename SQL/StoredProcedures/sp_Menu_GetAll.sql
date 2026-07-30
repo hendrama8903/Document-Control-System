@@ -1,0 +1,27 @@
+﻿CREATE OR ALTER PROCEDURE [dbo].[sp_Menu_GetAll]
+AS
+BEGIN  
+
+	DECLARE @QUERY VARCHAR(MAX)
+	
+	SET @QUERY = 'SELECT 
+								M.MENU_ID,
+								M.PARENT_ID,
+								B.MENU_NAME AS PARENT_NAME,
+								M.MENU_NAME,
+								M.MENU_ICON,
+								M.MENU_URL,
+								M.MENU_SEQ,
+								M.CREATED_DT,
+								M.CREATED_BY,
+								M.CHANGED_DT,
+								M.CHANGED_BY
+							FROM [dbo].[TB_M_MENU] M
+							LEFT JOIN [dbo].[TB_M_MENU] B ON M.[PARENT_ID] = B.[MENU_ID]
+							WHERE 1 = 1 
+							ORDER BY M.MENU_SEQ ASC'
+	
+	EXEC(@QUERY)
+	
+END
+GO

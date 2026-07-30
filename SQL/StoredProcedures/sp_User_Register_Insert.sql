@@ -1,0 +1,105 @@
+﻿CREATE OR ALTER PROCEDURE [dbo].[sp_User_Register_Insert]
+  @USERNAME VARCHAR(255), 
+  @REG_NO VARCHAR(50), 
+	@FULL_NAME VARCHAR(255), 
+	@PASSWORD VARCHAR(255), 
+	@CONFIRM_PASSWORD VARCHAR(255), 
+	@EMAIL VARCHAR(255), 
+	@PHONE VARCHAR(15), 
+	@ROLE_ID VARCHAR(50), 
+-- 	@LOGIN_USER VARCHAR(255),
+	@RETURN_MSG VARCHAR(MAX) OUTPUT
+AS
+BEGIN TRY
+	
+	IF @USERNAME IS NULL OR LEN(@USERNAME) < 1
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Username should not be null';
+		RETURN 0;
+	END
+	
+	IF EXISTS(SELECT TOP 1 1 FROM [dbo].[TB_M_USER] WHERE USERNAME = @USERNAME )
+ 	BEGIN
+ 			SET @RETURN_MSG = 'ERROR: Username Already Exist';
+ 			RETURN 0;
+ 	END
+	
+	IF @REG_NO IS NULL OR LEN(@REG_NO) < 1
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Reg No should not be null';
+		RETURN 0;
+	END
+	
+	IF @FULL_NAME IS NULL OR LEN(@FULL_NAME) < 1
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Full Name should not be null';
+		RETURN 0;
+	END
+	
+	IF @PASSWORD IS NULL OR LEN(@PASSWORD) < 1
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Password not be null';
+		RETURN 0;
+	END
+	
+	IF @CONFIRM_PASSWORD IS NULL OR LEN(@CONFIRM_PASSWORD) < 1
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Confirm Password should not be null';
+		RETURN 0;
+	END
+	
+	IF @CONFIRM_PASSWORD <> @PASSWORD 
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Confirm Password should be same with Password';
+		RETURN 0;
+	END
+	
+	IF @EMAIL IS NULL OR LEN(@EMAIL) < 1
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Email should not be null';
+		RETURN 0;
+	END
+	
+	IF @EMAIL NOT LIKE '%_@__%.__%'
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Invalid Email Address';
+		RETURN 0;
+	END
+	
+	IF @PHONE IS NULL OR LEN(@PHONE) < 1
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Phone should not be null';
+		RETURN 0;
+	END
+	
+
+	INSERT INTO [dbo].[TB_M_USER] (
+		USERNAME, 
+		REG_NO,
+		FULL_NAME, 
+		PASSWORD,  
+		EMAIL, 
+		PHONE, 
+		ROLE_ID
+-- 		CREATED_DT,
+-- 		CREATED_BY
+	) VALUES (
+		@USERNAME, 
+		@REG_NO,
+		@FULL_NAME, 
+		@PASSWORD, 
+		@EMAIL, 
+		@PHONE, 
+		'MDC-SUPPLIER' 
+-- 		GETDATE(),
+-- 		@LOGIN_USER
+	)
+	
+	SET @RETURN_MSG = 'Successfully Save Data'
+	RETURN 1;
+END TRY
+BEGIN CATCH
+	SET @RETURN_MSG = 'ERROR: ' + ERROR_PROCEDURE() +': '+ ERROR_MESSAGE() + ', at line = ' +  CAST(ERROR_LINE() AS VARCHAR);
+	RETURN 0;
+END CATCH
+GO

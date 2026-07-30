@@ -5,7 +5,6 @@
     
     $(document).ready(function() {
         setDataSelect2WithParam("addEditDivision", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "- Choose -", "DIVISION");
-        setDataSelect2("addEditWorkflow", "@Url.Action("GetWorkflowName", "DepartmentMaster")", "- Choose -");
 
         $("#btn_add").on("click", function() {
             onAddPrepare();
@@ -36,12 +35,10 @@
         $('#addEditDepartment').val("");
         $('#addEditName').val("");
         $('#addEditDivision').val("").trigger("change");
-        $('#addEditWorkflow').val("").trigger("change");
 
         $('#addEditDepartment').prop('disabled', false);
         $('#addEditName').prop('disabled', false);
         $('#addEditDivision').prop('disabled', false);
-        $('#addEditWorkflow').prop('disabled', false);
 
         $("#modalAddEdit").modal();
         $('#modalAddEdit').on('shown.bs.modal', function() {
@@ -74,13 +71,11 @@
                     $('#addEditDepartment').val(data.DEPARTMENT_CODE);
                     $('#addEditName').val(data.DEPARTMENT_NAME);
                     $('#addEditDivision').select2("trigger", "select", { data: { id: data.DIVISION, text: data.DIVISION } });
-                    $('#addEditWorkflow').select2("trigger", "select", { data: { id: data.WORKFLOW_ID, text: data.WORKFLOW_NAME } });
 
                     $("#addEditId").prop("disabled", true);
                     $("#addEditDepartment").prop("disabled", true);
                     $("#addEditName").prop("disabled", false);
                     $("#addEditDivision").prop("disabled", false);
-                    $('#addEditWorkflow').prop('disabled', false);
 
                     $("#modalAddEdit").modal();
                     $('#modalAddEdit').on('shown.bs.modal', function() {
@@ -124,8 +119,7 @@
                 DEPARTMENT_ID: $('#addEditId').val(),
                 DEPARTMENT_CODE: $('#addEditDepartment').val(),
                 DEPARTMENT_NAME: $('#addEditName').val(),
-                DIVISION: $('#addEditDivision').val(),
-                WORKFLOW_ID: $('#addEditWorkflow').val()
+                DIVISION: $('#addEditDivision').val()
             },
             success: function (result) {
                 //popUpProgressHide();

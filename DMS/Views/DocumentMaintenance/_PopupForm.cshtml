@@ -75,35 +75,16 @@
                         <select class="form-control" id="addEditDocumentCode"></select>
                     </div>
                     <div class="col-md-4 form-group">
-                        <label class="control-label">Document Name <span class="text-red">*</span></label>
-                        <input class="form-control" id="addEditDocumentName" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
-                    </div>
-                    <div class="col-md-4 form-group">
-                        <label class="control-label">Classified <span class="text-red">*</span></label>
-                        <select class="form-control" id="addEditClassified"></select>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-4 form-group">
-                        <label class="control-label">Company Code <span class="text-red">*</span></label>
-                        <select class="form-control" id="addEditCompanyCode"></select>
-                    </div>
-                    <div class="col-md-4 form-group">
-                        <label class="control-label">Process Code <span id="mandatoryMarkProcessCode" class="text-red">*</span></label>
-                        <select class="form-control" id="addEditProcessCode"></select>
-                    </div>
-                    <div class="col-md-4 form-group">
                         <label class="control-label">Division <span class="text-red">*</span></label>
                         <select class="form-control" id="addEditDivision" onchange="setDepartment(this.value)"></select>
                     </div>
-                </div>
-
-                <div class="row">
                     <div class="col-md-4 form-group">
                         <label class="control-label">Department <span class="text-red">*</span></label>
                         <select class="form-control" id="addEditDepartment" onchange="setSection(this.value);"></select>
                     </div>
+                </div>
+
+                <div class="row">
                     <div class="col-md-4 form-group">
                         <label class="control-label">Section <span id="mandatoryMarkSection" class="text-red">*</span></label>
                         <select class="form-control" id="addEditSection"></select>
@@ -111,6 +92,25 @@
                     <div class="col-md-4 form-group">
                         <label class="control-label">Creator <span class="text-red">*</span></label>
                         <select class="form-control" id="addEditDocumentCreator"></select>
+                    </div>
+                    <div class="col-md-4 form-group">
+                        <label class="control-label">Company Code <span class="text-red">*</span></label>
+                        <select class="form-control" id="addEditCompanyCode"></select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 form-group">
+                        <label class="control-label">Process Code <span id="mandatoryMarkProcessCode" class="text-red">*</span></label>
+                        <select class="form-control" id="addEditProcessCode"></select>
+                    </div>
+                    <div class="col-md-4 form-group">
+                        <label class="control-label">Classified <span class="text-red">*</span></label>
+                        <select class="form-control" id="addEditClassified"></select>
+                    </div>
+                    <div class="col-md-4 form-group">
+                        <label class="control-label">Document Name <span class="text-red">*</span></label>
+                        <input class="form-control" id="addEditDocumentName" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
                     </div>
                 </div>
 

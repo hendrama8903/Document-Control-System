@@ -39,9 +39,16 @@ namespace DMS.Controllers
 
                 if (!menuURLList.Contains("/Role/Index"))
                 {
-                    return StatusCode(403);
+                    Response.StatusCode = 403;
+                    return View("Error403");
                 }
             }
+
+            // add authorization function
+            ViewData["Add"] = HttpContext.Session.GetString("functionList").Contains("ROLE-ADD");
+            ViewData["Edit"] = HttpContext.Session.GetString("functionList").Contains("ROLE-EDIT");
+            ViewData["Delete"] = HttpContext.Session.GetString("functionList").Contains("ROLE-DELETE");
+            ViewData["Authorization"] = HttpContext.Session.GetString("functionList").Contains("ROLE-AUTHORIZATION");
 
             ViewData["Title"] = "Role Authorization";
 

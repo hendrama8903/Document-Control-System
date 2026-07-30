@@ -620,6 +620,60 @@ body.adm-body {
     padding: 12px 16px 16px;
 }
 
+/* ---------- Polesan DevExtreme dxDataGrid (dipakai semua modul) ---------- */
+.adm-body #divGrid .dx-datagrid {
+    font-size: 13px;
+    border: none;
+    background: transparent;
+}
+
+/* header: tegas & sedikit tinted, garis bawah lebih jelas daripada garis antar-baris */
+.adm-body #divGrid .dx-datagrid-headers {
+    background: var(--paper-2);
+    border-bottom: 2px solid var(--line-2);
+}
+
+.adm-body #divGrid .dx-datagrid-headers .dx-header-row > td {
+    color: var(--ink);
+    font-weight: 700;
+    border-color: var(--line);
+    vertical-align: middle;
+}
+
+/* garis antar-baris lebih lembut daripada default abu-abu tegas DevExtreme */
+.adm-body #divGrid .dx-datagrid-rowsview .dx-row > td {
+    border-color: var(--line);
+}
+
+/* zebra striping halus per baris data (aman untuk kolom fixed - dihitung per tabel) */
+.adm-body #divGrid .dx-datagrid-rowsview .dx-datagrid-table tbody > tr.dx-data-row:nth-of-type(even) {
+    background: var(--paper);
+}
+
+/* hover baris - tint lembut supaya baris yang sedang dilihat gampang di-track mata */
+.adm-body #divGrid .dx-datagrid-rowsview .dx-datagrid-table tbody > tr.dx-data-row:hover > td {
+    background: var(--accent-soft);
+}
+
+/* baris group (mis. grouping External Type) - beda dari baris data biasa */
+.adm-body #divGrid .dx-datagrid-rowsview .dx-row.dx-group-row td {
+    background: var(--paper-2);
+    font-weight: 600;
+}
+
+/* filter row menyatu dengan header, tidak seperti kotak terpisah */
+.adm-body #divGrid .dx-datagrid-filter-row td {
+    background: var(--surface);
+    border-color: var(--line);
+}
+
+/* pager lebih lega dan tidak menempel rapat ke baris terakhir */
+.adm-body #divGrid .dx-datagrid-pager {
+    border-top: 1px solid var(--line);
+    margin-top: 6px;
+    padding-top: 10px;
+}
+
 /* tombol */
 .adm-body .btn {
     border-radius: 9px;
@@ -677,6 +731,39 @@ body.adm-body {
     border-color: #9a3422;
 }
 
+/* tombol aksi bulat di kolom Action grid (mis. View/Print dokumen) */
+.adm-body .adm-act-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 2px rgba(20,35,50,.10);
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.adm-body .adm-act-btn:hover,
+.adm-body .adm-act-btn:focus {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(20,35,50,.20);
+}
+
+/* aksi sekunder (mis. Print) - outline, tidak bersaing visual dengan aksi utama */
+.adm-body .adm-act-btn.adm-act-secondary {
+    background: var(--surface);
+    border: 1.5px solid var(--primary);
+    color: var(--primary);
+}
+
+.adm-body .adm-act-btn.adm-act-secondary:hover,
+.adm-body .adm-act-btn.adm-act-secondary:focus {
+    background: var(--accent-soft);
+    border-color: var(--primary-2);
+    color: var(--primary-2);
+}
+
 /* Reject is a workflow action, not a permanent deletion — kept visually
    distinct from Delete (btn-danger) so the two aren't mistaken for each other. */
 .adm-body .btn.btn-reject {
@@ -692,6 +779,22 @@ body.adm-body {
     border-color: #96591F;
 }
 
+/* Restore (soft-deleted record) is a recovery action, not a create/edit/
+   delete - kept visually distinct (teal) so it doesn't read as another
+   primary/success action in the toolbar. */
+.adm-body .btn.btn-restore {
+    background: #0E7C86;
+    border-color: #0E7C86;
+    color: #fff;
+}
+
+.adm-body .btn.btn-restore:hover,
+.adm-body .btn.btn-restore:focus,
+.adm-body .btn.btn-restore:active {
+    background: #0B646C;
+    border-color: #0B646C;
+}
+
 /* Disabled buttons: flat grey instead of a dimmed brand color, so
    enabled vs. disabled is unambiguous regardless of button color. */
 .adm-body .btn:disabled,
@@ -702,6 +805,81 @@ body.adm-body {
     opacity: 1;
     box-shadow: none;
     cursor: not-allowed;
+}
+
+/* toggle switch pill (mis. "Show Deleted Users" di toolbar grid) -
+   pengganti checkbox polos supaya senada dengan tombol pill di sebelahnya */
+.adm-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 30px;
+    margin: 0 0 0 4px;
+    padding: 0 12px 0 6px;
+    border-radius: 999px;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    cursor: pointer;
+    user-select: none;
+    transition: background .15s ease, border-color .15s ease;
+}
+
+.adm-toggle:hover {
+    border-color: var(--line-2);
+}
+
+.adm-toggle input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.adm-toggle-track {
+    position: relative;
+    flex: 0 0 auto;
+    width: 32px;
+    height: 18px;
+    border-radius: 999px;
+    background: #C7CFD8;
+    transition: background .18s ease;
+}
+
+.adm-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(20,35,50,.3);
+    transition: transform .18s cubic-bezier(.4,0,.2,1);
+}
+
+.adm-toggle input:checked ~ .adm-toggle-track {
+    background: var(--merah);
+}
+
+.adm-toggle input:checked ~ .adm-toggle-track .adm-toggle-thumb {
+    transform: translateX(14px);
+}
+
+.adm-toggle input:focus-visible ~ .adm-toggle-track {
+    box-shadow: 0 0 0 3px rgba(0,120,212,.25);
+}
+
+.adm-toggle-label {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--muted);
+    white-space: nowrap;
+    transition: color .15s ease;
+}
+
+.adm-toggle input:checked ~ .adm-toggle-label {
+    color: var(--merah);
 }
 
 /* form */

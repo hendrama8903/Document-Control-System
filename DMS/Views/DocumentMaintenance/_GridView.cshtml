@@ -172,18 +172,23 @@
                     cellTemplate: function (container, options) {
                         var row = options.data;
                         var labelClass = "label label-danger";
+                        var icon = "fa-times-circle";
 
                         if (row.STATUS == 0) {
                             labelClass = "label label-info";
+                            icon = "fa-clock-o";
                         } else if (row.STATUS == 1) {
                             labelClass = "label label-success";
+                            icon = "fa-check-circle";
                         } else if (row.STATUS == 4) {
                             labelClass = "label label-default";
+                            icon = "fa-archive";
                         } else if (row.STATUS == 5) {
                             labelClass = "label label-primary";
+                            icon = "fa-flag-checkered";
                         }
 
-                        $("<span>").addClass(labelClass).text(row.STATUS_DISPLAY).appendTo(container);
+                        $("<span>").addClass(labelClass).html('<i class="fa ' + icon + '"></i> ' + row.STATUS_DISPLAY).appendTo(container);
                     }
                 },
                 {
@@ -199,18 +204,26 @@
                         }
 
                         var labelClass = "label label-danger";
+                        var icon = "fa-times-circle";
 
                         if (value == "DRAFT") {
                             labelClass = "label label-info";
+                            icon = "fa-clock-o";
                         } else if (value == "ON PROGRESS" || value == "PARTIALLY SENT") {
                             labelClass = "label label-warning";
-                        } else if (value == "RECEIVED" || value == "SENT") {
+                            icon = "fa-hourglass-half";
+                        } else if (value == "SENT") {
+                            labelClass = "label label-primary";
+                            icon = "fa-paper-plane";
+                        } else if (value == "RECEIVED") {
                             labelClass = "label label-success";
+                            icon = "fa-check-circle";
                         } else if (value == "DELETED") {
                             labelClass = "label label-default";
+                            icon = "fa-archive";
                         }
 
-                        $("<span>").addClass(labelClass).text(value).appendTo(container);
+                        $("<span>").addClass(labelClass).html('<i class="fa ' + icon + '"></i> ' + value).appendTo(container);
                     }
                 },
                 { dataField: "REVISION", caption: "Revision", alignment: "center" },
@@ -268,8 +281,8 @@
 
                         $("<button>")
                             .attr({ type: "button", title: "View" })
-                            .addClass("btn btn-primary btn-sm")
-                            .html('<i class="fa fa-eye"></i>')
+                            .addClass("btn btn-primary btn-sm adm-act-btn")
+                            .html('<i class="fa fa-file-pdf-o"></i>')
                             .on("click", function () {
                                 onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
                             })
@@ -277,8 +290,8 @@
 
                         $("<button>")
                             .attr({ type: "button", title: "Print" })
-                            .addClass("btn btn-primary btn-sm")
-                            .css("margin-left", "3px")
+                            .addClass("btn btn-default btn-sm adm-act-btn adm-act-secondary")
+                            .css("margin-left", "6px")
                             .html('<i class="fa fa-print"></i>')
                             .on("click", function () {
                                 onPrintAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID, row.APPROVAL_ID);

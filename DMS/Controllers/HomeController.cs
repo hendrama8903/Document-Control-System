@@ -14,6 +14,7 @@ namespace DMS.Controllers
 
         private DocumentMaintenanceRepo documentMaintenanceRepo = DocumentMaintenanceRepo.Instance;
         private P4DMaintenanceRepo p4dMaintenanceRepo = P4DMaintenanceRepo.Instance;
+        private ExternalDocumentRepo externalDocumentRepo = ExternalDocumentRepo.Instance;
 
         public HomeController(DBContext db, ILogger<HomeController> logger)
         {
@@ -116,7 +117,14 @@ namespace DMS.Controllers
             int rejectedCount = p4dDocs.Count(x => x.STATUS == "3");
             int registeredToday = p4dDocs.Count(x => (x.CREATED_DT ?? DateTime.MinValue).Date == today);
             int sentDocuments = p4dDocs.Count(x => x.STATUS == "5" || x.STATUS == "6");
-            int receivedDocuments = p4dDocs.Count(x => x.STATUS == "2");
+
+            // "Due for Review" untuk QMS harus lintas semua dokumen (internal + eksternal),
+            // bukan cuma yang dibuat sendiri seperti di dashboard user biasa.
+            DateTime reviewHorizon = today.AddDays(30);
+            IList<DocumentMaintenance> allDocs = documentMaintenanceRepo.Search(new DocumentMaintenance(), null, db, null, null);
+            IList<ExternalDocument> allExternalDocs = externalDocumentRepo.Search(new ExternalDocument(), null, null, db, null, null);
+            int dueForReview = allDocs.Count(x => x.NEXT_REVIEW_DATE.HasValue && x.NEXT_REVIEW_DATE.Value.Date <= reviewHorizon)
+                + allExternalDocs.Count(x => x.NEXT_REVIEW_DATE.HasValue && x.NEXT_REVIEW_DATE.Value.Date <= reviewHorizon);
 
             int totalDocsForPct = Math.Max(p4dDocs.Count, 1);
             var departmentSummary = p4dDocs
@@ -173,7 +181,7 @@ namespace DMS.Controllers
                         rejectedDocuments = new { value = rejectedCount },
                         uploadedToday = new { value = registeredToday },
                         publishedDocuments = new { value = sentDocuments },
-                        dueForReview = new { value = receivedDocuments }
+                        dueForReview = new { value = dueForReview }
                     },
                     categorySummary = departmentSummary,
                     statusSummary,

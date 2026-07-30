@@ -1,0 +1,77 @@
+﻿CREATE OR ALTER PROCEDURE [dbo].[sp_Dashboard_SearchDivisionCount]
+	@LOGIN_USER 				VARCHAR(255)
+AS
+BEGIN  
+
+	DECLARE @QUERY VARCHAR(MAX)
+	DECLARE @DIVISION_COUNT INT
+	DECLARE @DEPARTMENT_COUNT INT
+	
+	SET @QUERY = 'WITH data AS 
+								(
+									SELECT 
+										S.DIVISION DIVISION,
+										COUNT(DIVISION) AS DIVISION_COUNT
+									FROM [dbo].[TB_R_CTRL_DOCUMENT] S
+									JOIN TB_M_USER US
+										ON US.USERNAME = S.CREATED_BY
+									WHERE 1 = 1
+									AND ISNULL(S.DELETE_FLAG, 0) = 0 '
+									
+									IF @LOGIN_USER IS NOT NULL
+									BEGIN
+										SELECT @DIVISION_COUNT = COUNT(DIVISION) FROM TB_M_USER_POS WHERE USERNAME = @LOGIN_USER;
+										SELECT @DEPARTMENT_COUNT = COUNT(DEPARTMENT_ID) FROM TB_M_USER_POS WHERE USERNAME = @LOGIN_USER;
+									
+										SET @QUERY += 'AND (
+																	EXISTS (
+																			SELECT 1 FROM TB_R_CTRL_DOCUMENT SS
+																			WHERE S.OPERATION_TYPE = 2
+																			AND S.CREATED_BY = ''' + @LOGIN_USER + '''
+																		)';
+																		
+										IF @DEPARTMENT_COUNT > 0
+										BEGIN
+											SET @QUERY += 'OR EXISTS (
+																			SELECT 1 FROM TB_R_DOCUMENT_DISTRIBUTION DD
+																			WHERE DD.DEPARTMENT_ID IN (SELECT DEPARTMENT_ID FROM TB_M_USER_POS WHERE USERNAME = '''+ @LOGIN_USER+''')
+																			AND DD.DOCUMENT_TRANSACTION_ID = S.DOCUMENT_TRANSACTION_ID
+																			AND DD.STATUS = 1
+																			AND S.OPERATION_TYPE = 1
+																		)'
+										END
+										ELSE
+										BEGIN
+											IF @DIVISION_COUNT > 0
+											BEGIN
+												SET @QUERY += 'OR EXISTS (
+																				SELECT 1 FROM TB_R_DOCUMENT_DISTRIBUTION DD
+																				WHERE DD.DEPARTMENT_ID IN (SELECT DEPARTMENT_ID FROM TB_M_DEPARTMENT WHERE DIVISION IN (SELECT DIVISION FROM TB_M_USER_POS WHERE USERNAME = '''+@LOGIN_USER+'''))
+																				AND DD.DOCUMENT_TRANSACTION_ID = S.DOCUMENT_TRANSACTION_ID
+																				AND DD.STATUS = 1
+																				AND S.OPERATION_TYPE = 1
+																			)'
+											END
+											ELSE
+											BEGIN
+											SET @QUERY += 'OR EXISTS (
+																			SELECT 1 FROM TB_R_DOCUMENT_DISTRIBUTION DD
+																			WHERE DD.DOCUMENT_TRANSACTION_ID = S.DOCUMENT_TRANSACTION_ID
+																			AND DD.STATUS = 1
+																			AND S.OPERATION_TYPE = 1
+																		)'
+											END
+										END
+																		
+										SET @QUERY += ') ';
+								END
+									
+	SET @QUERY += ' GROUP BY S.DIVISION
+								)
+								SELECT * FROM data
+								WHERE 1 = 1 '
+									
+	EXEC(@QUERY)
+	
+END
+GO

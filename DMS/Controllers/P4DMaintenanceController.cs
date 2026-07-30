@@ -57,7 +57,8 @@ namespace DMS.Controllers
 
                 if (!menuURLList.Contains("/P4DMaintenance/Index"))
                 {
-                    return StatusCode(403);
+                    Response.StatusCode = 403;
+                    return View("Error403");
                 }
             }
 
@@ -75,7 +76,7 @@ namespace DMS.Controllers
             bool? isaccess = GetDocumentAccessControl();
 
 
-            ViewData["Title"] = "ISO Documents";
+            ViewData["Title"] = "Document Registration";
 
             return View();
         }
@@ -835,6 +836,14 @@ namespace DMS.Controllers
 
             try
             {
+                DocumentControlMaintenance documentControl = P4DMaintenanceRepo.Instance.Search(
+                    new DocumentControlMaintenance { DOCUMENT_TRANSACTION_ID = newDistributions[0].DOCUMENT_TRANSACTION_ID }, null, db, 1, 1).FirstOrDefault();
+
+                if (documentControl != null && (documentControl.STATUS == "0" || documentControl.STATUS == "3" || documentControl.STATUS == "4"))
+                {
+                    return Json(new { status = false, message = "ERROR: Document must be received first before it can be distributed" });
+                }
+
                 var existDistribution = P4DMaintenanceRepo.Instance.SearchDocumentDistribution(
                     new DocumentDistribution { DOCUMENT_TRANSACTION_ID = newDistributions[0].DOCUMENT_TRANSACTION_ID }, db, null, null);
 

@@ -25,14 +25,13 @@ namespace DMS.Models
         public virtual DbSet<Select2SectionCode>? Select2SectionCode { get; set; }
         public virtual DbSet<Select2SectionName>? Select2SectionName { get; set; }
         public virtual DbSet<Select2SectionCodeAndName>? Select2SectionCodeAndName { get; set; }
-        public virtual DbSet<Workflow>? Workflow { get; set; }
         public virtual DbSet<WorkflowDoc>? WorkflowDoc { get; set; }
         public virtual DbSet<DocumentMaintenance>? DocumentMaintenance { get; set; }
         public virtual DbSet<DocumentApproval>? DocumentApproval { get; set; }
         public virtual DbSet<DocumentDistribution>? DocumentDistribution { get; set; }
         public virtual DbSet<DocumentControlMaintenance>? P4DMaintenance { get; set; }
         public virtual DbSet<DocumentControlMaintenance>? UserDashboard { get; set; }
-        public virtual DbSet<DocumentControlMaintenance>? IADDashboard { get; set; }
+        public virtual DbSet<DocumentControlMaintenance>? DocumentControlDashboard { get; set; }
         public virtual DbSet<ApprovalHeader>? ApprovalHeader { get; set; }
         public virtual DbSet<ApprovalDetail>? ApprovalDetail { get; set; }
         public virtual DbSet<PositionMaster>? PositionMaster { get; set; }
@@ -46,6 +45,7 @@ namespace DMS.Models
         public virtual DbSet<Select2DivisionUser>? Select2DivisionUser { get; set; }
         public virtual DbSet<ExternalDocument>? ExternalDocument { get; set; }
         public virtual DbSet<MSequence>? MSequence { get; set; }
+        public virtual DbSet<DocumentReceiptReport>? DocumentReceiptReport { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -79,7 +79,6 @@ namespace DMS.Models
                 table.SEQ_NO
             });
 
-            builder.Entity<Workflow>().HasNoKey();
             builder.Entity<Select2SectionName>().HasNoKey();
             builder.Entity<Select2SectionCode>().HasNoKey();
             builder.Entity<Select2SectionCodeAndName>().HasNoKey();

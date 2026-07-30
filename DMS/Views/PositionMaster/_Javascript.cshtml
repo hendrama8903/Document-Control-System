@@ -1,0 +1,163 @@
+<script type="text/javascript">
+    var gScreenMode = null;
+    var gId = null;
+
+    $(document).ready(function() {
+        $("#btn_add").on("click", function() {
+            onAddPrepare();
+        });
+
+        $("#btn_edit").on("click", function() {
+            onEditPrepare();
+        });
+
+        $("#btn_delete").on("click", function() {
+            onDeletePrepare();
+        });
+
+        $("#btn_save").on("click", function() {
+            confirmAddEditData();
+        });
+    });
+
+    function onSearch() {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        grid.clearSelection();
+        grid.refresh();
+    }
+
+    function onAddPrepare() {
+        gScreenMode = 'ADD';
+        $('#modal-title').html("Add Position Master");
+        $('#addEditId').val("");
+        $('#addEditPositionNm').val("");
+        $('#addEditPositionLvl').val("");
+
+        $('#addEditPositionNm').prop('disabled', false);
+        $('#addEditPositionLvl').prop('disabled', false);
+
+        $("#modalAddEdit").modal();
+        $('#modalAddEdit').on('shown.bs.modal', function() {
+            $('#addEditPositionNm').focus();
+        });
+    }
+
+    function onEditPrepare() {
+
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gId = row.POSITION_ID;
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetByKey", "PositionMaster")",
+            async: false,
+            data: {
+                POSITION_ID: gId
+            },
+            success: function(result) {
+                if (result.status == true) {
+                    var data = result.data;
+                    gScreenMode = 'EDIT';
+                    $('#modal-title').html("Edit Position Master");
+                    $('#addEditId').val(data.POSITION_ID);
+                    $('#addEditPositionNm').val(data.POSITION_NAME);
+                    $('#addEditPositionLvl').val(data.POSITION_LEVEL);
+
+                    $("#addEditPositionNm").prop("disabled", false);
+                    $("#addEditPositionLvl").prop("disabled", false);
+
+                    $("#modalAddEdit").modal();
+                    $('#modalAddEdit').on('shown.bs.modal', function() {
+                        $('#addEditPositionNm').focus();
+                    });
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function(result) {
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function onDeletePrepare() {
+        if (getSelectedRowsData().length < 1) {
+            return;
+        }
+        showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
+    }
+
+    function confirmAddEditData() {
+        if ($.trim($('#addEditPositionNm').val()) == "") {
+            showErrorMesgGrowl("Position Name should not be empty");
+            return;
+        }
+        if ($.trim($('#addEditPositionLvl').val()) == "") {
+            showErrorMesgGrowl("Position Level should not be empty");
+            return;
+        }
+        showConfirmMesg("Are you sure you want to continue process?", addEditData, "Confirmation");
+    }
+
+    function addEditData() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("AddEdit", "PositionMaster")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                screenMode: gScreenMode,
+                POSITION_ID: $('#addEditId').val(),
+                POSITION_NAME: $('#addEditPositionNm').val(),
+                POSITION_LEVEL: $('#addEditPositionLvl').val()
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    $("#modalAddEdit").modal('hide');
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function deleteData() {
+        popUpProgressShow();
+        var selectedIds = getSelectedRowsData().map(function (row) {
+            return row.POSITION_ID;
+        });
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("DeleteMultiple", "PositionMaster")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                selectedIds: selectedIds
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    popUpProgressHide();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                    popUpProgressHide();
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+                popUpProgressHide();
+            }
+        });
+    }
+</script>

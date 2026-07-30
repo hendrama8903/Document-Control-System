@@ -1,0 +1,59 @@
+﻿CREATE OR ALTER PROCEDURE [dbo].[sp_Menu_Search]
+	@MENU_NAME 	 VARCHAR(255),
+	@PARENT_ID 	 VARCHAR(50),
+	@PageNumber int,
+	@PageSize int
+AS
+BEGIN  
+
+	DECLARE @QUERY VARCHAR(MAX)
+	
+	SET @QUERY = 'WITH data AS 
+								(
+									SELECT 
+										ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) as RowNumber, 
+										M.MENU_ID,
+										M.PARENT_ID,
+										B.MENU_NAME AS PARENT_NAME,
+										M.MENU_NAME,
+										M.MENU_ICON,
+										M.MENU_URL,
+										M.MENU_SEQ,
+										M.CREATED_DT,
+										M.CREATED_BY,
+										M.CHANGED_DT,
+										M.CHANGED_BY,
+										CASE 
+												WHEN M.PARENT_ID IS NULL THEN M.MENU_SEQ * 100
+												ELSE M.MENU_SEQ + B.MENU_SEQ * 100
+										END AS ORDERING
+									FROM [dbo].[TB_M_MENU] M
+									LEFT JOIN [dbo].[TB_M_MENU] B ON M.[PARENT_ID] = B.[MENU_ID]
+									WHERE 1 = 1 '
+									
+									IF @MENU_NAME IS NOT NULL
+									BEGIN
+										SET @QUERY += ' AND M.MENU_NAME LIKE ''' + REPLACE(@MENU_NAME , '*', '%') + ''' '
+									END
+									
+									IF @PARENT_ID IS NOT NULL
+									BEGIN
+										SET @QUERY += ' AND M.PARENT_ID LIKE ''' + REPLACE(@PARENT_ID , '*', '%') + ''' '
+									END
+									
+	SET @QUERY += '
+								)
+								SELECT * FROM data
+								WHERE 1 = 1 '
+		
+	IF (@PageSize IS NOT NULL AND @PageNumber IS NOT NULL)
+	BEGIN
+		SET @QUERY += ' AND RowNumber > '+ CAST((@PageSize * (@PageNumber - 1)) AS VARCHAR) +' AND RowNumber <= ' +CAST(@PageSize + (@PageSize * (@PageNumber - 1)) AS VARCHAR);
+	END
+	
+	SET @QUERY += ' ORDER BY ORDERING ASC'
+									
+	EXEC(@QUERY)
+	
+END
+GO

@@ -53,5 +53,68 @@ namespace DMS.Models.Repo
 
             return Result;
         }
+
+        public DBResult Insert(PositionMaster data, string loginUser, DBContext db)
+        {
+            SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
+            SqlParameter returnMsg = CreateSqlParameterOutputString("@RETURN_MSG");
+
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                returnVal,
+                new SqlParameter ( "@POSITION_NAME", CheckNullValue(data.POSITION_NAME) ),
+                new SqlParameter ( "@POSITION_LEVEL", CheckNullValue(data.POSITION_LEVEL) ),
+                new SqlParameter ( "@LOGIN_USER", loginUser ),
+                returnMsg
+            };
+
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_PositionMaster_Insert] @POSITION_NAME, @POSITION_LEVEL, @LOGIN_USER, @RETURN_MSG OUTPUT";
+            int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
+
+            DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
+            return result;
+        }
+
+        public DBResult Update(PositionMaster data, string loginUser, DBContext db)
+        {
+            SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
+            SqlParameter returnMsg = CreateSqlParameterOutputString("@RETURN_MSG");
+
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                returnVal,
+                new SqlParameter ( "@POSITION_ID", CheckNullValue(data.POSITION_ID) ),
+                new SqlParameter ( "@POSITION_NAME", CheckNullValue(data.POSITION_NAME) ),
+                new SqlParameter ( "@POSITION_LEVEL", CheckNullValue(data.POSITION_LEVEL) ),
+                new SqlParameter ( "@LOGIN_USER", loginUser ),
+                returnMsg
+            };
+
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_PositionMaster_Update] @POSITION_ID, @POSITION_NAME, @POSITION_LEVEL, @LOGIN_USER, @RETURN_MSG OUTPUT";
+            int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
+
+            DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
+            return result;
+        }
+
+        public DBResult Delete(PositionMaster data, string loginUser, DBContext db)
+        {
+            SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
+            SqlParameter returnMsg = CreateSqlParameterOutputString("@RETURN_MSG");
+
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                returnVal,
+                new SqlParameter ( "@POSITION_ID", CheckNullValue(data.POSITION_ID) ),
+                new SqlParameter ( "@LOGIN_USER", loginUser ),
+                returnMsg
+            };
+
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_PositionMaster_Delete] @POSITION_ID, @LOGIN_USER, @RETURN_MSG OUTPUT";
+            int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
+
+            DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
+            return result;
+        }
     }
 }

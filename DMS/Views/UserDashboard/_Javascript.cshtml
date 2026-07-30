@@ -21,8 +21,8 @@
             confirmAddEditData();
         });
 
-        $("#btn_publish").on("click", function () {
-            confirmPublish();
+        $("#btn_acknowledge").on("click", function () {
+            confirmAcknowledge();
         });
 
         $("#btn_cancel").on("click", function () {
@@ -247,8 +247,8 @@
         }
     }
 
-    function confirmPublish() {
-        showConfirmMesg("Are you sure already published document ?", insertLog, "Confirmation");
+    function confirmAcknowledge() {
+        showConfirmMesg("Are you sure you want to acknowledge this document?", insertLog, "Confirmation");
     }
 
     function insertLog() {
@@ -266,7 +266,7 @@
 
         $.ajax({
             type: "POST",
-            url: "@Url.Action("PublishDocument", "UserDashboard")",
+            url: "@Url.Action("AcknowledgeDocument", "UserDashboard")",
             dataType: 'json',
             traditional: true,
             data: {

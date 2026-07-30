@@ -54,16 +54,24 @@ namespace DMS.Controllers
 
                 if (!menuURLList.Contains("/User/Index"))
                 {
-                    return StatusCode(403);
+                    Response.StatusCode = 403;
+                    return View("Error403");
                 }
             }
+
+            // add authorization function
+            ViewData["Add"] = HttpContext.Session.GetString("functionList").Contains("USER-ADD");
+            ViewData["Edit"] = HttpContext.Session.GetString("functionList").Contains("USER-EDIT");
+            ViewData["Delete"] = HttpContext.Session.GetString("functionList").Contains("USER-DELETE");
+            ViewData["Position"] = HttpContext.Session.GetString("functionList").Contains("USER-POSITION");
+            ViewData["Restore"] = HttpContext.Session.GetString("functionList").Contains("USER-RESTORE");
 
             ViewData["Title"] = "User Management";
 
             return View();
         }
 
-        public ActionResult Search(User data, bool initialMode)
+        public ActionResult Search(User data, bool initialMode, bool showDeleted = false)
         {
             try
             {
@@ -90,8 +98,8 @@ namespace DMS.Controllers
                 }
                 else
                 {
-                    var userData = userRepo.Search(data, db, pageNumber, pageSize);
-                    var dataCount = userRepo.Search(data, db, null, null).Count;
+                    var userData = userRepo.Search(data, db, pageNumber, pageSize, showDeleted);
+                    var dataCount = userRepo.Search(data, db, null, null, showDeleted).Count;
                     recordsTotal = dataCount;
                     var jsonData = new { draw = draw, recordsFiltered = recordsTotal, recordsTotal = recordsTotal, data = userData };
                     return Ok(jsonData);
@@ -220,6 +228,19 @@ namespace DMS.Controllers
                 }
 
                 DBResult result = userRepo.Delete(data, GetLoginUsername(), db);
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public JsonResult Restore(User data)
+        {
+            try
+            {
+                DBResult result = userRepo.Restore(data, GetLoginUsername(), db);
                 return Json(result);
             }
             catch (Exception ex)

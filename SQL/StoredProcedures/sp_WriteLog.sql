@@ -1,0 +1,85 @@
+﻿CREATE OR ALTER PROCEDURE [dbo].[sp_WriteLog]
+	@ri_v_PROCESS_ID BIGINT,
+	@ri_v_PROCESS_STATUS CHAR(1),
+	@ri_v_MESSAGE_TYPE VARCHAR(3),
+	@ri_v_MESSAGE_CONTENT VARCHAR(MAX),
+	@ri_v_LOCATION VARCHAR(50),
+	@ri_v_USER_ID VARCHAR(50)
+AS
+BEGIN TRY
+-- 	PROCESS_STATUS : 
+-- 	0 = Start, 1 = Process, 2 = Finish, 3 = Finish with error, 4 = Abnormal
+
+-- 	MESSAGE_TYPE : 
+-- 	ERR, INF, WRN
+
+	IF (@ri_v_PROCESS_ID IS NULL AND 
+			@ri_v_MESSAGE_TYPE IS NULL AND 
+			@ri_v_MESSAGE_CONTENT IS NULL AND  
+			@ri_v_LOCATION IS NULL AND 
+			@ri_v_USER_ID IS NULL 
+	)
+	BEGIN 
+		RETURN 0;
+	END;
+	
+	DECLARE @lastSeq INT;
+	DECLARE @processStatus CHAR(1);
+	
+	SELECT @lastSeq = ISNULL((MAX(SEQ_NO) + 1), 1) FROM [dbo].[TB_R_LOG_D] 
+	WHERE [PROCESS_ID] = @ri_v_PROCESS_ID;
+		
+	INSERT [dbo].[TB_R_LOG_D] (
+		[PROCESS_ID], 
+		[SEQ_NO], 
+		[MESSAGE_TYPE], 
+		[MESSAGE_CONTENT], 
+		[LOCATION], 
+		[CREATED_BY],
+		[CREATED_DT]
+	) VALUES (
+		@ri_v_PROCESS_ID, 
+		@lastSeq, 
+		@ri_v_MESSAGE_TYPE, 
+		@ri_v_MESSAGE_CONTENT, 
+		@ri_v_LOCATION, 
+		@ri_v_USER_ID,
+		SYSDATETIME()
+	)
+	
+	UPDATE [dbo].[TB_R_LOG_H]
+	SET 
+		[PROCESS_STATUS] = @ri_v_PROCESS_STATUS,
+		[END_DT] = SYSDATETIME(),
+		[CHANGED_BY] = @ri_v_USER_ID,
+		[CHANGED_DT] = SYSDATETIME()
+	WHERE [PROCESS_ID] = @ri_v_PROCESS_ID;
+	
+	IF @ri_v_PROCESS_STATUS IN ('2','3','4')
+	BEGIN
+		INSERT [dbo].[TB_R_LOG_D] (
+			[PROCESS_ID], 
+			[SEQ_NO], 
+			[MESSAGE_TYPE], 
+			[MESSAGE_CONTENT], 
+			[LOCATION], 
+			[CREATED_BY],
+			[CREATED_DT]
+		) VALUES (
+			@ri_v_PROCESS_ID, 
+			@lastSeq + 1, 
+			'INF', 
+			'Process Finish', 
+			@ri_v_LOCATION, 
+			@ri_v_USER_ID,
+			SYSDATETIME()
+		)
+	END
+	
+	RETURN 1;
+	
+END TRY
+BEGIN CATCH 
+	RETURN 0;
+END CATCH
+GO

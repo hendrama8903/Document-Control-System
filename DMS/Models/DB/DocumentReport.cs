@@ -9,6 +9,7 @@ namespace DMS.Models.DB
         public int? DOCUMENT_TRANSACTION_ID { get; set; }
         public string? DOCUMENT_TRANSACTION_NAME { get; set; }
         public DateTime? DOCUMENT_DATE { get; set; }
+        public DateTime? NEXT_REVIEW_DATE { get; set; }
         public int? DEPARTMENT_ID { get; set; }
         public string? DEPARTMENT_CODE { get; set; }
         public string? DEPARTMENT_NAME { get; set; }

@@ -1,0 +1,126 @@
+﻿-- 3) sp_DocumentHistory_Search - hasil dimap ke DocumentMaintenance juga
+--    (DocumentMaintenanceRepo.SearchHistoryToMaintenance) - baris histori
+--    lama, P4D_STATUS_VAL dikosongkan saja.
+CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentHistory_Search]
+	@DOCUMENT_TRANSACTION_ID 	INT,
+	@DOCUMENT_TRANSACTION_NAME  		VARCHAR(255),
+	@DOCUMENT_CODE			VARCHAR(255),
+	@DIVISION				  	VARCHAR(50),
+	@DEPARTMENT_ID	  	INT,
+	@DEPARTMENT_CODE  	VARCHAR(5),
+	@PageNumber 				int,
+	@PageSize 					int
+AS
+BEGIN
+
+	DECLARE @QUERY VARCHAR(MAX)
+
+	SET @QUERY = 'WITH data AS
+								(
+									SELECT
+										ROW_NUMBER() OVER (ORDER BY S.DOCUMENT_TRANSACTION_ID DESC) as RowNumber,
+										S.DOCUMENT_TRANSACTION_ID,
+										S.DOCUMENT_CODE,
+										S.DOCUMENT_TRANSACTION_NAME,
+										S.CLASSIFIED,
+										CLSYS.SYSTEM_VALUE AS CLASSIFIED_VAL,
+										ISNULL(S.STATUS, ''0'') STATUS,
+										SYS.SYSTEM_VALUE STATUS_DISPLAY,
+										ISNULL(S.REVISION, 0) REVISION,
+										ISNULL(S.ITEM_CHANGED, '''') ITEM_CHANGED,
+										ISNULL(S.REASON, '''') REASON,
+										ISNULL(S.REFERENCE_NO, '''') REFERENCE_NO,
+										ISNULL(S.SOURCE, '''') SOURCE,
+										S.CREATED_DT,
+										S.CREATED_BY,
+										S.CHANGED_DT,
+										S.CHANGED_BY,
+										'''' DISTRIBUTION,
+										S.APPROVAL_ID APPROVAL_ID,
+										S.DOCUMENT_TYPE DOCUMENT_TYPE,
+										S.PROCESS_CODE PROCESS_CODE,
+										S.COMPANY_CODE COMPANY_CODE,
+										S.SECTION_CODE SECTION_CODE,
+										SEC.SECTION_NAME,
+										ISNULL(S.EXTERNAL_FLAG, '''') EXTERNAL_FLAG,
+										CAST(S.DOCUMENT_DATE as date) DOCUMENT_DATE,
+										ISNULL((SELECT MIN(HS.DOCUMENT_DATE) FROM TB_R_DOCUMENT_HISTORY HS WHERE HS.REVISION = 0 AND HS.DOCUMENT_CODE = S.DOCUMENT_CODE), S.DOCUMENT_DATE)  DOCUMENT_REVISION_0_DATE,
+										ISNULL(S.FILE_PATH, '''') FILE_PATH,
+										ISNULL(S.DEPARTMENT, 0) DEPARTMENT_ID,
+										D.DEPARTMENT_CODE AS DEPARTMENT_CODE,
+										D.DEPARTMENT_NAME AS DEPARTMENT_NAME,
+										CAST(YEAR(S.DOCUMENT_DATE) as varchar(4)) DOCUMENT_YEAR,
+										S.DIVISION DIVISION,
+										DSYS.DIVISION_NAME,
+										'''' IS_APPROVED,
+										S.IMPACT_OTHER_FLAG,
+										S.LEVEL_CODE,
+										S.DOCUMENT_ID,
+										S.DOCUMENT_CREATOR,
+										0 AS DELETE_FLAG,
+										DCAT.DOCUMENT_NAME,
+										'''' P4D_STATUS_VAL
+									FROM [dbo].[TB_R_DOCUMENT_HISTORY] S
+									LEFT JOIN TB_M_DEPARTMENT D
+										ON D.DEPARTMENT_ID = S.DEPARTMENT
+									LEFT JOIN TB_M_SECTION SEC
+										ON SEC.SECTION_CODE = S.SECTION_CODE AND SEC.DEPARTMENT_CODE = D.DEPARTMENT_CODE AND GETDATE() BETWEEN SEC.VALID_FROM AND SEC.VALID_TO AND SEC.DELETE_FLAG != 1
+									LEFT JOIN TB_M_SYSTEM SYS
+										on SYS.SYSTEM_TYPE = ''DOC_STATUS''
+											AND SYS.SYSTEM_CODE = ISNULL(S.STATUS, ''0'')
+									LEFT JOIN TB_M_SYSTEM CLSYS
+										on CLSYS.SYSTEM_TYPE = ''CLASSIFIED''
+											AND CLSYS.SYSTEM_CODE = ISNULL(S.CLASSIFIED, ''0'')
+									LEFT JOIN TB_M_DIVISION DSYS
+										on DSYS.DIVISION_CODE = ISNULL(S.DIVISION, ''0'')
+									LEFT JOIN TB_M_DOCUMENT DCAT
+										on DCAT.DOCUMENT_ID = S.DOCUMENT_ID
+									WHERE 1 = 1 '
+
+									IF ISNULL(@DIVISION, '') <> ''
+									BEGIN
+										SET @QUERY += ' AND D.DIVISION LIKE ''' + REPLACE(@DIVISION , '*', '%') + ''' '
+										SET @QUERY += ' '
+									END
+
+									IF ISNULL(@DEPARTMENT_ID, '') <> ''
+									BEGIN
+										SET @QUERY += ' AND D.DEPARTMENT_ID LIKE ''' + REPLACE(@DEPARTMENT_ID , '*', '%') + ''' '
+										SET @QUERY += ' '
+									END
+
+									IF ISNULL(@DEPARTMENT_CODE, '') <> ''
+									BEGIN
+										SET @QUERY += ' AND D.DEPARTMENT_CODE LIKE ''' + REPLACE(@DEPARTMENT_CODE , '*', '%') + ''' '
+										SET @QUERY += ' '
+									END
+
+									IF ISNULL(@DOCUMENT_TRANSACTION_NAME, '') <> ''
+									BEGIN
+										SET @QUERY += ' AND S.DOCUMENT_TRANSACTION_NAME LIKE ''' + REPLACE(@DOCUMENT_TRANSACTION_NAME , '*', '%') + ''' '
+									END
+
+									IF ISNULL(@DOCUMENT_TRANSACTION_ID, '') <> '' --@DOCUMENT_NO IS NOT NULL
+									BEGIN
+										SET @QUERY += ' AND S.DOCUMENT_TRANSACTION_ID LIKE ''' + REPLACE(@DOCUMENT_TRANSACTION_ID , '*', '%') + ''' '
+									END
+
+									IF ISNULL(@DOCUMENT_CODE, '') <> '' --@DOCUMENT_NO IS NOT NULL
+									BEGIN
+										SET @QUERY += ' AND S.DOCUMENT_CODE LIKE ''' + REPLACE(@DOCUMENT_CODE , '*', '%') + ''' '
+									END
+
+	SET @QUERY += '
+								)
+								SELECT * FROM data
+								WHERE 1 = 1 '
+
+	IF (@PageSize IS NOT NULL AND @PageNumber IS NOT NULL)
+	BEGIN
+		SET @QUERY += ' AND RowNumber > '+ CAST((@PageSize * (@PageNumber - 1)) AS VARCHAR) +' AND RowNumber <= ' +CAST(@PageSize + (@PageSize * (@PageNumber - 1)) AS VARCHAR);
+	END
+
+	EXEC(@QUERY)
+
+END
+GO

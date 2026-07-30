@@ -1,0 +1,120 @@
+﻿CREATE OR ALTER PROCEDURE [dbo].[sp_User_Update]
+	@USERNAME VARCHAR(255),
+	@REG_NO VARCHAR(50),
+	@FULL_NAME VARCHAR(255),
+--	@PASSWORD VARCHAR(255),
+--	@CONFIRM_PASSWORD VARCHAR(255),
+	@EMAIL VARCHAR(255),
+	@PHONE VARCHAR(15),
+	@ROLE_ID VARCHAR(50),
+	@DEPARTMENT_ID INT,
+	@FILE_PATH 	VARCHAR(255),
+	@AD_USER CHAR(1) = '0',
+	@LOGIN_USER VARCHAR(255),
+	@RETURN_MSG VARCHAR(MAX) OUTPUT
+AS
+BEGIN TRY
+
+	DECLARE @PROCESS_ID BIGINT,
+					@LOCATION VARCHAR(255) = 'sp_User_Update';
+
+	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'User Management', 'Update', @LOCATION, @LOGIN_USER
+
+	IF @USERNAME IS NULL OR LEN(@USERNAME) < 1
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Username should not be null';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+		RETURN 0;
+	END
+
+	IF @REG_NO IS NULL OR LEN(@REG_NO) < 1
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Reg No should not be null';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+		RETURN 0;
+	END
+
+	IF @FULL_NAME IS NULL OR LEN(@FULL_NAME) < 1
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Full Name should not be null';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+		RETURN 0;
+	END
+
+--	IF @PASSWORD IS NULL OR LEN(@PASSWORD) < 1
+--	BEGIN
+--		SET @RETURN_MSG = 'ERROR: Password not be null';
+--		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+--		RETURN 0;
+--	END
+
+--	IF @CONFIRM_PASSWORD IS NULL OR LEN(@CONFIRM_PASSWORD) < 1
+--	BEGIN
+--		SET @RETURN_MSG = 'ERROR: Confirm Password should not be null';
+--		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+--		RETURN 0;
+--	END
+
+--	IF @CONFIRM_PASSWORD <> @PASSWORD
+--	BEGIN
+--		SET @RETURN_MSG = 'ERROR: Confirm Password should be same with Password';
+--		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+--		RETURN 0;
+--	END
+
+	IF @EMAIL IS NULL OR LEN(@EMAIL) < 1
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Email should not be null';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+		RETURN 0;
+	END
+
+	IF @EMAIL NOT LIKE '%_@__%.__%'
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Invalid Email Address';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+		RETURN 0;
+	END
+
+-- 	IF @PHONE IS NULL OR LEN(@PHONE) < 1
+-- 	BEGIN
+-- 		SET @RETURN_MSG = 'ERROR: Phone should not be null';
+-- 		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+-- 		RETURN 0;
+-- 	END
+
+-- 	IF @DEPARTMENT_ID IS NULL OR LEN(@DEPARTMENT_ID) < 1
+-- 	BEGIN
+-- 		SET @RETURN_MSG = 'ERROR: Division and Department should not be null';
+-- 		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+-- 		RETURN 0;
+-- 	END
+
+
+	-- Kalau flag AD dinyalakan lewat edit ini, kosongkan password lokal supaya tidak ada
+	-- kredensial lama yang tetap valid kalau suatu saat flag dibalik lagi ke non-AD.
+	UPDATE [dbo].[TB_M_USER]
+	SET REG_NO = @REG_NO,
+			FULL_NAME = @FULL_NAME,
+--			PASSWORD = @PASSWORD,
+			EMAIL = @EMAIL,
+			PHONE = @PHONE,
+			ROLE_ID = @ROLE_ID,
+			FILE_PATH = @FILE_PATH,
+-- 			DEPARTMENT_ID = @DEPARTMENT_ID,
+			AD_USER = ISNULL(@AD_USER, '0'),
+			PASSWORD = CASE WHEN ISNULL(@AD_USER, '0') = '1' THEN NULL ELSE PASSWORD END,
+			CHANGED_DT = GETDATE(),
+			CHANGED_BY = @LOGIN_USER
+	WHERE USERNAME = @USERNAME
+
+	SET @RETURN_MSG = 'Successfully Save Data'
+	EXEC sp_WriteLog @PROCESS_ID, '2', 'INF', @RETURN_MSG, @LOCATION, @LOGIN_USER
+	RETURN 1;
+END TRY
+BEGIN CATCH
+	SET @RETURN_MSG = 'ERROR: ' + ERROR_PROCEDURE() +': '+ ERROR_MESSAGE() + ', at line = ' +  CAST(ERROR_LINE() AS VARCHAR);
+	EXEC sp_WriteLog @PROCESS_ID, '4', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+	RETURN 0;
+END CATCH
+GO

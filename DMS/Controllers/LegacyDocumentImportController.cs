@@ -36,8 +36,12 @@ namespace DMS.Controllers
 
             if (!HasMenuAccess("/LegacyDocumentImport/Index"))
             {
-                return StatusCode(403);
+                Response.StatusCode = 403;
+                return View("Error403");
             }
+
+            // add authorization function
+            ViewData["Import"] = HttpContext.Session.GetString("functionList").Contains("LEGACYDOCUMENTIMPORT-IMPORT");
 
             ViewData["Title"] = "Document Import";
 

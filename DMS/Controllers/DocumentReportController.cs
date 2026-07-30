@@ -37,11 +37,12 @@ namespace DMS.Controllers
 
                 if (!menuURLList.Contains("/DocumentReport/Index"))
                 {
-                    return StatusCode(403);
+                    Response.StatusCode = 403;
+                    return View("Error403");
                 }
             }
 
-            ViewData["Title"] = "Document Report";
+            ViewData["Title"] = "Document Distribution Register";
 
             return View();
         }

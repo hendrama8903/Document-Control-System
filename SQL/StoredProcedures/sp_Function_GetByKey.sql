@@ -1,0 +1,30 @@
+﻿CREATE OR ALTER PROCEDURE [dbo].[sp_Function_GetByKey]
+	@FUNCTION_ID VARCHAR(50)
+AS
+BEGIN  
+
+	DECLARE @QUERY VARCHAR(MAX)
+	
+	SET @QUERY = 'SELECT 
+								F.FUNCTION_ID,
+								F.FUNCTION_NAME,
+								F.FUNCTION_DESC,
+								F.MENU_ID,
+								M.MENU_NAME,
+								F.CREATED_DT,
+								F.CREATED_BY,
+								F.CHANGED_DT,
+								F.CHANGED_BY
+							FROM [dbo].[TB_M_FUNCTION] F
+							LEFT JOIN [dbo].[TB_M_MENU] M ON F.MENU_ID = M.MENU_ID
+							WHERE 1 = 1 '
+							
+	IF @FUNCTION_ID IS NOT NULL
+	BEGIN
+		SET @QUERY += ' AND F.FUNCTION_ID LIKE ''' + REPLACE(@FUNCTION_ID , '*', '%') + ''' '
+	END
+	
+	EXEC(@QUERY)
+	
+END
+GO

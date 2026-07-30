@@ -39,6 +39,28 @@
         return Math.max(300, $(window).height() - gridTop - footerHeight - 40);
     }
 
+    // Warna tag External Type konsisten per nilai (bukan master data - free text),
+    // supaya dokumen dengan tipe sama gampang dikenali sekilas saat listnya panjang.
+    var externalTypeColorPalette = ["#1976D2", "#7B1FA2", "#C2185B", "#00796B", "#F57C00", "#5D4037", "#455A64", "#689F38", "#0097A7", "#AD1457"];
+    function colorForExternalType(type) {
+        if (!type) return "#9E9E9E";
+        var hash = 0;
+        for (var i = 0; i < type.length; i++) {
+            hash = (hash * 31 + type.charCodeAt(i)) >>> 0;
+        }
+        return externalTypeColorPalette[hash % externalTypeColorPalette.length];
+    }
+    function appendTypeDot(container, type) {
+        $("<span>").css({
+            display: "inline-block",
+            width: "10px",
+            height: "10px",
+            borderRadius: "50%",
+            backgroundColor: colorForExternalType(type),
+            marginRight: "6px"
+        }).appendTo(container);
+    }
+
     $(document).ready(function () {
         $("#btn_add").prop("disabled", false);
         $("#btn_edit").prop("disabled", true);
@@ -79,7 +101,20 @@
             height: computeGridHeight(),
             filterRow: { visible: true, applyFilter: "auto" },
             headerFilter: { visible: true },
-            toolbar: { visible: false },
+            groupPanel: { visible: true },
+            grouping: { autoExpandAll: true, contextMenuEnabled: true },
+            summary: {
+                groupItems: [
+                    { column: "DOCUMENT_NAME", summaryType: "count", displayFormat: "{0} dokumen" }
+                ]
+            },
+            toolbar: {
+                visible: true,
+                items: [
+                    { name: "searchPanel" }
+                ]
+            },
+            searchPanel: { visible: true, width: 260, placeholder: "Cari dokumen..." },
             selection: {
                 mode: "multiple",
                 showCheckBoxesMode: "always",
@@ -123,7 +158,19 @@
                     }
                 },
                 { dataField: "DOCUMENT_NAME", caption: "Document Name", fixed: true, fixedPosition: "left" },
-                { dataField: "EXTERNAL_TYPE", caption: "External Type" },
+                {
+                    dataField: "EXTERNAL_TYPE",
+                    caption: "External Type",
+                    groupIndex: 0,
+                    cellTemplate: function (container, options) {
+                        appendTypeDot(container, options.value);
+                        container.append(document.createTextNode(options.value || ""));
+                    },
+                    groupCellTemplate: function (container, options) {
+                        appendTypeDot(container, options.value);
+                        container.append(document.createTextNode(options.text));
+                    }
+                },
                 { dataField: "REVISION_EDITION", caption: "Revision/Edition", alignment: "center" },
                 {
                     dataField: "RECEIVED_DATE",
@@ -223,6 +270,17 @@
 
         $("#btn_export").on("click", function () {
             window.location.href = "@Url.Action("DownloadExcel", "ExternalDocument")";
+        });
+
+        $("#chk_due_for_review").on("change", function () {
+            var grid = $("#datagrid").dxDataGrid("instance");
+
+            if (this.checked) {
+                var horizon = moment().add(30, "days").format("YYYY-MM-DD");
+                grid.filter(["NEXT_REVIEW_DATE", "<=", horizon]);
+            } else {
+                grid.clearFilter();
+            }
         });
 
         $(window).on("resize", function () {

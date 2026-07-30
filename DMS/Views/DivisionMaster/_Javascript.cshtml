@@ -4,7 +4,6 @@
     
     $(document).ready(function() {
         setDataSelect2WithParam("addEditDivision", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "- Choose -", "DIVISION");
-        setDataSelect2("addEditWorkflow", "@Url.Action("GetWorkflowName", "DepartmentMaster")", "- Choose -");
 
         $("#btn_add").on("click", function() {
             onAddPrepare();

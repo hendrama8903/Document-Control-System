@@ -29,7 +29,7 @@
     function updateActionButtons() {
         var row = getSelectedRowData();
 
-        $("#btn_publish").prop("disabled", !(row != null && (row.STATUS == 2 || row.STATUS == 5) && row.PUBLISH_FLAG != 1));
+        $("#btn_acknowledge").prop("disabled", !(row != null && (row.STATUS == 2 || row.STATUS == 5) && row.PUBLISH_FLAG != 1));
     }
 
     function computeGridHeight() {
@@ -40,7 +40,7 @@
     }
 
     $(document).ready(function () {
-        $("#btn_publish").prop("disabled", true);
+        $("#btn_acknowledge").prop("disabled", true);
 
         var gridStore = new DevExpress.data.CustomStore({
             loadMode: "raw",
@@ -131,31 +131,38 @@
                         var row = options.data;
                         var labelClass = "label label-danger";
                         var text = row.STATUS_VAL;
+                        var icon = "fa-times-circle";
 
                         if (row.STATUS == 0) {
                             labelClass = "label label-info";
                             text = "REQUESTED";
+                            icon = "fa-clock-o";
                         } else if (row.STATUS == 1) {
                             labelClass = "label label-warning";
-                        } else if (row.STATUS == 2 || row.STATUS == 5) {
+                            icon = "fa-hourglass-half";
+                        } else if (row.STATUS == 5) {
+                            labelClass = "label label-primary";
+                            icon = "fa-paper-plane";
+                        } else if (row.STATUS == 2) {
                             labelClass = "label label-success";
+                            icon = "fa-check-circle";
                         }
 
-                        $("<span>").addClass(labelClass).text(text).appendTo(container);
+                        $("<span>").addClass(labelClass).html('<i class="fa ' + icon + '"></i> ' + text).appendTo(container);
                     }
                 },
                 {
-                    caption: "Published",
+                    caption: "Acknowledged",
                     alignment: "center",
                     calculateCellValue: function (row) {
                         return row.PUBLISH_FLAG == 1 ? "YES" : "NO";
                     },
                     cellTemplate: function (container, options) {
-                        var published = options.data.PUBLISH_FLAG == 1;
+                        var acknowledged = options.data.PUBLISH_FLAG == 1;
 
                         $("<span>")
-                            .addClass(published ? "label label-success" : "label label-warning")
-                            .text(published ? "YES" : "NO")
+                            .addClass(acknowledged ? "label label-success" : "label label-warning")
+                            .text(acknowledged ? "YES" : "NO")
                             .appendTo(container);
                     }
                 },
@@ -225,8 +232,8 @@
 
                         $("<button>")
                             .attr({ type: "button", title: "View" })
-                            .addClass("btn btn-primary btn-sm")
-                            .html('<i class="fa fa-eye"></i>')
+                            .addClass("btn btn-primary btn-sm adm-act-btn")
+                            .html('<i class="fa fa-file-pdf-o"></i>')
                             .on("click", function () {
                                 onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
                             })
@@ -238,6 +245,10 @@
 
         $("#btn_columns").on("click", function () {
             $("#datagrid").dxDataGrid("instance").showColumnChooser();
+        });
+
+        $("#btn_export").on("click", function () {
+            window.location.href = "@Url.Action("DownloadExcel", "UserDashboard")";
         });
 
         $(window).on("resize", function () {

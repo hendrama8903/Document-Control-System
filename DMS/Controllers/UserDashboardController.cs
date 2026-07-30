@@ -10,6 +10,8 @@ using MDC.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
+using NPOI.SS.UserModel;
+using NPOI.XSSF.UserModel;
 using System.Data;
 using System.Globalization;
 using System.Text;
@@ -56,16 +58,17 @@ namespace DMS.Controllers
 
                 if (!menuURLList.Contains("/UserDashboard/Index"))
                 {
-                    return StatusCode(403);
+                    Response.StatusCode = 403;
+                    return View("Error403");
                 }
             }
 
             // add authorization function
             ViewData["Request"] = HttpContext.Session.GetString("functionList").Contains("USERDASHBOARD-REQUEST");
-            ViewData["Publish"] = HttpContext.Session.GetString("functionList").Contains("USERDASHBOARD-PUBLISH");
+            ViewData["Acknowledge"] = HttpContext.Session.GetString("functionList").Contains("USERDASHBOARD-PUBLISH");
 
 
-            ViewData["Title"] = "Document Request";
+            ViewData["Title"] = "My Documents";
 
             return View();
         }
@@ -304,7 +307,7 @@ namespace DMS.Controllers
 
                     User requester = UserRepo.Instance.GetByKey(new User { USERNAME = documentControlMaintenance.CREATED_BY }, db);
 
-                    IList<MSystem> emailTemplate = MSystemRepo.Instance.Search(new MSystem { SYSTEM_TYPE = "IAD_APPROVAL_REQUEST_EMAIL_TEMPLATE" }, db, null, null);
+                    IList<MSystem> emailTemplate = MSystemRepo.Instance.Search(new MSystem { SYSTEM_TYPE = "DOCUMENTCONTROL_APPROVAL_REQUEST_EMAIL_TEMPLATE" }, db, null, null);
                     string subject = emailTemplate.Where(x => x.SYSTEM_CODE == "SUBJECT").First().SYSTEM_VALUE
                          .Replace("{DOCUMENT_CODE}", documentControlMaintenance.DOCUMENT_CODE);
                     string title = emailTemplate.Where(x => x.SYSTEM_CODE == "TITLE").First().SYSTEM_VALUE;
@@ -321,7 +324,7 @@ namespace DMS.Controllers
 
                     backgroundJobClient.Enqueue(() => EmailService.SendEmailAsync(toAddresses, subject, title, body, buttonLink));
 
-                    IList<MSystem> notificationTemplate = MSystemRepo.Instance.Search(new MSystem { SYSTEM_TYPE = "IAD_APPROVAL_REQUEST_NOTIFICATION" }, db, null, null);
+                    IList<MSystem> notificationTemplate = MSystemRepo.Instance.Search(new MSystem { SYSTEM_TYPE = "DOCUMENTCONTROL_APPROVAL_REQUEST_NOTIFICATION" }, db, null, null);
 
                     foreach (string toUsername in toUsernames)
                     {
@@ -348,7 +351,7 @@ namespace DMS.Controllers
             }
         }
 
-        public JsonResult PublishDocument(DocumentLog data, PublishHistory history)
+        public JsonResult AcknowledgeDocument(DocumentLog data, PublishHistory history)
         {
             DBResult result = null;
 
@@ -495,32 +498,66 @@ namespace DMS.Controllers
             return File(bytes, "application/force-download", fileName);
         }
 
-        //public IActionResult Download()
-        //{
+        //Export grid dokumen di UserDashboard ke Excel - kolom mengikuti grid di halaman
+        //(pola sama seperti DocumentMasterlistController.DownloadExcel), scope data sama
+        //seperti grid (Search discoped ke login user lewat UserDashboardRepo.Search).
+        public IActionResult DownloadExcel()
+        {
+            IList<DocumentControlMaintenance> listData = UserDashboardRepo.Search(
+                new DocumentControlMaintenance(), GetLoginUsername(), db, null, null);
 
-        //    string webRootPath = Environment.WebRootPath;
+            var memoryStream = new MemoryStream();
+            IWorkbook workbook = new XSSFWorkbook();
+            ISheet sheet = workbook.CreateSheet("Document Request");
 
-        //    //using (FileStream stream = new FileStream(string.Concat(webRootPath, @"\Download\DOCUMENT\TemplateUpload.xlsx"), FileMode.Create, FileAccess.Write))
-        //    //{
-        //    //    IWorkbook wb = new XSSFWorkbook();
-        //    //    ISheet sheet = wb.CreateSheet("Sheet1");
-        //    //    ICreationHelper cH = wb.GetCreationHelper();
-        //    //    for (int i = 0; i < dt.Rows.Count; i++)
-        //    //    {
-        //    //        IRow rowExcel = sheet.CreateRow(i);
-        //    //        for (int j = 0; j < dt.Columns.Count; j++)
-        //    //        {
-        //    //            ICell cell = rowExcel.CreateCell(j);
-        //    //            cell.SetCellValue(cH.CreateRichTextString(dt.Rows[i].ItemArray[j].ToString()));
-        //    //        }
-        //    //    }
-        //    //    wb.Write(stream);
-        //    //}
-        //    byte[] bytes = System.IO.File.ReadAllBytes(string.Concat(webRootPath, @"\Download\DOCUMENT\TemplateUpload.xlsx"));
-        //    string fileName = "DocumentListDownload.xlsx";
+            string[] headers = {
+                "No", "Document No", "Document Name", "Status", "Acknowledged", "Revision",
+                "Division", "Department", "Classified", "Date", "Item Changed", "Reason",
+                "Created By", "Created Date", "Changed By", "Changed Date"
+            };
 
-        //    return File(bytes, "application/force-download", fileName);
+            IRow headerRow = sheet.CreateRow(0);
+            for (int col = 0; col < headers.Length; col++)
+            {
+                headerRow.CreateCell(col).SetCellValue(headers[col]);
+            }
 
-        //}
+            int rowIndex = 1;
+            int no = 1;
+            foreach (DocumentControlMaintenance item in listData)
+            {
+                IRow row = sheet.CreateRow(rowIndex);
+                row.CreateCell(0).SetCellValue(no);
+                row.CreateCell(1).SetCellValue(item.DOCUMENT_CODE);
+                row.CreateCell(2).SetCellValue(item.DOCUMENT_NAME);
+                row.CreateCell(3).SetCellValue(item.STATUS == "0" ? "REQUESTED" : item.STATUS_VAL);
+                row.CreateCell(4).SetCellValue(item.PUBLISH_FLAG == 1 ? "YES" : "NO");
+                row.CreateCell(5).SetCellValue(item.REVISION ?? 0);
+                row.CreateCell(6).SetCellValue(item.DIVISION + " - " + item.DIVISION_NAME);
+                row.CreateCell(7).SetCellValue(item.DEPARTMENT_CODE + " - " + item.DEPARTMENT_NAME);
+                row.CreateCell(8).SetCellValue(item.CLASSIFIED_VAL);
+                row.CreateCell(9).SetCellValue(item.DOCUMENT_DATE?.ToString("dd-MM-yyyy") ?? "");
+                row.CreateCell(10).SetCellValue(item.ITEM_CHANGED);
+                row.CreateCell(11).SetCellValue(item.REASON);
+                row.CreateCell(12).SetCellValue(item.CREATED_BY);
+                row.CreateCell(13).SetCellValue(item.CREATED_DT?.ToString("dd-MM-yyyy HH:mm:ss") ?? "");
+                row.CreateCell(14).SetCellValue(item.CHANGED_BY);
+                row.CreateCell(15).SetCellValue(item.CHANGED_DT?.ToString("dd-MM-yyyy HH:mm:ss") ?? "");
+
+                rowIndex++;
+                no++;
+            }
+
+            for (int col = 0; col < headers.Length; col++)
+            {
+                sheet.AutoSizeColumn(col);
+            }
+
+            workbook.Write(memoryStream);
+            memoryStream.Position = 0;
+
+            return File(memoryStream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "DOCUMENT-REQUEST-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
+        }
     }
 }

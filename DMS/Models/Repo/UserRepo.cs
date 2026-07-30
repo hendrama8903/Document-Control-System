@@ -25,7 +25,7 @@ namespace DMS.Models.Repo
         }
         #endregion
 
-        public IList<User> Search(User data, DBContext db, int? PageNumber, int? PageSize)
+        public IList<User> Search(User data, DBContext db, int? PageNumber, int? PageSize, bool showDeleted = false)
         {
             List<SqlParameter> param = new List<SqlParameter>
             {
@@ -35,10 +35,11 @@ namespace DMS.Models.Repo
                 new SqlParameter ( "@DEPARTMENT_ID", CheckNullValue(data.DEPARTMENT_ID) ),
                 new SqlParameter ( "@DOCUMENT_CONTROL_ACCESS", CheckNullValue(data.DOCUMENT_CONTROL_ACCESS) ),
                 new SqlParameter ( "@PageNumber", CheckNullValue(PageNumber) ),
-                new SqlParameter ( "@PageSize", CheckNullValue(PageSize) )
+                new SqlParameter ( "@PageSize", CheckNullValue(PageSize) ),
+                new SqlParameter ( "@SHOW_DELETED", showDeleted ? "1" : "0" )
             };
 
-            string query = "EXEC [dbo].[sp_User_Search] @USERNAME, @FULL_NAME, @DIVISION, @DEPARTMENT_ID, @DOCUMENT_CONTROL_ACCESS, @PageNumber, @PageSize";
+            string query = "EXEC [dbo].[sp_User_Search] @USERNAME, @FULL_NAME, @DIVISION, @DEPARTMENT_ID, @DOCUMENT_CONTROL_ACCESS, @PageNumber, @PageSize, @SHOW_DELETED";
             IList<User> Result = db.User.FromSqlRaw<User>(query, param.ToArray()).ToList();
 
             return Result;
@@ -182,6 +183,26 @@ namespace DMS.Models.Repo
             };
 
             string query = "EXEC @RETURN_VAL = [dbo].[sp_User_Delete] @USERNAME, @LOGIN_USER, @RETURN_MSG OUTPUT";
+            int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
+
+            DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
+            return result;
+        }
+
+        public DBResult Restore(User data, string loginUser, DBContext db)
+        {
+            SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
+            SqlParameter returnMsg = CreateSqlParameterOutputString("@RETURN_MSG");
+
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                returnVal,
+                new SqlParameter ( "@USERNAME", CheckNullValue(data.USERNAME) ),
+                new SqlParameter ( "@LOGIN_USER", loginUser ),
+                returnMsg
+            };
+
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_User_Restore] @USERNAME, @LOGIN_USER, @RETURN_MSG OUTPUT";
             int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());

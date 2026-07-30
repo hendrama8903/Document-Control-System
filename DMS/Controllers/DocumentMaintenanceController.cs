@@ -59,7 +59,6 @@ namespace DMS.Controllers
         private SectionMasterRepo sectionMasterRepo = SectionMasterRepo.Instance;
         private DocumentMasterRepo documentMasterRepo = DocumentMasterRepo.Instance;
         private MSystemRepo mSystemRepo = MSystemRepo.Instance;
-        private WorkflowRepo workflowRepo = WorkflowRepo.Instance;
         private ApprovalRepo approvalRepo = ApprovalRepo.Instance;
         private LogMonitoringRepo logRepo = LogMonitoringRepo.Instance;
         private DocumentLogRepo documentLogRepo = DocumentLogRepo.Instance;
@@ -78,7 +77,8 @@ namespace DMS.Controllers
 
                 if (!menuURLList.Contains("/DocumentMaintenance/Index"))
                 {
-                    return StatusCode(403);
+                    Response.StatusCode = 403;
+                    return View("Error403");
                 }
             }
 
@@ -91,7 +91,7 @@ namespace DMS.Controllers
             ViewData["Delete-FilePath"] = HttpContext.Session.GetString("functionList").Contains("DOCUMENT-DELETE-FILEPATH");
 
 
-            ViewData["Title"] = "Documents";
+            ViewData["Title"] = "Document Preparation";
 
             return View();
         }

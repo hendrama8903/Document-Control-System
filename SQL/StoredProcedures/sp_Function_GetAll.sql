@@ -1,0 +1,25 @@
+﻿CREATE OR ALTER PROCEDURE [dbo].[sp_Function_GetAll]
+AS
+BEGIN  
+
+	DECLARE @QUERY VARCHAR(MAX)
+	
+	SET @QUERY = 'SELECT 
+								F.FUNCTION_ID,
+								F.FUNCTION_NAME,
+								F.FUNCTION_DESC,
+								F.MENU_ID,
+								M.MENU_NAME,
+								F.CREATED_DT,
+								F.CREATED_BY,
+								F.CHANGED_DT,
+								F.CHANGED_BY
+							FROM [dbo].[TB_M_FUNCTION] F
+							LEFT JOIN [dbo].[TB_M_MENU] M ON F.MENU_ID = M.MENU_ID
+							WHERE 1 = 1 
+							ORDER BY F.FUNCTION_ID ASC'
+	
+	EXEC(@QUERY)
+	
+END
+GO

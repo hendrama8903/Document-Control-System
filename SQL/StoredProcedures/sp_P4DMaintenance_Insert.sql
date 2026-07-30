@@ -1,0 +1,103 @@
+﻿CREATE OR ALTER PROCEDURE [dbo].[sp_P4DMaintenance_Insert]
+		@DOCUMENT_TRANSACTION_ID INT,
+		@CREATED_BY varchar(50),
+		@CHANGED_BY varchar(50),
+		@RETURN_MSG 				VARCHAR(MAX) OUTPUT,
+		@RETURN_ID	 		VARCHAR(MAX) OUTPUT
+
+AS
+BEGIN TRY
+	DECLARE @PROCESS_ID BIGINT
+	, @LOCATION VARCHAR(255) = 'sp_P4DMaintenance_Insert'
+	, @rev_DOCUMENT_ID int
+	, @rev_REVISION int
+					
+	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'P4D Maintenance', 'Insert', @LOCATION, @CREATED_BY
+
+	IF EXISTS(
+		SELECT 1
+		FROM TB_R_CTRL_DOCUMENT
+		WHERE DOCUMENT_TRANSACTION_ID = @DOCUMENT_TRANSACTION_ID
+		AND OPERATION_TYPE = 1
+		AND DELETE_FLAG = 0
+	)
+	BEGIN
+		SET @RETURN_ID = 0;
+		SET @RETURN_MSG = 'ERROR: Document No ' + (SELECT DOCUMENT_CODE FROM TB_R_CTRL_DOCUMENT WHERE DOCUMENT_TRANSACTION_ID = @DOCUMENT_TRANSACTION_ID AND DELETE_FLAG != '1') + ' is already registered on Document Control';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @CREATED_BY
+		RETURN 0;
+	END
+	
+	DECLARE @status INT
+
+	IF EXISTS (SELECT 1 FROM TB_R_DOCUMENT_DISTRIBUTION WHERE DOCUMENT_TRANSACTION_ID = @DOCUMENT_TRANSACTION_ID)
+    SET @status = 1
+	ELSE
+    SET @status = 0
+
+	INSERT INTO [dbo].[TB_R_CTRL_DOCUMENT]
+           ([DOCUMENT_CODE]
+           ,[DOCUMENT_NAME]
+           ,[DOCUMENT_TYPE]
+           ,[PROCESS_CODE]
+           ,[COMPANY_CODE]
+           ,[SECTION_CODE]
+           ,[ITEM_CHANGED]
+           ,[REASON]
+           ,[EXTERNAL_FLAG]
+           ,[REFERENCE_NO]
+           ,[SOURCE]
+           ,[DOCUMENT_DATE]
+           ,[FILE_PATH]
+           ,[STATUS]
+           ,[REVISION]
+           ,[APPROVAL_ID]
+           ,[DELETE_FLAG]
+           ,[DEPARTMENT_ID]
+           ,[DIVISION]
+           ,[OPERATION_TYPE]
+           ,[DOCUMENT_TRANSACTION_ID]
+           ,[CREATED_BY]
+           ,[CREATED_DT]
+           ,[CHANGED_BY]
+           ,[CHANGED_DT])
+     SELECT [DOCUMENT_CODE]
+           ,[DOCUMENT_TRANSACTION_NAME]
+           ,[DOCUMENT_TYPE]
+           ,[PROCESS_CODE]
+           ,[COMPANY_CODE]
+           ,[SECTION_CODE]
+           ,[ITEM_CHANGED]
+           ,[REASON]
+           ,[EXTERNAL_FLAG]
+           ,[REFERENCE_NO]
+           ,[SOURCE]
+           ,[DOCUMENT_DATE]
+           ,[FILE_PATH]
+           ,@status
+           ,[REVISION]
+           ,[APPROVAL_ID]
+           ,[DELETE_FLAG]
+           ,[DEPARTMENT]
+           ,[DIVISION]
+           ,1
+					 ,[DOCUMENT_TRANSACTION_ID]
+           ,@CREATED_BY [CREATED_BY]
+           ,GETDATE() [CREATED_DT]
+           ,@CHANGED_BY [CHANGED_BY]
+           ,GETDATE() [CHANGED_DT]
+	FROM TB_R_DOCUMENT
+	WHERE DOCUMENT_TRANSACTION_ID = @DOCUMENT_TRANSACTION_ID
+
+	SET @RETURN_ID = SCOPE_IDENTITY();
+	SET @RETURN_MSG = 'Successfully Save Data'
+	EXEC sp_WriteLog @PROCESS_ID, '2', 'INF', @RETURN_MSG, @LOCATION, @CREATED_BY
+	RETURN 1;
+END TRY
+BEGIN CATCH
+	SET @RETURN_ID = 0;
+	SET @RETURN_MSG = 'ERROR: ' + ERROR_PROCEDURE() +': '+ ERROR_MESSAGE() + ', at line = ' +  CAST(ERROR_LINE() AS VARCHAR);
+	EXEC sp_WriteLog @PROCESS_ID, '4', 'ERR', @RETURN_MSG, @LOCATION, @CREATED_BY
+	RETURN 0;
+END CATCH
+GO

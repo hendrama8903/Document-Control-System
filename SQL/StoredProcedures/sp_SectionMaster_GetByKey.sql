@@ -1,0 +1,34 @@
+﻿CREATE OR ALTER PROCEDURE [dbo].[sp_SectionMaster_GetByKey]
+	@SECTION_ID 	INT
+AS
+BEGIN  
+
+	DECLARE @QUERY VARCHAR(MAX)
+	
+	SET @QUERY = 'SELECT 
+								SE.SECTION_ID,
+								SE.SECTION_CODE,
+								SE.SECTION_NAME,
+								SE.DEPARTMENT_CODE,
+								D.DIVISION,
+								D.DEPARTMENT_ID,
+								SE.DELETE_FLAG,
+								SE.VALID_FROM,
+								SE.VALID_TO,
+								SE.CREATED_DT,
+								SE.CREATED_BY,
+								SE.CHANGED_DT,
+								SE.CHANGED_BY
+							FROM [dbo].[TB_M_SECTION] SE
+							LEFT JOIN [dbo].[TB_M_DEPARTMENT] D ON D.DEPARTMENT_CODE = SE.DEPARTMENT_CODE
+							WHERE 1 = 1 '
+							
+	IF @SECTION_ID IS NOT NULL
+	BEGIN
+		SET @QUERY += ' AND SE.SECTION_ID LIKE ''' + REPLACE(@SECTION_ID , '*', '%') + ''' '
+	END
+	
+	EXEC(@QUERY)
+	
+END
+GO

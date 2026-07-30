@@ -1,0 +1,72 @@
+<script type="text/javascript">
+    //RECOMMIT DINA
+    var gScreenMode = null;
+    var gId = null;
+    var gDocumentId = null;
+    var gDocumentTransactionId = null;
+    var gDocumentNo = null;
+    var gIsApproved = null;
+    var gFilePath = null;
+
+    $(document).ready(function () {
+        setDataSelect2WithParam("addEditDivision", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "- Choose -", "DIVISION");
+
+        $("#btn_send").on("click", function () {
+            onSendPrepare();
+        });
+    });
+
+    function onSendPrepare() {
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gDocumentTransactionId = row.DOCUMENT_TRANSACTION_ID;
+        gDocumentNo = row.DOCUMENT_CODE;
+        gDocumentId = row.DOCUMENT_CTRL_ID;
+
+        gIsApproved = 'Y';
+        $('#addEditRemarks').val('');
+        $("#modalSend").modal();
+        $('#modalSend-title').html("Send Document");
+        $('#labelConfirmation').html("Are you sure want to send Document No " + gDocumentNo + "?");
+        $('#divRemarks').hide();
+        $('#modalSend').on('shown.bs.modal', function () {
+
+        });
+    }
+
+    $("#btn_okSend").on("click", function () {
+        sendDocument();
+    });
+
+    function sendDocument() {
+        popUpProgressHide();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("SendDocument", "DocumentControlDashboard")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                DOCUMENT_TRANSACTION_ID: gDocumentTransactionId,
+                DOCUMENT_CTRL_ID: gDocumentId,
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    $("#datagrid").dxDataGrid("instance").refresh();
+                    popUpProgressHide();
+                    $("#modalSend").modal('hide');
+                } else {
+                    showErrorMesgGrowl(result.message);
+                    popUpProgressHide();
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+                popUpProgressHide();
+            }
+        });
+    }
+</script>

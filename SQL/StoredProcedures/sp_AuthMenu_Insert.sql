@@ -1,0 +1,41 @@
+﻿CREATE OR ALTER PROCEDURE [dbo].[sp_AuthMenu_Insert]
+	@ROLE_ID VARCHAR(50),
+	@MENU_ID VARCHAR(50),
+	@LOGIN_USER VARCHAR(255),
+	@RETURN_MSG VARCHAR(MAX) OUTPUT
+AS
+BEGIN TRY
+
+--	DECLARE @PROCESS_ID BIGINT,
+--					@LOCATION VARCHAR(255) = 'sp_AuthMenu_Insert';
+					
+--	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'Role Authorization - Authorization', 'Insert', @LOCATION, @LOGIN_USER
+
+	IF @MENU_ID IS NULL OR LEN(@MENU_ID) < 1
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Katashiki should not be null at Data No ' + @MENU_ID;
+		RETURN 0;
+	END
+
+	INSERT INTO [dbo].[TB_M_AUTH_MENU] (
+		ROLE_ID, 
+		MENU_ID, 	
+		CREATED_DT,
+		CREATED_BY
+	) VALUES (
+		@ROLE_ID, 
+		@MENU_ID, 
+		GETDATE(),
+		@LOGIN_USER
+	)
+	
+	SET @RETURN_MSG = 'Successfully Save Data Menu'
+--	EXEC sp_WriteLog @PROCESS_ID, '2', 'INF', @RETURN_MSG, @LOCATION, @LOGIN_USER
+	RETURN 1;
+END TRY
+BEGIN CATCH
+	SET @RETURN_MSG = 'ERROR: ' + ERROR_PROCEDURE() +': '+ ERROR_MESSAGE() + ', at line = ' +  CAST(ERROR_LINE() AS VARCHAR);
+--	EXEC sp_WriteLog @PROCESS_ID, '4', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+	RETURN 0;
+END CATCH
+GO

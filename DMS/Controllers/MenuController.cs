@@ -34,9 +34,16 @@ namespace DMS.Controllers
 
                 if (!menuURLList.Contains("/Menu/Index"))
                 {
-                    return StatusCode(403);
+                    Response.StatusCode = 403;
+                    return View("Error403");
                 }
             }
+
+            // add authorization function
+            ViewData["Add"] = HttpContext.Session.GetString("functionList").Contains("MENU-ADD");
+            ViewData["Edit"] = HttpContext.Session.GetString("functionList").Contains("MENU-EDIT");
+            ViewData["Delete"] = HttpContext.Session.GetString("functionList").Contains("MENU-DELETE");
+            ViewData["Function"] = HttpContext.Session.GetString("functionList").Contains("MENU-FUNCTION");
 
             ViewData["Title"] = "Menu & Function";
 

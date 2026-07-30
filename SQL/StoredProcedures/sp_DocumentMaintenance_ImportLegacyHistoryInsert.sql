@@ -1,0 +1,51 @@
+﻿-- ============================================================
+-- Part 2: New SP for inserting legacy revision-history rows directly into
+-- TB_R_DOCUMENT_HISTORY (no matching active TB_R_DOCUMENT row/transaction ever
+-- existed for these - they're historical revisions carried over from the paper
+-- master list). Mirrors sp_DocumentMaintenance_ImportLegacyInsert's shape/logging,
+-- but targets the history table with STATUS='4' (OBSOLETE) per the convention in
+-- sp_DocumentMaintenance_SupersedeRevision.
+-- ============================================================
+CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentMaintenance_ImportLegacyHistoryInsert]
+	@DOCUMENT_CODE				VARCHAR(25),
+	@DOCUMENT_TRANSACTION_NAME	VARCHAR(255),
+	@DOCUMENT_ID				INT,
+	@LEVEL_CODE					INT,
+	@DIVISION					VARCHAR(255),
+	@DEPARTMENT					INT,
+	@CLASSIFIED					INT,
+	@REVISION					INT,
+	@DOCUMENT_DATE				DATETIME,
+	@FILE_PATH					VARCHAR(255),
+	@DOCUMENT_CREATOR			VARCHAR(255),
+	@REASON						VARCHAR(255),
+	@CREATED_BY					VARCHAR(50),
+	@RETURN_MSG					VARCHAR(MAX) OUTPUT
+AS
+BEGIN TRY
+	DECLARE @PROCESS_ID BIGINT
+	, @LOCATION VARCHAR(255) = 'sp_DocumentMaintenance_ImportLegacyHistoryInsert'
+
+	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'Document Maintenance', 'Import Legacy History Insert', @LOCATION, @CREATED_BY
+
+	INSERT INTO [dbo].[TB_R_DOCUMENT_HISTORY]
+		(DOCUMENT_TRANSACTION_ID, DOCUMENT_CODE, DOCUMENT_TRANSACTION_NAME, DOCUMENT_ID, LEVEL_CODE, DIVISION, DEPARTMENT,
+		 CLASSIFIED, REVISION, DOCUMENT_DATE, FILE_PATH, DOCUMENT_CREATOR, REASON,
+		 STATUS, APPROVAL_ID,
+		 CREATED_BY, CREATED_DT, CHANGED_BY, CHANGED_DT)
+	VALUES
+		(NULL, @DOCUMENT_CODE, @DOCUMENT_TRANSACTION_NAME, @DOCUMENT_ID, @LEVEL_CODE, @DIVISION, @DEPARTMENT,
+		 @CLASSIFIED, @REVISION, @DOCUMENT_DATE, @FILE_PATH, @DOCUMENT_CREATOR, @REASON,
+		 '4', NULL,
+		 @CREATED_BY, GETDATE(), @CREATED_BY, GETDATE())
+
+	SET @RETURN_MSG = 'Successfully Save Data'
+	EXEC sp_WriteLog @PROCESS_ID, '2', 'INF', @RETURN_MSG, @LOCATION, @CREATED_BY
+	RETURN 1;
+END TRY
+BEGIN CATCH
+	SET @RETURN_MSG = 'ERROR: ' + ERROR_PROCEDURE() +': '+ ERROR_MESSAGE() + ', at line = ' +  CAST(ERROR_LINE() AS VARCHAR);
+	EXEC sp_WriteLog @PROCESS_ID, '4', 'ERR', @RETURN_MSG, @LOCATION, @CREATED_BY
+	RETURN 0;
+END CATCH
+GO

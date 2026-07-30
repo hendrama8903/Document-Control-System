@@ -35,7 +35,8 @@ namespace DMS.Controllers
 
                 if (!menuURLList.Contains("/DocumentMaster/Index"))
                 {
-                    return StatusCode(403);
+                    Response.StatusCode = 403;
+                    return View("Error403");
                 }
             }
 

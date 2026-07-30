@@ -33,7 +33,8 @@ namespace DMS.Controllers
 
                 if (!menuURLList.Contains("/DivisionMaster/Index"))
                 {
-                    return StatusCode(403);
+                    Response.StatusCode = 403;
+                    return View("Error403");
                 }
             }
 
@@ -321,43 +322,6 @@ namespace DMS.Controllers
         //}
 
         
-
-        public JsonResult GetWorkflowName(string q, string pageLimit, string page)
-        {
-            try
-            {
-                AjaxResult ajaxResult = new AjaxResult();
-                RepoResult repoResult = new RepoResult();
-
-                Workflow oWorkflow = new Workflow();
-                if (q != null)
-                    oWorkflow.WORKFLOW_NAME = '*' + q + '*';
-
-                int result, pageInt;
-
-                if (int.TryParse(page, out result))
-                {
-                    pageInt = int.Parse(page);
-                }
-                else
-                {
-                    pageInt = 1;
-                }
-
-                IList<Workflow> dataList = WorkflowRepo.Instance.Search(oWorkflow, db, pageInt, int.Parse(pageLimit));
-
-                var list = new List<Select2>();
-                foreach (var data in dataList)
-                {
-                    list.Add(new Select2() { text = data.WORKFLOW_NAME, id = data.WORKFLOW_ID.ToString() });
-                }
-                return Json(new { status = true, items = list });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { status = false, message = ex.Message });
-            }
-        }
 
         //public JsonResult GetDepartmentIdAndNameByDivision(string q, string pageLimit, string page, string param)
         //{

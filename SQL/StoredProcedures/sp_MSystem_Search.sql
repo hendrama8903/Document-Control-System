@@ -1,0 +1,67 @@
+﻿CREATE OR ALTER PROCEDURE [dbo].[sp_MSystem_Search]
+	@SYSTEM_TYPE					VARCHAR(50),
+	@SYSTEM_CODE					VARCHAR(50),
+	@SYSTEM_VALUE					VARCHAR(MAX),
+	@SYSTEM_CODE_VALUE		VARCHAR(255),
+	@STATUS								int,
+	@PageNumber 					int,
+	@PageSize 						int
+AS
+BEGIN
+	DECLARE @QUERY VARCHAR(MAX)
+	
+	SET @QUERY = 'WITH data AS 
+		(
+			SELECT 
+			ROW_NUMBER() OVER (ORDER BY G.SYSTEM_TYPE ASC) as RowNumber,
+			G.SYSTEM_TYPE,
+			G.SYSTEM_CODE,
+			G.SYSTEM_VALUE,
+			G.SYSTEM_CODE + '' - '' + G.SYSTEM_VALUE AS SYSTEM_CODE_VALUE,
+			G.STATUS,
+			G.CREATED_DT,
+			G.CREATED_BY,
+			G.CHANGED_DT,
+			G.CHANGED_BY
+			FROM [dbo].[TB_M_SYSTEM] G
+			WHERE 1 = 1 '
+		
+			IF @SYSTEM_TYPE IS NOT NULL
+			BEGIN
+				SET @QUERY += ' AND SYSTEM_TYPE LIKE ''' + REPLACE(@SYSTEM_TYPE , '*', '%') + ''' '
+			END
+			
+			IF @SYSTEM_CODE IS NOT NULL
+			BEGIN
+				SET @QUERY += ' AND SYSTEM_CODE LIKE ''' + REPLACE(@SYSTEM_CODE , '*', '%') + ''' '
+			END
+			
+			IF @SYSTEM_VALUE IS NOT NULL
+			BEGIN
+				SET @QUERY += ' AND SYSTEM_VALUE LIKE ''' + REPLACE(@SYSTEM_VALUE , '*', '%') + ''' '
+			END
+			
+			IF @SYSTEM_CODE_VALUE IS NOT NULL
+			BEGIN
+				SET @QUERY += ' AND SYSTEM_CODE + '''+' - '+''' +  SYSTEM_VALUE LIKE ''' + REPLACE(@SYSTEM_CODE_VALUE , '*', '%') + ''' '
+			END
+			
+			IF @STATUS IS NOT NULL
+			BEGIN
+				SET @QUERY += ' AND STATUS LIKE ''' + REPLACE(@STATUS , '*', '%') + ''' '
+			END
+	
+	SET @QUERY += '
+		)
+		SELECT * FROM data
+		WHERE 1 = 1 '
+		
+	IF (@PageSize IS NOT NULL AND @PageNumber IS NOT NULL)
+	BEGIN
+		SET @QUERY += ' AND RowNumber > '+ CAST((@PageSize * (@PageNumber - 1)) AS VARCHAR) +' AND RowNumber <= ' +CAST(@PageSize + (@PageSize * (@PageNumber - 1)) AS VARCHAR);
+	END
+	
+	EXEC(@QUERY)
+	
+END
+GO

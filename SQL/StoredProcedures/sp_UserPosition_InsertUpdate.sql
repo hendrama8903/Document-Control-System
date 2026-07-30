@@ -1,0 +1,269 @@
+﻿CREATE OR ALTER PROCEDURE [dbo].[sp_UserPosition_InsertUpdate]
+	@USERNAME 			VARCHAR(255),
+	@POSITION_ID		INT,
+	@DIVISION				VARCHAR(255),
+	@DEPARTMENT_ID	INT,
+	@SECTION_ID			INT,
+	@LOGIN_USER 		VARCHAR(255),
+	@RETURN_MSG 		VARCHAR(MAX) OUTPUT
+AS
+BEGIN TRY
+	-- Position ID - Position Name
+	-- 7 - Presiden Direktur
+	-- 6 - Direktur
+	-- 5 - Executive Officer
+	-- 4 - Div. Head
+	-- 3 - Dept. Head
+	-- 2 - Section Head
+	-- 1 - Staff
+	
+	DECLARE @PROCESS_ID BIGINT,
+					@LOCATION VARCHAR(255) = 'sp_UserPosition_InsertUpdate';
+					
+	DECLARE @positionName VARCHAR(255), @divisionName VARCHAR(255), @deptCode VARCHAR(255), @sectionName VARCHAR(255);
+					
+	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'User Position', 'Insert Update', @LOCATION, @LOGIN_USER
+	
+	IF @POSITION_ID IS NULL OR LEN(@POSITION_ID) < 1
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Position should not be null';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+		RETURN 0;
+	END
+		
+	IF @POSITION_ID = 7 OR @POSITION_ID = 6 -- Presdir or Direktur
+	BEGIN
+		IF EXISTS (	SELECT TOP 1 1 FROM [dbo].[TB_M_USER_POS] 
+								WHERE POSITION_ID = @POSITION_ID 
+								AND USERNAME != @USERNAME)
+		BEGIN
+			SELECT @positionName = POSITION_NAME FROM TB_M_POSITION WHERE POSITION_ID = @POSITION_ID
+			
+			SET @RETURN_MSG = 'ERROR : Position ' + @positionName + ' is Already Exists';
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+			RETURN 0;
+		END
+		
+		IF NOT EXISTS (	SELECT TOP 1 1 FROM [dbo].[TB_M_USER_POS] 
+								WHERE POSITION_ID = @POSITION_ID 
+								AND USERNAME = @USERNAME)
+		BEGIN
+			INSERT INTO [dbo].[TB_M_USER_POS] (
+				USERNAME, 
+				POSITION_ID
+			) VALUES (
+				@USERNAME, 
+				@POSITION_ID
+			)
+		END
+	END
+	
+	IF @POSITION_ID = 5 OR @POSITION_ID = 4 -- EO or Div. Head
+	BEGIN
+		
+		IF @DIVISION IS NULL OR LEN(@DIVISION) < 1
+		BEGIN
+			SET @RETURN_MSG = 'ERROR: Division should not be null';
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+			RETURN 0;
+		END
+		
+		IF EXISTS (	SELECT TOP 1 1 FROM [dbo].[TB_M_USER_POS] 
+								WHERE POSITION_ID = @POSITION_ID 
+								AND DIVISION = @DIVISION 
+								AND USERNAME != @USERNAME)
+		BEGIN
+			SELECT @positionName = POSITION_NAME FROM TB_M_POSITION WHERE POSITION_ID = @POSITION_ID
+			
+			SET @RETURN_MSG = 'ERROR : Position ' + @positionName + ' in Division ' + @DIVISION + ' is Already Exists';
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+			RETURN 0;
+		END
+		
+		IF NOT EXISTS (	SELECT TOP 1 1 FROM [dbo].[TB_M_USER_POS] 
+								WHERE POSITION_ID = @POSITION_ID 
+								AND DIVISION = @DIVISION 
+								AND USERNAME = @USERNAME)
+		BEGIN
+			INSERT INTO [dbo].[TB_M_USER_POS] (
+				USERNAME, 
+				POSITION_ID,
+				DIVISION
+			) VALUES (
+				@USERNAME, 
+				@POSITION_ID,
+				@DIVISION 
+			)
+		END
+	END
+	
+	IF @POSITION_ID = 3 -- Dept. Head
+	BEGIN
+	
+		IF @DIVISION IS NULL OR LEN(@DIVISION) < 1
+		BEGIN
+			SET @RETURN_MSG = 'ERROR: Division should not be null';
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+			RETURN 0;
+		END
+		
+		IF @DEPARTMENT_ID IS NULL OR LEN(@DEPARTMENT_ID) < 1
+		BEGIN
+			SET @RETURN_MSG = 'ERROR: Department should not be null';
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+			RETURN 0;
+		END
+		
+		IF EXISTS (	SELECT TOP 1 1 FROM [dbo].[TB_M_USER_POS] 
+								WHERE POSITION_ID = @POSITION_ID 
+								AND DIVISION = @DIVISION 
+								AND DEPARTMENT_ID = @DEPARTMENT_ID
+								AND USERNAME != @USERNAME)
+		BEGIN
+			SELECT @positionName = POSITION_NAME FROM TB_M_POSITION WHERE POSITION_ID = @POSITION_ID
+			SELECT @deptCode = DEPARTMENT_CODE FROM TB_M_DEPARTMENT WHERE DEPARTMENT_ID = @DEPARTMENT_ID
+			
+			SET @RETURN_MSG = 'ERROR : Position ' + @positionName + ' in Division ' + @DIVISION + ' and Department ' + @deptCode + ' is Already Exists';
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+			RETURN 0;
+		END
+		
+		IF NOT EXISTS (	SELECT TOP 1 1 FROM [dbo].[TB_M_USER_POS] 
+								WHERE POSITION_ID = @POSITION_ID 
+								AND DIVISION = @DIVISION 
+								AND DEPARTMENT_ID = @DEPARTMENT_ID
+								AND USERNAME = @USERNAME)
+		BEGIN
+			INSERT INTO [dbo].[TB_M_USER_POS] (
+				USERNAME, 
+				POSITION_ID,
+				DIVISION,
+				DEPARTMENT_ID
+			) VALUES (
+				@USERNAME, 
+				@POSITION_ID,
+				@DIVISION,
+				@DEPARTMENT_ID
+			)
+		END
+	END
+	
+	IF @POSITION_ID = 2 -- Section Head
+	BEGIN
+	
+		IF @DIVISION IS NULL OR LEN(@DIVISION) < 1
+		BEGIN
+			SET @RETURN_MSG = 'ERROR: Division should not be null';
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+			RETURN 0;
+		END
+		
+		IF @DEPARTMENT_ID IS NULL OR LEN(@DEPARTMENT_ID) < 1
+		BEGIN
+			SET @RETURN_MSG = 'ERROR: Department should not be null';
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+			RETURN 0;
+		END
+		
+		IF @SECTION_ID IS NULL OR LEN(@SECTION_ID) < 1
+		BEGIN
+			SET @RETURN_MSG = 'ERROR: Section should not be null';
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+			RETURN 0;
+		END
+		
+		IF EXISTS (	SELECT TOP 1 1 FROM [dbo].[TB_M_USER_POS] 
+								WHERE POSITION_ID = @POSITION_ID 
+								AND DIVISION = @DIVISION 
+								AND DEPARTMENT_ID = @DEPARTMENT_ID
+								AND SECTION_ID = @SECTION_ID
+								AND USERNAME != @USERNAME)
+		BEGIN
+			SELECT @positionName = POSITION_NAME FROM TB_M_POSITION WHERE POSITION_ID = @POSITION_ID
+			SELECT @deptCode = DEPARTMENT_CODE FROM TB_M_DEPARTMENT WHERE DEPARTMENT_ID = @DEPARTMENT_ID
+			SELECT @sectionName = SECTION_NAME FROM TB_M_SECTION WHERE SECTION_ID = @SECTION_ID
+			
+			SET @RETURN_MSG = 'ERROR : Position ' + @positionName + ' in Division ' + @DIVISION + ', Department ' + @deptCode 
+				+ ' and Section ' + @sectionName + ' is Already Exists';
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+			RETURN 0;
+		END
+		
+		IF NOT EXISTS (	SELECT TOP 1 1 FROM [dbo].[TB_M_USER_POS] 
+								WHERE POSITION_ID = @POSITION_ID 
+								AND DIVISION = @DIVISION 
+								AND DEPARTMENT_ID = @DEPARTMENT_ID
+								AND SECTION_ID = @SECTION_ID
+								AND USERNAME = @USERNAME)
+		BEGIN
+			INSERT INTO [dbo].[TB_M_USER_POS] (
+				USERNAME, 
+				POSITION_ID,
+				DIVISION, 
+				DEPARTMENT_ID,  
+				SECTION_ID
+			) VALUES (
+				@USERNAME, 
+				@POSITION_ID,
+				@DIVISION, 
+				@DEPARTMENT_ID, 
+				@SECTION_ID
+			)
+		END
+	END
+	
+	IF @POSITION_ID = 1 -- Staff
+	BEGIN
+	
+		IF @DIVISION IS NULL OR LEN(@DIVISION) < 1
+		BEGIN
+			SET @RETURN_MSG = 'ERROR: Division should not be null';
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+			RETURN 0;
+		END
+		
+		IF @DEPARTMENT_ID IS NULL OR LEN(@DEPARTMENT_ID) < 1
+		BEGIN
+			SET @RETURN_MSG = 'ERROR: Department should not be null';
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+			RETURN 0;
+		END
+		
+		IF @SECTION_ID IS NULL OR LEN(@SECTION_ID) < 1
+		BEGIN
+			SET @RETURN_MSG = 'ERROR: Section should not be null';
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+			RETURN 0;
+		END
+	
+		IF EXISTS(SELECT TOP 1 1 FROM [dbo].[TB_M_USER_POS] WHERE USERNAME = @USERNAME )
+		BEGIN
+			DELETE FROM [dbo].[TB_M_USER_POS]
+			WHERE USERNAME = @USERNAME
+		END
+		
+		INSERT INTO [dbo].[TB_M_USER_POS] (
+			USERNAME, 
+			POSITION_ID,
+			DIVISION, 
+			DEPARTMENT_ID,  
+			SECTION_ID
+		) VALUES (
+			@USERNAME, 
+			@POSITION_ID,
+			@DIVISION, 
+			@DEPARTMENT_ID, 
+			@SECTION_ID
+		)
+	END
+	
+	SET @RETURN_MSG = 'Successfully Save Data'
+	EXEC sp_WriteLog @PROCESS_ID, '2', 'INF', @RETURN_MSG, @LOCATION, @LOGIN_USER
+	RETURN 1;
+END TRY
+BEGIN CATCH
+	SET @RETURN_MSG = 'ERROR: ' + ERROR_PROCEDURE() +': '+ ERROR_MESSAGE() + ', at line = ' +  CAST(ERROR_LINE() AS VARCHAR);
+	EXEC sp_WriteLog @PROCESS_ID, '4', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+	RETURN 0;
+END CATCH
+GO

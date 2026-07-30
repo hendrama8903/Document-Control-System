@@ -1,0 +1,28 @@
+﻿CREATE OR ALTER PROCEDURE [dbo].[sp_PositionMaster_GetByKey]
+	@POSITION_ID 	INT
+AS
+BEGIN  
+
+	DECLARE @QUERY VARCHAR(MAX)
+	
+	SET @QUERY = 'SELECT 
+										P.POSITION_ID,
+										P.POSITION_NAME,
+										P.POSITION_LEVEL,
+										P.DELETE_FLAG,
+										P.CREATED_DT,
+										P.CREATED_BY,
+										P.CHANGED_DT,
+										P.CHANGED_BY
+									FROM [dbo].[TB_M_POSITION] P
+							WHERE 1 = 1 '
+							
+	IF @POSITION_ID IS NOT NULL
+	BEGIN
+		SET @QUERY += ' AND P.POSITION_ID LIKE ''' + REPLACE(@POSITION_ID , '*', '%') + ''' '
+	END
+	
+	EXEC(@QUERY)
+	
+END
+GO

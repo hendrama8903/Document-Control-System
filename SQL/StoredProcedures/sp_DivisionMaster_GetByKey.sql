@@ -1,0 +1,31 @@
+﻿CREATE OR ALTER PROCEDURE [dbo].[sp_DivisionMaster_GetByKey]
+	@DIVISION_ID INT
+AS
+BEGIN  
+
+	DECLARE @QUERY VARCHAR(MAX)
+	
+	SET @QUERY = 'SELECT 
+										ROW_NUMBER() OVER (ORDER BY S.DIVISION_CODE ASC) as RowNumber, 
+										S.DIVISION_ID,
+										S.DIVISION_CODE,
+										S.DIVISION_NAME,
+										S.DIVISION_CODE + '' - '' + S.DIVISION_NAME AS DIVISION_CODE_NAME,
+										S.VALID_FROM,
+										S.VALID_TO,
+										S.CREATED_DT,
+										S.CREATED_BY,
+										S.CHANGED_DT,
+										S.CHANGED_BY
+									FROM [dbo].[TB_M_DIVISION] S
+							WHERE 1 = 1 '
+							
+	IF @DIVISION_ID IS NOT NULL
+	BEGIN
+		SET @QUERY += ' AND S.DIVISION_ID LIKE ''' + REPLACE(@DIVISION_ID , '*', '%') + ''' '
+	END
+	
+	EXEC(@QUERY)
+	
+END
+GO

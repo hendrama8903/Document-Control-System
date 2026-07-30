@@ -20,6 +20,8 @@
 </div>
 
 <script type="text/javascript">
+    var gShowDeleted = false;
+
     function getSelectedRowData() {
         var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
         return rows.length > 0 ? rows[0] : null;
@@ -28,9 +30,17 @@
     function updateActionButtons() {
         var selected = getSelectedRowData() != null;
 
-        $("#btn_edit").prop("disabled", !selected);
-        $("#btn_delete").prop("disabled", !selected);
-        $("#btn_position").prop("disabled", !selected);
+        if (gShowDeleted) {
+            $("#btn_edit").prop("disabled", true);
+            $("#btn_delete").prop("disabled", true);
+            $("#btn_position").prop("disabled", true);
+            $("#btn_restore").prop("disabled", !selected);
+        } else {
+            $("#btn_edit").prop("disabled", !selected);
+            $("#btn_delete").prop("disabled", !selected);
+            $("#btn_position").prop("disabled", !selected);
+            $("#btn_restore").prop("disabled", true);
+        }
     }
 
     function computeGridHeight() {
@@ -45,6 +55,7 @@
         $("#btn_edit").prop("disabled", true);
         $("#btn_delete").prop("disabled", true);
         $("#btn_position").prop("disabled", true);
+        $("#btn_restore").prop("disabled", true);
 
         var gridStore = new DevExpress.data.CustomStore({
             key: "USERNAME",
@@ -59,7 +70,8 @@
                         draw: 1,
                         start: 0,
                         length: 100000,
-                        initialMode: false
+                        initialMode: false,
+                        showDeleted: gShowDeleted
                     }
                 }).done(function (result) {
                     d.resolve(result.data == "" ? [] : result.data);

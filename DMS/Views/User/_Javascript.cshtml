@@ -56,6 +56,30 @@
         $("#addEditAdUser").on("change", function () {
             toggleAdUserFields();
         });
+
+        $("#btn_restore").on("click", function () {
+            onRestorePrepare();
+        });
+
+        $("#chk_showDeleted").on("change", function () {
+            gShowDeleted = $(this).is(":checked");
+
+            if (gShowDeleted) {
+                $("#btn_add").hide();
+                $("#btn_edit").hide();
+                $("#btn_delete").hide();
+                $("#btn_position").hide();
+                $("#btn_restore").show();
+            } else {
+                $("#btn_add").show();
+                $("#btn_edit").show();
+                $("#btn_delete").show();
+                $("#btn_position").show();
+                $("#btn_restore").hide();
+            }
+
+            onSearch();
+        });
     });
 
     function toggleAdUserFields() {
@@ -423,6 +447,40 @@
         $.ajax({
             type: "POST",
             url: "@Url.Action("Delete", "User")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                USERNAME: gId
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function onRestorePrepare() {
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gId = row.USERNAME;
+
+        showConfirmMesg("Are you sure you want to restore user " + gId + "?", restoreData, "Confirmation");
+    }
+
+    function restoreData() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("Restore", "User")",
             dataType: 'json',
             traditional: true,
             data: {

@@ -1,0 +1,20 @@
+<script type="text/javascript">
+    $(document).ready(function () {
+        $("#btn_print").on("click", function () {
+            onPrintPrepare();
+        });
+    });
+
+    function onPrintPrepare() {
+        var rows = getSelectedRowsData();
+        if (rows.length < 1) {
+            return;
+        }
+
+        var query = rows.map(function (row) {
+            return "publishHistoryIds=" + encodeURIComponent(row.PUBLISH_HISTORY_ID);
+        }).join("&");
+
+        window.open("@Url.Action("PrintReceipt", "DocumentReceiptReport")?" + query, "_blank");
+    }
+</script>
