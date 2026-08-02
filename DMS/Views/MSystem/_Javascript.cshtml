@@ -116,6 +116,7 @@
     }
 
     function addEditData() {
+        popUpProgressShow();
         $.ajax({
             type: "POST",
             url: "@Url.Action("AddEdit", "MSystem")",
@@ -129,7 +130,7 @@
                 STATUS: $('#addEditSystemStatus').val(),
             },
             success: function (result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 if (result.status == true) {
                     showSuccessMesgGrowl(result.message);
                     onSearch();
@@ -139,13 +140,14 @@
                 }
             },
             error: function (result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 showErrorMesgGrowl(result);
             }
         });
     }
 
     function deleteData() {
+        popUpProgressShow();
         $.ajax({
             type: "POST",
             url: "@Url.Action("Delete", "MSystem")",
@@ -156,7 +158,7 @@
                 SYSTEM_CODE: gSystemCode,
             },
             success: function (result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 if (result.status == true) {
                     showSuccessMesgGrowl(result.message);
                     onSearch();
@@ -165,7 +167,7 @@
                 }
             },
             error: function (result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 showErrorMesgGrowl(result);
             }
         });

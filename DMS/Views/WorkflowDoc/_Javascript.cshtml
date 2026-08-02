@@ -353,12 +353,14 @@
             data.CREATOR_LEVEL   = $('#addEditPositionName').val();
         });
         
+        popUpProgressShow();
         $.ajax({
             contentType: 'application/json; charset=utf-8',
             type       : "POST",
             url        : "@Url.Action("AddEdit", "WorkflowDoc")",
             data       : JSON.stringify(detailData),
             success: function(result) {
+                popUpProgressHide();
                 if (result.status == true) {
                     showSuccessMesgGrowl(result.message);
                     onSearch();
@@ -368,12 +370,14 @@
                 }
             },
             error: function(result) {
+                popUpProgressHide();
                 showErrorMesgGrowl(result);
             }
         });
     }
 
     function deleteData() {
+        popUpProgressShow();
         $.ajax({
             type: "POST",
             url: "@Url.Action("Delete", "WorkflowDoc")",
@@ -383,7 +387,7 @@
                 WORKFLOW_DOC_ID: gId
             },
             success: function(result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 if (result.status == true) {
                     showSuccessMesgGrowl(result.message);
                     onSearch();
@@ -392,7 +396,7 @@
                 }
             },
             error: function(result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 showErrorMesgGrowl(result);
             }
         });

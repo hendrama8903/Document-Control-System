@@ -204,6 +204,7 @@
     }
 
     function addEditData() {
+        popUpProgressShow();
         $.ajax({
             type: "POST",
             url: "@Url.Action("AddEdit", "Menu")",
@@ -219,7 +220,7 @@
                 MENU_SEQ: $('#addEditMenuSeq').val(),
             },
             success: function (result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 if (result.status == true) {
                     showSuccessMesgGrowl(result.message);
                     onSearch();
@@ -229,7 +230,7 @@
                 }
             },
             error: function (result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 showErrorMesgGrowl(result);
             }
         });
@@ -248,6 +249,7 @@
     }
 
     function deleteData() {
+        popUpProgressShow();
         $.ajax({
             type: "POST",
             url: "@Url.Action("Delete", "Menu")",
@@ -257,7 +259,7 @@
                 MENU_ID: gId
             },
             success: function (result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 if (result.status == true) {
                     showSuccessMesgGrowl(result.message);
                     onSearch();
@@ -266,7 +268,7 @@
                 }
             },
             error: function (result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 showErrorMesgGrowl(result);
             }
         });
@@ -400,6 +402,7 @@
     }
 
     function addEditFunction(){
+        popUpProgressShow();
         $.ajax({
             type: "POST",
             url: "@Url.Action("AddEditFunction", "Menu")",
@@ -413,7 +416,7 @@
                 FUNCTION_DESC: $('#addEditFunctionDesc').val(),
             },
             success: function (result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 if (result.status == true) {
                     showSuccessMesgGrowl(result.message);
                     getFunction();
@@ -422,13 +425,14 @@
                 }
             },
             error: function (result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 showErrorMesgGrowl(result);
             }
         });
     }
 
     function deleteFunction() {
+        popUpProgressShow();
         $.ajax({
             type: "POST",
             url: "@Url.Action("DeleteFunction", "Menu")",
@@ -438,7 +442,7 @@
                 FUNCTION_ID: $('#addEditFunctionId').val()
             },
             success: function (result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 if (result.status == true) {
                     showSuccessMesgGrowl(result.message);
                     getFunction();
@@ -447,7 +451,7 @@
                 }
             },
             error: function (result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 showErrorMesgGrowl(result);
             }
         });

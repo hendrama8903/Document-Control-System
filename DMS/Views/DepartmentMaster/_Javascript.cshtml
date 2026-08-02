@@ -109,6 +109,7 @@
     }
 
      function addEditData() {
+        popUpProgressShow();
         $.ajax({
             type: "POST",
             url: "@Url.Action("AddEdit", "DepartmentMaster")",
@@ -122,7 +123,7 @@
                 DIVISION: $('#addEditDivision').val()
             },
             success: function (result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 if (result.status == true) {
                     showSuccessMesgGrowl(result.message);
                     onSearch();
@@ -132,7 +133,7 @@
                 }
             },
             error: function (result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 showErrorMesgGrowl(result);
             }
         });

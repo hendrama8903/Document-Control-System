@@ -113,6 +113,7 @@
     }
 
     function addEditData() {
+        popUpProgressShow();
         $.ajax({
             type: "POST",
             url: "@Url.Action("AddEdit", "Role")",
@@ -125,7 +126,7 @@
                 ROLE_DESC: $('#addEditRoleDesc').val(),
             },
             success: function (result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 if (result.status == true) {
                     showSuccessMesgGrowl(result.message);
                     onSearch();
@@ -135,13 +136,14 @@
                 }
             },
             error: function (result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 showErrorMesgGrowl(result);
             }
         });
     }
 
     function deleteData() {
+        popUpProgressShow();
         $.ajax({
             type: "POST",
             url: "@Url.Action("Delete", "Role")",
@@ -151,7 +153,7 @@
                 ROLE_ID: gId
             },
             success: function (result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 if (result.status == true) {
                     showSuccessMesgGrowl(result.message);
                     onSearch();
@@ -160,7 +162,7 @@
                 }
             },
             error: function (result) {
-                //popUpProgressHide();
+                popUpProgressHide();
                 showErrorMesgGrowl(result);
             }
         });
@@ -392,6 +394,7 @@
             dataFunc.push(dtl);
         }
 
+        popUpProgressShow();
         saveAuthMenu(dataMenu);
         saveAuthFunction(dataFunc);
     }
@@ -404,6 +407,7 @@
             url: "@Url.Action("AddEditMenu", "Role")",
             data: { data: data },
             success: function (result) {
+                popUpProgressHide();
                 if (result.status == true) {
                     showSuccessMesgGrowl(result.message);
 
@@ -413,6 +417,7 @@
                 }
             },
             error: function (result) {
+                popUpProgressHide();
                 showErrorMesgGrowl(result);
             }
         });
@@ -426,6 +431,7 @@
             url: "@Url.Action("AddEditFunction", "Role")",
             data: { data: data },
             success: function (result) {
+                popUpProgressHide();
                 if (result.status == true) {
                     showSuccessMesgGrowl(result.message);
                 } else {
@@ -433,6 +439,7 @@
                 }
             },
             error: function (result) {
+                popUpProgressHide();
                 showErrorMesgGrowl(result);
             }
         });
