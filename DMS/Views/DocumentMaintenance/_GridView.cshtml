@@ -310,18 +310,7 @@
                 },
                 { dataField: "REVISION", caption: "Revision", alignment: "center" },
                 {
-                    dataField: "DOCUMENT_TYPE",
-                    caption: "Document Type",
-                    alignment: "center",
-                    calculateCellValue: function (row) {
-                        if (row.DOCUMENT_TYPE == "01") return "New";
-                        if (row.DOCUMENT_TYPE == "02") return "Revision";
-                        return row.DOCUMENT_TYPE;
-                    }
-                },
-                { dataField: "LEVEL_CODE", caption: "Document Level", alignment: "center" },
-                {
-                    caption: "Divisi",
+                    caption: "Division",
                     calculateCellValue: function (row) {
                         return row.DIVISION + " - " + row.DIVISION_NAME;
                     }
@@ -332,11 +321,23 @@
                         return row.DEPARTMENT_CODE + " - " + row.DEPARTMENT_NAME;
                     }
                 },
-                { dataField: "CLASSIFIED_VAL", caption: "Classified" },
-                { dataField: "ITEM_CHANGED", caption: "Item Changed" },
-                { dataField: "REASON", caption: "Reason" },
-                { dataField: "REFERENCE_NO", caption: "Reference No" },
-                { dataField: "SOURCE", caption: "Source" },
+                {
+                    dataField: "DOCUMENT_TYPE",
+                    caption: "Document Type",
+                    alignment: "center",
+                    visible: false,
+                    calculateCellValue: function (row) {
+                        if (row.DOCUMENT_TYPE == "01") return "New";
+                        if (row.DOCUMENT_TYPE == "02") return "Revision";
+                        return row.DOCUMENT_TYPE;
+                    }
+                },
+                { dataField: "LEVEL_CODE", caption: "Document Level", alignment: "center", visible: false },
+                { dataField: "CLASSIFIED_VAL", caption: "Classified", visible: false },
+                { dataField: "ITEM_CHANGED", caption: "Item Changed", visible: false },
+                { dataField: "REASON", caption: "Reason", visible: false },
+                { dataField: "REFERENCE_NO", caption: "Reference No", visible: false },
+                { dataField: "SOURCE", caption: "Source", visible: false },
                 { dataField: "CREATED_BY", caption: "Created By", visible: false },
                 {
                     dataField: "CREATED_DT",
