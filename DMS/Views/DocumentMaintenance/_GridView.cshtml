@@ -14,6 +14,40 @@
         padding: 5px 8px;
         min-height: 28px;
     }
+
+    /* tampilkan judul kolom penuh (wrap), jangan terpotong "..." */
+    #datagrid .dx-datagrid-headers .dx-header-row td .dx-datagrid-text-content {
+        white-space: normal;
+        overflow: visible;
+        text-overflow: unset;
+        line-height: 1.3;
+    }
+
+    /* panel detail dokumen (row expand) */
+    .doc-detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 14px 24px;
+        padding: 16px 24px;
+        background: #f9fafb;
+        max-height: 210px;
+        overflow-y: auto;
+    }
+
+    .doc-detail-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        color: #8a8a8a;
+        font-weight: 600;
+        margin-bottom: 2px;
+    }
+
+    .doc-detail-value {
+        font-size: 13px;
+        color: #333;
+        word-break: break-word;
+    }
 </style>
 
 <div class="box-body">
@@ -114,6 +148,8 @@
             dataSource: gridStore,
             showBorders: true,
             columnAutoWidth: true,
+            allowColumnResizing: true,
+            columnResizingMode: "widget",
             wordWrapEnabled: false,
             sorting: { mode: "none" },
             noDataText: "Data not found.",
@@ -140,6 +176,52 @@
                 mode: "select"
             },
             columnFixing: { enabled: true },
+            masterDetail: {
+                enabled: true,
+                template: function (container, options) {
+                    var row = options.data;
+
+                    function val(v) { return (v === null || v === undefined || v === "") ? "-" : v; }
+                    function dateVal(v) { return v ? moment(v).format("DD-MM-YYYY") : "-"; }
+                    function dateTimeVal(v) { return v ? moment(v).format("DD-MM-YYYY hh:mm:ss") : "-"; }
+                    function documentTypeVal(v) {
+                        if (v == "01") return "New";
+                        if (v == "02") return "Revision";
+                        return val(v);
+                    }
+
+                    var fields = [
+                        { label: "Document Category", value: val(row.DOCUMENT_NAME) },
+                        { label: "Document Type", value: documentTypeVal(row.DOCUMENT_TYPE) },
+                        { label: "Document Level", value: val(row.LEVEL_CODE) },
+                        { label: "Classified", value: val(row.CLASSIFIED_VAL) },
+                        { label: "Process Code", value: val(row.PROCESS_CODE) },
+                        { label: "Company Code", value: val(row.COMPANY_CODE) },
+                        { label: "Section", value: val(row.SECTION_NAME) },
+                        { label: "Item Changed", value: val(row.ITEM_CHANGED) },
+                        { label: "Reason", value: val(row.REASON) },
+                        { label: "Reference No", value: val(row.REFERENCE_NO) },
+                        { label: "Source", value: val(row.SOURCE) },
+                        { label: "Document Date", value: dateVal(row.DOCUMENT_DATE) },
+                        { label: "First Revision Date", value: dateVal(row.DOCUMENT_REVISION_0_DATE) },
+                        { label: "Next Review Date", value: dateVal(row.NEXT_REVIEW_DATE) },
+                        { label: "Document Creator", value: val(row.DOCUMENT_CREATOR) },
+                        { label: "Created", value: val(row.CREATED_BY) + " - " + dateTimeVal(row.CREATED_DT) },
+                        { label: "Last Changed", value: val(row.CHANGED_BY) + " - " + dateTimeVal(row.CHANGED_DT) }
+                    ];
+
+                    var wrapper = $("<div>").addClass("doc-detail-grid");
+
+                    fields.forEach(function (f) {
+                        var item = $("<div>");
+                        $("<div>").addClass("doc-detail-label").text(f.label).appendTo(item);
+                        $("<div>").addClass("doc-detail-value").text(f.value).appendTo(item);
+                        item.appendTo(wrapper);
+                    });
+
+                    wrapper.appendTo(container);
+                }
+            },
             onSelectionChanged: function (e) {
                 if (e.selectedRowKeys.length > 1) {
                     e.component.selectRows(e.currentSelectedRowKeys, false);
@@ -193,7 +275,7 @@
                 },
                 {
                     dataField: "P4D_STATUS_VAL",
-                    caption: "P4D Status",
+                    caption: "Registration Status",
                     alignment: "center",
                     cellTemplate: function (container, options) {
                         var value = options.data.P4D_STATUS_VAL;
@@ -227,6 +309,17 @@
                     }
                 },
                 { dataField: "REVISION", caption: "Revision", alignment: "center" },
+                {
+                    dataField: "DOCUMENT_TYPE",
+                    caption: "Document Type",
+                    alignment: "center",
+                    calculateCellValue: function (row) {
+                        if (row.DOCUMENT_TYPE == "01") return "New";
+                        if (row.DOCUMENT_TYPE == "02") return "Revision";
+                        return row.DOCUMENT_TYPE;
+                    }
+                },
+                { dataField: "LEVEL_CODE", caption: "Document Level", alignment: "center" },
                 {
                     caption: "Divisi",
                     calculateCellValue: function (row) {
