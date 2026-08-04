@@ -27,11 +27,6 @@
     <Folder Include="wwwroot\Upload\ATTACHMENT\DOCUMENT_TRANSACTION\" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="cli_uno">
-      <HintPath>..\..\..\Program Files\LibreOffice\program\cli_uno.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">
       <DesignTime>True</DesignTime>
       <AutoGen>True</AutoGen>
@@ -45,5 +40,6 @@
     </EmbeddedResource>
     <PackageReference Include="DevExtreme.AspNet.Core" Version="22.2.11" />
     <PackageReference Include="DevExtreme.AspNet.Data" Version="2.9.2" />
+    <PackageReference Include="DevExpress.Document.Processor" Version="22.2.11" />
   </ItemGroup>
 </Project>

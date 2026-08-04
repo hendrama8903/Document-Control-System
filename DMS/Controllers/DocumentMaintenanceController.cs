@@ -2725,30 +2725,18 @@ namespace DMS.Controllers
         {
             try
             {
-                // Command to execute LibreOffice in headless mode and convert Word to PDF
-                string command = $"--headless -env:UserInstallation=file:///C:/wwwroot/DMSWorkDir --convert-to pdf --outdir \"{System.IO.Path.GetDirectoryName(outputPath)}\" \"{inputPath}\"";
+                // Konversi Excel (xlsx/xls) -> PDF pakai DevExpress Spreadsheet Document API,
+                // gantikan LibreOffice headless (soffice.exe --convert-to pdf).
+                // Nama file output tetap sama seperti sebelumnya: <nama file input>.pdf,
+                // ditaruh di folder outputPath (perilaku sama seperti versi LibreOffice).
+                string outputPdfPath = System.IO.Path.Combine(
+                    System.IO.Path.GetDirectoryName(outputPath),
+                    System.IO.Path.GetFileNameWithoutExtension(inputPath) + ".pdf");
 
-                // Execute the command
-                using (var process = new Process())
+                using (var workbook = new DevExpress.Spreadsheet.Workbook())
                 {
-                    //process.StartInfo.Verb = "runas";
-                    process.StartInfo.FileName = "C:/Program Files/LibreOffice/program/soffice.exe";
-                    process.StartInfo.Arguments = command;
-                    process.StartInfo.RedirectStandardOutput = true;
-                    process.StartInfo.RedirectStandardError = true;
-                    process.StartInfo.UseShellExecute = false;
-                    process.StartInfo.CreateNoWindow = true;
-
-                    string error = "ERROR";
-                    string output = " OUTPUT";
-
-                    process.Start();
-
-                    output = process.StandardOutput.ReadToEnd();
-                    error = process.StandardError.ReadToEnd();
-
-                    // Wait for the process to exit
-                    process.WaitForExit();
+                    workbook.LoadDocument(inputPath);
+                    workbook.ExportToPdf(outputPdfPath);
                 }
 
                 return new DBResult(true, "File Converted");
