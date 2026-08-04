@@ -1,4 +1,4 @@
-﻿-- =====================================================================
+-- =====================================================================
 -- Fix: menu Reports > Document Report (sp_DocumentMaintenance_SearchReport)
 -- tidak pernah menyertakan NEXT_REVIEW_DATE, padahal ini satu-satunya
 -- tujuan link "More Detail" dari KPI card "Due for Review" di Dashboard.
@@ -14,6 +14,10 @@
 -- Idempotent (CREATE OR ALTER). Jalankan di database DMS_NEW.
 -- =====================================================================
 
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentMaintenance_SearchReport]
   @DOCUMENT_TRANSACTION_ID INT,
   @DOCUMENT_CODE varchar(50),

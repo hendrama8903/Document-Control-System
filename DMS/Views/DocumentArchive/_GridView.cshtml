@@ -1,0 +1,200 @@
+<link rel="stylesheet" href="~/css/devextreme/dx.light.css" />
+<script src="~/js/devextreme/dx.web.js"></script>
+
+<style>
+    #datagrid .dx-datagrid-headers .dx-header-row td .dx-datagrid-text-content {
+        white-space: normal;
+        overflow: visible;
+        text-overflow: unset;
+        line-height: 1.3;
+    }
+
+    .dms-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 20px;
+        white-space: nowrap;
+    }
+
+    .dms-pill-info { background: #E7F1FB; color: #2E75B6; }
+    .dms-pill-success { background: #E6F4EA; color: #1E7E34; }
+    .dms-pill-warning { background: #FFF3E0; color: #B36B00; }
+    .dms-pill-primary { background: #E8EAF6; color: #3949AB; }
+    .dms-pill-danger { background: #FDECEA; color: #C62828; }
+</style>
+
+<div class="box-body">
+    <div id="datagrid"></div>
+</div>
+
+<script type="text/javascript">
+    function computeGridHeight() {
+        var gridTop = $("#datagrid").offset().top;
+        var footerHeight = $("#divFooter").outerHeight(true) || 0;
+
+        return Math.max(300, $(window).height() - gridTop - footerHeight - 40);
+    }
+
+    $(document).ready(function () {
+        var gridStore = new DevExpress.data.CustomStore({
+            key: "DOCUMENT_CTRL_ID",
+            loadMode: "raw",
+            load: function () {
+                var d = $.Deferred();
+
+                $.ajax({
+                    type: "POST",
+                    url: "@Url.Action("Search", "DocumentArchive")",
+                    data: {
+                        draw: 1,
+                        start: 0,
+                        length: 100000,
+                        initialMode: false
+                    }
+                }).done(function (result) {
+                    d.resolve(result.data == "" ? [] : result.data);
+                }).fail(function () {
+                    d.reject("Data loading error");
+                });
+
+                return d.promise();
+            }
+        });
+
+        $("#datagrid").dxDataGrid({
+            dataSource: gridStore,
+            showBorders: true,
+            columnAutoWidth: true,
+            allowColumnResizing: true,
+            columnResizingMode: "widget",
+            wordWrapEnabled: false,
+            sorting: { mode: "none" },
+            noDataText: "Data not found.",
+            height: computeGridHeight(),
+            filterRow: { visible: true, applyFilter: "auto" },
+            headerFilter: { visible: true },
+            toolbar: { visible: false },
+            selection: { mode: "none" },
+            groupPanel: { visible: true, emptyPanelText: "Drag a column header here to group (e.g. Department)" },
+            grouping: { autoExpandAll: false },
+            paging: { pageSize: 10 },
+            pager: {
+                visible: true,
+                displayMode: "compact",
+                showPageSizeSelector: true,
+                allowedPageSizes: [10, 25, 50, 100],
+                showInfo: true,
+                showNavigationButtons: true
+            },
+            columnFixing: { enabled: true },
+            columns: [
+                {
+                    caption: "No",
+                    width: 50,
+                    alignment: "center",
+                    allowHiding: false,
+                    allowFiltering: false,
+                    fixed: true,
+                    fixedPosition: "left",
+                    cellTemplate: function (container, options) {
+                        var pageIndex = options.component.pageIndex();
+                        var pageSize = options.component.pageSize();
+                        container.text(pageIndex * pageSize + options.row.rowIndex + 1);
+                    }
+                },
+                { dataField: "DOCUMENT_CODE", caption: "Document No", fixed: true, fixedPosition: "left" },
+                { dataField: "DOCUMENT_NAME", caption: "Document Name" },
+                { dataField: "DOCUMENT_TYPE", caption: "Document Type" },
+                {
+                    caption: "Division",
+                    width: 220,
+                    calculateCellValue: function (row) {
+                        return row.DIVISION != null ? row.DIVISION + " - " + row.DIVISION_NAME : "";
+                    }
+                },
+                {
+                    caption: "Department",
+                    width: 260,
+                    groupIndex: 0,
+                    calculateCellValue: function (row) {
+                        return row.DEPARTMENT_CODE != null ? row.DEPARTMENT_CODE + " - " + row.DEPARTMENT_NAME : "";
+                    }
+                },
+                { dataField: "CLASSIFIED_VAL", caption: "Classified" },
+                { dataField: "REVISION", caption: "Revision", alignment: "center" },
+                { dataField: "LOCATION", caption: "Location" },
+                { dataField: "REFERENCE_NO", caption: "Reference No" },
+                {
+                    dataField: "NEXT_REVIEW_DATE",
+                    caption: "Next Review Date",
+                    alignment: "right",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.NEXT_REVIEW_DATE;
+
+                        if (value == null) {
+                            container.text("");
+                            return;
+                        }
+
+                        var reviewDate = moment(value).startOf("day");
+                        var today = moment().startOf("day");
+                        var daysLeft = reviewDate.diff(today, "days");
+                        var labelClass = "label label-default";
+
+                        if (daysLeft < 0) {
+                            labelClass = "label label-danger";
+                        } else if (daysLeft <= 30) {
+                            labelClass = "label label-warning";
+                        }
+
+                        $("<span>").addClass(labelClass).text(reviewDate.format("DD-MM-YYYY")).appendTo(container);
+                    }
+                },
+                {
+                    dataField: "STATUS_VAL",
+                    caption: "Distribution Status",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+                        var pillClass = "dms-pill dms-pill-danger";
+                        var icon = "fa-times-circle";
+
+                        if (row.STATUS == 0) {
+                            pillClass = "dms-pill dms-pill-info";
+                            icon = "fa-clock-o";
+                        } else if (row.STATUS == 1 || row.STATUS == 6) {
+                            pillClass = "dms-pill dms-pill-warning";
+                            icon = "fa-hourglass-half";
+                        } else if (row.STATUS == 5) {
+                            pillClass = "dms-pill dms-pill-primary";
+                            icon = "fa-paper-plane";
+                        } else if (row.STATUS == 2) {
+                            pillClass = "dms-pill dms-pill-success";
+                            icon = "fa-check-circle";
+                        }
+
+                        $("<span>").addClass(pillClass).html('<i class="fa ' + icon + '"></i> ' + row.STATUS_VAL).appendTo(container);
+                    }
+                },
+                { dataField: "CREATED_BY", caption: "Created By" },
+                {
+                    dataField: "CREATED_DT",
+                    caption: "Created Date",
+                    alignment: "right",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.CREATED_DT;
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY HH:mm") : "");
+                    }
+                }
+            ]
+        });
+
+        $(window).on("resize", function () {
+            $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+        });
+    });
+</script>

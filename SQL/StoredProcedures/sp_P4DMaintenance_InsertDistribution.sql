@@ -1,4 +1,4 @@
-﻿-- =====================================================================
+-- =====================================================================
 -- P4D Maintenance - urutan alur dibalik: Receive/Reject dulu, baru Distribution
 -- Jalankan di database DMS_NEW
 --
@@ -20,6 +20,10 @@
 -- setelah dokumen sudah pernah di-Send).
 -- =====================================================================
 
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_P4DMaintenance_InsertDistribution]
 		@DOCUMENT_TRANSACTION_ID int,
 		@DEPARTMENT_ID varchar(50),

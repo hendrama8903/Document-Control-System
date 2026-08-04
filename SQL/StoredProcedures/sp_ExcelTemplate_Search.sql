@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_ExcelTemplate_Search]
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_ExcelTemplate_Search]
 	@DOCUMENT_ID 				int
 AS
 BEGIN  

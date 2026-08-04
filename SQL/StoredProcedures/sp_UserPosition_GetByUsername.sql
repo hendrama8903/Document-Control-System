@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_UserPosition_GetByUsername]
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_UserPosition_GetByUsername]
   @USERNAME varchar(30)
 AS
 BEGIN

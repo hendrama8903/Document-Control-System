@@ -1,4 +1,4 @@
-﻿-- =====================================================================
+-- =====================================================================
 -- Fix: sp_Menu_Delete sebelumnya melakukan hard DELETE tanpa mengecek
 -- apakah masih ada Function (TB_M_FUNCTION) atau sub-menu
 -- (TB_M_MENU.PARENT_ID) yang menempel ke menu tsb. Kasus nyata:
@@ -18,6 +18,10 @@
 -- Jalankan di database DMS_NEW
 -- =====================================================================
 
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_Menu_Delete]
 	@MENU_ID VARCHAR(50),
 	@LOGIN_USER VARCHAR(255),

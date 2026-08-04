@@ -6,7 +6,7 @@
         }
         @if ((bool)ViewData["Receive"] && (bool)ViewData["DocumentControlAccess"])
         {
-            <button type="button" class="btn btn-success btn-sm" id="btn_receive" style="min-width: 84px;"><i class="fa fa-inbox"></i> Receive</button>
+            <button type="button" class="btn btn-success btn-sm" id="btn_receive" title="Approve this registration entry (physical receipt by the destination department is confirmed separately, via Acknowledge in My Documents)" style="min-width: 84px;"><i class="fa fa-check-circle"></i> Approve</button>
         }
         @if ((bool)ViewData["Edit"] && (bool)ViewData["DocumentControlAccess"])
         {

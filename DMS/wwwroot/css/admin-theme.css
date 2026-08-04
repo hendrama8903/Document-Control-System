@@ -336,6 +336,17 @@ body.adm-body {
 
 .adm-topbtn:hover { background: var(--paper-2); }
 
+.adm-topbtn-logout {
+    color: var(--merah);
+    border-color: var(--merah-soft);
+}
+
+.adm-topbtn-logout:hover {
+    background: var(--merah);
+    border-color: var(--merah);
+    color: #fff;
+}
+
 .adm-topbtn .label {
     position: absolute;
     top: 3px;

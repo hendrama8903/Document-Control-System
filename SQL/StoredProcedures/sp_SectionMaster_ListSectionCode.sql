@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_SectionMaster_ListSectionCode]
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_SectionMaster_ListSectionCode]
 	@DEPARTMENT_CODE	VARCHAR(255),
 	@SECTION_CODE			VARCHAR(255),
 	@PageNumber 			int,

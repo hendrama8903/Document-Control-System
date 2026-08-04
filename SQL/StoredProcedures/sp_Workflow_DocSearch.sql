@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_Workflow_DocSearch]
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_Workflow_DocSearch]
 	@CREATOR_LEVEL  	int,
 	@DOCUMENT_LEVEL  	int,
 	@PageNumber 			int,

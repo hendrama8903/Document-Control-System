@@ -1,5 +1,9 @@
-﻿-- 2) sp_DocumentMaintenance_GetDueForReview - dipakai job reminder email,
+-- 2) sp_DocumentMaintenance_GetDueForReview - dipakai job reminder email,
 --    tidak perlu nilai P4D asli, cukup NULL supaya kolom entity terpenuhi.
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentMaintenance_GetDueForReview]
     @DAYS_AHEAD             INT,
     @REMINDER_THROTTLE_DAYS INT

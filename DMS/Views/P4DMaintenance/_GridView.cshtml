@@ -17,6 +17,34 @@
         padding: 5px 8px;
         min-height: 28px;
     }
+
+    /* tampilkan judul kolom penuh (wrap), jangan terpotong "..." */
+    #datagrid .dx-datagrid-headers .dx-header-row td .dx-datagrid-text-content {
+        white-space: normal;
+        overflow: visible;
+        text-overflow: unset;
+        line-height: 1.3;
+    }
+
+    /* pill status - background pastel + teks pekat, ganti label bootstrap
+       default (bg pucat + teks putih) yang kontrasnya rendah & sulit dibaca */
+    .dms-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 20px;
+        white-space: nowrap;
+    }
+
+    .dms-pill-info { background: #E7F1FB; color: #2E75B6; }
+    .dms-pill-success { background: #E6F4EA; color: #1E7E34; }
+    .dms-pill-warning { background: #FFF3E0; color: #B36B00; }
+    .dms-pill-primary { background: #E8EAF6; color: #3949AB; }
+    .dms-pill-default { background: #EEF0F2; color: #5A5F66; }
+    .dms-pill-danger { background: #FDECEA; color: #C62828; }
 </style>
 
 <div class="box-body">
@@ -88,6 +116,8 @@
             dataSource: gridStore,
             showBorders: true,
             columnAutoWidth: true,
+            allowColumnResizing: true,
+            columnResizingMode: "widget",
             wordWrapEnabled: false,
             sorting: { mode: "none" },
             noDataText: "Data not found.",
@@ -145,35 +175,37 @@
                     alignment: "center",
                     cellTemplate: function (container, options) {
                         var row = options.data;
-                        var labelClass = "label label-danger";
+                        var pillClass = "dms-pill dms-pill-danger";
                         var icon = "fa-times-circle";
 
                         if (row.STATUS == 0) {
-                            labelClass = "label label-info";
+                            pillClass = "dms-pill dms-pill-info";
                             icon = "fa-clock-o";
                         } else if (row.STATUS == 1 || row.STATUS == 6) {
-                            labelClass = "label label-warning";
+                            pillClass = "dms-pill dms-pill-warning";
                             icon = "fa-hourglass-half";
                         } else if (row.STATUS == 5) {
-                            labelClass = "label label-primary";
+                            pillClass = "dms-pill dms-pill-primary";
                             icon = "fa-paper-plane";
                         } else if (row.STATUS == 2) {
-                            labelClass = "label label-success";
+                            pillClass = "dms-pill dms-pill-success";
                             icon = "fa-check-circle";
                         }
 
-                        $("<span>").addClass(labelClass).html('<i class="fa ' + icon + '"></i> ' + row.STATUS_VAL).appendTo(container);
+                        $("<span>").addClass(pillClass).html('<i class="fa ' + icon + '"></i> ' + row.STATUS_VAL).appendTo(container);
                     }
                 },
                 { dataField: "REVISION", caption: "Revision", alignment: "center" },
                 {
                     caption: "Division",
+                    width: 220,
                     calculateCellValue: function (row) {
                         return row.DIVISION + " - " + row.DIVISION_NAME;
                     }
                 },
                 {
                     caption: "Department",
+                    width: 260,
                     calculateCellValue: function (row) {
                         return row.DEPARTMENT_CODE + " - " + row.DEPARTMENT_NAME;
                     }
@@ -236,29 +268,9 @@
                             .appendTo(container);
 
                         $("<button>")
-                            .attr({ type: "button", title: "Print" })
+                            .attr({ type: "button", title: "History" })
                             .addClass("btn btn-default btn-sm adm-act-btn adm-act-secondary")
                             .css("margin-left", "6px")
-                            .html('<i class="fa fa-print"></i>')
-                            .on("click", function () {
-                                onPrintAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID, row.APPROVAL_ID);
-                            })
-                            .appendTo(container);
-                    }
-                },
-                {
-                    caption: "History",
-                    alignment: "center",
-                    width: 70,
-                    allowFiltering: false,
-                    fixed: true,
-                    fixedPosition: "right",
-                    cellTemplate: function (container, options) {
-                        var row = options.data;
-
-                        $("<button>")
-                            .attr({ type: "button", title: "History" })
-                            .addClass("btn btn-primary btn-sm")
                             .html('<i class="fa fa-history"></i>')
                             .on("click", function () {
                                 onclickHistory(row.DOCUMENT_CODE);

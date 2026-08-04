@@ -38,6 +38,7 @@ namespace DMS.Models.DB
         public int? CLASSIFIED { get; set; }
         public string? CLASSIFIED_VAL { get; set; }
         public string? DOCUMENT_YEAR { get; set; }
+        public DateTime? NEXT_REVIEW_DATE { get; set; }
         public string? LOCATION { get; set; }
         public string? IS_APPROVED { get; set; }
         public string? REMARKS { get; set; }

@@ -1,9 +1,13 @@
-﻿-- Fix: FromSqlRaw<ExternalDocument> requires ALL model properties to be present in the
+-- Fix: FromSqlRaw<ExternalDocument> requires ALL model properties to be present in the
 -- result set (EF Core throws "required column ... was not present" otherwise - this is
 -- exactly what silently breaks the existing document-review-reminder Hangfire job, which is
 -- missing APPROVAL_ID). Add LAST_REVIEW_REMINDER_DT to Search/GetByKey, and make
 -- GetDueForReview select the full column set instead of a 7-column subset.
 
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_ExternalDocument_Search]
     @DOCUMENT_NAME      VARCHAR(255) = NULL,
     @EXTERNAL_TYPE      VARCHAR(255) = NULL,

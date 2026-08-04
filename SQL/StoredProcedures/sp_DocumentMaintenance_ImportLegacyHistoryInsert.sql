@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 -- Part 2: New SP for inserting legacy revision-history rows directly into
 -- TB_R_DOCUMENT_HISTORY (no matching active TB_R_DOCUMENT row/transaction ever
 -- existed for these - they're historical revisions carried over from the paper
@@ -6,6 +6,10 @@
 -- but targets the history table with STATUS='4' (OBSOLETE) per the convention in
 -- sp_DocumentMaintenance_SupersedeRevision.
 -- ============================================================
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentMaintenance_ImportLegacyHistoryInsert]
 	@DOCUMENT_CODE				VARCHAR(25),
 	@DOCUMENT_TRANSACTION_NAME	VARCHAR(255),

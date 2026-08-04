@@ -8,6 +8,7 @@
     var gScreenMode = null;
     var gId = null;
     var gDocumentId = null;
+    var gDocumentTypeId = null;
     var gDocumentNo = null;
     var gIsApproved = null;
     var gFilePath = null;
@@ -104,6 +105,32 @@
 
         $("#btn_download_pengesahan").on("click", function () {
             downloadPengesahan();
+        });
+
+        // Manual numbering (Jul 2026): refresh prefix preview kalau salah satu
+        // field yang membentuk prefix berubah, sementara mode Manual aktif.
+        $('#addEditDocumentLevel, #addEditDocumentCode, #addEditDivision, #addEditDepartment, #addEditSection, #addEditProcessCode, #addEditCompanyCode').on('change', function () {
+            refreshManualNoPrefix();
+        });
+        $('#addEditDate').on('change blur', function () {
+            refreshManualNoPrefix();
+        });
+
+        // Fokus lebih jelas untuk field wajib (Jul 2026) - select2 menyembunyikan
+        // <select> aslinya di balik widget sendiri, jadi CSS :required:focus
+        // biasa tidak kena. Tandai manual saat widget-nya dibuka/ditutup.
+        $('#modalAddEdit').on('select2:open', function (e) {
+            var $select = $(e.target);
+            if ($select.prop('required')) {
+                $select.data('select2').$container.find('.select2-selection').addClass('required-focus');
+            }
+        });
+        $('#modalAddEdit').on('select2:close', function (e) {
+            var $select = $(e.target);
+            var instance = $select.data('select2');
+            if (instance) {
+                instance.$container.find('.select2-selection').removeClass('required-focus');
+            }
         });
     });
 
@@ -443,7 +470,63 @@
     function generateDocumentNo() {
 
         //Updated By Arie (2023-08-24)
-        $("#addEditDocumentNo").val("GENERATED");
+        $("#addEditDocumentNo").val("AUTOMATIC");
+    }
+
+    // Manual numbering (Jul 2026): toggle antara nomor otomatis ("Generated",
+    // behavior lama) dan nomor manual - user cuma isi 3 digit terakhir,
+    // prefix (mis. "ITD/SOP-APP-02/") tetap dibentuk dari master seperti biasa.
+    function onChangeNumberingMode() {
+        var isManual = $('#addEditNumberingModeManual').is(':checked');
+
+        if (isManual) {
+            $('#addEditDocumentNo').addClass('hide');
+            $('#addEditManualNoGroup').removeClass('hide');
+            refreshManualNoPrefix();
+        } else {
+            $('#addEditDocumentNo').removeClass('hide');
+            $('#addEditManualNoGroup').addClass('hide');
+            $('#addEditManualSeqNo').val('');
+        }
+    }
+
+    var gManualNoPrefixRequestSeq = 0;
+
+    function refreshManualNoPrefix() {
+        if (!$('#addEditNumberingModeManual').is(':checked')) return;
+
+        var documentCodeArray = ($('#addEditDocumentCode').val() || "").split('|');
+        var documentId = documentCodeArray[0];
+
+        // Beberapa field pemicu bisa berubah hampir bersamaan (mis. Level lalu
+        // Document Code), masing-masing menembak AJAX sendiri - tanpa penanda
+        // urutan ini, response yang datang belakangan bisa jadi punya nilai
+        // lebih lama (request lebih awal tapi baru selesai duluan), sehingga
+        // menimpa prefix yang seharusnya sudah lebih baru & benar.
+        var requestSeq = ++gManualNoPrefixRequestSeq;
+
+        $.ajax({
+            type: "GET",
+            url: "@Url.Action("GetManualNoPrefix", "DocumentMaintenance")",
+            data: {
+                levelCode: $('#addEditDocumentLevel').val(),
+                division: $('#addEditDivision').val(),
+                departmentId: $('#addEditDepartment').val(),
+                sectionCode: $('#addEditSection').val(),
+                documentId: documentId,
+                processCode: $('#addEditProcessCode').val(),
+                companyCode: $('#addEditCompanyCode').val(),
+                documentDate: $('#addEditDate').val()
+            },
+            success: function (result) {
+                if (requestSeq !== gManualNoPrefixRequestSeq) return;
+                $('#addEditManualNoPrefix').text(result.status == true ? (result.prefix + '/') : '-');
+            },
+            error: function () {
+                if (requestSeq !== gManualNoPrefixRequestSeq) return;
+                $('#addEditManualNoPrefix').text('-');
+            }
+        });
     }
 
     function onChangeDocumentType() {
@@ -478,6 +561,7 @@
             $('#addEditDocumentNo').removeClass('hide');
             $('#addEditDocumentNo2').data('select2').$container.addClass('hide');
             $('#addEditDocumentLevel').prop('disabled', false);
+            $('#addEditNumberingModeGroup').removeClass('hide');
         }
 
         if ($('#addEditDocumentType').val() == "02") //REVISION
@@ -508,6 +592,7 @@
             $('#addEditDocumentNo2').data('select2').$container.removeClass('hide');
             $('#addEditDocumentNo2').val("").trigger("change");
             $('#addEditDocumentLevel').prop('disabled', true);
+            $('#addEditNumberingModeGroup').addClass('hide');
         }
     }
 
@@ -789,6 +874,19 @@
     }
 
     function confirmAddEditData() {
+        // Manual numbering (Jul 2026): kalau mode Manual dipilih tapi nomornya
+        // dibiarkan kosong, server menganggap itu SAMA DENGAN mode Generated
+        // (parameter MANUAL_SEQ_NO kosong = null = auto) - jadi tolak di sini
+        // dulu supaya user tidak diam-diam dapat nomor otomatis padahal
+        // maksudnya mau pilih sendiri.
+        if (gScreenMode == "ADD" && $('#addEditNumberingModeManual').is(':checked')) {
+            var manualSeq = $('#addEditManualSeqNo').val();
+            if (manualSeq == null || manualSeq.trim() == '') {
+                showErrorMesgGrowl("Please enter the manual document number, or switch back to Generated.");
+                return;
+            }
+        }
+
         showConfirmMesg("Are you sure you want to continue process?", addEditData, "Confirmation");
     }
 
@@ -909,6 +1007,10 @@
                 data.append("DOCUMENT_ID", documentCategoryArray[0]);
             }
 
+            if ($('#addEditNumberingModeManual').is(':checked')) {
+                data.append("MANUAL_SEQ_NO", $('#addEditManualSeqNo').val());
+            }
+
             if ($('#addEditDocumentUpload').val() != '') {
                 //data.append("FILE_PATH", $('#addEditDocumentUpload').val());
 
@@ -995,6 +1097,10 @@
 
             if (gFilePath !== null) {
                 data.append("FILE_PATH", gFilePath);
+            }
+
+            if (gDocumentTypeId != null) {
+                data.append("DOCUMENT_ID", gDocumentTypeId);
             }
 
             if ($('#editDocumentUpload').val() != '') {
@@ -1104,6 +1210,13 @@
 
         gFilePath = null;
         documentLevel = null;
+
+        $('#addEditNumberingModeAuto').prop('checked', true);
+        $('#addEditNumberingModeGroup').addClass('hide');
+        $('#addEditDocumentNo').removeClass('hide');
+        $('#addEditManualNoGroup').addClass('hide');
+        $('#addEditManualSeqNo').val('');
+        $('#addEditManualNoPrefix').text('-');
     }
 
     function setValueFromLogin() {
@@ -1319,6 +1432,7 @@
                         $('#editReason').val(data.REASON);
 
                         gFilePath = data.FILE_PATH;
+                        gDocumentTypeId = data.DOCUMENT_ID;
                         $('#inputContainer :input[type="text"]').val(data.FILE_PATH);
                         if (data.FILE_PATH == null) {
                             $('#editFileNameContainer').removeClass();
@@ -1546,190 +1660,6 @@
             showErrorMesgGrowl("This data does not have an attachment");
         }
     }
-
-    function onPrintAttachment(attachment, documentId, approvalId) {
-        gAttachmentPath = attachment;
-        gDocumentId = documentId;
-        gApprovalId = approvalId;
-        printAttachment();
-    }
-
-    // Original JS
-    // function printAttachment() 
-    // {
-    //     popUpProgressShow();
-    //     $.ajax({
-    //         type: "POST",
-    //         url: "@Url.Action("printAttachment", "DocumentMaintenance")",
-    //         data: {
-    //             FILE_PATH: gAttachmentPath,
-    //             DOCUMENT_TRANSACTION_ID: gDocumentId,
-    //             type: "1"
-    //         },
-    //         success: function (result) {
-    //             if (result.status == true) {
-    //                 popUpProgressHide();
-    //                 printJS({ printable: result.data, type: 'pdf', showModal: true });
-    //             } else {
-    //                 popUpProgressHide();
-    //                 showErrorMesgGrowl(result.message);
-    //             }
-    //         },
-    //         error: function (result) {
-    //             popUpProgressHide();
-    //             showErrorMesgGrowl(result);
-    //         }
-    //     });
-    // }
-    //End Original JS
-
-     // Custom JS by Hendra
-    let _printDocData = null;
-    let _totalPages   = 0;
-
-    // Ganti fungsi onPrintAttachment yang lama
-    function onPrintAttachment(filePath, documentTransactionId, approvalId) {
-        _printDocData = {
-            filePath: filePath,
-            documentTransactionId: documentTransactionId,
-            approvalId: approvalId,
-            type: '2'
-        };
-        _totalPages = 0;
-
-        $("#txtPrintCopy").val(1);
-        $("#txtTotalPages").val("Menghitung...");
-        $("#txtTotalSheets").val("-");
-        $("#btnConfirmPrint").prop("disabled", true);
-        $("#modalPrint").modal("show");
-
-        $.get("/DocumentMaintenance/GetPdfPageCount", { filePath: filePath })
-            .done(function(res) {
-                if (res.status) {
-                    _totalPages = res.pageCount;
-                    $("#txtTotalPages").val(_totalPages + " halaman");
-                    $("#txtTotalSheets").val(
-                        (_totalPages * parseInt($("#txtPrintCopy").val())) + " lembar");
-                } else {
-                    $("#txtTotalPages").val("Tidak diketahui");
-                }
-            })
-            .always(function() {
-                $("#btnConfirmPrint").prop("disabled", false);
-            });
-    }
-
-    // Update total lembar saat copy diubah
-    $("#txtPrintCopy").on("input", function() {
-        let copy = parseInt($(this).val()) || 0;
-        $("#txtTotalSheets").val(
-            _totalPages > 0 && copy > 0
-                ? (_totalPages * copy) + " lembar"
-                : "-");
-    });
-
-    // Konfirmasi print
-    $("#btnConfirmPrint").on("click", function() {
-        let copy = parseInt($("#txtPrintCopy").val());
-        if (!copy || copy < 1) {
-            showErrorMesgGrowl("Jumlah copy harus minimal 1.");
-            return;
-        }
-
-        $(this).prop("disabled", true)
-               .html('<span class="fa fa-spinner fa-spin"></span> Memproses...');
-
-        $.post("/DocumentMaintenance/printAttachment", {
-            DOCUMENT_TRANSACTION_ID: _printDocData.documentTransactionId,
-            FILE_PATH:               _printDocData.filePath,
-            type:                    _printDocData.type,
-            printCopy:               copy
-        })
-        // .done(function(res) 
-        // {
-        //     if (res.status) {
-        //         $("#modalPrint").modal("hide");
-        //         window.open(res.data, "_blank");
-        //     } else {
-        //         alert("Gagal: " + res.message);
-        //     }
-        // })
-           .done(function(res) {
-        if (res.status) {
-            $("#modalPrint").modal("hide");
-
-            let copy = parseInt($("#txtPrintCopy").val());
-            let totalSheet = _totalPages * copy;
-            let pdfPath = res.data;
-
-            // Hapus modal warning lama kalau ada
-            $("#modalPrintWarning").remove();
-
-            // Buat modal warning baru
-            $("body").append(`
-            <div class="modal fade" id="modalPrintWarning" tabindex="-1" role="dialog">
-                <div class="modal-dialog modal-sm">
-                    <div class="modal-content">
-                        <div class="modal-header" style="background:#FF9800;">
-                            <h5 class="modal-title text-white">
-                                ⚠️ Print Confirmation
-                            </h5>
-                            <button type="button" class="close text-white"
-                                    data-dismiss="modal">&times;</button>
-                        </div>
-                        <div class="modal-body text-center">
-                            <p>Document has been prepared for</p>
-                            <h4><strong>${copy} ${copy > 1 ? 'Copies' : 'Copy'}</strong></h4>
-                            <p>Total: <strong>${totalSheet} sheet(s)</strong></p>
-                            <hr/>
-                            <div class="alert alert-danger">
-                                <strong>IMPORTANT!</strong><br/>
-                                Make sure <u><strong>Copies = 1</strong></u><br/>
-                                in the print dialog.<br/>
-                                <small>
-                                    Document has been multiplied
-                                    ${copy}x by the system.
-                                </small>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary"
-                                    data-dismiss="modal">Cancel</button>
-                            <button type="button" class="btn btn-primary"
-                                    id="btnStartPrint">🖨️ Proceed to Print
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `);
-            $("#modalPrintWarning").modal("show");
-
-            // Klik Lanjut Print → buka dialog print
-            $("#btnStartPrint").off("click").on("click", function() {
-                $("#modalPrintWarning").modal("hide");
-
-                printJS({
-                    printable: pdfPath,
-                    type: 'pdf',
-                    showModal: true,
-                    modalMessage: 'Mempersiapkan dokumen untuk print...'
-                });
-            });
-
-        } else {
-            showErrorMesgGrowl("Gagal: " + res.message);
-        }
-    })
-        .fail(function() {
-            showErrorMesgGrowl("Terjadi kesalahan saat memproses print.");
-        })
-        .always(function() {
-            $("#btnConfirmPrint").prop("disabled", false).html("🖨️ Print");
-        });
-    });
-
-    // End Custom JS by Hendra
 
     function downloadPengesahan() {
         var link = '@Html.Raw(Url.Action("DownloadPengesahan", "DocumentMaintenance", new { DOCUMENT_TRANSACTION_ID = "-1", APPROVAL_ID = "-2" }))';

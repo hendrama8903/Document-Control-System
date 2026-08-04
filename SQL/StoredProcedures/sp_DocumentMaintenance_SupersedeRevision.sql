@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentMaintenance_SupersedeRevision]
+﻿SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentMaintenance_SupersedeRevision]
 	@DOCUMENT_TRANSACTION_ID	INT,		-- id revisi yang baru saja selesai disetujui
 	@LOGIN_USER					VARCHAR(255),
 	@RETURN_MSG					VARCHAR(MAX) OUTPUT

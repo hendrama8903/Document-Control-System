@@ -1,6 +1,10 @@
-﻿-- ============================================================
+-- ============================================================
 -- sp_ExternalDocument_Update
 -- ============================================================
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_ExternalDocument_Update]
     @EXTERNAL_DOCUMENT_ID INT,
     @DOCUMENT_NAME       VARCHAR(255),

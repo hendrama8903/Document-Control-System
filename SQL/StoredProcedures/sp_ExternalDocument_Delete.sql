@@ -1,6 +1,10 @@
-﻿-- ============================================================
+-- ============================================================
 -- sp_ExternalDocument_Delete (soft delete)
 -- ============================================================
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_ExternalDocument_Delete]
     @EXTERNAL_DOCUMENT_ID INT,
     @LOGIN_USER           VARCHAR(255),

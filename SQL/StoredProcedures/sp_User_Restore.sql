@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_User_Restore]
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_User_Restore]
     @USERNAME   varchar(100),
     @LOGIN_USER varchar(100),
     @RETURN_MSG varchar(500) OUTPUT

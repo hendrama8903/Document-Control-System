@@ -53,5 +53,7 @@ namespace DMS.Models.DB
         public string? NOT_EXIST_FLAG { get; set; }
         [NotMapped]
         public string? REVISION_ALLOWAL_FLAG { get; set; }
+        [NotMapped]
+        public int? MANUAL_SEQ_NO { get; set; }
     }
 }

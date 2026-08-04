@@ -243,6 +243,46 @@ namespace DMS.Models.Repo
             return Result;
         }
 
+        public string GetManualNoPrefix(int? levelCode, string division, int? departmentId, string sectionCode,
+            int? documentId, string processCode, string companyCode, DateTime? documentDate, DBContext db)
+        {
+            var connection = db.Database.GetDbConnection();
+            bool wasClosed = connection.State != System.Data.ConnectionState.Open;
+            if (wasClosed) connection.Open();
+
+            try
+            {
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "[dbo].[sp_DocumentMaintenance_GetManualNoPrefix]";
+                    command.CommandType = System.Data.CommandType.StoredProcedure;
+
+                    command.Parameters.Add(new SqlParameter("@LEVEL_CODE", CheckNullValue(levelCode)));
+                    command.Parameters.Add(new SqlParameter("@DIVISION", CheckNullValue(division)));
+                    command.Parameters.Add(new SqlParameter("@DEPARTMENT_ID", CheckNullValue(departmentId)));
+                    command.Parameters.Add(new SqlParameter("@SECTION_CODE", CheckNullValue(sectionCode)));
+                    command.Parameters.Add(new SqlParameter("@DOCUMENT_ID", CheckNullValue(documentId)));
+                    command.Parameters.Add(new SqlParameter("@PROCESS_CODE", CheckNullValue(processCode)));
+                    command.Parameters.Add(new SqlParameter("@COMPANY_CODE", CheckNullValue(companyCode)));
+                    command.Parameters.Add(new SqlParameter("@DOCUMENT_DATE", CheckNullValue(documentDate)));
+
+                    using (var reader = command.ExecuteReader())
+                    {
+                        if (reader.Read() && !reader.IsDBNull(reader.GetOrdinal("PREFIX")))
+                        {
+                            return reader.GetString(reader.GetOrdinal("PREFIX"));
+                        }
+                    }
+                }
+
+                return null;
+            }
+            finally
+            {
+                if (wasClosed) connection.Close();
+            }
+        }
+
         public DocumentMaster GetLevelByDocumentCode(DBContext db, String documentCode)
         {
             List<SqlParameter> param = new List<SqlParameter>
@@ -306,7 +346,6 @@ namespace DMS.Models.Repo
                 new SqlParameter ( "@REVISION", CheckNullValue(data.REVISION) ),
                 new SqlParameter ( "@APPROVAL_ID", CheckNullValue(data.APPROVAL_ID) ),
                 new SqlParameter ( "@DELETE_FLAG", CheckNullValue(data.DELETE_FLAG) ),
-                new SqlParameter ( "@DELETE_FLAG", CheckNullValue(data.DELETE_FLAG) ),
                 new SqlParameter ( "@DIVISION", CheckNullValue(data.DIVISION) ),
                 new SqlParameter ( "@CLASSIFIED", CheckNullValue(data.CLASSIFIED) ),
                 new SqlParameter ( "@DEPARTMENT_ID", CheckNullValue(data.DEPARTMENT_ID) ),
@@ -316,13 +355,14 @@ namespace DMS.Models.Repo
                 new SqlParameter ( "@CHANGED_BY", loginUser ),
                 new SqlParameter ( "@MENU_ID", "M00006-01" ),
                 new SqlParameter ( "@DOCUMENT_CREATOR", CheckNullValue(data.DOCUMENT_CREATOR) ),
+                new SqlParameter ( "@MANUAL_SEQ_NO", CheckNullValue(data.MANUAL_SEQ_NO) ),
                 returnMsg,
                 returnId
             };
 
             string query = "EXEC @RETURN_VAL = [dbo].[sp_DocumentMaintenance_Insert] @DOCUMENT_TRANSACTION_ID, @DOCUMENT_ID,@DOCUMENT_CODE,@DOCUMENT_TRANSACTION_NAME,@DOCUMENT_TYPE," +
                 "@PROCESS_CODE,@COMPANY_CODE,@SECTION_CODE,@ITEM_CHANGED,@REASON,@EXTERNAL_FLAG,@REFERENCE_NO,@SOURCE,@DOCUMENT_DATE,@FILE_PATH,@STATUS,@REVISION," +
-                "@APPROVAL_ID,@DELETE_FLAG,@DIVISION,@CLASSIFIED,@DEPARTMENT_ID, @IMPACT_OTHER_FLAG, @LEVEL_CODE, @CREATED_BY,@CHANGED_BY, @MENU_ID, @DOCUMENT_CREATOR, @RETURN_MSG OUTPUT, @RETURN_ID OUTPUT";
+                "@APPROVAL_ID,@DELETE_FLAG,@DIVISION,@CLASSIFIED,@DEPARTMENT_ID, @IMPACT_OTHER_FLAG, @LEVEL_CODE, @CREATED_BY,@CHANGED_BY, @MENU_ID, @DOCUMENT_CREATOR, @MANUAL_SEQ_NO, @RETURN_MSG OUTPUT, @RETURN_ID OUTPUT";
             int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString(), Convert.ToInt32(returnId.Value));

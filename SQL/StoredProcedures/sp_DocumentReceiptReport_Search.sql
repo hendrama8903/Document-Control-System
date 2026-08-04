@@ -1,4 +1,4 @@
-﻿-- =====================================================================
+-- =====================================================================
 -- Fitur baru: "Document Receipt Report" (Tanda Terima Dokumen) - list +
 -- cetak PDF untuk dokumen distribusi P4D yang sudah dikonfirmasi diterima
 -- oleh department tujuan (lewat tombol Acknowledge di UserDashboard,
@@ -21,6 +21,10 @@
 -- Jalankan di database DMS_NEW
 -- =====================================================================
 
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentReceiptReport_Search]
 	@DOCUMENT_CODE 	VARCHAR(255),
 	@DEPARTMENT_ID 	INT,

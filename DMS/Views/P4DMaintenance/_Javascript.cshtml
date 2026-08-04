@@ -841,8 +841,9 @@
         gIsApproved = 'Y';
         $('#addEditRemarks').val('');
         $("#modalApproveReject").modal();
-        $('#modalApproveReject-title').html("Receive Document");
-        $('#labelConfirmation').html("Are you sure want to receive Document No " + gDocumentNo + "?");
+        $('#modalApproveReject-title').html("Approve Registration");
+        $('#labelConfirmation').html("Are you sure you want to approve the registration for Document No " + gDocumentNo + "? "
+            + "(This confirms the registration entry itself. The destination department confirms physical receipt separately via Acknowledge in My Documents.)");
         $('#divRemarks').hide();
         $('#modalApproveReject').on('shown.bs.modal', function () {
 

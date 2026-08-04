@@ -23,70 +23,30 @@
         line-height: 1.3;
     }
 
-    /* panel detail dokumen (row expand) */
-    .doc-detail-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 14px 24px;
-        padding: 16px 24px;
-        background: #f9fafb;
-        max-height: 210px;
-        overflow-y: auto;
-    }
-
-    .doc-detail-label {
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: .03em;
-        color: #8a8a8a;
+    /* pill status - background pastel + teks pekat, ganti label bootstrap
+       default (bg pucat + teks putih) yang kontrasnya rendah & sulit dibaca */
+    .dms-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
         font-weight: 600;
-        margin-bottom: 2px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        white-space: nowrap;
     }
 
-    .doc-detail-value {
-        font-size: 13px;
-        color: #333;
-        word-break: break-word;
-    }
+    .dms-pill-info { background: #E7F1FB; color: #2E75B6; }
+    .dms-pill-success { background: #E6F4EA; color: #1E7E34; }
+    .dms-pill-warning { background: #FFF3E0; color: #B36B00; }
+    .dms-pill-primary { background: #E8EAF6; color: #3949AB; }
+    .dms-pill-default { background: #EEF0F2; color: #5A5F66; }
+    .dms-pill-danger { background: #FDECEA; color: #C62828; }
 </style>
 
 <div class="box-body">
     <div id="datagrid"></div>
 </div>
-
-<!-- TAMBAHKAN MODAL BY HENDRA -->
-<div class="modal fade" id="modalPrint" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-sm">
-        <div class="modal-content">
-            <div class="modal-header" style="background:#2E75B6;">
-                <h5 class="modal-title text-white" style="color:white !important;">Print Confirmation</h5>
-                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Total Pages</label>
-                    <input type="text" id="txtTotalPages" class="form-control" readonly />
-                </div>
-                <div class="form-group">
-                    <label>Number of Copies <span class="text-danger">*</span></label>
-                    <input type="number" id="txtPrintCopy" class="form-control"
-                           min="1" max="99" value="1" />
-                </div>
-                <div class="form-group">
-                    <label>Total Sheets</label>
-                    <input type="text" id="txtTotalSheets" class="form-control"
-                           readonly style="font-weight:bold; color:#2E75B6;" />
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                <button class="btn btn-primary" id="btnConfirmPrint">🖨️ Print
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-<!-- END MODAL BY HENDRA -->
 
 <script type="text/javascript">
     function getSelectedRowData() {
@@ -176,52 +136,6 @@
                 mode: "select"
             },
             columnFixing: { enabled: true },
-            masterDetail: {
-                enabled: true,
-                template: function (container, options) {
-                    var row = options.data;
-
-                    function val(v) { return (v === null || v === undefined || v === "") ? "-" : v; }
-                    function dateVal(v) { return v ? moment(v).format("DD-MM-YYYY") : "-"; }
-                    function dateTimeVal(v) { return v ? moment(v).format("DD-MM-YYYY hh:mm:ss") : "-"; }
-                    function documentTypeVal(v) {
-                        if (v == "01") return "New";
-                        if (v == "02") return "Revision";
-                        return val(v);
-                    }
-
-                    var fields = [
-                        { label: "Document Category", value: val(row.DOCUMENT_NAME) },
-                        { label: "Document Type", value: documentTypeVal(row.DOCUMENT_TYPE) },
-                        { label: "Document Level", value: val(row.LEVEL_CODE) },
-                        { label: "Classified", value: val(row.CLASSIFIED_VAL) },
-                        { label: "Process Code", value: val(row.PROCESS_CODE) },
-                        { label: "Company Code", value: val(row.COMPANY_CODE) },
-                        { label: "Section", value: val(row.SECTION_NAME) },
-                        { label: "Item Changed", value: val(row.ITEM_CHANGED) },
-                        { label: "Reason", value: val(row.REASON) },
-                        { label: "Reference No", value: val(row.REFERENCE_NO) },
-                        { label: "Source", value: val(row.SOURCE) },
-                        { label: "Document Date", value: dateVal(row.DOCUMENT_DATE) },
-                        { label: "First Revision Date", value: dateVal(row.DOCUMENT_REVISION_0_DATE) },
-                        { label: "Next Review Date", value: dateVal(row.NEXT_REVIEW_DATE) },
-                        { label: "Document Creator", value: val(row.DOCUMENT_CREATOR) },
-                        { label: "Created", value: val(row.CREATED_BY) + " - " + dateTimeVal(row.CREATED_DT) },
-                        { label: "Last Changed", value: val(row.CHANGED_BY) + " - " + dateTimeVal(row.CHANGED_DT) }
-                    ];
-
-                    var wrapper = $("<div>").addClass("doc-detail-grid");
-
-                    fields.forEach(function (f) {
-                        var item = $("<div>");
-                        $("<div>").addClass("doc-detail-label").text(f.label).appendTo(item);
-                        $("<div>").addClass("doc-detail-value").text(f.value).appendTo(item);
-                        item.appendTo(wrapper);
-                    });
-
-                    wrapper.appendTo(container);
-                }
-            },
             onSelectionChanged: function (e) {
                 if (e.selectedRowKeys.length > 1) {
                     e.component.selectRows(e.currentSelectedRowKeys, false);
@@ -253,24 +167,24 @@
                     alignment: "center",
                     cellTemplate: function (container, options) {
                         var row = options.data;
-                        var labelClass = "label label-danger";
+                        var pillClass = "dms-pill dms-pill-danger";
                         var icon = "fa-times-circle";
 
                         if (row.STATUS == 0) {
-                            labelClass = "label label-info";
+                            pillClass = "dms-pill dms-pill-info";
                             icon = "fa-clock-o";
                         } else if (row.STATUS == 1) {
-                            labelClass = "label label-success";
+                            pillClass = "dms-pill dms-pill-success";
                             icon = "fa-check-circle";
                         } else if (row.STATUS == 4) {
-                            labelClass = "label label-default";
+                            pillClass = "dms-pill dms-pill-default";
                             icon = "fa-archive";
                         } else if (row.STATUS == 5) {
-                            labelClass = "label label-primary";
+                            pillClass = "dms-pill dms-pill-primary";
                             icon = "fa-flag-checkered";
                         }
 
-                        $("<span>").addClass(labelClass).html('<i class="fa ' + icon + '"></i> ' + row.STATUS_DISPLAY).appendTo(container);
+                        $("<span>").addClass(pillClass).html('<i class="fa ' + icon + '"></i> ' + row.STATUS_DISPLAY).appendTo(container);
                     }
                 },
                 {
@@ -285,38 +199,40 @@
                             return;
                         }
 
-                        var labelClass = "label label-danger";
+                        var pillClass = "dms-pill dms-pill-danger";
                         var icon = "fa-times-circle";
 
                         if (value == "DRAFT") {
-                            labelClass = "label label-info";
+                            pillClass = "dms-pill dms-pill-info";
                             icon = "fa-clock-o";
                         } else if (value == "ON PROGRESS" || value == "PARTIALLY SENT") {
-                            labelClass = "label label-warning";
+                            pillClass = "dms-pill dms-pill-warning";
                             icon = "fa-hourglass-half";
                         } else if (value == "SENT") {
-                            labelClass = "label label-primary";
+                            pillClass = "dms-pill dms-pill-primary";
                             icon = "fa-paper-plane";
                         } else if (value == "RECEIVED") {
-                            labelClass = "label label-success";
+                            pillClass = "dms-pill dms-pill-success";
                             icon = "fa-check-circle";
                         } else if (value == "DELETED") {
-                            labelClass = "label label-default";
+                            pillClass = "dms-pill dms-pill-default";
                             icon = "fa-archive";
                         }
 
-                        $("<span>").addClass(labelClass).html('<i class="fa ' + icon + '"></i> ' + value).appendTo(container);
+                        $("<span>").addClass(pillClass).html('<i class="fa ' + icon + '"></i> ' + value).appendTo(container);
                     }
                 },
                 { dataField: "REVISION", caption: "Revision", alignment: "center" },
                 {
                     caption: "Division",
+                    width: 220,
                     calculateCellValue: function (row) {
                         return row.DIVISION + " - " + row.DIVISION_NAME;
                     }
                 },
                 {
                     caption: "Department",
+                    width: 260,
                     calculateCellValue: function (row) {
                         return row.DEPARTMENT_CODE + " - " + row.DEPARTMENT_NAME;
                     }
@@ -383,12 +299,12 @@
                             .appendTo(container);
 
                         $("<button>")
-                            .attr({ type: "button", title: "Print" })
+                            .attr({ type: "button", title: "Detail" })
                             .addClass("btn btn-default btn-sm adm-act-btn adm-act-secondary")
                             .css("margin-left", "6px")
-                            .html('<i class="fa fa-print"></i>')
+                            .html('<i class="fa fa-eye"></i>')
                             .on("click", function () {
-                                onPrintAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID, row.APPROVAL_ID);
+                                onViewDetail(row);
                             })
                             .appendTo(container);
                     }

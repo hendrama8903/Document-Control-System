@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_UserDashboard_Request]
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_UserDashboard_Request]
 		@DOCUMENT_TRANSACTION_ID int,
 		@CREATED_BY varchar(50),
 		@CHANGED_BY varchar(50),

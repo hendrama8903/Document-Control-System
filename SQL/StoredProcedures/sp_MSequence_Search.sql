@@ -1,8 +1,12 @@
-﻿-- ============================================================
+-- ============================================================
 -- Document Numbering (Master Sequence) module - Edit-only admin view
 -- over the existing TB_M_SEQUENCE table.
 -- ============================================================
 
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_MSequence_Search]
     @SEQ_CODE   VARCHAR(50) = NULL,
     @PageNumber INT = NULL,

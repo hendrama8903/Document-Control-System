@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_UserPosition_Search]
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_UserPosition_Search]
   @USERNAME varchar(255),
   @DIVISION varchar(50),
   @DEPARTMENT_ID INT,

@@ -26,7 +26,7 @@ namespace DMS.Models.Repo
         #endregion
 
 
-        public IList<DocumentControlMaintenance> Search(DocumentControlMaintenance data, string loginUser, DBContext db, int? PageNumber, int? PageSize)
+        public IList<DocumentControlMaintenance> Search(DocumentControlMaintenance data, string loginUser, DBContext db, int? PageNumber, int? PageSize, string documentStatus = null)
         {
             List<SqlParameter> param = new List<SqlParameter>
             {
@@ -42,11 +42,12 @@ namespace DMS.Models.Repo
                 new SqlParameter ( "@STATUS", CheckNullValue(data.STATUS) ),
                 new SqlParameter ( "@USERNAME", CheckNullValue(loginUser) ),
                 new SqlParameter ( "@PageNumber", CheckNullValue(PageNumber) ),
-                new SqlParameter ( "@PageSize", CheckNullValue(PageSize) )
+                new SqlParameter ( "@PageSize", CheckNullValue(PageSize) ),
+                new SqlParameter ( "@DOCUMENT_STATUS", CheckNullValue(documentStatus) )
             };
 
             string query = "EXEC [dbo].[sp_P4DMaintenance_Search] @DOCUMENT_CTRL_ID, @DOCUMENT_TRANSACTION_ID, @DOCUMENT_CODE, @DOCUMENT_NAME, @DIVISION, @DEPARTMENT_ID, " +
-                "@DEPARTMENT_CODE, @YEAR, @OPERATION_TYPE, @STATUS, @USERNAME, @PageNumber, @PageSize";
+                "@DEPARTMENT_CODE, @YEAR, @OPERATION_TYPE, @STATUS, @USERNAME, @PageNumber, @PageSize, @DOCUMENT_STATUS";
             IList<DocumentControlMaintenance> Result = db.P4DMaintenance.FromSqlRaw<DocumentControlMaintenance>(query, param.ToArray()).ToList();
 
 

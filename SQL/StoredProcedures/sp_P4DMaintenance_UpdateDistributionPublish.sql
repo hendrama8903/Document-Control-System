@@ -1,8 +1,12 @@
-﻿-- Phase 1 (document lifecycle labels, Jul 2026): after logging this department's publish,
+-- Phase 1 (document lifecycle labels, Jul 2026): after logging this department's publish,
 -- check whether EVERY non-deleted TB_R_CTRL_DOCUMENT row for the same document now has a
 -- TB_R_PUBLISH_HISTORY entry. If so, the document is fully distributed - flip
 -- TB_R_DOCUMENT.STATUS from '1' (Approved) to '5' (Published/Effective). Only Approved
 -- documents are promoted; a document that somehow isn't STATUS='1' is left alone.
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_P4DMaintenance_UpdateDistributionPublish]
 	@DOCUMENT_CTRL_ID					int,
 	@DEPARTMENT_ID 						int,

@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_P4DMaintenance_ApproveReject]
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_P4DMaintenance_ApproveReject]
 		@DOCUMENT_CTRL_ID int,
 		@DOCUMENT_CODE varchar(5),
 		@IS_APPROVED varchar(1),

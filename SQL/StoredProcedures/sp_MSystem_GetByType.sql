@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_MSystem_GetByType]
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_MSystem_GetByType]
 	@SYSTEM_TYPE VARCHAR(50),
 	@PageNumber int,
 	@PageSize int

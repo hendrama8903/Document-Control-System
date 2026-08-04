@@ -1,4 +1,4 @@
-﻿-- =====================================================================
+-- =====================================================================
 -- Tambah kolom P4D_STATUS_VAL ke entity DocumentMaintenance (TB_R_DOCUMENT)
 -- supaya grid DocumentMaintenance/Index bisa menampilkan status dokumen
 -- di P4D (Draft/On Progress/Received/Rejected/Sent/Partially Sent/Deleted)
@@ -21,6 +21,10 @@
 --    Nilai P4D_STATUS_VAL = label status dari baris TB_R_CTRL_DOCUMENT
 --    TERBARU (DOCUMENT_CTRL_ID terbesar) yang belum dihapus untuk
 --    DOCUMENT_CODE tsb. Kosong ('') kalau belum pernah didaftarkan ke P4D.
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentMaintenance_Search]
 	@DOCUMENT_TRANSACTION_ID 	INT,
 	@DOCUMENT_CODE			VARCHAR(255),

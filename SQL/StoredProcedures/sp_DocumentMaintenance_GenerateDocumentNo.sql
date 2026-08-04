@@ -1,5 +1,9 @@
-﻿-- 4) sp_DocumentMaintenance_GenerateDocumentNo - baris sintetis preview
+-- 4) sp_DocumentMaintenance_GenerateDocumentNo - baris sintetis preview
 --    nomor dokumen baru, P4D_STATUS_VAL dikosongkan.
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentMaintenance_GenerateDocumentNo]
 AS
 BEGIN

@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_Dashboard_SearchDivisionCount]
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_Dashboard_SearchDivisionCount]
 	@LOGIN_USER 				VARCHAR(255)
 AS
 BEGIN  

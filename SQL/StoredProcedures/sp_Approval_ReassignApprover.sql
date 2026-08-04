@@ -1,4 +1,8 @@
-﻿-- 3) Reassign a single pending approval-detail row to a new approver
+-- 3) Reassign a single pending approval-detail row to a new approver
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_Approval_ReassignApprover]
     @APPROVAL_ID   INT,
     @WORKFLOW_SEQ  INT,

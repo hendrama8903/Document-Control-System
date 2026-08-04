@@ -1,4 +1,4 @@
-﻿-- =====================================================================
+-- =====================================================================
 -- Position Master saat ini cuma bisa dibaca (sp_PositionMaster_Search /
 -- sp_PositionMaster_GetByKey ada, tapi tidak ada Insert/Update/Delete)
 -- dan tidak punya halaman admin sama sekali - beda dengan Department,
@@ -33,6 +33,10 @@
 -- Jalankan di database DMS_NEW
 -- =====================================================================
 
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_PositionMaster_Insert]
 	@POSITION_NAME 			VARCHAR(255),
 	@POSITION_LEVEL 		INT,

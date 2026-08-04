@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentMaintenance_Update]
+﻿SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentMaintenance_Update]
 		@DOCUMENT_TRANSACTION_ID int,
 		@DOCUMENT_CODE varchar(5),
 		@DOCUMENT_NO varchar(5),

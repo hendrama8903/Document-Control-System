@@ -1,6 +1,10 @@
-﻿-- 3) sp_DocumentHistory_Search - hasil dimap ke DocumentMaintenance juga
+-- 3) sp_DocumentHistory_Search - hasil dimap ke DocumentMaintenance juga
 --    (DocumentMaintenanceRepo.SearchHistoryToMaintenance) - baris histori
 --    lama, P4D_STATUS_VAL dikosongkan saja.
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentHistory_Search]
 	@DOCUMENT_TRANSACTION_ID 	INT,
 	@DOCUMENT_TRANSACTION_NAME  		VARCHAR(255),

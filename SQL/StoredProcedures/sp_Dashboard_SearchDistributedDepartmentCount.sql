@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_Dashboard_SearchDistributedDepartmentCount]
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_Dashboard_SearchDistributedDepartmentCount]
 	@USERNAME 				VARCHAR(255)
 AS
 BEGIN  

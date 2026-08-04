@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_PositionMaster_Search]
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_PositionMaster_Search]
 	@POSITION_NAME  	VARCHAR(255),
 	@POSITION_LEVEL		INT,
 	@PageNumber 			int,

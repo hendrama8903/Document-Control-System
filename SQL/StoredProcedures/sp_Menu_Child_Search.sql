@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_Menu_Child_Search]
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_Menu_Child_Search]
 	@MENU_NAME 	 VARCHAR(255),
 	@PageNumber int,
 	@PageSize int

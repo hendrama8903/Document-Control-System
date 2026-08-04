@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_P4DMaintenance_SendDistributionAll]
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_P4DMaintenance_SendDistributionAll]
 		@DOCUMENT_TRANSACTION_ID int,
 		@LOGIN_USER varchar(50),
 		@RETURN_MSG 				VARCHAR(MAX) OUTPUT

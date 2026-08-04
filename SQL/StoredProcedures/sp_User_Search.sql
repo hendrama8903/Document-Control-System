@@ -1,4 +1,4 @@
-﻿-- =====================================================================
+-- =====================================================================
 -- USERNAME adalah Primary Key fisik di TB_M_USER, jadi begitu sebuah
 -- username di-soft-delete (DELETE_FLAG='1'), username itu tidak bisa
 -- dipakai lagi sama sekali - baik untuk membuat user baru maupun untuk
@@ -21,6 +21,10 @@
 -- Jalankan di database DMS_NEW
 -- =====================================================================
 
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_User_Search]
   @USERNAME varchar(255),
   @FULL_NAME varchar(255),

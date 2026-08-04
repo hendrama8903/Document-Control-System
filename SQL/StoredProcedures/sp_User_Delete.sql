@@ -1,4 +1,4 @@
-﻿-- =====================================================================
+-- =====================================================================
 -- Lanjutan migrasi soft-delete User (lihat SQL/SoftDelete_User.sql dan
 -- memory dms-user-softdelete-migration.md). sp_User_Delete sudah soft-
 -- delete TB_M_USER dengan benar sejak lama, dan sudah menolak delete
@@ -35,6 +35,10 @@
 -- Jalankan di database DMS_NEW
 -- =====================================================================
 
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_User_Delete]
     @USERNAME   varchar(100),
     @LOGIN_USER varchar(100),

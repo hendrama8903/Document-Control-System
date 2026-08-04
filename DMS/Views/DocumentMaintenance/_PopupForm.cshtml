@@ -38,6 +38,14 @@
     #modalAddEdit .checkbox-inline-group {
         padding-top: 26px;
     }
+
+    /* Fokus lebih jelas untuk field wajib (Jul 2026) - supaya user gampang
+       lihat field mana yang lagi diisi, khususnya field yang wajib diisi. */
+    #modalAddEdit .form-control:required:focus,
+    #modalAddEdit .select2-selection.required-focus {
+        border-color: #2E75B6 !important;
+        box-shadow: 0 0 0 3px rgba(46, 117, 182, 0.25) !important;
+    }
 </style>
 
 <div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
@@ -54,74 +62,88 @@
                 <div class="row">
                     <div class="col-md-4 form-group">
                         <label class="control-label">Document Type <span class="text-red">*</span></label>
-                        <select class="form-control" id="addEditDocumentType" onchange="onChangeDocumentType()"></select>
+                        <select class="form-control" id="addEditDocumentType" onchange="onChangeDocumentType()" required></select>
                         <input class="form-control" id="addEditDocumentId" type="hidden" />
                     </div>
                     <div class="col-md-4 form-group">
-                        <label class="control-label">Document No <span class="text-red">*</span></label>
-                        <input class="form-control" id="addEditDocumentNo" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
+                        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; row-gap:2px;">
+                            <label class="control-label" style="margin-bottom:0;">Document No <span class="text-red">*</span></label>
+                            <div id="addEditNumberingModeGroup">
+                                <label style="font-weight:normal; display:inline-flex; align-items:center; margin-right:14px; margin-bottom:0; cursor:pointer;">
+                                    <input type="radio" name="addEditNumberingMode" id="addEditNumberingModeAuto" value="AUTO" checked="checked" onchange="onChangeNumberingMode()" style="margin:0 4px 0 0;" />Automatic
+                                </label>
+                                <label style="font-weight:normal; display:inline-flex; align-items:center; margin-bottom:0; cursor:pointer;">
+                                    <input type="radio" name="addEditNumberingMode" id="addEditNumberingModeManual" value="MANUAL" onchange="onChangeNumberingMode()" style="margin:0 4px 0 0;" />Manual
+                                </label>
+                            </div>
+                        </div>
+                        <input class="form-control" id="addEditDocumentNo" type="text" oninput="removeWhiteSpace(this)" maxlength="255" required />
+                        <div id="addEditManualNoGroup" class="input-group hide">
+                            <span class="input-group-addon" id="addEditManualNoPrefix">-</span>
+                            <input class="form-control" id="addEditManualSeqNo" type="text" maxlength="3" placeholder="XXX" oninput="this.value=this.value.replace(/[^0-9]/g,'')" required />
+                        </div>
                         @*Updated By Arie - 2023-08-24*@
-                        <select class="form-control" id="addEditDocumentNo2" onchange="onChangeDocumentNo()"></select>
+                        <select class="form-control" id="addEditDocumentNo2" onchange="onChangeDocumentNo()" required></select>
                     </div>
                     <div class="col-md-4 form-group">
                         <label class="control-label">Document Level <span class="text-red">*</span></label>
-                        <select class="form-control" id="addEditDocumentLevel" onchange="onChangeDocumentLevel()"></select>
+                        <select class="form-control" id="addEditDocumentLevel" onchange="onChangeDocumentLevel()" required></select>
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-4 form-group">
                         <label class="control-label">Document Code <span class="text-red">*</span></label>
-                        <select class="form-control" id="addEditDocumentCode"></select>
+                        <select class="form-control" id="addEditDocumentCode" required></select>
                     </div>
                     <div class="col-md-4 form-group">
                         <label class="control-label">Division <span class="text-red">*</span></label>
-                        <select class="form-control" id="addEditDivision" onchange="setDepartment(this.value)"></select>
+                        <select class="form-control" id="addEditDivision" onchange="setDepartment(this.value)" required></select>
                     </div>
                     <div class="col-md-4 form-group">
                         <label class="control-label">Department <span class="text-red">*</span></label>
-                        <select class="form-control" id="addEditDepartment" onchange="setSection(this.value);"></select>
+                        <select class="form-control" id="addEditDepartment" onchange="setSection(this.value);" required></select>
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-4 form-group">
                         <label class="control-label">Section <span id="mandatoryMarkSection" class="text-red">*</span></label>
-                        <select class="form-control" id="addEditSection"></select>
+                        <select class="form-control" id="addEditSection" required></select>
                     </div>
                     <div class="col-md-4 form-group">
                         <label class="control-label">Creator <span class="text-red">*</span></label>
-                        <select class="form-control" id="addEditDocumentCreator"></select>
+                        <select class="form-control" id="addEditDocumentCreator" required></select>
                     </div>
                     <div class="col-md-4 form-group">
                         <label class="control-label">Company Code <span class="text-red">*</span></label>
-                        <select class="form-control" id="addEditCompanyCode"></select>
+                        <select class="form-control" id="addEditCompanyCode" required></select>
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-4 form-group">
                         <label class="control-label">Process Code <span id="mandatoryMarkProcessCode" class="text-red">*</span></label>
-                        <select class="form-control" id="addEditProcessCode"></select>
+                        <select class="form-control" id="addEditProcessCode" required></select>
                     </div>
                     <div class="col-md-4 form-group">
                         <label class="control-label">Classified <span class="text-red">*</span></label>
-                        <select class="form-control" id="addEditClassified"></select>
+                        <select class="form-control" id="addEditClassified" required></select>
                     </div>
                     <div class="col-md-4 form-group">
                         <label class="control-label">Document Name <span class="text-red">*</span></label>
-                        <input class="form-control" id="addEditDocumentName" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
+                        <input class="form-control" id="addEditDocumentName" type="text" oninput="removeWhiteSpace(this)" maxlength="255" required />
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col-md-4 form-group">
                         <label class="control-label">Date <span class="text-red">*</span></label>
-                        <input class="form-control" id="addEditDate" type="date" />
+                        <input class="form-control" id="addEditDate" type="date" required />
                     </div>
                     <div class="col-md-4 form-group" id="fileNameContainer">
                         <label class="control-label">Document Upload <span class="text-red">*</span></label>
-                        <input type="file" class="filestyle" data-btnClass="btn-primary" id="addEditDocumentUpload" style="height: 31px;" accept=".xlsx,.xls">
+                        <input type="file" class="filestyle" data-btnClass="btn-primary" id="addEditDocumentUpload" style="height: 31px;" accept=".xlsx,.xls" required>
                     </div>
                     <div class="col-md-4 form-group">
                         <label class="control-label">Item Changed</label>
@@ -144,11 +166,11 @@
                     <div class="row">
                         <div class="col-md-4 form-group">
                             <label class="control-label">Reference No <span id="mandatoryMarkReferenceNo" class="text-red" style="display: none">*</span></label>
-                            <input class="form-control" id="addEditReferenceNo" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
+                            <input class="form-control" id="addEditReferenceNo" type="text" oninput="removeWhiteSpace(this)" maxlength="255" required />
                         </div>
                         <div class="col-md-4 form-group">
                             <label class="control-label">Source <span id="mandatoryMarkSource" class="text-red" style="display: none">*</span></label>
-                            <input class="form-control" id="addEditSource" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
+                            <input class="form-control" id="addEditSource" type="text" oninput="removeWhiteSpace(this)" maxlength="255" required />
                         </div>
                         <div class="col-md-4 form-group checkbox-inline-group">
                             <input type="checkbox" id="addEditImpactToOtherDocument" name="addEditImpactToOtherDocument" value="IMP">

@@ -1,6 +1,10 @@
-﻿-- 5) sp_MDepartment_Search - baris department dipetakan ke DocumentMaintenance
+-- 5) sp_MDepartment_Search - baris department dipetakan ke DocumentMaintenance
 --    juga (DocumentMaintenanceRepo.SearchDepartmentByDivision), P4D_STATUS_VAL
 --    dikosongkan.
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_MDepartment_Search]
 	@DIVISION					VARCHAR(50)
 AS

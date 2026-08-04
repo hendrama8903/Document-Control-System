@@ -1,8 +1,12 @@
-﻿-- Allow editing SEQ_TYPE/SEQ_CODE (the key) in addition to SEQ_NO.
+-- Allow editing SEQ_TYPE/SEQ_CODE (the key) in addition to SEQ_NO.
 -- Identifies the row via the ORIGINAL key (@OLD_SEQ_TYPE/@OLD_SEQ_CODE), then renames it to
 -- the new key + sets the new SEQ_NO. Guards:
 --  - SEQ_NO can't drop below the value the OLD row currently has (same collision-prevention rule)
 --  - can't rename onto a key that already belongs to a DIFFERENT existing row
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_MSequence_Update]
     @OLD_SEQ_TYPE VARCHAR(50),
     @OLD_SEQ_CODE VARCHAR(50),

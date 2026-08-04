@@ -592,6 +592,27 @@ namespace DMS.Controllers
             }
         }
 
+        public JsonResult GetManualNoPrefix(int? levelCode, string division, int? departmentId, string sectionCode,
+            int? documentId, string processCode, string companyCode, DateTime? documentDate)
+        {
+            try
+            {
+                string prefix = documentMaintenanceRepo.GetManualNoPrefix(
+                    levelCode, division, departmentId, sectionCode, documentId, processCode, companyCode, documentDate, db);
+
+                if (string.IsNullOrEmpty(prefix))
+                {
+                    return Json(new { status = false, message = "Belum bisa membentuk prefix nomor - lengkapi field yang wajib diisi terlebih dahulu." });
+                }
+
+                return Json(new { status = true, prefix = prefix });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
         public JsonResult GetLevelByDocumentCode(DocumentMaster data)
         {
             try
@@ -668,6 +689,27 @@ namespace DMS.Controllers
             string folderName = "/Upload/";
             string webRootPath = Environment.WebRootPath;
 
+            // Path file lama (sebelum di-overwrite di bawah kalau ada file baru di-upload) -
+            // dipakai untuk membersihkan file fisik + cache PDF lama saat file diganti di Edit.
+            string previousFilePath = data.FILE_PATH;
+
+            void DeleteCachedPdfFor(string filePath)
+            {
+                if (filePath == null) return;
+
+                string[] splitCache = filePath.Split("/");
+                if (splitCache.Length > 4)
+                {
+                    string cacheFileName = splitCache[4];
+                    string cacheExt = GetFileExtension(cacheFileName);
+                    string cachedPdf = webRootPath + "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
+                        + cacheFileName.Replace("." + cacheExt, ".pdf");
+
+                    if (System.IO.File.Exists(cachedPdf))
+                        System.IO.File.Delete(cachedPdf);
+                }
+            }
+
             db.Database.BeginTransaction();
 
             try
@@ -733,23 +775,25 @@ namespace DMS.Controllers
                     data.STATUS = "0";
                     result = documentMaintenanceRepo.Update(data, GetLoginUsername(), REMARK, db);
 
-
-                    // ✅ TAMBAHKAN INI: hapus cache PDF lama supaya generate ulang saat dibuka
-                    if (result.status && data.FILE_PATH != null)
+                    // Hapus cache PDF lama supaya generate ulang saat dibuka
+                    if (result.status)
                     {
-                        string[] splitCache = data.FILE_PATH.Split("/");
-                        if (splitCache.Length > 4)
-                        {
-                            string oldFileName = splitCache[4];
-                            string oldExt = GetFileExtension(oldFileName);
-                            string cachedPdf = webRootPath + "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
-                                + oldFileName.Replace("." + oldExt, ".pdf");
+                        DeleteCachedPdfFor(data.FILE_PATH);
 
-                            if (System.IO.File.Exists(cachedPdf))
-                                System.IO.File.Delete(cachedPdf);
+                        bool fileReplaced = previousFilePath != null && previousFilePath != data.FILE_PATH;
+                        if (fileReplaced)
+                        {
+                            // File lama sudah digantikan file baru dan tidak lagi direferensikan
+                            // di DB - bersihkan cache-nya juga plus file fisiknya, supaya tidak
+                            // menumpuk jadi sampah permanen di disk (dokumen yang masih
+                            // draft/pending belum punya riwayat revisi resmi untuk file ini).
+                            DeleteCachedPdfFor(previousFilePath);
+
+                            string oldPhysicalPath = webRootPath + previousFilePath.Trim();
+                            if (System.IO.File.Exists(oldPhysicalPath))
+                                System.IO.File.Delete(oldPhysicalPath);
                         }
                     }
-                    // ✅ SAMPAI SINI
 
                     if (data.DOCUMENT_TRANSACTION_ID != 0)
                     {
@@ -1499,6 +1543,15 @@ namespace DMS.Controllers
                 IPrintSetup printSetup = oISheet.PrintSetup;
                 int orientation = printSetup.Landscape ? 1 : 0;
 
+                // Paksa print area selalu pas di 1 halaman (bukan ukuran kertas asli
+                // dari Excel) - posisi field pengesahan (ROW/COL di TB_M_EXCEL_TEMPLATE)
+                // mengasumsikan layout satu halaman, jadi kalau print area sheet aslinya
+                // sedikit kelebihan lebar/tinggi, hasil convert ke PDF akan kepotong ke
+                // halaman kedua tanpa ini.
+                printSetup.FitWidth = 1;
+                printSetup.FitHeight = 1;
+                oISheet.FitToPage = true;
+
                 IList<ExcelTemplateMaster> excelTemplateMastersBySheet =
                     excelTemplateMasters.Where(x => x.SHEET_ORIENTATION == orientation).ToList();
 
@@ -1577,14 +1630,34 @@ namespace DMS.Controllers
                                     {
                                         byte[] creatorBytes = System.IO.File.ReadAllBytes(creatorSignPath);
                                         int creatorPicIndex = workbook.AddPicture(creatorBytes, PictureType.PNG);
-                                        XSSFClientAnchor creatorAnchor = new XSSFClientAnchor
+                                        int creatorRowStart = (int)template.ROW + 1;
+
+                                        // Sama seperti stempel tanda tangan approver di bawah - harus
+                                        // bercabang xls (HSSF) vs xlsx (XSSF), NPOI tidak bisa cast
+                                        // HSSFPatriarch ke XSSFDrawing (pernah crash 500 nyata saat ada
+                                        // yang upload file .xls, Jul 2026).
+                                        if (extension.Equals("xlsx"))
                                         {
-                                            Row1 = (int)template.ROW + 1,
-                                            Col1 = creatorCol
-                                        };
-                                        XSSFDrawing creatorPatriarch = (XSSFDrawing)oISheet.CreateDrawingPatriarch();
-                                        XSSFPicture creatorPicture = (XSSFPicture)creatorPatriarch.CreatePicture(creatorAnchor, creatorPicIndex);
-                                        creatorPicture.Resize((double)template.MERGE_CELL_COL, (double)template.MERGE_CELL_ROW);
+                                            XSSFClientAnchor creatorAnchor = new XSSFClientAnchor
+                                            {
+                                                Row1 = creatorRowStart,
+                                                Col1 = creatorCol
+                                            };
+                                            XSSFDrawing creatorPatriarch = (XSSFDrawing)oISheet.CreateDrawingPatriarch();
+                                            XSSFPicture creatorPicture = (XSSFPicture)creatorPatriarch.CreatePicture(creatorAnchor, creatorPicIndex);
+                                            creatorPicture.Resize((double)template.MERGE_CELL_COL, (double)template.MERGE_CELL_ROW);
+                                        }
+                                        else
+                                        {
+                                            HSSFClientAnchor creatorAnchor = new HSSFClientAnchor
+                                            {
+                                                Row1 = creatorRowStart,
+                                                Col1 = creatorCol
+                                            };
+                                            HSSFPatriarch creatorPatriarch = oISheet.CreateDrawingPatriarch() as HSSFPatriarch;
+                                            HSSFPicture creatorPicture = creatorPatriarch?.CreatePicture(creatorAnchor, creatorPicIndex) as HSSFPicture;
+                                            creatorPicture?.Resize((double)template.MERGE_CELL_COL, (double)template.MERGE_CELL_ROW);
+                                        }
                                     }
                                 }
                             }
@@ -1617,11 +1690,15 @@ namespace DMS.Controllers
                             // ✅ HAPUS label writing — label sudah ada sebagai teks statis di Excel
                             // labelCell.SetCellValue(approvalDetail.LABEL); ← tidak perlu
 
-                            // Tulis hanya NAMA approver
+                            // Tulis hanya NAMA approver. Pakai WriteNameCellSafely (bukan
+                            // SafeGetCell langsung) supaya kalau baris nama ini ternyata
+                            // masih di dalam merged region gambar tanda tangan (mis. template
+                            // SOP - lihat kotak "Dibuat Oleh"), value-nya dialihkan ke cell
+                            // anchor merge itu - kalau tidak, value akan tertulis ke cell
+                            // non-anchor yang TIDAK dirender Excel sama sekali (nama approver
+                            // jadi tidak tercetak).
                             int nameRowIndex = (int)template.ROW + (int)template.MERGE_CELL_ROW + 1;
-                            IRow nameRow = SafeGetRow(oISheet, nameRowIndex);
-                            ICell nameCell = SafeGetCell(nameRow, colIndex);
-                            SetCellValueBlackFont(workbook, nameCell, user.FULL_NAME);
+                            WriteNameCellSafely(oISheet, nameRowIndex, colIndex, (int)template.MERGE_CELL_COL, user.FULL_NAME);
 
                             if ("1".Equals(approvalDetail.STATUS))
                             {
@@ -1954,6 +2031,27 @@ namespace DMS.Controllers
             blackStyle.CloneStyleFrom(cell.CellStyle);
             blackStyle.SetFont(blackFont);
             cell.CellStyle = blackStyle;
+        }
+
+        /// <summary>
+        /// Sama seperti SetCellValueBlackFont, tapi juga memaksa perataan vertikal
+        /// cell ke Bottom. Dipakai khusus untuk menulis nama pembuat/approver di
+        /// kotak tanda tangan - beberapa template Excel (mis. kategori SOP)
+        /// menggabungkan area gambar tanda tangan dan baris nama jadi SATU merged
+        /// cell dengan perataan vertikal Center bawaan, sehingga teks nama
+        /// tercetak di tengah kotak (numpuk dengan gambar tanda tangan yang
+        /// ditempel di bagian atas) alih-alih tampil rapi di bawahnya.
+        /// </summary>
+        private void SetCellValueBlackFontBottomAligned(IWorkbook workbook, ICell cell, string value)
+        {
+            SetCellValueBlackFont(workbook, cell, value);
+
+            if (cell.CellStyle.VerticalAlignment == NPOI.SS.UserModel.VerticalAlignment.Bottom) return;
+
+            ICellStyle bottomStyle = workbook.CreateCellStyle();
+            bottomStyle.CloneStyleFrom(cell.CellStyle);
+            bottomStyle.VerticalAlignment = NPOI.SS.UserModel.VerticalAlignment.Bottom;
+            cell.CellStyle = bottomStyle;
         }
 
         /// <summary>
@@ -2721,6 +2819,34 @@ namespace DMS.Controllers
                 // instead of "CONTROLLED COPY" - see ViewAttachment for the same rule.
                 bool isDocumentControlViewer = GetDocumentAccessControl() == true;
 
+                // Obsolete-control (Aug 2026): sama seperti ViewAttachment - dokumen yang
+                // sudah disupersede tidak lagi punya baris live di TB_R_DOCUMENT, jadi kalau
+                // tidak ketemu di sana berarti ini dokumen lama/obsolete. Sebelumnya print
+                // tidak pernah cek ini, jadi dokumen obsolete bisa dicetak tanpa watermark
+                // OBSOLETE sama sekali. loginUser sengaja null - ini cek eksistensi murni.
+                bool isObsolete = documentMaintenanceRepo
+                    .Search(new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = documentMaintenance.DOCUMENT_TRANSACTION_ID }, null, db, 1, 1)
+                    .FirstOrDefault() == null;
+
+                string documentWatermarkText;
+                bool shouldWatermark;
+
+                if (isObsolete)
+                {
+                    documentWatermarkText = "OBSOLETE";
+                    shouldWatermark = true;
+                }
+                else if (isDocumentControlViewer)
+                {
+                    documentWatermarkText = "MASTER";
+                    shouldWatermark = true;
+                }
+                else
+                {
+                    documentWatermarkText = "CONTROLLED COPY";
+                    shouldWatermark = type == "3";
+                }
+
                 string[] split = documentMaintenance.FILE_PATH.Split("/");
                 string fileName = split[4];
                 string extension = GetFileExtension(fileName);
@@ -2733,6 +2859,12 @@ namespace DMS.Controllers
                     if (System.IO.File.Exists(outputFullPath))
                         System.IO.File.Delete(outputFullPath);
                     System.IO.File.Copy(fullPath, outputFullPath);
+
+                    // outputFullPath sudah salinan sekali-pakai (bukan file asli/cache
+                    // bersama), jadi aman di-watermark langsung di tempat.
+                    if (shouldWatermark)
+                        AddWatermark(outputFullPath, outputFullPath, documentWatermarkText);
+
                     pengesahanModifiedfileNames = outputFileName;
                 }
                 else
@@ -2744,12 +2876,20 @@ namespace DMS.Controllers
 
                     if (System.IO.File.Exists(cachedPdfFullPath))
                     {
-                        if (isDocumentControlViewer)
-                            AddWatermark(cachedPdfFullPath, cachedPdfFullPath, "MASTER");
-                        else if (type == "3")
-                            AddWatermark(cachedPdfFullPath, cachedPdfFullPath, "CONTROLLED COPY");
-
                         pengesahanModifiedfileNames = cachedPdfRelative;
+
+                        if (shouldWatermark)
+                        {
+                            // Jangan watermark file cache-nya langsung - file itu dipakai
+                            // bersama oleh request lain yang belum tentu butuh watermark
+                            // yang sama (mis. viewer MASTER vs viewer biasa). Salin dulu ke
+                            // path sendiri, sama seperti pola di ViewAttachment.
+                            string watermarkedRelative = cachedPdfRelative.Replace(".pdf", "_print_wm.pdf");
+                            string watermarkedFullPath = webRootPath + watermarkedRelative;
+                            System.IO.File.Copy(cachedPdfFullPath, watermarkedFullPath, overwrite: true);
+                            AddWatermark(watermarkedFullPath, watermarkedFullPath, documentWatermarkText);
+                            pengesahanModifiedfileNames = watermarkedRelative;
+                        }
                     }
                     else
                     {
@@ -2774,10 +2914,10 @@ namespace DMS.Controllers
                             .Replace("." + extension, ".pdf");
 
                         string pdfFullPath = webRootPath + pengesahanModifiedfileNames;
-                        if (isDocumentControlViewer)
-                            AddWatermark(pdfFullPath, pdfFullPath, "MASTER");
-                        else if (type == "3")
-                            AddWatermark(pdfFullPath, pdfFullPath, "CONTROLLED COPY");
+
+                        // File hasil konversi ini baru & sekali-pakai, aman di-watermark langsung.
+                        if (shouldWatermark)
+                            AddWatermark(pdfFullPath, pdfFullPath, documentWatermarkText);
                     }
                 }
 
@@ -2958,13 +3098,13 @@ namespace DMS.Controllers
             {
                 IRow r = SafeGetRow(sheet, existing.FirstRow);
                 ICell c = SafeGetCell(r, existing.FirstColumn);
-                SetCellValueBlackFont(sheet.Workbook, c, value);
+                SetCellValueBlackFontBottomAligned(sheet.Workbook, c, value);
             }
             else
             {
                 IRow r = SafeGetRow(sheet, row);
                 ICell c = SafeGetCell(r, col);
-                SetCellValueBlackFont(sheet.Workbook, c, value);
+                SetCellValueBlackFontBottomAligned(sheet.Workbook, c, value);
                 sheet.AddMergedRegion(new NPOI.SS.Util.CellRangeAddress(
                     row, row, col, col + mergeCellCol - 1));
             }

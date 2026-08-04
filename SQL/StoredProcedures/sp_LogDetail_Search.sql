@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_LogDetail_Search]
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_LogDetail_Search]
 	@PROCESS_ID				INT,
 	@PageNumber 			int,
 	@PageSize 				int

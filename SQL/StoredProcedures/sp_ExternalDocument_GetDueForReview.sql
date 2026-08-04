@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_ExternalDocument_GetDueForReview]
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_ExternalDocument_GetDueForReview]
     @DAYS_AHEAD             INT,
     @REMINDER_THROTTLE_DAYS INT
 AS

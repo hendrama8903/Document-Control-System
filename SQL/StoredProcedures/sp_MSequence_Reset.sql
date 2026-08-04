@@ -1,7 +1,11 @@
-﻿-- Admin-only forced reset of SEQ_NO. Unlike sp_MSequence_Update, this deliberately
+-- Admin-only forced reset of SEQ_NO. Unlike sp_MSequence_Update, this deliberately
 -- SKIPS the "can't go lower" guard so an admin can restart a counter. Every call is
 -- logged as a WRN entry (old -> new, by whom) since lowering the number risks the
 -- app generating a document code that already exists on a future save.
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_MSequence_Reset]
     @SEQ_TYPE     VARCHAR(50),
     @SEQ_CODE     VARCHAR(50),

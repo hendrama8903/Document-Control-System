@@ -1,4 +1,8 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[sp_LogHeader_GetListModule]
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_LogHeader_GetListModule]
 	@MODULE						VARCHAR(50),
 	@PageNumber 			int,
 	@PageSize 				int
