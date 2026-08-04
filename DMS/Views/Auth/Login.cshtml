@@ -1,4 +1,4 @@
-﻿@{
+@{
     Layout = null;
 }
 <!DOCTYPE html>
@@ -24,11 +24,13 @@
             --primary: #0078D4;
             --primary-2: #106EBE;
             --accent: #2B88D8;
+            --navy: #004578;
+            --gold: #B8860B;
             --paper: #F7F9FB;
             --ink: #16212B;
             --muted: #66788A;
-            --line: #DFE5EB;
-            --line-2: #CBD5DF;
+            --line: #E3E8EE;
+            --field: #F0F3F6;
         }
 
         html, body {
@@ -41,43 +43,216 @@
             color: var(--ink);
             font-size: 14px;
             -webkit-font-smoothing: antialiased;
-            background-color: var(--paper);
-            background-image:
-                radial-gradient(ellipse 900px 620px at 8% -12%, rgba(43,136,216,.26), transparent 55%),
-                radial-gradient(ellipse 760px 560px at 102% 4%, rgba(184,134,11,.12), transparent 52%),
-                radial-gradient(ellipse 920px 700px at 96% 112%, rgba(0,120,212,.24), transparent 55%),
-                radial-gradient(ellipse 700px 520px at -4% 104%, rgba(43,136,216,.16), transparent 52%),
-                radial-gradient(rgba(0,120,212,.07) 1px, transparent 1px);
-            background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat;
-            background-size: auto, auto, auto, auto, 24px 24px;
+            background: #fff;
         }
 
         .lg-wrap {
-            min-height: 100vh;
+            position: relative;
+            height: 100vh;
+            min-height: 560px;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* ---------- panel kiri: form ---------- */
+        .lg-form {
+            position: relative;
+            z-index: 2;
+            flex: 1 1 42%;
+            min-width: 360px;
+            max-width: 760px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 64px 76px;
+            background: #fff;
+            overflow-y: auto;
+        }
+
+        .lg-form-inner {
+            width: 100%;
+            max-width: 460px;
+        }
+
+        .lg-brand {
             display: flex;
             align-items: center;
-            justify-content: center;
-            padding: 24px;
+            gap: 12px;
+            margin-bottom: 40px;
         }
 
-        .lg-card {
-            display: flex;
-            width: 720px;
-            max-width: 100%;
-            min-height: 460px;
-            background: #fff;
-            border: 1px solid var(--line);
-            border-radius: 18px;
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(15,30,45,.05), 0 30px 70px -30px rgba(15,30,45,.35);
+        .lg-brand img {
+            height: 40px;
+            width: auto;
         }
 
-        /* ---------- panel kiri: slider foto ---------- */
-        .lg-side {
-            flex: 1 1 46%;
+        .lg-brand .name {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--primary);
+            line-height: 1.25;
+        }
+
+        .lg-brand .tag {
+            font-size: 11.5px;
+            color: var(--muted);
+            font-weight: 500;
+        }
+
+        .lg-welcome {
+            font-size: 17px;
+            color: var(--muted);
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .lg-wordmark-wrap {
+            margin-bottom: 20px;
+        }
+
+        .lg-wordmark {
+            display: block;
+            font-size: 56px;
+            font-weight: 800;
+            letter-spacing: -.02em;
+            line-height: 1.1;
+            background: linear-gradient(90deg, var(--gold), var(--primary) 45%, var(--navy));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .lg-wordmark-wrap .pill {
+            display: inline-block;
+            margin-top: 8px;
+            background: var(--gold);
+            color: #fff;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            padding: 5px 14px;
+            border-radius: 20px;
+            white-space: nowrap;
+            box-shadow: 0 6px 14px -4px rgba(184,134,11,.45);
+        }
+
+        .lg-sub {
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 28px;
+        }
+
+        .lg-divider {
+            height: 1px;
+            background: var(--line);
+            margin-bottom: 24px;
+        }
+
+        .lg-field {
+            margin-bottom: 14px;
+        }
+
+        .lg-field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin-bottom: 6px;
+        }
+
+        .lg-input {
             position: relative;
+        }
+
+        .lg-input input.form-control {
+            height: 44px;
+            padding: 8px 44px 8px 16px;
+            border-radius: 10px;
+            border: 1px solid transparent;
+            background: var(--field);
+            box-shadow: none;
+            font-size: 14px;
+            color: var(--ink);
+            transition: .15s;
+        }
+
+        .lg-input input.form-control::placeholder {
+            color: #97A5B2;
+        }
+
+        .lg-input input.form-control:focus {
+            outline: none;
+            background: #fff;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(43,136,216,.15);
+        }
+
+        .lg-eye {
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: none;
+            color: #97A5B2;
+            border-radius: 7px;
+            cursor: pointer;
+        }
+
+        .lg-eye:hover { color: var(--primary); }
+
+        .btn-signin {
+            width: 100%;
+            height: 46px;
+            margin-top: 10px;
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            background: #fff;
+            color: var(--primary);
+            font-size: 14.5px;
+            font-weight: 700;
+            letter-spacing: .02em;
+            transition: .15s;
+        }
+
+        .btn-signin:hover, .btn-signin:focus {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .btn-signin[disabled] { opacity: .7; }
+
+        .lg-foot {
+            margin-top: 24px;
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        /* ---------- panel kanan: foto ---------- */
+        .lg-side-wrap {
+            position: relative;
+            z-index: 1;
+            flex: 1 1 58%;
             overflow: hidden;
-            background: linear-gradient(180deg, #106EBE, #004578);
+        }
+
+        .lg-side {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            background: linear-gradient(180deg, var(--primary-2), var(--navy));
+        }
+
+        .lg-side-mask {
+            position: absolute;
+            inset: 0;
+            z-index: 6;
+            pointer-events: none;
         }
 
         .lg-side .slider,
@@ -94,208 +269,70 @@
             object-fit: cover;
         }
 
-        .lg-side-overlay {
-            position: absolute;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            padding: 90px 28px 24px;
-            background: linear-gradient(180deg, transparent, rgba(10,28,44,.85));
+        .lg-side .slick-dots {
+            bottom: 26px;
+        }
+
+        .lg-side .slick-dots li button:before {
+            font-size: 9px;
             color: #fff;
-            z-index: 5;
-            pointer-events: none;
+            opacity: .5;
         }
 
-        .lg-side-overlay b {
-            display: block;
-            font-size: 16px;
-            font-weight: 800;
-            letter-spacing: -.01em;
-        }
-
-        .lg-side-overlay span {
-            font-size: 12px;
-            color: #C7E0F4;
-            font-weight: 600;
-        }
-
-        /* ---------- panel kanan: form ---------- */
-        .lg-form {
-            flex: 1 1 54%;
-            padding: 36px 40px 20px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .lg-form img.logo {
-            height: 46px;
-            width: auto;
-            align-self: center;
-        }
-
-        .lg-eyebrow {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            align-self: center;
-            font-size: 13px;
-            letter-spacing: .08em;
-            text-transform: uppercase;
-            color: var(--primary);
-            font-weight: 800;
-            margin: 14px 0 6px;
-        }
-
-        .lg-eyebrow::before,
-        .lg-eyebrow::after {
-            content: "";
-            width: 18px;
-            height: 2px;
-            background: #B8860B;
-        }
-
-        .lg-form .sub {
-            color: var(--muted);
-            font-size: 12.5px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .lg-field {
-            margin-bottom: 14px;
-        }
-
-        .lg-field label {
-            display: block;
-            font-size: 11px;
-            font-weight: 700;
-            color: var(--muted);
-            text-transform: uppercase;
-            letter-spacing: .06em;
-            margin-bottom: 5px;
-        }
-
-        .lg-input {
-            position: relative;
-        }
-
-        .lg-input .fa {
-            position: absolute;
-            left: 13px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #9AACBC;
-            font-size: 13px;
-        }
-
-        .lg-input input.form-control {
-            height: 38px;
-            padding: 8px 38px 8px 36px;
-            border-radius: 9px;
-            border: 1px solid var(--line-2);
-            box-shadow: none;
-            font-size: 13.5px;
-            color: var(--ink);
-            transition: .15s;
-        }
-
-        .lg-input input.form-control:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(43,136,216,.15);
-        }
-
-        .lg-eye {
-            position: absolute;
-            right: 4px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 30px;
-            height: 30px;
-            border: none;
-            background: none;
-            color: #9AACBC;
-            border-radius: 7px;
-            cursor: pointer;
-        }
-
-        .lg-eye:hover { color: var(--primary); }
-
-        .btn-signin {
-            width: 100%;
-            height: 40px;
-            margin-top: 6px;
-            border: none;
-            border-radius: 9px;
-            background: var(--primary);
-            color: #fff;
-            font-size: 13.5px;
-            font-weight: 700;
-            letter-spacing: .02em;
-            transition: .15s;
-        }
-
-        .btn-signin:hover, .btn-signin:focus {
-            background: var(--primary-2);
-            color: #fff;
-        }
-
-        .btn-signin[disabled] { opacity: .7; }
-
-        .lg-foot {
-            margin-top: auto;
-            padding-top: 16px;
-            text-align: center;
-            font-size: 11px;
-            color: var(--muted);
+        .lg-side .slick-dots li.slick-active button:before {
+            opacity: 1;
+            color: var(--gold);
         }
 
         /* ---------- responsive ---------- */
-        @@media (max-width: 760px) {
-            .lg-side { display: none; }
+        @@media (max-width: 860px) {
+            .lg-side-wrap { display: none; }
 
-            .lg-card { min-height: 0; }
+            .lg-wrap { height: auto; min-height: 100vh; }
 
-            .lg-form { padding: 30px 26px 18px; }
+            .lg-form {
+                max-width: 100%;
+                padding: 40px 28px;
+            }
+
+            .lg-wordmark { font-size: 44px; }
         }
     </style>
 </head>
 <body>
     <div class="lg-wrap">
-        <div class="lg-card">
 
-            <!-- panel kiri: slider produk Hino -->
-            <div class="lg-side">
-                <div class="slider">
-                    <div><img src="~/dist/img/slider-1.jpg" title="HINO300 Dutro"></div>
-                    <div><img src="~/dist/img/slider-2.jpg" title="HINO500 Ranger"></div>
-                    <div><img src="~/dist/img/slider-3.jpg" title="HINO700 Profia"></div>
-                    <div><img src="~/dist/img/slider-4.jpg" title="HINO Bus"></div>
+        <!-- panel kiri: form login -->
+        <div class="lg-form">
+            <div class="lg-form-inner">
+                <div class="lg-brand">
+                    <img src="~/dist/img/Hino-logo.png" alt="Hino">
+                    <div>
+                        <div class="name">Hino Motors Manufacturing Indonesia</div>
+                        <div class="tag">Kawasan Industri Kota Bukit Indah, Purwakarta</div>
+                    </div>
                 </div>
-                <div class="lg-side-overlay">
-                    <b>PT Hino Motors Manufacturing Indonesia</b>
-                    <span>Kawasan Industri Kota Bukit Indah, Purwakarta</span>
-                </div>
-            </div>
 
-            <!-- panel kanan: form login -->
-            <div class="lg-form">
-                <img class="logo" src="~/dist/img/Hino-logo.png" alt="Hino">
-                <div class="lg-eyebrow">Document Management System</div>
-                <div class="sub">Sign in to your account to continue.</div>
+                <div class="lg-welcome">Selamat datang di</div>
+                <div class="lg-wordmark-wrap">
+                    <span class="lg-wordmark">DMS</span>
+                    <span class="pill">Document Management System</span>
+                </div>
+                <div class="lg-sub">Sign in to your account to continue.</div>
+
+                <div class="lg-divider"></div>
 
                 <div class="lg-field">
                     <label for="username">Username</label>
                     <div class="lg-input">
-                        <i class="fa fa-user"></i>
-                        <input type="text" class="form-control" id="username" placeholder="Username" autocomplete="username" autofocus>
+                        <input type="text" class="form-control" id="username" placeholder="Enter your username" autocomplete="username" autofocus>
                     </div>
                 </div>
 
                 <div class="lg-field">
                     <label for="password">Password</label>
                     <div class="lg-input">
-                        <i class="fa fa-lock"></i>
-                        <input type="password" class="form-control" id="password" placeholder="Password" autocomplete="current-password">
+                        <input type="password" class="form-control" id="password" placeholder="Enter your password" autocomplete="current-password">
                         <button type="button" class="lg-eye" onclick="togglePassword()" tabindex="-1" title="Show / hide password">
                             <i class="fa fa-eye" id="eyeIcon"></i>
                         </button>
@@ -303,11 +340,29 @@
                 </div>
 
                 <button id="btn_login" type="submit" class="btn-signin" data-loading-text="Signing in..." onclick="Validate()">
-                    Sign In&nbsp; <i class="fa fa-arrow-right"></i>
+                    Sign In
                 </button>
 
-                <div class="lg-foot">2022 © Hino Motors Manufacturing Indonesia</div>
+                <div class="lg-foot">2026 &copy; Hino Motors Manufacturing Indonesia</div>
             </div>
+        </div>
+
+        <!-- panel kanan: slider foto (tepi kiri melengkung) -->
+        <div class="lg-side-wrap">
+            <div class="lg-side">
+                <div class="slider">
+                    <div><img src="~/dist/img/slider-1.jpg" title="HINO300 Dutro"></div>
+                    <div><img src="~/dist/img/slider-2.jpg" title="HINO500 Ranger"></div>
+                    <div><img src="~/dist/img/slider-3.jpg" title="HINO700 Profia"></div>
+                    <div><img src="~/dist/img/slider-4.jpg" title="HINO Bus"></div>
+                </div>
+            </div>
+
+            <!-- tepi lengkung (mask putih) + ornamen garis gold, satu path yang sama persis -->
+            <svg class="lg-side-mask" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <path d="M10,0 C34,24 34,76 10,100 L0,100 L0,0 Z" fill="#fff" />
+                <path d="M10,0 C34,24 34,76 10,100" fill="none" stroke="#D9A73B" stroke-width="1.4" vector-effect="non-scaling-stroke" />
+            </svg>
         </div>
     </div>
 
@@ -322,7 +377,7 @@
         $(document).ready(function(){
 
             $('.slider').slick({
-                dots: false,
+                dots: true,
                 arrows: false,
                 infinite: true,
                 autoplay: true,
