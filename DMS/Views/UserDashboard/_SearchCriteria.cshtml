@@ -1,17 +1,35 @@
             <!-- RECOMMIT DINA -->
-<div class="box-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:0 0 14px 0;">
-    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+<div class="dp-toolbar">
+    <div class="dp-toolbar-left">
         @if ((bool)ViewData["Acknowledge"])
         {
-            <button type="button" class="btn btn-success btn-sm" id="btn_acknowledge" style="min-width: 84px;"><i class="fa fa-share-square-o"></i> Acknowledge</button>
+            <button type="button" class="dp-btn dp-btn-success" id="btn_acknowledge"><i class="fa fa-share-square-o"></i> Acknowledge</button>
         }
+        <div class="dp-search">
+            <i class="fa fa-search"></i>
+            <input type="text" id="txtGridSearch" placeholder="Search document number, name, or keyword..." />
+        </div>
     </div>
-    <div style="display:flex; align-items:center; gap:6px;">
-        @if ((bool)ViewData["Request"])
-        {
-            <button type="button" class="btn btn-success btn-sm" id="btn_request" style="min-width: 84px;"><i class="fa fa-plus"></i> Request</button>
-        }
-        <button type="button" class="btn btn-primary btn-sm" id="btn_export" style="min-width: 100px;"><i class="fa fa-file-excel-o"></i> Export</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
+</div>
+<div class="dp-filter-row">
+    <div>
+        <label>Status</label>
+        <select id="filterStatus">
+            <option value="">All Status</option>
+        </select>
     </div>
+    <div>
+        <label>Category</label>
+        <select id="filterCategory">
+            <option value="">All Category</option>
+        </select>
+    </div>
+    <div>
+        <label>Department</label>
+        <select id="filterDepartment">
+            <option value="">All Department</option>
+        </select>
+    </div>
+    <button type="button" class="dp-btn dp-btn-outline" id="btn_toggleFilters"><i class="fa fa-filter"></i> More Filters</button>
+    <button type="button" class="dp-btn dp-btn-outline" id="btn_resetFilters"><i class="fa fa-refresh"></i> Reset</button>
 </div>

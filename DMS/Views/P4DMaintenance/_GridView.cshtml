@@ -5,54 +5,19 @@
 <link rel="stylesheet" href="~/css/devextreme/dx.light.css" />
 <script src="~/js/devextreme/dx.web.js"></script>
 
-<style>
-    /* pastikan editor filter row terlihat jelas (hindari bentrok styling tema) */
-    #datagrid .dx-datagrid-filter-row .dx-texteditor {
-        border: 1px solid #d9d9d9;
-        border-radius: 6px;
-        background: #fff;
-    }
-
-    #datagrid .dx-datagrid-filter-row .dx-texteditor-input {
-        padding: 5px 8px;
-        min-height: 28px;
-    }
-
-    /* tampilkan judul kolom penuh (wrap), jangan terpotong "..." */
-    #datagrid .dx-datagrid-headers .dx-header-row td .dx-datagrid-text-content {
-        white-space: normal;
-        overflow: visible;
-        text-overflow: unset;
-        line-height: 1.3;
-    }
-
-    /* pill status - background pastel + teks pekat, ganti label bootstrap
-       default (bg pucat + teks putih) yang kontrasnya rendah & sulit dibaca */
-    .dms-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 12px;
-        font-weight: 600;
-        padding: 3px 10px;
-        border-radius: 20px;
-        white-space: nowrap;
-    }
-
-    .dms-pill-info { background: #E7F1FB; color: #2E75B6; }
-    .dms-pill-success { background: #E6F4EA; color: #1E7E34; }
-    .dms-pill-warning { background: #FFF3E0; color: #B36B00; }
-    .dms-pill-primary { background: #E8EAF6; color: #3949AB; }
-    .dms-pill-default { background: #EEF0F2; color: #5A5F66; }
-    .dms-pill-danger { background: #FDECEA; color: #C62828; }
-</style>
-
 <div class="box-body">
     <div id="datagrid"></div>
 </div>
 
 <script type="text/javascript">
     var SESSION_DEPARTMENT_ID_LOGIN = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetInt32("DEPARTMENT_ID"))";
+
+    var gCanReceive = @((((bool)ViewData["Receive"]) && ((bool)ViewData["DocumentControlAccess"])) ? "true" : "false");
+    var gCanEdit = @((((bool)ViewData["Edit"]) && ((bool)ViewData["DocumentControlAccess"])) ? "true" : "false");
+    var gCanSend = @((((bool)ViewData["Send"]) && ((bool)ViewData["DocumentControlAccess"])) ? "true" : "false");
+    var gCanDistribution = @(((bool)ViewData["Distribution"]) ? "true" : "false");
+    var gCanReject = @((((bool)ViewData["Reject"]) && ((bool)ViewData["DocumentControlAccess"])) ? "true" : "false");
+    var gCanDelete = @(((bool)ViewData["Delete"]) ? "true" : "false");
 
     function getSelectedRowData() {
         var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
@@ -103,7 +68,9 @@
                         initialMode: false
                     }
                 }).done(function (result) {
-                    d.resolve(result.data == "" ? [] : result.data);
+                    var rows = result.data == "" ? [] : result.data;
+                    updateHeaderStats(rows);
+                    d.resolve(rows);
                 }).fail(function () {
                     d.reject("Data loading error");
                 });
@@ -167,7 +134,15 @@
                         container.text(pageIndex * pageSize + options.row.rowIndex + 1);
                     }
                 },
-                { dataField: "DOCUMENT_CODE", caption: "Document No", fixed: true, fixedPosition: "left" },
+                {
+                    dataField: "DOCUMENT_CODE",
+                    caption: "Document No",
+                    fixed: true,
+                    fixedPosition: "left",
+                    cellTemplate: function (container, options) {
+                        $("<span>").addClass("dms-link").text(options.data.DOCUMENT_CODE).appendTo(container);
+                    }
+                },
                 { dataField: "DOCUMENT_NAME", caption: "Document Name" },
                 {
                     dataField: "STATUS_VAL",
@@ -248,7 +223,7 @@
                 {
                     caption: "Action",
                     alignment: "center",
-                    width: 110,
+                    width: 100,
                     allowHiding: false,
                     allowFiltering: false,
                     fixed: true,
@@ -259,41 +234,21 @@
                         container.css("white-space", "nowrap");
 
                         $("<button>")
-                            .attr({ type: "button", title: "View" })
-                            .addClass("btn btn-primary btn-sm adm-act-btn")
-                            .html('<i class="fa fa-file-pdf-o"></i>')
+                            .attr({ type: "button", title: "Preview" })
+                            .addClass("dp-act-eye")
+                            .html('<i class="fa fa-eye"></i>')
                             .on("click", function () {
                                 onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
                             })
                             .appendTo(container);
 
                         $("<button>")
-                            .attr({ type: "button", title: "History" })
-                            .addClass("btn btn-default btn-sm adm-act-btn adm-act-secondary")
-                            .css("margin-left", "6px")
-                            .html('<i class="fa fa-history"></i>')
-                            .on("click", function () {
-                                onclickHistory(row.DOCUMENT_CODE);
-                            })
-                            .appendTo(container);
-                    }
-                },
-                {
-                    caption: "Log",
-                    alignment: "center",
-                    width: 60,
-                    allowFiltering: false,
-                    fixed: true,
-                    fixedPosition: "right",
-                    cellTemplate: function (container, options) {
-                        var row = options.data;
-
-                        $("<button>")
-                            .attr({ type: "button", title: "Log" })
-                            .addClass("btn btn-primary btn-sm")
-                            .html('<i class="fa fa-file-text"></i>')
-                            .on("click", function () {
-                                onclickLog(row.DOCUMENT_TRANSACTION_ID);
+                            .attr({ type: "button", title: "More actions" })
+                            .addClass("dp-act-kebab")
+                            .html('<i class="fa fa-ellipsis-v"></i>')
+                            .on("click", function (e) {
+                                e.stopPropagation();
+                                openRowActionMenu($(this), row);
                             })
                             .appendTo(container);
                     }
@@ -310,5 +265,146 @@
         });
 
         $('body').tooltip({ selector: '[data-toggle="tooltip"]' });
+
+        // ---------- toolbar: search box (grid-wide text search) ----------
+        var gridSearchTimer = null;
+        $("#txtGridSearch").on("input", function () {
+            var value = $(this).val();
+            clearTimeout(gridSearchTimer);
+            gridSearchTimer = setTimeout(function () {
+                $("#datagrid").dxDataGrid("instance").searchByText(value);
+            }, 300);
+        });
+
+        // ---------- toolbar: show/hide column filter row ----------
+        $("#btn_toggleFilters").on("click", function () {
+            var grid = $("#datagrid").dxDataGrid("instance");
+            var visible = !grid.option("filterRow.visible");
+            grid.option("filterRow.visible", visible);
+            $(this).toggleClass("active", visible);
+        });
+
+        // ---------- toolbar: refresh ----------
+        $("#btn_refresh").on("click", function () {
+            $("#datagrid").dxDataGrid("instance").clearSelection();
+            $("#datagrid").dxDataGrid("instance").refresh();
+        });
     });
+
+    // ---------- header stats (Pending / Registered / Rejected / Today) ----------
+    function updateHeaderStats(rows) {
+        rows = rows || [];
+        var pending = 0, registered = 0, rejected = 0, todayRegistered = 0;
+        var today = moment().format("YYYY-MM-DD");
+
+        rows.forEach(function (r) {
+            if (r.STATUS == 0) pending++;
+            if (r.STATUS == 2) {
+                registered++;
+                if (r.CHANGED_DT && moment(r.CHANGED_DT).format("YYYY-MM-DD") == today) {
+                    todayRegistered++;
+                }
+            }
+            if (r.STATUS == 3) rejected++;
+        });
+
+        $("#dpPending").text(pending);
+        $("#dpRegistered").text(registered);
+        $("#dpRejected").text(rejected);
+        $("#dpTodayRegistered").text(todayRegistered);
+    }
+
+    // ---------- per-row "more actions" kebab menu ----------
+    var $dpRowMenu = null;
+
+    function buildRowActionMenu() {
+        if ($dpRowMenu) return $dpRowMenu;
+
+        $dpRowMenu = $('<ul class="dropdown-menu dp-dropdown-menu" role="menu"></ul>')
+            .css({ position: "absolute", display: "none", "z-index": 2000, "min-width": "190px" })
+            .appendTo("body");
+
+        $(document).on("click", function () {
+            $dpRowMenu.hide();
+        });
+
+        return $dpRowMenu;
+    }
+
+    function menuItem(cssClass, icon, label, enabled, onClick) {
+        var $li = $('<li><button type="button" class="' + cssClass + '"' + (enabled ? "" : " disabled") + '><i class="fa ' + icon + '"></i> ' + label + '</button></li>');
+        if (enabled) {
+            $li.find("button").on("click", function (e) {
+                e.preventDefault();
+                $dpRowMenu.hide();
+                onClick();
+            });
+        }
+        return $li;
+    }
+
+    function selectRowThen(row, action) {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        grid.selectRows([row.DOCUMENT_CTRL_ID], false);
+        action();
+    }
+
+    function openRowActionMenu($btn, row) {
+        var $menu = buildRowActionMenu();
+        $menu.empty();
+
+        $menu.append(menuItem("dp-menu-preview", "fa-eye", "Preview", true, function () {
+            onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+        }));
+
+        if (gCanReceive) {
+            $menu.append(menuItem("dp-menu-approve", "fa-check-circle", "Approve", row.STATUS == 0, function () {
+                selectRowThen(row, onReceivePrepare);
+            }));
+        }
+
+        if (gCanEdit) {
+            $menu.append(menuItem("dp-menu-location", "fa-map-marker", "Update Location", true, function () {
+                selectRowThen(row, onEditPrepare);
+            }));
+        }
+
+        if (gCanSend) {
+            $menu.append(menuItem("dp-menu-send", "fa-paper-plane-o", "Send", (row.STATUS == 2 || row.STATUS == 6), function () {
+                selectRowThen(row, onSendDistributionAllPrepare);
+            }));
+        }
+
+        if (gCanDistribution) {
+            $menu.append(menuItem("dp-menu-distribution", "fa-share-alt", "Distribution", (row.STATUS != 0 && row.STATUS != 3 && row.STATUS != 4), function () {
+                selectRowThen(row, onDistributionPrepare);
+            }));
+        }
+
+        if (gCanReject) {
+            $menu.append(menuItem("dp-menu-reject", "fa-ban", "Reject", row.STATUS == 0, function () {
+                selectRowThen(row, onRejectPrepare);
+            }));
+        }
+
+        $menu.append(menuItem("dp-menu-history", "fa-history", "Revision History", true, function () {
+            onclickHistory(row.DOCUMENT_CODE);
+        }));
+
+        $menu.append(menuItem("dp-menu-history", "fa-file-text", "Activity Log", true, function () {
+            onclickLog(row.DOCUMENT_TRANSACTION_ID);
+        }));
+
+        if (gCanDelete) {
+            var deletable = (row.STATUS == 1 || row.STATUS == 0) && row.DEPARTMENT_ID == SESSION_DEPARTMENT_ID_LOGIN;
+            $menu.append('<li class="divider"></li>');
+            $menu.append(menuItem("dp-menu-delete", "fa-trash-o", "Delete", deletable, function () {
+                selectRowThen(row, onDeletePrepare);
+            }));
+        }
+
+        var offset = $btn.offset();
+        $menu.css({ top: offset.top + $btn.outerHeight() + 4, left: offset.left - $menu.outerWidth() + $btn.outerWidth() })
+            .show();
+    }
 </script>

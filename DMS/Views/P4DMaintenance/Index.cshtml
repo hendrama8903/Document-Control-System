@@ -3,15 +3,57 @@
     <div class="row">
         <div class="col-xs-12">
             <div id="divTitle">
-                <div class="content-header">
-                    <h1>@ViewData["Title"]</h1>
+                <div class="dp-header">
+                    <div class="dp-header-left">
+                        <div class="dp-header-icon"><i class="fa fa-check-square-o"></i></div>
+                        <div>
+                            <h1>@ViewData["Title"]</h1>
+                            <p>Register approved documents into the official document repository.</p>
+                        </div>
+                    </div>
+                    <div class="dp-header-stats">
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon amber"><i class="fa fa-hourglass-half"></i></div>
+                            <div>
+                                <span>Pending Registration</span>
+                                <b id="dpPending">-</b>
+                                <small>Documents</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon green"><i class="fa fa-check-circle"></i></div>
+                            <div>
+                                <span>Registered</span>
+                                <b id="dpRegistered">-</b>
+                                <small>Documents</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon red"><i class="fa fa-times-circle"></i></div>
+                            <div>
+                                <span>Rejected</span>
+                                <b id="dpRejected">-</b>
+                                <small>Documents</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon blue"><i class="fa fa-calendar"></i></div>
+                            <div>
+                                <span>Today Registered</span>
+                                <b id="dpTodayRegistered">-</b>
+                                <small>Documents</small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div id="divSearch">
-                @Html.Partial("_SearchCriteria")
-            </div>
-            <div id="divGrid">
-                @Html.Partial("_GridView")
+            <div class="dp-card">
+                <div id="divSearch">
+                    @Html.Partial("_SearchCriteria")
+                </div>
+                <div id="divGrid">
+                    @Html.Partial("_GridView")
+                </div>
             </div>
         </div>
     </div>

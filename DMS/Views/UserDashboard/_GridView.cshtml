@@ -22,10 +22,57 @@
         text-overflow: unset;
         line-height: 1.3;
     }
+
+    .ud-ack-dt {
+        display: block;
+        font-size: 10.5px;
+        color: #98A2B3;
+        margin-top: 1px;
+    }
+
+    .ud-info-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        padding: 10px 16px;
+        border-top: 1px solid #E3E8EE;
+        background: #F7FAFF;
+        font-size: 11.5px;
+        color: #475467;
+    }
+
+    .ud-info-bar .ud-info-msg {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+    }
+
+    .ud-info-bar .ud-info-msg i { color: #1a6fd6; }
+
+    .ud-legend {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+    }
+
+    .ud-legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .ud-legend i.fa-check-circle { color: #1E9E63; }
+    .ud-legend i.fa-times-circle { color: #C62828; }
 </style>
 
 <div class="box-body">
     <div id="datagrid"></div>
+    <div class="ud-info-bar">
+        <div class="ud-info-msg"><i class="fa fa-info-circle"></i> Documents with status "Published (Effective)" are the current valid documents. Please ensure you are using the latest revision.</div>
+        <div class="ud-legend">
+            <span><i class="fa fa-check-circle"></i> Read</span>
+            <span><i class="fa fa-times-circle"></i> Not Read</span>
+            <span><i class="fa fa-times-circle" style="color:#C62828"></i> Obsolete</span>
+        </div>
+    </div>
 </div>
 
 <script type="text/javascript">
@@ -34,17 +81,92 @@
         return rows.length > 0 ? rows[0] : null;
     }
 
+    function canAcknowledge(row) {
+        return row != null && (row.STATUS == 2 || row.STATUS == 5) && row.PUBLISH_FLAG != 1;
+    }
+
     function updateActionButtons() {
         var row = getSelectedRowData();
 
-        $("#btn_acknowledge").prop("disabled", !(row != null && (row.STATUS == 2 || row.STATUS == 5) && row.PUBLISH_FLAG != 1));
+        $("#btn_acknowledge").prop("disabled", !canAcknowledge(row));
     }
 
     function computeGridHeight() {
         var gridTop = $("#datagrid").offset().top;
         var footerHeight = $("#divFooter").outerHeight(true) || 0;
 
-        return Math.max(300, $(window).height() - gridTop - footerHeight - 40);
+        return Math.max(300, $(window).height() - gridTop - footerHeight - 70);
+    }
+
+    // ---------- header stats (Total / Acknowledged / Not Acknowledged / Next Review / Obsolete) ----------
+    function updateHeaderStats(rows) {
+        rows = rows || [];
+        var total = rows.length;
+        var acknowledged = 0, notAcknowledged = 0, nextReview = 0, obsolete = 0;
+        var today = moment().startOf("day");
+        var in30Days = moment().startOf("day").add(30, "days");
+
+        rows.forEach(function (r) {
+            if (r.PUBLISH_FLAG == 1) acknowledged++; else notAcknowledged++;
+
+            if (r.NEXT_REVIEW_DATE) {
+                var reviewDate = moment(r.NEXT_REVIEW_DATE).startOf("day");
+                if (!reviewDate.isBefore(today) && !reviewDate.isAfter(in30Days)) nextReview++;
+            }
+
+            if (r.DOC_STATUS == "4") obsolete++;
+        });
+
+        $("#udTotal").text(total);
+        $("#udAcknowledged").text(acknowledged);
+        $("#udNotAcknowledged").text(notAcknowledged);
+        $("#udNextReview").text(nextReview);
+        $("#udObsolete").text(obsolete);
+
+        $("#udAcknowledgedPct").text(total > 0 ? (Math.round((acknowledged / total) * 1000) / 10) + "% of total documents" : "");
+        $("#udNotAcknowledgedPct").text(total > 0 ? (Math.round((notAcknowledged / total) * 1000) / 10) + "% of total documents" : "");
+    }
+
+    // ---------- filter dropdowns (Status / Category / Department), populated from real loaded rows ----------
+    function populateFilterDropdowns(rows) {
+        rows = rows || [];
+
+        function fillSelect($select, entries) {
+            var current = $select.val();
+            var options = '<option value="">' + $select.data("all-label") + '</option>';
+
+            entries.forEach(function (e) {
+                options += '<option value="' + e.value + '">' + e.text + '</option>';
+            });
+
+            $select.html(options);
+            if (current && entries.some(function (e) { return e.value == current; })) {
+                $select.val(current);
+            }
+        }
+
+        var statusMap = {}, categoryMap = {}, departmentMap = {};
+
+        rows.forEach(function (r) {
+            if (r.DOC_STATUS_VAL) statusMap[r.DOC_STATUS_VAL] = r.DOC_STATUS_VAL;
+            if (r.CATEGORY_CODE) categoryMap[r.CATEGORY_CODE] = r.CATEGORY_CODE + (r.CATEGORY_NAME ? " - " + r.CATEGORY_NAME : "");
+            if (r.DEPARTMENT_CODE) departmentMap[r.DEPARTMENT_CODE] = r.DEPARTMENT_CODE + (r.DEPARTMENT_NAME ? " - " + r.DEPARTMENT_NAME : "");
+        });
+
+        function toEntries(map) {
+            return Object.keys(map).sort().map(function (k) { return { value: k, text: map[k] }; });
+        }
+
+        fillSelect($("#filterStatus").data("all-label", "All Status"), toEntries(statusMap));
+        fillSelect($("#filterCategory").data("all-label", "All Category"), toEntries(categoryMap));
+        fillSelect($("#filterDepartment").data("all-label", "All Department"), toEntries(departmentMap));
+    }
+
+    var udCategoryPillClasses = ["dms-pill-info", "dms-pill-success", "dms-pill-warning", "dms-pill-primary", "dms-pill-default"];
+    function udCategoryPillClass(code) {
+        var sum = 0;
+        for (var i = 0; i < (code || "").length; i++) sum += code.charCodeAt(i);
+        return udCategoryPillClasses[sum % udCategoryPillClasses.length];
     }
 
     $(document).ready(function () {
@@ -65,7 +187,10 @@
                         initialMode: false
                     }
                 }).done(function (result) {
-                    d.resolve(result.data == "" ? [] : result.data);
+                    var rows = result.data == "" ? [] : result.data;
+                    updateHeaderStats(rows);
+                    populateFilterDropdowns(rows);
+                    d.resolve(rows);
                 }).fail(function () {
                     d.reject("Data loading error");
                 });
@@ -84,7 +209,7 @@
             sorting: { mode: "none" },
             noDataText: "Data not found.",
             height: computeGridHeight(),
-            filterRow: { visible: true, applyFilter: "auto" },
+            filterRow: { visible: false, applyFilter: "auto" },
             headerFilter: { visible: true },
             toolbar: { visible: false },
             selection: {
@@ -132,75 +257,119 @@
                 { dataField: "DOCUMENT_CODE", caption: "Document No", fixed: true, fixedPosition: "left" },
                 { dataField: "DOCUMENT_NAME", caption: "Document Name" },
                 {
-                    caption: "Status",
+                    dataField: "CATEGORY_CODE",
+                    caption: "Category",
                     alignment: "center",
-                    calculateCellValue: function (row) {
-                        return row.STATUS == 0 ? "REQUESTED" : row.STATUS_VAL;
-                    },
                     cellTemplate: function (container, options) {
                         var row = options.data;
-                        var labelClass = "label label-danger";
-                        var text = row.STATUS_VAL;
-                        var icon = "fa-times-circle";
-
-                        if (row.STATUS == 0) {
-                            labelClass = "label label-info";
-                            text = "REQUESTED";
-                            icon = "fa-clock-o";
-                        } else if (row.STATUS == 1) {
-                            labelClass = "label label-warning";
-                            icon = "fa-hourglass-half";
-                        } else if (row.STATUS == 5) {
-                            labelClass = "label label-primary";
-                            icon = "fa-paper-plane";
-                        } else if (row.STATUS == 2) {
-                            labelClass = "label label-success";
-                            icon = "fa-check-circle";
-                        }
-
-                        $("<span>").addClass(labelClass).html('<i class="fa ' + icon + '"></i> ' + text).appendTo(container);
-                    }
-                },
-                {
-                    caption: "Acknowledged",
-                    alignment: "center",
-                    calculateCellValue: function (row) {
-                        return row.PUBLISH_FLAG == 1 ? "YES" : "NO";
-                    },
-                    cellTemplate: function (container, options) {
-                        var acknowledged = options.data.PUBLISH_FLAG == 1;
+                        if (!row.CATEGORY_CODE) return;
 
                         $("<span>")
-                            .addClass(acknowledged ? "label label-success" : "label label-warning")
-                            .text(acknowledged ? "YES" : "NO")
+                            .addClass("dms-pill " + udCategoryPillClass(row.CATEGORY_CODE))
+                            .attr("title", row.CATEGORY_NAME || "")
+                            .text(row.CATEGORY_CODE)
                             .appendTo(container);
                     }
                 },
-                { dataField: "REVISION", caption: "Revision", alignment: "center" },
                 {
-                    caption: "Division",
-                    calculateCellValue: function (row) {
-                        return row.DIVISION + " - " + row.DIVISION_NAME;
+                    dataField: "REVISION",
+                    caption: "Revision",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.REVISION;
+                        $("<span>").addClass("dms-pill dms-pill-info").text("Rev. " + (value != null ? value : 0)).appendTo(container);
                     }
                 },
                 {
-                    caption: "Department",
-                    calculateCellValue: function (row) {
-                        return row.DEPARTMENT_CODE + " - " + row.DEPARTMENT_NAME;
+                    dataField: "DOC_STATUS_VAL",
+                    caption: "Status",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+                        var pillClass = "dms-pill-default";
+                        var icon = "fa-question-circle";
+
+                        switch (row.DOC_STATUS) {
+                            case "0": pillClass = "dms-pill-info"; icon = "fa-clock-o"; break;
+                            case "1": pillClass = "dms-pill-success"; icon = "fa-check-circle"; break;
+                            case "2": pillClass = "dms-pill-danger"; icon = "fa-times-circle"; break;
+                            case "3": pillClass = "dms-pill-default"; icon = "fa-trash-o"; break;
+                            case "4": pillClass = "dms-pill-danger"; icon = "fa-ban"; break;
+                            case "5": pillClass = "dms-pill-success"; icon = "fa-check-circle"; break;
+                        }
+
+                        $("<span>").addClass("dms-pill " + pillClass).html('<i class="fa ' + icon + '"></i> ' + (row.DOC_STATUS_VAL || "-")).appendTo(container);
                     }
                 },
-                { dataField: "CLASSIFIED_VAL", caption: "Classified" },
                 {
                     dataField: "DOCUMENT_DATE",
                     caption: "Date",
                     alignment: "center",
                     cellTemplate: function (container, options) {
                         var value = options.data.DOCUMENT_DATE;
-                        container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
+                        container.text(value != null ? moment(value).format("DD MMM YYYY") : "");
                     }
                 },
-                { dataField: "ITEM_CHANGED", caption: "Item Changed" },
-                { dataField: "REASON", caption: "Reason" },
+                {
+                    dataField: "NEXT_REVIEW_DATE",
+                    caption: "Next Review",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.NEXT_REVIEW_DATE;
+                        if (value == null) { container.text(""); return; }
+
+                        var reviewDate = moment(value).startOf("day");
+                        var overdue = reviewDate.isBefore(moment().startOf("day"));
+
+                        $("<span>")
+                            .css({ color: overdue ? "#C62828" : "#B36B00", fontWeight: 600 })
+                            .text(reviewDate.format("DD MMM YYYY"))
+                            .appendTo(container);
+                    }
+                },
+                {
+                    dataField: "PUBLISH_FLAG",
+                    caption: "Acknowledgement",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+                        var acknowledged = row.PUBLISH_FLAG == 1;
+
+                        $("<span>")
+                            .css({ color: acknowledged ? "#1E9E63" : "#C62828", fontWeight: 600 })
+                            .html('<i class="fa ' + (acknowledged ? "fa-check-circle" : "fa-times-circle") + '"></i> ' + (acknowledged ? "Read" : "Not Read"))
+                            .appendTo(container);
+
+                        if (acknowledged && row.ACKNOWLEDGE_DT) {
+                            $("<span>").addClass("ud-ack-dt").text(moment(row.ACKNOWLEDGE_DT).format("DD MMM YYYY")).appendTo(container);
+                        }
+                    }
+                },
+                {
+                    dataField: "DEPARTMENT_CODE",
+                    caption: "Department",
+                    calculateDisplayValue: function (row) {
+                        return row.DEPARTMENT_CODE + " - " + row.DEPARTMENT_NAME;
+                    }
+                },
+                {
+                    caption: "Division",
+                    visible: false,
+                    calculateCellValue: function (row) {
+                        return row.DIVISION + " - " + row.DIVISION_NAME;
+                    }
+                },
+                { dataField: "CLASSIFIED_VAL", caption: "Classified", visible: false },
+                {
+                    dataField: "STATUS_VAL",
+                    caption: "Registration Status",
+                    visible: false,
+                    calculateCellValue: function (row) {
+                        return row.STATUS == 0 ? "REQUESTED" : row.STATUS_VAL;
+                    }
+                },
+                { dataField: "ITEM_CHANGED", caption: "Item Changed", visible: false },
+                { dataField: "REASON", caption: "Reason", visible: false },
                 { dataField: "CREATED_BY", caption: "Created By", visible: false },
                 {
                     dataField: "CREATED_DT",
@@ -226,7 +395,7 @@
                 {
                     caption: "Action",
                     alignment: "center",
-                    width: 60,
+                    width: 100,
                     allowHiding: false,
                     allowFiltering: false,
                     fixed: true,
@@ -242,16 +411,83 @@
 
                         $("<button>")
                             .attr({ type: "button", title: "View" })
-                            .addClass("btn btn-primary btn-sm adm-act-btn")
-                            .html('<i class="fa fa-file-pdf-o"></i>')
+                            .addClass("dp-act-eye")
+                            .html('<i class="fa fa-eye"></i>')
                             .on("click", function () {
                                 onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
                             })
                             .appendTo(container);
+
+                        $("<button>")
+                            .attr({ type: "button", title: "Download" })
+                            .addClass("dp-act-eye")
+                            .css("margin-left", "6px")
+                            .html('<i class="fa fa-download"></i>')
+                            .on("click", function () {
+                                onDownloadAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+                            })
+                            .appendTo(container);
+
+                        if (@Json.Serialize((bool)ViewData["Acknowledge"])) {
+                            $("<button>")
+                                .attr({ type: "button", title: "More" })
+                                .addClass("dp-act-kebab")
+                                .html('<i class="fa fa-ellipsis-v"></i>')
+                                .on("click", function (e) {
+                                    e.stopPropagation();
+                                    openRowMenu($(this), row, options.component);
+                                })
+                                .appendTo(container);
+                        }
                     }
                 }
             ]
         });
+
+        // ---------- per-row "more actions" kebab menu ----------
+        var $udRowMenu = null;
+
+        function buildRowMenu() {
+            if ($udRowMenu) return $udRowMenu;
+
+            $udRowMenu = $('<ul class="dropdown-menu dp-dropdown-menu" role="menu"></ul>')
+                .css({ position: "absolute", display: "none", "z-index": 2000, "min-width": "180px" })
+                .appendTo("body");
+
+            $(document).on("click", function () {
+                $udRowMenu.hide();
+            });
+
+            return $udRowMenu;
+        }
+
+        function openRowMenu($btn, row, gridInstance) {
+            var $menu = buildRowMenu();
+            var eligible = canAcknowledge(row);
+
+            $menu.empty();
+            $menu.append(
+                $('<li>').append(
+                    $('<button type="button" class="dp-menu-approve">')
+                        .prop("disabled", !eligible)
+                        .html('<i class="fa fa-share-square-o"></i> Acknowledge')
+                        .on("click", function () {
+                            if (!eligible) return;
+                            gridInstance.selectRows([row.DOCUMENT_CTRL_ID], false);
+                            $udRowMenu.hide();
+                            confirmAcknowledge();
+                        })
+                )
+            );
+
+            // use getBoundingClientRect (+ scroll offset) rather than jQuery's .offset() -
+            // DevExtreme's fixed/frozen columns are transform-positioned, which throws off
+            // offset()'s offsetParent-chain math but not the actual rendered rect.
+            var rect = $btn[0].getBoundingClientRect();
+            var top = rect.bottom + window.scrollY + 4;
+            var left = rect.right + window.scrollX - $menu.outerWidth();
+            $menu.css({ top: top, left: left }).show();
+        }
 
         $("#btn_columns").on("click", function () {
             $("#datagrid").dxDataGrid("instance").showColumnChooser();
@@ -259,6 +495,47 @@
 
         $("#btn_export").on("click", function () {
             window.location.href = "@Url.Action("DownloadExcel", "UserDashboard")";
+        });
+
+        // ---------- toolbar: search box (grid-wide text search) ----------
+        var gridSearchTimer = null;
+        $("#txtGridSearch").on("input", function () {
+            var value = $(this).val();
+            clearTimeout(gridSearchTimer);
+            gridSearchTimer = setTimeout(function () {
+                $("#datagrid").dxDataGrid("instance").searchByText(value);
+            }, 300);
+        });
+
+        // ---------- filter dropdowns: Status / Category / Department ----------
+        $("#filterStatus").on("change", function () {
+            $("#datagrid").dxDataGrid("instance").columnOption("DOC_STATUS_VAL", "filterValue", $(this).val() || null);
+        });
+
+        $("#filterCategory").on("change", function () {
+            $("#datagrid").dxDataGrid("instance").columnOption("CATEGORY_CODE", "filterValue", $(this).val() || null);
+        });
+
+        $("#filterDepartment").on("change", function () {
+            $("#datagrid").dxDataGrid("instance").columnOption("DEPARTMENT_CODE", "filterValue", $(this).val() || null);
+        });
+
+        // ---------- toolbar: show/hide column filter row ("More Filters") ----------
+        $("#btn_toggleFilters").on("click", function () {
+            var grid = $("#datagrid").dxDataGrid("instance");
+            var visible = !grid.option("filterRow.visible");
+            grid.option("filterRow.visible", visible);
+            $(this).toggleClass("active", visible);
+        });
+
+        // ---------- toolbar: reset ----------
+        $("#btn_resetFilters").on("click", function () {
+            var grid = $("#datagrid").dxDataGrid("instance");
+            $("#txtGridSearch").val("");
+            $("#filterStatus, #filterCategory, #filterDepartment").val("");
+            grid.clearFilter();
+            grid.searchByText("");
+            grid.clearSelection();
         });
 
         $(window).on("resize", function () {

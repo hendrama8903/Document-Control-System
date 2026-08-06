@@ -3,15 +3,40 @@
     <div class="row">
         <div class="col-xs-12">
             <div id="divTitle">
-                <div class="content-header">
-                    <h1>@ViewData["Title"]</h1>
+                <div class="dp-header">
+                    <div class="dp-header-left">
+                        <div class="dp-header-icon"><i class="fa fa-file-text-o"></i></div>
+                        <div>
+                            <h1>@ViewData["Title"]</h1>
+                            <p>Manage and prepare company documents easily and in a structured way.</p>
+                        </div>
+                    </div>
+                    <div class="dp-header-stats">
+                        <div class="dp-stat">
+                            <i class="fa fa-file-o"></i>
+                            <div>
+                                <span>Total Documents</span>
+                                <b id="dpTotalDocuments">-</b>
+                            </div>
+                        </div>
+                        <div class="dp-stat-divider"></div>
+                        <div class="dp-stat">
+                            <i class="fa fa-calendar"></i>
+                            <div>
+                                <span>Last Updated</span>
+                                <b id="dpLastUpdated">-</b>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div id="divSearch">
-                @Html.Partial("_SearchCriteria")
-            </div>
-            <div id="divGrid">
-                @Html.Partial("_GridView")
+            <div class="dp-card">
+                <div id="divSearch">
+                    @Html.Partial("_SearchCriteria")
+                </div>
+                <div id="divGrid">
+                    @Html.Partial("_GridView")
+                </div>
             </div>
         </div>
     </div>

@@ -431,7 +431,7 @@ namespace DMS.Controllers
                     pageInt = 1;
                 }
 
-                IList<DocumentControlMaintenance> dataList = UserDashboardRepo.Search(oDocumentMaster, GetLoginUsername(), db, pageInt, int.Parse(pageLimit))
+                IList<UserDashboardDocument> dataList = UserDashboardRepo.Search(oDocumentMaster, GetLoginUsername(), db, pageInt, int.Parse(pageLimit))
                     .GroupBy(x => x.DOCUMENT_CODE).Select(x => x.First()).ToList();
 
                 var list = new List<Select2>();
@@ -469,7 +469,7 @@ namespace DMS.Controllers
                     pageInt = 1;
                 }
 
-                IList<DocumentControlMaintenance> dataList = UserDashboardRepo.Search(oDocumentMaster, GetLoginUsername(), db, pageInt, int.Parse(pageLimit))
+                IList<UserDashboardDocument> dataList = UserDashboardRepo.Search(oDocumentMaster, GetLoginUsername(), db, pageInt, int.Parse(pageLimit))
                     .GroupBy(x => x.DOCUMENT_CODE).Select(x => x.First()).ToList();
 
                 var list = new List<Select2>();
@@ -503,7 +503,7 @@ namespace DMS.Controllers
         //seperti grid (Search discoped ke login user lewat UserDashboardRepo.Search).
         public IActionResult DownloadExcel()
         {
-            IList<DocumentControlMaintenance> listData = UserDashboardRepo.Search(
+            IList<UserDashboardDocument> listData = UserDashboardRepo.Search(
                 new DocumentControlMaintenance(), GetLoginUsername(), db, null, null);
 
             var memoryStream = new MemoryStream();
@@ -511,8 +511,8 @@ namespace DMS.Controllers
             ISheet sheet = workbook.CreateSheet("Document Request");
 
             string[] headers = {
-                "No", "Document No", "Document Name", "Status", "Acknowledged", "Revision",
-                "Division", "Department", "Classified", "Date", "Item Changed", "Reason",
+                "No", "Document No", "Document Name", "Category", "Status", "Acknowledged", "Revision",
+                "Division", "Department", "Classified", "Date", "Next Review", "Item Changed", "Reason",
                 "Created By", "Created Date", "Changed By", "Changed Date"
             };
 
@@ -524,25 +524,27 @@ namespace DMS.Controllers
 
             int rowIndex = 1;
             int no = 1;
-            foreach (DocumentControlMaintenance item in listData)
+            foreach (UserDashboardDocument item in listData)
             {
                 IRow row = sheet.CreateRow(rowIndex);
                 row.CreateCell(0).SetCellValue(no);
                 row.CreateCell(1).SetCellValue(item.DOCUMENT_CODE);
                 row.CreateCell(2).SetCellValue(item.DOCUMENT_NAME);
-                row.CreateCell(3).SetCellValue(item.STATUS == "0" ? "REQUESTED" : item.STATUS_VAL);
-                row.CreateCell(4).SetCellValue(item.PUBLISH_FLAG == 1 ? "YES" : "NO");
-                row.CreateCell(5).SetCellValue(item.REVISION ?? 0);
-                row.CreateCell(6).SetCellValue(item.DIVISION + " - " + item.DIVISION_NAME);
-                row.CreateCell(7).SetCellValue(item.DEPARTMENT_CODE + " - " + item.DEPARTMENT_NAME);
-                row.CreateCell(8).SetCellValue(item.CLASSIFIED_VAL);
-                row.CreateCell(9).SetCellValue(item.DOCUMENT_DATE?.ToString("dd-MM-yyyy") ?? "");
-                row.CreateCell(10).SetCellValue(item.ITEM_CHANGED);
-                row.CreateCell(11).SetCellValue(item.REASON);
-                row.CreateCell(12).SetCellValue(item.CREATED_BY);
-                row.CreateCell(13).SetCellValue(item.CREATED_DT?.ToString("dd-MM-yyyy HH:mm:ss") ?? "");
-                row.CreateCell(14).SetCellValue(item.CHANGED_BY);
-                row.CreateCell(15).SetCellValue(item.CHANGED_DT?.ToString("dd-MM-yyyy HH:mm:ss") ?? "");
+                row.CreateCell(3).SetCellValue(item.CATEGORY_CODE);
+                row.CreateCell(4).SetCellValue(item.DOC_STATUS_VAL);
+                row.CreateCell(5).SetCellValue(item.PUBLISH_FLAG == 1 ? "YES" : "NO");
+                row.CreateCell(6).SetCellValue(item.REVISION ?? 0);
+                row.CreateCell(7).SetCellValue(item.DIVISION + " - " + item.DIVISION_NAME);
+                row.CreateCell(8).SetCellValue(item.DEPARTMENT_CODE + " - " + item.DEPARTMENT_NAME);
+                row.CreateCell(9).SetCellValue(item.CLASSIFIED_VAL);
+                row.CreateCell(10).SetCellValue(item.DOCUMENT_DATE?.ToString("dd-MM-yyyy") ?? "");
+                row.CreateCell(11).SetCellValue(item.NEXT_REVIEW_DATE?.ToString("dd-MM-yyyy") ?? "");
+                row.CreateCell(12).SetCellValue(item.ITEM_CHANGED);
+                row.CreateCell(13).SetCellValue(item.REASON);
+                row.CreateCell(14).SetCellValue(item.CREATED_BY);
+                row.CreateCell(15).SetCellValue(item.CREATED_DT?.ToString("dd-MM-yyyy HH:mm:ss") ?? "");
+                row.CreateCell(16).SetCellValue(item.CHANGED_BY);
+                row.CreateCell(17).SetCellValue(item.CHANGED_DT?.ToString("dd-MM-yyyy HH:mm:ss") ?? "");
 
                 rowIndex++;
                 no++;

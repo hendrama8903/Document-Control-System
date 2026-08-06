@@ -1,104 +1,326 @@
 <style>
     #modalViewDetail .modal-dialog {
-        width: 880px;
+        width: 900px;
         max-width: 96vw;
     }
 
-    #modalViewDetail .modal-title {
+    #modalViewDetail .modal-content {
+        border: none;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 30px 70px -20px rgba(11, 42, 90, .35);
+    }
+
+    /* ---------- header ---------- */
+    .dd-header {
+        background: linear-gradient(135deg, #1a6fd6, #0b4fb0);
+        padding: 16px 22px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        color: #fff;
+    }
+
+    .dd-header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+
+    .dd-header-icon {
+        flex: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, .18);
+        display: flex;
+        align-items: center;
+        justify-content: center;
         font-size: 17px;
     }
 
-    #modalViewDetail .modal-title small {
-        display: block;
-        font-size: 12px;
-        font-weight: 400;
-        color: rgba(255, 255, 255, 0.85);
-        margin-top: 2px;
+    .dd-header-title {
+        font-size: 15.5px;
+        font-weight: 700;
     }
 
+    .dd-header-sub {
+        font-size: 12px;
+        color: rgba(255, 255, 255, .85);
+        margin-top: 1px;
+    }
+
+    .dd-header-actions {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+
+    .dd-act-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, .92);
+        font-size: 12.5px;
+        font-weight: 600;
+        padding: 7px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background .15s ease;
+    }
+
+    .dd-act-btn:hover {
+        background: rgba(255, 255, 255, .16);
+        color: #fff;
+    }
+
+    .dd-act-btn i {
+        font-size: 13px;
+    }
+
+    .dd-header-divider {
+        width: 1px;
+        height: 20px;
+        background: rgba(255, 255, 255, .3);
+        margin: 0 6px;
+    }
+
+    .dd-close {
+        background: transparent;
+        border: none;
+        color: rgba(255, 255, 255, .9);
+        font-size: 18px;
+        line-height: 1;
+        padding: 6px;
+        cursor: pointer;
+    }
+
+    .dd-close:hover { color: #fff; }
+
+    /* ---------- body ---------- */
     #modalViewDetail .modal-body {
-        max-height: calc(100vh - 210px);
+        max-height: calc(100vh - 230px);
         overflow-y: auto;
-        padding: 20px 24px;
+        padding: 20px 22px;
         background: #F4F6F8;
     }
 
-    .vd-section {
-        border: 1px solid #E3E8EE;
-        border-radius: 10px;
-        padding: 16px 20px;
-        margin-bottom: 14px;
+    .dd-hero {
         background: #fff;
-    }
-
-    .vd-section:last-of-type {
-        margin-bottom: 0;
-    }
-
-    .vd-section-title {
-        font-size: 12px;
-        font-weight: 700;
-        color: #2E75B6;
-        text-transform: uppercase;
-        letter-spacing: .04em;
-        margin-bottom: 14px;
+        border: 1px solid #E3E8EE;
+        border-radius: 12px;
+        padding: 18px 20px;
         display: flex;
         align-items: center;
-        gap: 7px;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
     }
 
-    .vd-section-title i {
+    .dd-hero-icon {
+        flex: none;
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        background: #E7F1FB;
+        color: #1a6fd6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+    }
+
+    .dd-hero-main {
+        flex: 1 1 260px;
+        min-width: 0;
+    }
+
+    .dd-hero-code {
+        font-size: 19px;
+        font-weight: 800;
+        color: #0e1b3d;
+        word-break: break-word;
+    }
+
+    .dd-hero-name {
         font-size: 13px;
+        color: #66788A;
+        margin-top: 2px;
+        margin-bottom: 10px;
+    }
+
+    .dd-hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .dd-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 11.5px;
+        font-weight: 700;
+        padding: 4px 11px;
+        border-radius: 20px;
+    }
+
+    .dd-badge-status-0 { background: #E7F1FB; color: #1a6fd6; }
+    .dd-badge-status-1 { background: #E4F7EC; color: #1E9E63; }
+    .dd-badge-status-4 { background: #EEF0F3; color: #667085; }
+    .dd-badge-status-5 { background: #E7F1FB; color: #1a3fae; }
+    .dd-badge-status-def { background: #FDECEC; color: #A12B2B; }
+
+    .dd-badge-type { background: #E7F1FB; color: #1a6fd6; }
+    .dd-badge-level { background: #FFF4DC; color: #B36B00; }
+    .dd-badge-classified { background: #F1E9FB; color: #6C3FB5; }
+
+    .dd-hero-dates {
+        flex: 0 0 auto;
+        margin-left: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .dd-date-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12.5px;
+        color: #66788A;
+        white-space: nowrap;
+    }
+
+    .dd-date-row i {
+        color: #98A2B3;
         width: 14px;
         text-align: center;
     }
 
-    .vd-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-        gap: 16px 24px;
+    .dd-date-row b {
+        color: #1a6fd6;
+        font-weight: 700;
+        margin-left: auto;
+        padding-left: 14px;
     }
 
-    .vd-label {
+    /* ---------- info cards ---------- */
+    .dd-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    @@media (max-width: 700px) {
+        .dd-grid-2 { grid-template-columns: 1fr; }
+    }
+
+    .dd-card {
+        background: #fff;
+        border: 1px solid #E3E8EE;
+        border-radius: 12px;
+        padding: 16px 18px;
+    }
+
+    .dd-card + .dd-card {
+        margin-top: 16px;
+    }
+
+    .dd-card-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #1D2939;
+        margin-bottom: 12px;
+    }
+
+    .dd-card-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #1a6fd6;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: .03em;
+    }
+
+    .dd-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .dd-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 12.5px;
+        padding-bottom: 10px;
+        border-bottom: 1px dashed #E3E8EE;
+    }
+
+    .dd-row:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .dd-row span {
+        color: #66788A;
+    }
+
+    .dd-row b {
+        color: #1D2939;
+        font-weight: 600;
+        text-align: right;
+        word-break: break-word;
+    }
+
+    .dd-row b.dd-empty {
+        color: #C2C7CF;
+        font-weight: 400;
+    }
+
+    .dd-ref-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 14px 24px;
+    }
+
+    .dd-ref-grid span {
+        display: block;
+        font-size: 11px;
         color: #98A2B3;
         font-weight: 600;
         margin-bottom: 3px;
     }
 
-    .vd-value {
-        font-size: 13.5px;
+    .dd-ref-grid b {
+        display: block;
+        font-size: 13px;
         color: #1D2939;
         font-weight: 500;
         word-break: break-word;
     }
 
-    .vd-value.vd-empty {
+    .dd-ref-grid b.dd-empty {
         color: #C2C7CF;
         font-weight: 400;
     }
 
-    .vd-badge {
-        display: inline-block;
-        font-size: 12px;
-        font-weight: 600;
-        padding: 2px 10px;
-        border-radius: 20px;
-    }
-
-    .vd-badge-new {
-        background: #E7F1FB;
-        color: #2E75B6;
-    }
-
-    .vd-badge-revision {
-        background: #FFF3E0;
-        color: #B36B00;
-    }
-
-    .vd-audit-strip {
+    .dd-audit-strip {
         margin-top: 14px;
         padding-top: 14px;
         border-top: 1px dashed #D8DEE6;
@@ -107,24 +329,56 @@
         gap: 18px 28px;
     }
 
-    .vd-audit-item {
+    .dd-audit-item {
         flex: 1;
         min-width: 200px;
     }
 
-    .vd-audit-item .vd-label i {
+    .dd-audit-item span {
+        display: block;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        color: #98A2B3;
+        font-weight: 600;
+        margin-bottom: 3px;
+    }
+
+    .dd-audit-item span i {
         margin-right: 4px;
     }
 
-    .vd-audit-item .vd-value {
+    .dd-audit-item b {
         font-size: 12.5px;
         color: #667085;
         font-weight: 400;
     }
 
-    .vd-audit-item .vd-value b {
+    .dd-audit-item b em {
         color: #344054;
         font-weight: 600;
+        font-style: normal;
+    }
+
+    /* ---------- footer ---------- */
+    #modalViewDetail .modal-footer {
+        background: #fff;
+        border-top: 1px solid #E3E8EE;
+        padding: 14px 22px;
+    }
+
+    .dd-btn-close {
+        width: 90px;
+        border: 1.5px solid #1a6fd6;
+        color: #1a6fd6;
+        background: #fff;
+        font-weight: 600;
+        border-radius: 8px;
+    }
+
+    .dd-btn-close:hover {
+        background: #E7F1FB;
+        color: #0b4fb0;
     }
 </style>
 
@@ -132,65 +386,87 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <!-- Modal Header -->
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-                <h4 class="modal-title">
-                    <i class="fa fa-file-text-o"></i> Document Detail
-                    <small id="modalViewDetail-subtitle"></small>
-                </h4>
+            <div class="dd-header">
+                <div class="dd-header-left">
+                    <div class="dd-header-icon"><i class="fa fa-file-text-o"></i></div>
+                    <div>
+                        <div class="dd-header-title">Document Detail</div>
+                        <div class="dd-header-sub" id="modalViewDetail-subtitle">-</div>
+                    </div>
+                </div>
+                <div class="dd-header-actions">
+                    <button type="button" class="dd-act-btn" id="btnDdPreview"><i class="fa fa-eye"></i> Preview</button>
+                    <button type="button" class="dd-act-btn" id="btnDdDownload"><i class="fa fa-download"></i> Download</button>
+                    <button type="button" class="dd-act-btn" id="btnDdHistory"><i class="fa fa-history"></i> Revision History</button>
+                    <button type="button" class="dd-act-btn" id="btnDdPrint"><i class="fa fa-print"></i> Print</button>
+                    <span class="dd-header-divider"></span>
+                    <button type="button" class="dd-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
+                </div>
             </div>
 
             <!-- Modal Body -->
             <div class="modal-body">
-                <div class="vd-section">
-                    <div class="vd-section-title"><i class="fa fa-info-circle"></i> Document Information</div>
-                    <div class="vd-grid">
-                        <div><div class="vd-label">Document Category</div><div class="vd-value" id="vdCategory">-</div></div>
-                        <div><div class="vd-label">Document Type</div><div class="vd-value" id="vdType">-</div></div>
-                        <div><div class="vd-label">Document Level</div><div class="vd-value" id="vdLevel">-</div></div>
-                        <div><div class="vd-label">Classified</div><div class="vd-value" id="vdClassified">-</div></div>
-                    </div>
-                </div>
-
-                <div class="vd-section">
-                    <div class="vd-section-title"><i class="fa fa-sitemap"></i> Process &amp; Organization</div>
-                    <div class="vd-grid">
-                        <div><div class="vd-label">Process Code</div><div class="vd-value" id="vdProcessCode">-</div></div>
-                        <div><div class="vd-label">Company Code</div><div class="vd-value" id="vdCompanyCode">-</div></div>
-                        <div><div class="vd-label">Section</div><div class="vd-value" id="vdSection">-</div></div>
-                        <div><div class="vd-label">Item Changed</div><div class="vd-value" id="vdItemChanged">-</div></div>
-                    </div>
-                </div>
-
-                <div class="vd-section">
-                    <div class="vd-section-title"><i class="fa fa-link"></i> Reference</div>
-                    <div class="vd-grid">
-                        <div><div class="vd-label">Reason</div><div class="vd-value" id="vdReason">-</div></div>
-                        <div><div class="vd-label">Reference No</div><div class="vd-value" id="vdReferenceNo">-</div></div>
-                        <div><div class="vd-label">Source</div><div class="vd-value" id="vdSource">-</div></div>
-                    </div>
-                </div>
-
-                <div class="vd-section">
-                    <div class="vd-section-title"><i class="fa fa-calendar"></i> Dates</div>
-                    <div class="vd-grid">
-                        <div><div class="vd-label">Document Date</div><div class="vd-value" id="vdDocumentDate">-</div></div>
-                        <div><div class="vd-label">First Revision Date</div><div class="vd-value" id="vdFirstRevisionDate">-</div></div>
-                        <div><div class="vd-label">Next Review Date</div><div class="vd-value" id="vdNextReviewDate">-</div></div>
-                    </div>
-
-                    <div class="vd-audit-strip">
-                        <div class="vd-audit-item">
-                            <div class="vd-label"><i class="fa fa-user"></i> Document Creator</div>
-                            <div class="vd-value" id="vdCreator">-</div>
+                <div class="dd-hero">
+                    <div class="dd-hero-icon"><i class="fa fa-file-text-o"></i></div>
+                    <div class="dd-hero-main">
+                        <div class="dd-hero-code" id="vdCode">-</div>
+                        <div class="dd-hero-name" id="vdCategoryHero">-</div>
+                        <div class="dd-hero-badges">
+                            <span class="dd-badge" id="vdStatusBadge" style="display:none;"></span>
+                            <span class="dd-badge dd-badge-type" id="vdTypeBadge" style="display:none;"></span>
+                            <span class="dd-badge dd-badge-level" id="vdLevelBadge" style="display:none;"></span>
+                            <span class="dd-badge dd-badge-classified" id="vdClassifiedBadge" style="display:none;"></span>
                         </div>
-                        <div class="vd-audit-item">
-                            <div class="vd-label"><i class="fa fa-plus-circle"></i> Created</div>
-                            <div class="vd-value" id="vdCreated">-</div>
+                    </div>
+                    <div class="dd-hero-dates">
+                        <div class="dd-date-row"><i class="fa fa-calendar"></i> Document Date <b id="vdDocumentDate">-</b></div>
+                        <div class="dd-date-row"><i class="fa fa-pencil"></i> First Revision Date <b id="vdFirstRevisionDate">-</b></div>
+                        <div class="dd-date-row"><i class="fa fa-calendar-check-o"></i> Next Review Date <b id="vdNextReviewDate">-</b></div>
+                    </div>
+                </div>
+
+                <div class="dd-grid-2">
+                    <div class="dd-card">
+                        <div class="dd-card-title"><span class="dd-card-icon"><i class="fa fa-info-circle"></i></span> Document Information</div>
+                        <div class="dd-rows">
+                            <div class="dd-row"><span>Document Category</span><b id="vdCategory">-</b></div>
+                            <div class="dd-row"><span>Document Type</span><b id="vdType">-</b></div>
+                            <div class="dd-row"><span>Document Level</span><b id="vdLevel">-</b></div>
+                            <div class="dd-row"><span>Classified</span><b id="vdClassified">-</b></div>
                         </div>
-                        <div class="vd-audit-item">
-                            <div class="vd-label"><i class="fa fa-pencil"></i> Last Changed</div>
-                            <div class="vd-value" id="vdChanged">-</div>
+                    </div>
+
+                    <div class="dd-card">
+                        <div class="dd-card-title"><span class="dd-card-icon"><i class="fa fa-building"></i></span> Process &amp; Organization</div>
+                        <div class="dd-rows">
+                            <div class="dd-row"><span>Process Code</span><b id="vdProcessCode">-</b></div>
+                            <div class="dd-row"><span>Company Code</span><b id="vdCompanyCode">-</b></div>
+                            <div class="dd-row"><span>Section</span><b id="vdSection">-</b></div>
+                            <div class="dd-row"><span>Item Changed</span><b id="vdItemChanged">-</b></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dd-card">
+                    <div class="dd-card-title"><span class="dd-card-icon"><i class="fa fa-link"></i></span> Reference</div>
+                    <div class="dd-ref-grid">
+                        <div><span>Reason</span><b id="vdReason">-</b></div>
+                        <div><span>Reference No</span><b id="vdReferenceNo">-</b></div>
+                        <div><span>Source</span><b id="vdSource">-</b></div>
+                    </div>
+
+                    <div class="dd-audit-strip">
+                        <div class="dd-audit-item">
+                            <span><i class="fa fa-user"></i> Document Creator</span>
+                            <b id="vdCreator">-</b>
+                        </div>
+                        <div class="dd-audit-item">
+                            <span><i class="fa fa-plus-circle"></i> Created</span>
+                            <b id="vdCreated">-</b>
+                        </div>
+                        <div class="dd-audit-item">
+                            <span><i class="fa fa-pencil"></i> Last Changed</span>
+                            <b id="vdChanged">-</b>
                         </div>
                     </div>
                 </div>
@@ -199,7 +475,7 @@
             <!-- Modal Footer -->
             <div class="modal-footer">
                 <div class="col-xs-12 text-right">
-                    <button type="button" class="btn btn-danger" data-dismiss="modal" style="width: 80px;">Close</button>
+                    <button type="button" class="btn dd-btn-close" data-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -207,12 +483,16 @@
 </div>
 
 <script type="text/javascript">
+    var gDetailRow = null;
+
     function onViewDetail(row) {
+        gDetailRow = row;
+
         function setVal(id, v) {
             var el = $("#" + id);
             var isEmpty = (v === null || v === undefined || v === "");
             el.text(isEmpty ? "-" : v);
-            el.toggleClass("vd-empty", isEmpty);
+            el.toggleClass("dd-empty", isEmpty);
         }
 
         function dateVal(v) { return v ? moment(v).format("DD-MM-YYYY") : null; }
@@ -220,16 +500,18 @@
         function auditVal(by, dt) {
             var user = (by === null || by === undefined || by === "") ? "-" : by;
             var when = dt ? moment(dt).format("DD-MM-YYYY HH:mm:ss") : "-";
-            return "<b>" + user + "</b> &middot; " + when;
+            return "<em>" + user + "</em> &middot; " + when;
         }
 
-        function typeBadge(v) {
-            if (v == "01") return '<span class="vd-badge vd-badge-new">New</span>';
-            if (v == "02") return '<span class="vd-badge vd-badge-revision">Revision</span>';
+        function typeLabel(v) {
+            if (v == "01") return "New";
+            if (v == "02") return "Revision";
             return (v === null || v === undefined || v === "") ? null : v;
         }
 
-        $("#modalViewDetail-subtitle").text(row.DOCUMENT_CODE ? row.DOCUMENT_CODE : "");
+        $("#modalViewDetail-subtitle").text(row.DOCUMENT_CODE ? row.DOCUMENT_CODE : "-");
+        $("#vdCode").text(row.DOCUMENT_CODE ? row.DOCUMENT_CODE : "-");
+        $("#vdCategoryHero").text(row.DOCUMENT_NAME ? row.DOCUMENT_NAME : "-");
 
         setVal("vdCategory", row.DOCUMENT_NAME);
         setVal("vdLevel", row.LEVEL_CODE);
@@ -246,12 +528,87 @@
         setVal("vdNextReviewDate", dateVal(row.NEXT_REVIEW_DATE));
         setVal("vdCreator", row.DOCUMENT_CREATOR);
 
-        var type = typeBadge(row.DOCUMENT_TYPE);
-        $("#vdType").html(type === null ? '<span class="vd-empty">-</span>' : type);
+        var type = typeLabel(row.DOCUMENT_TYPE);
+        $("#vdType").html(type === null ? '<span class="dd-empty">-</span>' : type);
 
         $("#vdCreated").html(auditVal(row.CREATED_BY, row.CREATED_DT));
         $("#vdChanged").html(auditVal(row.CHANGED_BY, row.CHANGED_DT));
 
+        // hero badges
+        var $status = $("#vdStatusBadge");
+        if (row.STATUS_DISPLAY) {
+            var statusClass = "dd-badge-status-def";
+            var statusIcon = "fa-times-circle";
+            if (row.STATUS == 0) { statusClass = "dd-badge-status-0"; statusIcon = "fa-clock-o"; }
+            else if (row.STATUS == 1) { statusClass = "dd-badge-status-1"; statusIcon = "fa-check-circle"; }
+            else if (row.STATUS == 4) { statusClass = "dd-badge-status-4"; statusIcon = "fa-archive"; }
+            else if (row.STATUS == 5) { statusClass = "dd-badge-status-5"; statusIcon = "fa-flag-checkered"; }
+            $status.attr("class", "dd-badge " + statusClass)
+                .html('<i class="fa ' + statusIcon + '"></i> ' + row.STATUS_DISPLAY)
+                .show();
+        } else {
+            $status.hide();
+        }
+
+        var $type = $("#vdTypeBadge");
+        if (type !== null) {
+            $type.text(type).show();
+        } else {
+            $type.hide();
+        }
+
+        var $level = $("#vdLevelBadge");
+        if (row.LEVEL_CODE) {
+            $level.html('<i class="fa fa-star"></i> Level ' + row.LEVEL_CODE).show();
+        } else {
+            $level.hide();
+        }
+
+        var $classified = $("#vdClassifiedBadge");
+        if (row.CLASSIFIED_VAL) {
+            $classified.html('<i class="fa fa-shield"></i> ' + row.CLASSIFIED_VAL).show();
+        } else {
+            $classified.hide();
+        }
+
         $("#modalViewDetail").modal();
     }
+
+    $(document).ready(function () {
+        $("#btnDdPreview").on("click", function () {
+            if (!gDetailRow) return;
+            onViewAttachment(gDetailRow.FILE_PATH, gDetailRow.DOCUMENT_TRANSACTION_ID);
+        });
+
+        $("#btnDdDownload").on("click", function () {
+            if (!gDetailRow) return;
+            onDownloadAttachment(gDetailRow.FILE_PATH, gDetailRow.DOCUMENT_TRANSACTION_ID);
+        });
+
+        $("#btnDdHistory").on("click", function () {
+            if (!gDetailRow) return;
+            gHistoryDocumentCode = gDetailRow.DOCUMENT_CODE;
+            $("#modal-title-history").text("Document History - " + gDetailRow.DOCUMENT_CODE);
+            $("#datagridHistory").dxDataGrid("instance").refresh();
+            $("#modalViewDetail").modal("hide");
+            $("#modalDocumentHistory").modal();
+        });
+
+        $("#btnDdPrint").on("click", function () {
+            if (!gDetailRow || !gDetailRow.FILE_PATH) {
+                showErrorMesgGrowl("This data does not have an attachment");
+                return;
+            }
+            var link = '@Html.Raw(Url.Action("ViewAttachment", "DocumentMaintenance", new { FILE_PATH = "-1", DOCUMENT_TRANSACTION_ID = "-2", type = "-3" }))';
+            link = link.replace("-1", gDetailRow.FILE_PATH);
+            link = link.replace("-2", gDetailRow.DOCUMENT_TRANSACTION_ID);
+            link = link.replace("-3", "1");
+            var printWin = window.open(link, '_blank');
+            if (printWin) {
+                printWin.addEventListener('load', function () {
+                    printWin.print();
+                });
+            }
+        });
+    });
 </script>

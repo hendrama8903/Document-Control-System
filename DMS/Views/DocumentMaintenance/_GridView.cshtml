@@ -2,53 +2,13 @@
 <link rel="stylesheet" href="~/css/devextreme/dx.light.css" />
 <script src="~/js/devextreme/dx.web.js"></script>
 
-<style>
-    /* pastikan editor filter row terlihat jelas (hindari bentrok styling tema) */
-    #datagrid .dx-datagrid-filter-row .dx-texteditor {
-        border: 1px solid #d9d9d9;
-        border-radius: 6px;
-        background: #fff;
-    }
-
-    #datagrid .dx-datagrid-filter-row .dx-texteditor-input {
-        padding: 5px 8px;
-        min-height: 28px;
-    }
-
-    /* tampilkan judul kolom penuh (wrap), jangan terpotong "..." */
-    #datagrid .dx-datagrid-headers .dx-header-row td .dx-datagrid-text-content {
-        white-space: normal;
-        overflow: visible;
-        text-overflow: unset;
-        line-height: 1.3;
-    }
-
-    /* pill status - background pastel + teks pekat, ganti label bootstrap
-       default (bg pucat + teks putih) yang kontrasnya rendah & sulit dibaca */
-    .dms-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 12px;
-        font-weight: 600;
-        padding: 3px 10px;
-        border-radius: 20px;
-        white-space: nowrap;
-    }
-
-    .dms-pill-info { background: #E7F1FB; color: #2E75B6; }
-    .dms-pill-success { background: #E6F4EA; color: #1E7E34; }
-    .dms-pill-warning { background: #FFF3E0; color: #B36B00; }
-    .dms-pill-primary { background: #E8EAF6; color: #3949AB; }
-    .dms-pill-default { background: #EEF0F2; color: #5A5F66; }
-    .dms-pill-danger { background: #FDECEA; color: #C62828; }
-</style>
-
 <div class="box-body">
     <div id="datagrid"></div>
 </div>
 
 <script type="text/javascript">
+    var gCanDelete = @(((bool)ViewData["Delete"]) ? "true" : "false");
+
     function getSelectedRowData() {
         var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
         return rows.length > 0 ? rows[0] : null;
@@ -95,7 +55,9 @@
                         initialMode: false
                     }
                 }).done(function (result) {
-                    d.resolve(result.data == "" ? [] : result.data);
+                    var rows = result.data == "" ? [] : result.data;
+                    updateHeaderStats(rows);
+                    d.resolve(rows);
                 }).fail(function () {
                     d.reject("Data loading error");
                 });
@@ -168,23 +130,18 @@
                     cellTemplate: function (container, options) {
                         var row = options.data;
                         var pillClass = "dms-pill dms-pill-danger";
-                        var icon = "fa-times-circle";
 
                         if (row.STATUS == 0) {
                             pillClass = "dms-pill dms-pill-info";
-                            icon = "fa-clock-o";
                         } else if (row.STATUS == 1) {
                             pillClass = "dms-pill dms-pill-success";
-                            icon = "fa-check-circle";
                         } else if (row.STATUS == 4) {
                             pillClass = "dms-pill dms-pill-default";
-                            icon = "fa-archive";
                         } else if (row.STATUS == 5) {
                             pillClass = "dms-pill dms-pill-primary";
-                            icon = "fa-flag-checkered";
                         }
 
-                        $("<span>").addClass(pillClass).html('<i class="fa ' + icon + '"></i> ' + row.STATUS_DISPLAY).appendTo(container);
+                        $("<span>").addClass(pillClass).html('<span class="dms-dot"></span> ' + row.STATUS_DISPLAY).appendTo(container);
                     }
                 },
                 {
@@ -222,18 +179,32 @@
                         $("<span>").addClass(pillClass).html('<i class="fa ' + icon + '"></i> ' + value).appendTo(container);
                     }
                 },
-                { dataField: "REVISION", caption: "Revision", alignment: "center" },
                 {
+                    dataField: "REVISION",
+                    caption: "Revision",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.REVISION;
+                        if (value === null || value === undefined || value === "") {
+                            container.text("-");
+                            return;
+                        }
+                        $("<span>").addClass("dms-pill dms-pill-info").text("Rev. " + value).appendTo(container);
+                    }
+                },
+                {
+                    dataField: "DIVISION_NAME",
                     caption: "Division",
                     width: 220,
-                    calculateCellValue: function (row) {
+                    calculateDisplayValue: function (row) {
                         return row.DIVISION + " - " + row.DIVISION_NAME;
                     }
                 },
                 {
+                    dataField: "DEPARTMENT_NAME",
                     caption: "Department",
                     width: 260,
-                    calculateCellValue: function (row) {
+                    calculateDisplayValue: function (row) {
                         return row.DEPARTMENT_CODE + " - " + row.DEPARTMENT_NAME;
                     }
                 },
@@ -279,7 +250,7 @@
                 {
                     caption: "Action",
                     alignment: "center",
-                    width: 110,
+                    width: 100,
                     allowHiding: false,
                     allowFiltering: false,
                     fixed: true,
@@ -290,61 +261,21 @@
                         container.css("white-space", "nowrap");
 
                         $("<button>")
-                            .attr({ type: "button", title: "View" })
-                            .addClass("btn btn-primary btn-sm adm-act-btn")
-                            .html('<i class="fa fa-file-pdf-o"></i>')
-                            .on("click", function () {
-                                onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
-                            })
-                            .appendTo(container);
-
-                        $("<button>")
-                            .attr({ type: "button", title: "Detail" })
-                            .addClass("btn btn-default btn-sm adm-act-btn adm-act-secondary")
-                            .css("margin-left", "6px")
+                            .attr({ type: "button", title: "Preview" })
+                            .addClass("dp-act-eye")
                             .html('<i class="fa fa-eye"></i>')
                             .on("click", function () {
-                                onViewDetail(row);
+                                previewDocument(row);
                             })
                             .appendTo(container);
-                    }
-                },
-                {
-                    caption: "Distribution",
-                    alignment: "center",
-                    width: 90,
-                    allowFiltering: false,
-                    fixed: true,
-                    fixedPosition: "right",
-                    cellTemplate: function (container, options) {
-                        var row = options.data;
 
                         $("<button>")
-                            .attr({ type: "button", name: "btnDistribution" })
-                            .addClass("btn btn-primary btn-sm")
-                            .html('<i class="fa fa-file-o"></i>')
-                            .on("click", function () {
-                                onclickDistribution(row.DOCUMENT_TRANSACTION_ID);
-                            })
-                            .appendTo(container);
-                    }
-                },
-                {
-                    caption: "Log",
-                    alignment: "center",
-                    width: 60,
-                    allowFiltering: false,
-                    fixed: true,
-                    fixedPosition: "right",
-                    cellTemplate: function (container, options) {
-                        var row = options.data;
-
-                        $("<button>")
-                            .attr({ type: "button" })
-                            .addClass("btn btn-primary btn-sm")
-                            .html('<i class="fa fa-history"></i>')
-                            .on("click", function () {
-                                onclickLog(row.DOCUMENT_TRANSACTION_ID);
+                            .attr({ type: "button", title: "More actions" })
+                            .addClass("dp-act-kebab")
+                            .html('<i class="fa fa-ellipsis-v"></i>')
+                            .on("click", function (e) {
+                                e.stopPropagation();
+                                openRowActionMenu($(this), row);
                             })
                             .appendTo(container);
                     }
@@ -361,5 +292,123 @@
         });
 
         $('body').tooltip({ selector: '[data-toggle="tooltip"]' });
+
+        // ---------- toolbar: search box (grid-wide text search) ----------
+        var gridSearchTimer = null;
+        $("#txtGridSearch").on("input", function () {
+            var value = $(this).val();
+            clearTimeout(gridSearchTimer);
+            gridSearchTimer = setTimeout(function () {
+                $("#datagrid").dxDataGrid("instance").searchByText(value);
+            }, 300);
+        });
+
+        // ---------- toolbar: show/hide column filter row ----------
+        $("#btn_toggleFilters").on("click", function () {
+            var grid = $("#datagrid").dxDataGrid("instance");
+            var visible = !grid.option("filterRow.visible");
+            grid.option("filterRow.visible", visible);
+            $(this).toggleClass("active", visible);
+        });
     });
+
+    // ---------- header stats (Total Documents / Last Updated) ----------
+    function updateHeaderStats(rows) {
+        rows = rows || [];
+        $("#dpTotalDocuments").text(rows.length);
+
+        var latest = null;
+        rows.forEach(function (r) {
+            var candidates = [r.CHANGED_DT, r.CREATED_DT].filter(Boolean);
+            candidates.forEach(function (dt) {
+                var m = moment(dt);
+                if (!latest || m.isAfter(latest)) {
+                    latest = m;
+                }
+            });
+        });
+
+        $("#dpLastUpdated").text(latest ? latest.format("DD MMM YYYY") : "-");
+    }
+
+    // ---------- unified preview (Excel viewer for xlsx/xls, PDF preview otherwise) ----------
+    function previewDocument(row) {
+        if (row.FILE_PATH && /\.(xlsx|xls)$/i.test(row.FILE_PATH)) {
+            onExcelPreview(row.FILE_PATH);
+        } else {
+            onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+        }
+    }
+
+    // ---------- per-row "more actions" kebab menu ----------
+    var $dpRowMenu = null;
+
+    function buildRowActionMenu() {
+        if ($dpRowMenu) return $dpRowMenu;
+
+        $dpRowMenu = $('<ul class="dropdown-menu dp-dropdown-menu" role="menu"></ul>')
+            .css({ position: "absolute", display: "none", "z-index": 2000, "min-width": "170px" })
+            .appendTo("body");
+
+        $(document).on("click", function () {
+            $dpRowMenu.hide();
+        });
+
+        return $dpRowMenu;
+    }
+
+    function menuItem(cssClass, icon, label, onClick) {
+        var $li = $('<li><a href="#" class="' + cssClass + '"><i class="fa ' + icon + '"></i> ' + label + '</a></li>');
+        $li.find("a").on("click", function (e) {
+            e.preventDefault();
+            $dpRowMenu.hide();
+            onClick();
+        });
+        return $li;
+    }
+
+    function openRowActionMenu($btn, row) {
+        var $menu = buildRowActionMenu();
+        $menu.empty();
+
+        $menu.append(menuItem("dp-menu-preview", "fa-eye", "Preview", function () {
+            previewDocument(row);
+        }));
+
+        var downloadLabel = "Download File";
+        if (row.FILE_PATH && /\.(xlsx|xls)$/i.test(row.FILE_PATH)) downloadLabel = "Download Excel";
+        else if (row.FILE_PATH && /\.pdf$/i.test(row.FILE_PATH)) downloadLabel = "Download PDF";
+
+        $menu.append(menuItem("dp-menu-download", "fa-download", downloadLabel, function () {
+            onDownloadAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+        }));
+
+        $menu.append(menuItem("dp-menu-distribution", "fa-share-square-o", "Distribution", function () {
+            onclickDistribution(row.DOCUMENT_TRANSACTION_ID);
+        }));
+
+        $menu.append(menuItem("dp-menu-history", "fa-history", "Revision History", function () {
+            gHistoryDocumentCode = row.DOCUMENT_CODE;
+            $("#modal-title-history").text("Document History - " + row.DOCUMENT_CODE);
+            $("#datagridHistory").dxDataGrid("instance").refresh();
+            $("#modalDocumentHistory").modal();
+        }));
+
+        $menu.append(menuItem("dp-menu-history", "fa-list-alt", "Activity Log", function () {
+            onclickLog(row.DOCUMENT_TRANSACTION_ID);
+        }));
+
+        if (gCanDelete && row.STATUS != 1 && row.STATUS != 5) {
+            $menu.append('<li class="divider"></li>');
+            $menu.append(menuItem("dp-menu-delete", "fa-trash-o", "Delete", function () {
+                var grid = $("#datagrid").dxDataGrid("instance");
+                grid.selectRows([row.DOCUMENT_TRANSACTION_ID], false);
+                onDeletePrepare();
+            }));
+        }
+
+        var offset = $btn.offset();
+        $menu.css({ top: offset.top + $btn.outerHeight() + 4, left: offset.left - $menu.outerWidth() + $btn.outerWidth() })
+            .show();
+    }
 </script>

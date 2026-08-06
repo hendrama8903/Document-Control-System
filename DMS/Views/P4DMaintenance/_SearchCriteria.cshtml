@@ -1,39 +1,53 @@
-<div class="box-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:0 0 14px 0;">
-    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+<div class="box-header dp-toolbar">
+    <div class="dp-toolbar-left">
         @if ((bool)ViewData["Add"])
         {
-            <button type="button" class="btn btn-success btn-sm" id="btn_add" style="min-width: 84px;"><i class="fa fa-plus"></i> Add</button>
+            <button type="button" class="btn dp-btn dp-btn-success" id="btn_add"><i class="fa fa-plus"></i> Register Document</button>
         }
-        @if ((bool)ViewData["Receive"] && (bool)ViewData["DocumentControlAccess"])
-        {
-            <button type="button" class="btn btn-success btn-sm" id="btn_receive" title="Approve this registration entry (physical receipt by the destination department is confirmed separately, via Acknowledge in My Documents)" style="min-width: 84px;"><i class="fa fa-check-circle"></i> Approve</button>
-        }
-        @if ((bool)ViewData["Edit"] && (bool)ViewData["DocumentControlAccess"])
-        {
-            <button type="button" class="btn btn-warning btn-sm" id="btn_edit" style="min-width: 84px;"><i class="fa fa-map-marker"></i> Update Location</button>
-        }
-        @if ((bool)ViewData["Send"] && (bool)ViewData["DocumentControlAccess"])
-        {
-            <button type="button" class="btn btn-success btn-sm" id="btn_send" style="min-width: 84px;"><i class="fa fa-paper-plane-o"></i> Send</button>
-        }
-        @if ((bool)ViewData["Delete"])
-        {
-            <button type="button" class="btn btn-danger btn-sm" id="btn_delete" style="min-width: 84px;"><i class="fa fa-trash-o"></i> Delete</button>
-        }
-        @if ((bool)ViewData["Reject"] && (bool)ViewData["DocumentControlAccess"])
-        {
-            <button type="button" class="btn btn-reject btn-sm" id="btn_reject" style="min-width: 84px;"><i class="fa fa-ban"></i> Reject</button>
-        }
+        <div class="dropdown" style="display:inline-block;">
+            <button type="button" class="btn dp-btn dp-btn-outline dropdown-toggle" data-toggle="dropdown">
+                <i class="fa fa-list"></i> Actions <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu dp-dropdown-menu">
+                @if ((bool)ViewData["Receive"] && (bool)ViewData["DocumentControlAccess"])
+                {
+                    <li><button type="button" id="btn_receive" title="Approve this registration entry (physical receipt by the destination department is confirmed separately, via Acknowledge in My Documents)"><i class="fa fa-check-circle dp-menu-approve"></i> Approve</button></li>
+                }
+                @if ((bool)ViewData["Edit"] && (bool)ViewData["DocumentControlAccess"])
+                {
+                    <li><button type="button" id="btn_edit"><i class="fa fa-map-marker dp-menu-location"></i> Update Location</button></li>
+                }
+                @if ((bool)ViewData["Send"] && (bool)ViewData["DocumentControlAccess"])
+                {
+                    <li><button type="button" id="btn_send"><i class="fa fa-paper-plane-o dp-menu-send"></i> Send</button></li>
+                }
+                @if ((bool)ViewData["Distribution"])
+                {
+                    <li><button type="button" id="btn_distribution"><i class="fa fa-share-alt dp-menu-distribution"></i> Distribution</button></li>
+                }
+                @if ((bool)ViewData["Reject"] && (bool)ViewData["DocumentControlAccess"])
+                {
+                    <li><button type="button" id="btn_reject"><i class="fa fa-ban dp-menu-reject"></i> Reject</button></li>
+                }
+                @if ((bool)ViewData["Delete"])
+                {
+                    <li role="separator" class="divider"></li>
+                    <li><button type="button" id="btn_delete"><i class="fa fa-trash-o dp-menu-delete"></i> Delete</button></li>
+                }
+            </ul>
+        </div>
+        <button type="button" class="btn dp-btn dp-btn-outline" id="btn_refresh"><i class="fa fa-refresh"></i> Refresh</button>
     </div>
-    <div style="display:flex; align-items:center; gap:6px;">
-        @if ((bool)ViewData["Distribution"])
-        {
-            <button type="button" class="btn btn-success btn-sm" id="btn_distribution" style="min-width: 100px;"><i class="fa fa-share-alt"></i> Distribution</button>
-        }
+    <div class="dp-toolbar-right">
+        <div class="dp-search">
+            <i class="fa fa-search"></i>
+            <input type="text" id="txtGridSearch" placeholder="Search document...">
+        </div>
+        <button type="button" class="dp-icon-btn" id="btn_toggleFilters" title="Show/hide column filters"><i class="fa fa-filter"></i></button>
+        <button type="button" class="dp-icon-btn" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
         @if ((bool)ViewData["Download"])
         {
-            <button type="button" class="btn btn-primary btn-sm" id="btn_download" style="min-width: 110px;"><i class="fa fa-download"></i> Download</button>
+            <button type="button" class="btn dp-btn dp-btn-outline" id="btn_download"><i class="fa fa-download"></i> Export</button>
         }
-        <button type="button" class="btn btn-primary btn-sm" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
     </div>
 </div>

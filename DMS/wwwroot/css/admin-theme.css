@@ -625,8 +625,7 @@ body.adm-body {
 /* kartu pembungkus grid (pola #divGrid > .box-body dipakai semua modul) */
 .adm-body #divGrid > .box-body {
     background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
+    border-radius: 5px;
     box-shadow: var(--shadow);
     padding: 12px 16px 16px;
 }
@@ -773,6 +772,29 @@ body.adm-body {
     background: var(--accent-soft);
     border-color: var(--primary-2);
     color: var(--primary-2);
+}
+
+/* outline putih agar ikon file-type (PDF/Excel) terlihat jelas warna aslinya */
+.adm-body .adm-act-btn.adm-act-pdf {
+    background: var(--surface);
+    border: 1.5px solid var(--merah);
+    color: var(--merah);
+}
+
+.adm-body .adm-act-btn.adm-act-pdf:hover,
+.adm-body .adm-act-btn.adm-act-pdf:focus {
+    background: rgba(220, 53, 69, .08);
+}
+
+.adm-body .adm-act-btn.adm-act-excel {
+    background: var(--surface);
+    border: 1.5px solid #2F8050;
+    color: #2F8050;
+}
+
+.adm-body .adm-act-btn.adm-act-excel:hover,
+.adm-body .adm-act-btn.adm-act-excel:focus {
+    background: rgba(47, 128, 80, .08);
 }
 
 /* Reject is a workflow action, not a permanent deletion — kept visually
@@ -1197,3 +1219,448 @@ body.adm-body {
 .adm-body .messagebox_button_fail:focus {
     background: var(--paper-2);
 }
+
+/* =====================================================================
+   Shared "dp-" grid-page design system (header stat card, toolbar,
+   flat action buttons, status pills). Used by Document Preparation and
+   Document Registration - keep generic so any grid page can reuse it.
+   ===================================================================== */
+#datagrid .dx-datagrid-filter-row .dx-texteditor {
+    border: 1px solid #d9d9d9;
+    border-radius: 6px;
+    background: #fff;
+}
+
+#datagrid .dx-datagrid-filter-row .dx-texteditor-input {
+    padding: 5px 8px;
+    min-height: 28px;
+}
+
+#datagrid .dx-datagrid-headers .dx-header-row td .dx-datagrid-text-content {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    line-height: 1.3;
+}
+
+.dms-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
+.dms-pill-info { background: #E7F1FB; color: #2E75B6; }
+.dms-pill-success { background: #E6F4EA; color: #1E7E34; }
+.dms-pill-warning { background: #FFF3E0; color: #B36B00; }
+.dms-pill-primary { background: #E8EAF6; color: #3949AB; }
+.dms-pill-default { background: #EEF0F2; color: #5A5F66; }
+.dms-pill-danger { background: #FDECEA; color: #C62828; }
+
+.dms-pill .dms-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex: none;
+}
+
+.dms-link {
+    color: #1E9E63;
+    font-weight: 700;
+}
+
+/* ---------- page header card ---------- */
+.dp-header {
+    background: #fff;
+    border: 1px solid #E3E8EE;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+
+.dp-header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
+.dp-header-icon {
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: #E7F1FB;
+    color: #1a6fd6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 19px;
+}
+
+.dp-header-left h1 {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 700;
+    color: #1D2939;
+}
+
+.dp-header-left p {
+    margin: 2px 0 0;
+    font-size: 12.5px;
+    color: #66788A;
+}
+
+.dp-header-stats {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* compact stat pills (Document Registration style: several small cards) */
+.dp-stat-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #F9FAFB;
+    border: 1px solid #E3E8EE;
+    border-radius: 10px;
+    padding: 8px 14px;
+}
+
+.dp-stat-card-icon {
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.dp-stat-card-icon.amber { background: #FFF4DC; color: #B36B00; }
+.dp-stat-card-icon.green { background: #E4F7EC; color: #1E9E63; }
+.dp-stat-card-icon.red { background: #FDECEC; color: #C62828; }
+.dp-stat-card-icon.blue { background: #E7F1FB; color: #1a6fd6; }
+.dp-stat-card-icon.purple { background: #F1EAFB; color: #6C3FB5; }
+
+/* full-width variant: cards share the row evenly instead of packing left */
+.dp-header-stats-grid { width: 100%; }
+.dp-header-stats-grid .dp-stat-card { flex: 1 1 0; min-width: 170px; }
+
+.dp-stat-card span {
+    display: block;
+    font-size: 11px;
+    color: #66788A;
+    font-weight: 600;
+}
+
+.dp-stat-card b {
+    display: block;
+    font-size: 16px;
+    color: #1D2939;
+    font-weight: 800;
+}
+
+.dp-stat-card small {
+    display: block;
+    font-size: 10.5px;
+    color: #98A2B3;
+    font-weight: 500;
+}
+
+/* simple inline stats (Document Preparation style) */
+.dp-stat {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.dp-stat i {
+    color: #98A2B3;
+    font-size: 15px;
+}
+
+.dp-stat span {
+    display: block;
+    font-size: 11px;
+    color: #98A2B3;
+    font-weight: 600;
+}
+
+.dp-stat b {
+    display: block;
+    font-size: 14px;
+    color: #1D2939;
+    font-weight: 700;
+}
+
+.dp-stat-divider {
+    width: 1px;
+    height: 30px;
+    background: #E3E8EE;
+}
+
+/* ---------- unified card wrapper (toolbar + grid) ---------- */
+.dp-card {
+    background: #fff;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+/* DevExtreme's default theme rounds the corners of its internal tables
+   (noticeable on the fixed-left header cell) - force them flat since
+   .dp-card already provides the only rounded edge this section needs. */
+#datagrid,
+#datagrid .dx-datagrid,
+#datagrid table,
+#datagrid .dx-datagrid-headers,
+#datagrid .dx-datagrid-headers table,
+#datagrid .dx-datagrid-rowsview,
+#datagrid .dx-datagrid-rowsview table {
+    border-radius: 0 !important;
+}
+
+/* ---------- toolbar ---------- */
+.dp-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: #fff;
+    border-bottom: 1px solid #E3E8EE;
+    padding: 14px 16px;
+}
+
+.dp-toolbar-left, .dp-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.dp-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    background: #F9FAFB;
+    border-bottom: 1px solid #E3E8EE;
+    padding: 10px 16px;
+}
+
+.dp-filter-row label {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #66788A;
+    margin: 0 6px 0 0;
+}
+
+.dp-filter-row select {
+    font-size: 12.5px;
+    padding: 6px 10px;
+    border: 1.5px solid #D0D6DE;
+    border-radius: 7px;
+    background: #fff;
+    color: #344054;
+}
+
+.dp-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1.5px solid transparent;
+    white-space: nowrap;
+}
+
+.dp-btn-primary {
+    background: #1a6fd6;
+    border-color: #1a6fd6;
+    color: #fff;
+}
+
+.dp-btn-primary:hover { background: #0b4fb0; border-color: #0b4fb0; color: #fff; }
+
+.dp-btn-success {
+    background: #1E9E63;
+    border-color: #1E9E63;
+    color: #fff;
+}
+
+.dp-btn-success:hover { background: #17824F; border-color: #17824F; color: #fff; }
+
+.dp-btn-outline {
+    background: #fff;
+    border-color: #D0D6DE;
+    color: #344054;
+}
+
+.dp-btn-outline:hover { background: #F4F6F8; }
+
+.dp-btn-outline-danger {
+    background: #fff;
+    border-color: #F3C1C1;
+    color: #C62828;
+}
+
+.dp-btn-outline-danger:hover { background: #FDECEA; }
+
+.dp-btn-outline-success {
+    background: #fff;
+    border-color: #B7E6CC;
+    color: #1E7E34;
+}
+
+.dp-btn-outline-success:hover { background: #E6F4EA; }
+
+.dp-btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+.dp-dropdown-menu {
+    font-size: 12.5px;
+    border-radius: 8px;
+    border: 1px solid #E3E8EE;
+    box-shadow: 0 10px 30px -10px rgba(20,40,100,.25);
+    padding: 6px;
+}
+
+.dp-dropdown-menu > li > a,
+.dp-dropdown-menu > li > button {
+    border-radius: 6px;
+    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: none;
+    color: #344054;
+    font-size: 12.5px;
+}
+
+.dp-dropdown-menu > li > a:hover,
+.dp-dropdown-menu > li > button:hover:not([disabled]) {
+    background: #F4F6F8;
+}
+
+.dp-dropdown-menu > li > button[disabled] {
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+.dp-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.dp-search i {
+    position: absolute;
+    left: 11px;
+    color: #98A2B3;
+    font-size: 12.5px;
+    pointer-events: none;
+}
+
+.dp-search input {
+    width: 220px;
+    padding: 8px 12px 8px 30px;
+    border: 1.5px solid #D0D6DE;
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: #344054;
+    outline: none;
+}
+
+.dp-search input:focus {
+    border-color: #1a6fd6;
+    box-shadow: 0 0 0 3px rgba(26,111,214,.12);
+}
+
+.dp-icon-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1.5px solid #D0D6DE;
+    background: #fff;
+    color: #344054;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dp-icon-btn:hover { background: #F4F6F8; }
+.dp-icon-btn.active { background: #E7F1FB; border-color: #1a6fd6; color: #1a6fd6; }
+
+/* ---------- grid card wrapper ---------- */
+.box-body {
+    background: #fff;
+    padding: 0;
+}
+
+#datagrid .dx-datagrid-headers {
+    background: #F9FAFB;
+    color: #667085;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    font-weight: 700;
+}
+
+/* ---------- action column: preview + kebab ---------- */
+.dp-act-eye {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1.5px solid #D0D6DE;
+    background: #fff;
+    color: #344054;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dp-act-eye:hover { background: #F4F6F8; }
+
+.dp-act-kebab {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1.5px solid #D0D6DE;
+    background: #fff;
+    color: #344054;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+}
+
+.dp-act-kebab:hover { background: #F4F6F8; }
+
+.dp-menu-download i,
+.dp-menu-preview i { color: #1a6fd6; }
+
+.dp-menu-distribution i { color: #6C3FB5; }
+.dp-menu-history i { color: #B36B00; }
+.dp-menu-delete i { color: #C62828; }
+.dp-menu-approve i { color: #1E9E63; }
+.dp-menu-reject i { color: #C62828; }
+.dp-menu-send i { color: #3949AB; }
+.dp-menu-location i { color: #B36B00; }

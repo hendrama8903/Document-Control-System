@@ -31,6 +31,7 @@ namespace DMS.Models
         public virtual DbSet<DocumentDistribution>? DocumentDistribution { get; set; }
         public virtual DbSet<DocumentControlMaintenance>? P4DMaintenance { get; set; }
         public virtual DbSet<DocumentControlMaintenance>? UserDashboard { get; set; }
+        public virtual DbSet<UserDashboardDocument>? UserDashboardSearch { get; set; }
         public virtual DbSet<DocumentControlMaintenance>? DocumentControlDashboard { get; set; }
         public virtual DbSet<ApprovalHeader>? ApprovalHeader { get; set; }
         public virtual DbSet<ApprovalDetail>? ApprovalDetail { get; set; }
@@ -49,6 +50,11 @@ namespace DMS.Models
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
+            // Read-only FromSqlRaw projection over TB_R_CTRL_DOCUMENT (see UserDashboardDocument.cs) -
+            // keyless so EF doesn't require a linking relationship with DocumentControlMaintenance,
+            // which also maps to this table for its own (different) FromSqlRaw queries.
+            builder.Entity<UserDashboardDocument>().HasNoKey().ToView(null);
+
             builder.Entity<MSystem>().HasKey(table => new
             {
                 table.SYSTEM_TYPE,

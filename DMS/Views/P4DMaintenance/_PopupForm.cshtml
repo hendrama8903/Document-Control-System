@@ -1,93 +1,255 @@
-﻿<div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
-    <div class="modal-dialog modal-md">
+<style>
+    #modalAddEdit .modal-dialog {
+        width: 700px;
+        max-width: 94vw;
+    }
+
+    #modalAddEdit .modal-content {
+        display: flex;
+        flex-direction: column;
+        max-height: 90vh;
+        border: none;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    /* header */
+    #modalAddEdit .adf-header {
+        flex: none;
+        background: linear-gradient(135deg, #1a6fd6, #0b4fb0);
+        color: #fff;
+        padding: 16px 22px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    #modalAddEdit .adf-header-icon {
+        flex: none;
+        width: 38px;
+        height: 38px;
+        border-radius: 9px;
+        background: rgba(255,255,255,.18);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+
+    #modalAddEdit .adf-header-title {
+        font-size: 15.5px;
+        font-weight: 700;
+    }
+
+    #modalAddEdit .adf-header-sub {
+        font-size: 12px;
+        color: rgba(255,255,255,.85);
+        margin-top: 1px;
+    }
+
+    #modalAddEdit .adf-close {
+        margin-left: auto;
+        background: transparent;
+        border: none;
+        color: rgba(255,255,255,.9);
+        font-size: 18px;
+        line-height: 1;
+        padding: 6px;
+        cursor: pointer;
+    }
+
+    #modalAddEdit .adf-close:hover { color: #fff; }
+
+    /* body */
+    #modalAddEdit .modal-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        background: #fff;
+        padding: 20px 24px;
+    }
+
+    /* colored section band (in place of Document Preparation's white cards -
+       P4D only has two real groups of fields, so full sidebar/section-card
+       chrome would be overkill here) */
+    #modalAddEdit .adf-band {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 8px;
+        margin: 0 0 14px;
+        font-size: 13.5px;
+        font-weight: 700;
+        color: #1D2939;
+    }
+
+    #modalAddEdit .adf-band + .adf-band {
+        margin-top: 22px;
+    }
+
+    #modalAddEdit .adf-band-icon {
+        flex: none;
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11.5px;
+        color: #fff;
+    }
+
+    #modalAddEdit .adf-band-blue { background: #EAF2FC; }
+    #modalAddEdit .adf-band-blue .adf-band-icon { background: #1a6fd6; }
+
+    #modalAddEdit .adf-band-green { background: #EAF8EF; }
+    #modalAddEdit .adf-band-green .adf-band-icon { background: #1E9E5A; }
+
+    #modalAddEdit .form-group {
+        margin-bottom: 14px;
+    }
+
+    #modalAddEdit .form-group > .control-label {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 12.5px;
+    }
+
+    /* fields that are always auto-filled / non-editable */
+    #modalAddEdit .adf-locked-wrap {
+        position: relative;
+    }
+
+    #modalAddEdit .adf-locked-wrap .form-control[disabled],
+    #modalAddEdit .adf-locked-wrap .form-control:disabled {
+        background: #F1F3F5 !important;
+        color: #66788A;
+        cursor: not-allowed;
+    }
+
+    #modalAddEdit .adf-locked-wrap i.fa-lock {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #98A2B3;
+        font-size: 12px;
+        pointer-events: none;
+    }
+
+    /* sticky footer */
+    #modalAddEdit .modal-footer {
+        flex: none;
+        background: #fff;
+        border-top: 1px solid #E3E8EE;
+        padding: 14px 22px;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    /* Bootstrap 3's clearfix pseudo-elements become phantom flex items
+       and throw off alignment, so drop them here. */
+    #modalAddEdit .modal-footer::before,
+    #modalAddEdit .modal-footer::after {
+        content: none;
+    }
+
+    #modalAddEdit .btn-adf-cancel {
+        background: #fff;
+        border: 1px solid #D0D5DD;
+        color: #344054;
+    }
+
+    #modalAddEdit .btn-adf-cancel:hover {
+        background: #F9FAFB;
+        color: #344054;
+    }
+</style>
+
+<div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
         <div class="modal-content">
-            <!-- Modal Header -->
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-                <h4 class="modal-title" id="modal-title">Add / Edit @ViewData["Title"]</h4>
+            <!-- Header -->
+            <div class="adf-header">
+                <div class="adf-header-icon"><i class="fa fa-file-text-o"></i></div>
+                <div>
+                    <div class="adf-header-title" id="modal-title">Add / Edit @ViewData["Title"]</div>
+                    <div class="adf-header-sub">Fill in the document information below</div>
+                </div>
+                <button type="button" class="adf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
             </div>
 
-            <!-- Modal Body -->
+            <!-- Body -->
             <div class="modal-body">
+                <div class="adf-band adf-band-blue">
+                    <div class="adf-band-icon"><i class="fa fa-file-text-o"></i></div>
+                    Document Information
+                </div>
+
                 <div class="row">
-                    <div class="col-lg-12 form-horizontal" style="margin-top:15px; margin-left:15px">
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Document No <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        @*<input class="form-control" id="addEditDocumentNo" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />*@
-                                        <select class="form-control" id="addEditDocumentNo"></select>
-                                        <input class="form-control" id="addEditDocumentId" type="hidden" />
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="col-md-6 form-group">
+                        <label class="control-label">Document No <span class="text-red">*</span></label>
+                        @*<input class="form-control" id="addEditDocumentNo" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />*@
+                        <select class="form-control" id="addEditDocumentNo"></select>
+                        <input class="form-control" id="addEditDocumentId" type="hidden" />
+                    </div>
+                    <div class="col-md-6 form-group" id="divRevision">
+                        <label class="control-label">Revision</label>
+                        <div class="adf-locked-wrap">
+                            <input class="form-control" id="addEditRevision" type="text" disabled="disabled" />
+                            <i class="fa fa-lock"></i>
                         </div>
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Document Name <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditDocumentName" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    </div>
+                </div>
 
-                        <div class="row" id="divRevision">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Revision</label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditRevision" type="text" disabled="disabled" />
-                                    </div>
-                                </div>
-                            </div>
+                <div class="row">
+                    <div class="col-md-12 form-group">
+                        <label class="control-label">Document Name <span class="text-red">*</span></label>
+                        <div class="adf-locked-wrap">
+                            <input class="form-control" id="addEditDocumentName" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
+                            <i class="fa fa-lock"></i>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="row" id="divDivision">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Division <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditDivision" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
-                                    </div>
-                                </div>
-                            </div>
+                <div class="adf-band adf-band-green">
+                    <div class="adf-band-icon"><i class="fa fa-sitemap"></i></div>
+                    Organization
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 form-group" id="divDivision">
+                        <label class="control-label">Division <span class="text-red">*</span></label>
+                        <div class="adf-locked-wrap">
+                            <input class="form-control" id="addEditDivision" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
+                            <i class="fa fa-lock"></i>
                         </div>
-
-                        <div class="row" id="divDepartment">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Department <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditDepartment" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
-                                    </div>
-                                </div>
-                            </div>
+                    </div>
+                    <div class="col-md-6 form-group" id="divDepartment">
+                        <label class="control-label">Department <span class="text-red">*</span></label>
+                        <div class="adf-locked-wrap">
+                            <input class="form-control" id="addEditDepartment" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
+                            <i class="fa fa-lock"></i>
                         </div>
+                    </div>
+                </div>
 
-                        <div class="row" id="divLocation">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Location <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditLocation" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
+                <div class="row" id="divLocation">
+                    <div class="col-md-12 form-group">
+                        <label class="control-label">Location <span class="text-red">*</span></label>
+                        <input class="form-control" id="addEditLocation" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
                     </div>
                 </div>
             </div>
 
-            <!-- Modal Footer -->
+            <!-- Sticky Footer -->
             <div class="modal-footer">
-                <div class="col-xs-12 text-right">
-                    <button type="button" class="btn btn-primary" id="btn_save" style="width: 80px;">Save</button>
-                    <button type="button" class="btn btn-danger" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>
-                </div>
+                <button type="button" class="btn btn-adf-cancel" id="btn_cancel" data-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
+                <button type="button" class="btn btn-primary" id="btn_save"><i class="fa fa-save"></i> Save</button>
             </div>
         </div>
     </div>

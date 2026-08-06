@@ -1,29 +1,31 @@
-            <!-- RECOMMIT DINA -->
-<div class="box-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:0 0 14px 0;">
-    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+<!-- RECOMMIT DINA -->
+<div class="box-header dp-toolbar">
+    <div class="dp-toolbar-left">
         @if ((bool)ViewData["Add"])
         {
-            <button type="button" class="btn btn-success btn-sm" id="btn_add" style="min-width: 84px;"><i class="fa fa-plus"></i> Add</button>
+            <button type="button" class="btn dp-btn dp-btn-primary" id="btn_add"><i class="fa fa-plus"></i> Add Document</button>
         }
         @if ((bool)ViewData["Edit"])
         {
-            <button type="button" class="btn btn-warning btn-sm" id="btn_edit" style="min-width: 84px;"><i class="fa fa-pencil-square-o"></i> Edit</button>
+            <button type="button" class="btn dp-btn dp-btn-outline" id="btn_edit"><i class="fa fa-pencil-square-o"></i> Edit</button>
         }
         @if ((bool)ViewData["Delete"])
         {
-            <button type="button" class="btn btn-danger btn-sm" id="btn_delete" style="min-width: 84px;"><i class="fa fa-trash-o"></i> Delete</button>
+            <button type="button" class="btn dp-btn dp-btn-outline-danger" id="btn_delete"><i class="fa fa-trash-o"></i> Delete</button>
         }
         @if ((bool)ViewData["Approve"])
         {
-            <button type="button" class="btn btn-success btn-sm" id="btn_approval" style="min-width: 84px;"><i class="fa fa-check"></i> Approval</button>
+            <button type="button" class="btn dp-btn dp-btn-outline-success" id="btn_approval"><i class="fa fa-check"></i> Approval</button>
         }
-        <button type="button" class="btn btn-default btn-sm" id="btn_history" style="min-width: 84px;" disabled><i class="fa fa-history"></i> History</button>
+        <button type="button" class="btn dp-btn dp-btn-outline" id="btn_history" disabled><i class="fa fa-history"></i> History</button>
     </div>
-    <div>
-        @*@if ((bool)ViewData["Download"])
-        {*@
-        <button type="button" class="btn btn-primary btn-sm" id="btn_download" style="min-width: 110px;"><i class="fa fa-download"></i> Download</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
-        @*}*@
+    <div class="dp-toolbar-right">
+        <div class="dp-search">
+            <i class="fa fa-search"></i>
+            <input type="text" id="txtGridSearch" placeholder="Search document...">
+        </div>
+        <button type="button" class="dp-icon-btn" id="btn_toggleFilters" title="Show/hide column filters"><i class="fa fa-filter"></i></button>
+        <button type="button" class="dp-icon-btn" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
+        <button type="button" class="btn dp-btn dp-btn-outline" id="btn_download"><i class="fa fa-download"></i> Export</button>
     </div>
 </div>

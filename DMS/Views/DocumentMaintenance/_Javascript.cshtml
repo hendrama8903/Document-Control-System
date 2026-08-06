@@ -1185,7 +1185,7 @@
         $("#addEditExternal").prop("checked", false);
         $("#addEditImpactToOtherDocument").prop("checked", false);
 
-        $('#addEditDocumentUpload').filestyle('clear');
+        clearDocumentUpload();
 
         $('#addEditDocumentType').prop('disabled', false);
         $('#addEditClassified').prop('disabled', true);
@@ -1433,22 +1433,12 @@
 
                         gFilePath = data.FILE_PATH;
                         gDocumentTypeId = data.DOCUMENT_ID;
-                        $('#inputContainer :input[type="text"]').val(data.FILE_PATH);
-                        if (data.FILE_PATH == null) {
-                            $('#editFileNameContainer').removeClass();
-                            $('#editFileNameContainer').addClass('col-sm-8');
+
+                        updateEditCurrentFileDisplay(data.FILE_PATH);
+                        if (data.FILE_PATH != null && "@ViewData["Delete-FilePath"]" != "False") {
+                            $('#btn_delete_filepath').show();
+                        } else {
                             $('#btn_delete_filepath').hide();
-                        }
-                        else {
-                            if ("@ViewData["Delete-FilePath"]" == "False") {
-                                $('#editFileNameContainer').removeClass();
-                                $('#editFileNameContainer').addClass('col-sm-8');
-                                $('#btn_delete_filepath').hide();
-                            } else {
-                                $('#editFileNameContainer').removeClass();
-                                $('#editFileNameContainer').addClass('col-sm-7');
-                                $('#btn_delete_filepath').show();
-                            }
                         }
 
                         if (data.EXTERNAL_FLAG == "1") {
@@ -1655,6 +1645,16 @@
             link = link.replace("-1", gAttachmentPath);
             link = link.replace("-2", gDocumentId);
             link = link.replace("-3", "1");
+            window.open(link, '_blank');
+        } else {
+            showErrorMesgGrowl("This data does not have an attachment");
+        }
+    }
+
+    function onExcelPreview(filePath) {
+        if (filePath !== "null" && filePath !== null) {
+            var link = '@Html.Raw(Url.Action("ExcelViewerPreview", "DocumentMaintenance", new { filePath = "-1" }))';
+            link = link.replace("-1", encodeURIComponent(filePath));
             window.open(link, '_blank');
         } else {
             showErrorMesgGrowl("This data does not have an attachment");

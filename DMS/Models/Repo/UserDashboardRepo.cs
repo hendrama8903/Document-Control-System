@@ -26,7 +26,7 @@ namespace DMS.Models.Repo
         #endregion
 
 
-        public IList<DocumentControlMaintenance> Search(DocumentControlMaintenance data, string loginUser, DBContext db, int? PageNumber, int? PageSize)
+        public IList<UserDashboardDocument> Search(DocumentControlMaintenance data, string loginUser, DBContext db, int? PageNumber, int? PageSize)
         {
             List<SqlParameter> param = new List<SqlParameter>
             {
@@ -44,7 +44,7 @@ namespace DMS.Models.Repo
 
             string query = "EXEC [dbo].[sp_UserDashboard_Search] @DOCUMENT_TRANSACTION_ID, @DOCUMENT_CODE, @DOCUMENT_NAME, @DIVISION, " +
                 "@DEPARTMENT_ID, @DEPARTMENT_CODE, @YEAR, @LOGIN_USER, @PageNumber, @PageSize";
-            IList<DocumentControlMaintenance> Result = db.UserDashboard.FromSqlRaw<DocumentControlMaintenance>(query, param.ToArray()).ToList();
+            IList<UserDashboardDocument> Result = db.UserDashboardSearch.FromSqlRaw<UserDashboardDocument>(query, param.ToArray()).ToList();
 
 
             return Result;
