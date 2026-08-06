@@ -1416,6 +1416,59 @@ namespace DMS.Controllers
             }
         }
 
+        // Contoh integrasi DevExpress.AspNetCore.Spreadsheet: tampilkan file Excel
+        // apa adanya di browser (bukan hasil convert ke PDF). filePath = path relatif
+        // terhadap wwwroot, sama seperti yang dipakai ViewAttachment.
+        [HttpGet]
+        public IActionResult SpreadsheetPreview(string filePath)
+        {
+            string webRootPath = Environment.WebRootPath;
+            string fullPath = webRootPath + filePath;
+
+            if (!System.IO.File.Exists(fullPath))
+            {
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                ViewBag.ErrorMessage = "File Not Found";
+                return View("Error500");
+            }
+
+            ViewData["Title"] = "Spreadsheet Preview";
+            ViewData["PhysicalPath"] = fullPath;
+            ViewData["WorkDirectory"] = System.IO.Path.Combine(webRootPath, "Upload", "ATTACHMENT", "DOCUMENT_TEMP");
+
+            return View("~/Views/Preview/SpreadsheetPreview.cshtml");
+        }
+
+        // Handler wajib untuk widget Spreadsheet (DocumentRequestHandlerUrl) -
+        // dipanggil widget via AJAX untuk operasi dokumen (buka/print/dll).
+        [AcceptVerbs("GET", "POST")]
+        public IActionResult SpreadsheetRequest()
+        {
+            return DevExpress.AspNetCore.Spreadsheet.SpreadsheetRequestProcessor.GetResponse(HttpContext);
+        }
+
+        // Viewer Excel pakai library pihak ketiga yang sudah ter-bundle di
+        // wwwroot/lib/spreadsheet-viewer/ (Views/Preview/ExcelPreview.cshtml).
+        // filePath = path relatif terhadap wwwroot, sama seperti ViewAttachment/PDFPreview.
+        [HttpGet]
+        public IActionResult ExcelViewerPreview(string filePath)
+        {
+            string webRootPath = Environment.WebRootPath;
+            string fullPath = webRootPath + filePath;
+
+            if (!System.IO.File.Exists(fullPath))
+            {
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                ViewBag.ErrorMessage = "File Not Found";
+                return View("Error500");
+            }
+
+            ViewData["Title"] = "Excel Viewer Preview";
+            ViewData["FilePath"] = filePath;
+
+            return View("~/Views/Preview/ExcelPreview.cshtml");
+        }
+
         public class CustomFontResolver : IFontResolver
         {
             public byte[] GetFont(string faceName)

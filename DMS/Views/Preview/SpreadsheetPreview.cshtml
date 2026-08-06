@@ -1,0 +1,24 @@
+@using DevExpress.AspNetCore
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewData["Title"]</title>
+    @Html.DevExpress().StyleSheets()
+    @Html.DevExpress().Scripts()
+</head>
+<body>
+    @(Html.DevExpress().Spreadsheet("spreadsheetPreview")
+        .Width("100%")
+        .Height("98vh")
+        .ReadOnly(true)
+        .ShowSheetTabs(true)
+        .WorkDirectory(Convert.ToString(ViewData["WorkDirectory"]))
+        .DocumentRequestHandlerUrl(Url.Action("SpreadsheetRequest", "DocumentMaintenance"))
+        .Open(Convert.ToString(ViewData["PhysicalPath"])))
+</body>
+</html>

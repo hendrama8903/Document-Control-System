@@ -1,4 +1,5 @@
-﻿using DMS.Hubs;
+﻿using DevExpress.AspNetCore;
+using DMS.Hubs;
 using DMS.Models;
 using DMS.Services;
 using Hangfire;
@@ -24,6 +25,7 @@ namespace DMS
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddDevExpressControls();
             services.AddScoped<PrintingService>();
             services.AddControllersWithViews(options => options.Filters.Add<DynamicTitleFilter>());
             services.AddMemoryCache();
@@ -113,6 +115,7 @@ namespace DMS
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
+            app.UseDevExpressControls();
             app.UseSession();
             app.UseRouting();
             app.UseAuthentication();

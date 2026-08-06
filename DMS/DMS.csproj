@@ -10,6 +10,7 @@
     <PackageReference Include="Hangfire" Version="1.8.6" />
     <PackageReference Include="itext7" Version="8.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="6.0.36" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="6.0.8" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.8">
       <PrivateAssets>all</PrivateAssets>
@@ -41,5 +42,6 @@
     <PackageReference Include="DevExtreme.AspNet.Core" Version="22.2.11" />
     <PackageReference Include="DevExtreme.AspNet.Data" Version="2.9.2" />
     <PackageReference Include="DevExpress.Document.Processor" Version="22.2.11" />
+    <PackageReference Include="DevExpress.AspNetCore.Spreadsheet" Version="22.2.11" />
   </ItemGroup>
 </Project>

@@ -21,7 +21,10 @@
             })
             instance.loadWorkbook('@Url.Content("~")' + '@ViewData["FilePath"]', 0);
 
-            document.getElementsByClassName("icons-wrapper")[0].remove();
+            var iconsWrapper = document.getElementsByClassName("icons-wrapper")[0];
+            if (iconsWrapper) {
+                iconsWrapper.remove();
+            }
         })
         .catch(error => {
             console.error(error.message);
