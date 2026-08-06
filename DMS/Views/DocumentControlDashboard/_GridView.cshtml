@@ -427,13 +427,24 @@
         $("#btn_toggleStats").on("click", function () {
             var $btn = $(this);
             var $icon = $btn.find("i");
+            var $row = $("#dcdStatsRow");
 
-            $("#dcdStatsRow").slideToggle(200, function () {
-                var collapsed = $(this).is(":hidden");
-                $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
-                $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
-                $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-            });
+            $row.stop(true, true).animate(
+                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
+                {
+                    duration: 220,
+                    easing: "swing",
+                    progress: function () {
+                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+                    },
+                    complete: function () {
+                        var collapsed = !$row.is(":visible");
+                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
+                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
+                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+                    }
+                }
+            );
         });
 
         $("#btn_export").on("click", function () {
@@ -454,6 +465,12 @@
             grid.clearFilter();
             grid.searchByText("");
             grid.clearSelection();
+        });
+
+        // ---------- toolbar: refresh ----------
+        $("#btn_refresh").on("click", function () {
+            $("#datagrid").dxDataGrid("instance").clearSelection();
+            $("#datagrid").dxDataGrid("instance").refresh();
         });
 
         $(window).on("resize", function () {

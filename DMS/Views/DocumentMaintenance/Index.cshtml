@@ -1,4 +1,11 @@
 ﻿            <!-- RECOMMIT DINA -->
+<style>
+    /* site.css forces .fa-chevron-up/-down to white globally (for a dark-background
+       use elsewhere) - override back to the normal dp-icon-btn color for this button. */
+    #btn_toggleStats i {
+        color: #344054;
+    }
+</style>
 <section class="content">
     <div class="row">
         <div class="col-xs-12">
@@ -11,7 +18,8 @@
                             <p>Manage and prepare company documents easily and in a structured way.</p>
                         </div>
                     </div>
-                    <div class="dp-header-stats">
+                    <button type="button" class="dp-icon-btn" id="btn_toggleStats" title="Hide Summary Cards"><i class="fa fa-chevron-up"></i></button>
+                    <div class="dp-header-stats dp-header-stats-grid" id="dpStatsRow" style="justify-content:flex-start;">
                         <div class="dp-stat">
                             <i class="fa fa-file-o"></i>
                             <div>

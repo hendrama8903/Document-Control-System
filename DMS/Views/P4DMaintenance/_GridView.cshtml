@@ -260,21 +260,35 @@
             $("#datagrid").dxDataGrid("instance").showColumnChooser();
         });
 
+        // ---------- toggle summary/KPI cards, so the grid below can move up ----------
+        $("#btn_toggleStats").on("click", function () {
+            var $btn = $(this);
+            var $icon = $btn.find("i");
+            var $row = $("#dpStatsRow");
+
+            $row.stop(true, true).animate(
+                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
+                {
+                    duration: 220,
+                    easing: "swing",
+                    progress: function () {
+                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+                    },
+                    complete: function () {
+                        var collapsed = !$row.is(":visible");
+                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
+                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
+                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+                    }
+                }
+            );
+        });
+
         $(window).on("resize", function () {
             $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
         });
 
         $('body').tooltip({ selector: '[data-toggle="tooltip"]' });
-
-        // ---------- toolbar: search box (grid-wide text search) ----------
-        var gridSearchTimer = null;
-        $("#txtGridSearch").on("input", function () {
-            var value = $(this).val();
-            clearTimeout(gridSearchTimer);
-            gridSearchTimer = setTimeout(function () {
-                $("#datagrid").dxDataGrid("instance").searchByText(value);
-            }, 300);
-        });
 
         // ---------- toolbar: show/hide column filter row ----------
         $("#btn_toggleFilters").on("click", function () {

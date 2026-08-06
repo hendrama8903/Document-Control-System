@@ -127,41 +127,6 @@
         $("#udNotAcknowledgedPct").text(total > 0 ? (Math.round((notAcknowledged / total) * 1000) / 10) + "% of total documents" : "");
     }
 
-    // ---------- filter dropdowns (Status / Category / Department), populated from real loaded rows ----------
-    function populateFilterDropdowns(rows) {
-        rows = rows || [];
-
-        function fillSelect($select, entries) {
-            var current = $select.val();
-            var options = '<option value="">' + $select.data("all-label") + '</option>';
-
-            entries.forEach(function (e) {
-                options += '<option value="' + e.value + '">' + e.text + '</option>';
-            });
-
-            $select.html(options);
-            if (current && entries.some(function (e) { return e.value == current; })) {
-                $select.val(current);
-            }
-        }
-
-        var statusMap = {}, categoryMap = {}, departmentMap = {};
-
-        rows.forEach(function (r) {
-            if (r.DOC_STATUS_VAL) statusMap[r.DOC_STATUS_VAL] = r.DOC_STATUS_VAL;
-            if (r.CATEGORY_CODE) categoryMap[r.CATEGORY_CODE] = r.CATEGORY_CODE + (r.CATEGORY_NAME ? " - " + r.CATEGORY_NAME : "");
-            if (r.DEPARTMENT_CODE) departmentMap[r.DEPARTMENT_CODE] = r.DEPARTMENT_CODE + (r.DEPARTMENT_NAME ? " - " + r.DEPARTMENT_NAME : "");
-        });
-
-        function toEntries(map) {
-            return Object.keys(map).sort().map(function (k) { return { value: k, text: map[k] }; });
-        }
-
-        fillSelect($("#filterStatus").data("all-label", "All Status"), toEntries(statusMap));
-        fillSelect($("#filterCategory").data("all-label", "All Category"), toEntries(categoryMap));
-        fillSelect($("#filterDepartment").data("all-label", "All Department"), toEntries(departmentMap));
-    }
-
     var udCategoryPillClasses = ["dms-pill-info", "dms-pill-success", "dms-pill-warning", "dms-pill-primary", "dms-pill-default"];
     function udCategoryPillClass(code) {
         var sum = 0;
@@ -189,7 +154,6 @@
                 }).done(function (result) {
                     var rows = result.data == "" ? [] : result.data;
                     updateHeaderStats(rows);
-                    populateFilterDropdowns(rows);
                     d.resolve(rows);
                 }).fail(function () {
                     d.reject("Data loading error");
@@ -493,31 +457,32 @@
             $("#datagrid").dxDataGrid("instance").showColumnChooser();
         });
 
+        // ---------- toggle summary/KPI cards, so the grid below can move up ----------
+        $("#btn_toggleStats").on("click", function () {
+            var $btn = $(this);
+            var $icon = $btn.find("i");
+            var $row = $("#udStatsRow");
+
+            $row.stop(true, true).animate(
+                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
+                {
+                    duration: 220,
+                    easing: "swing",
+                    progress: function () {
+                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+                    },
+                    complete: function () {
+                        var collapsed = !$row.is(":visible");
+                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
+                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
+                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+                    }
+                }
+            );
+        });
+
         $("#btn_export").on("click", function () {
             window.location.href = "@Url.Action("DownloadExcel", "UserDashboard")";
-        });
-
-        // ---------- toolbar: search box (grid-wide text search) ----------
-        var gridSearchTimer = null;
-        $("#txtGridSearch").on("input", function () {
-            var value = $(this).val();
-            clearTimeout(gridSearchTimer);
-            gridSearchTimer = setTimeout(function () {
-                $("#datagrid").dxDataGrid("instance").searchByText(value);
-            }, 300);
-        });
-
-        // ---------- filter dropdowns: Status / Category / Department ----------
-        $("#filterStatus").on("change", function () {
-            $("#datagrid").dxDataGrid("instance").columnOption("DOC_STATUS_VAL", "filterValue", $(this).val() || null);
-        });
-
-        $("#filterCategory").on("change", function () {
-            $("#datagrid").dxDataGrid("instance").columnOption("CATEGORY_CODE", "filterValue", $(this).val() || null);
-        });
-
-        $("#filterDepartment").on("change", function () {
-            $("#datagrid").dxDataGrid("instance").columnOption("DEPARTMENT_CODE", "filterValue", $(this).val() || null);
         });
 
         // ---------- toolbar: show/hide column filter row ("More Filters") ----------
@@ -531,11 +496,14 @@
         // ---------- toolbar: reset ----------
         $("#btn_resetFilters").on("click", function () {
             var grid = $("#datagrid").dxDataGrid("instance");
-            $("#txtGridSearch").val("");
-            $("#filterStatus, #filterCategory, #filterDepartment").val("");
             grid.clearFilter();
-            grid.searchByText("");
             grid.clearSelection();
+        });
+
+        // ---------- toolbar: refresh ----------
+        $("#btn_refresh").on("click", function () {
+            $("#datagrid").dxDataGrid("instance").clearSelection();
+            $("#datagrid").dxDataGrid("instance").refresh();
         });
 
         $(window).on("resize", function () {

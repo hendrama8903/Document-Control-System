@@ -1,35 +1,14 @@
             <!-- RECOMMIT DINA -->
-<div class="dp-toolbar">
-    <div class="dp-toolbar-left">
-        @if ((bool)ViewData["Acknowledge"])
-        {
+@if ((bool)ViewData["Acknowledge"])
+{
+    <div class="dp-toolbar">
+        <div class="dp-toolbar-left">
             <button type="button" class="dp-btn dp-btn-success" id="btn_acknowledge"><i class="fa fa-share-square-o"></i> Acknowledge</button>
-        }
-        <div class="dp-search">
-            <i class="fa fa-search"></i>
-            <input type="text" id="txtGridSearch" placeholder="Search document number, name, or keyword..." />
         </div>
     </div>
-</div>
+}
 <div class="dp-filter-row">
-    <div>
-        <label>Status</label>
-        <select id="filterStatus">
-            <option value="">All Status</option>
-        </select>
-    </div>
-    <div>
-        <label>Category</label>
-        <select id="filterCategory">
-            <option value="">All Category</option>
-        </select>
-    </div>
-    <div>
-        <label>Department</label>
-        <select id="filterDepartment">
-            <option value="">All Department</option>
-        </select>
-    </div>
     <button type="button" class="dp-btn dp-btn-outline" id="btn_toggleFilters"><i class="fa fa-filter"></i> More Filters</button>
     <button type="button" class="dp-btn dp-btn-outline" id="btn_resetFilters"><i class="fa fa-refresh"></i> Reset</button>
+    <button type="button" class="dp-btn dp-btn-outline" id="btn_refresh"><i class="fa fa-refresh"></i> Refresh</button>
 </div>
