@@ -33,6 +33,7 @@ namespace DMS.Models
         public virtual DbSet<DocumentControlMaintenance>? UserDashboard { get; set; }
         public virtual DbSet<UserDashboardDocument>? UserDashboardSearch { get; set; }
         public virtual DbSet<DocumentControlMaintenance>? DocumentControlDashboard { get; set; }
+        public virtual DbSet<DocumentControlDashboardDocument>? DocumentControlDashboardSearch { get; set; }
         public virtual DbSet<ApprovalHeader>? ApprovalHeader { get; set; }
         public virtual DbSet<ApprovalDetail>? ApprovalDetail { get; set; }
         public virtual DbSet<PositionMaster>? PositionMaster { get; set; }
@@ -54,6 +55,7 @@ namespace DMS.Models
             // keyless so EF doesn't require a linking relationship with DocumentControlMaintenance,
             // which also maps to this table for its own (different) FromSqlRaw queries.
             builder.Entity<UserDashboardDocument>().HasNoKey().ToView(null);
+            builder.Entity<DocumentControlDashboardDocument>().HasNoKey().ToView(null);
 
             builder.Entity<MSystem>().HasKey(table => new
             {

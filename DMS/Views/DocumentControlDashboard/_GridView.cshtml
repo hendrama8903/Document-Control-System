@@ -29,10 +29,55 @@
     .dms-pill-primary { background: #E8EAF6; color: #3949AB; }
     .dms-pill-default { background: #EEF0F2; color: #5A5F66; }
     .dms-pill-danger { background: #FDECEA; color: #C62828; }
+
+    .dcd-doc-link {
+        color: #1a6fd6;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .dcd-doc-link:hover { text-decoration: underline; }
+
+    .dcd-owner-dept {
+        display: block;
+        font-size: 10.5px;
+        color: #98A2B3;
+        margin-top: 1px;
+    }
+
+    .dcd-info-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        padding: 10px 16px;
+        border-top: 1px solid #E3E8EE;
+        background: #F7FAFF;
+        font-size: 11.5px;
+        color: #475467;
+    }
+
+    .dcd-info-bar .dcd-info-msg { display: flex; align-items: center; gap: 7px; }
+    .dcd-info-bar .dcd-info-msg i { color: #1a6fd6; }
+
+    .dcd-legend { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .dcd-legend span { display: inline-flex; align-items: center; gap: 5px; }
+    .dcd-legend i.fa-check-circle { color: #1E9E63; }
+    .dcd-legend i.fa-clock-o { color: #B36B00; }
+    .dcd-legend i.fa-times-circle { color: #C62828; }
 </style>
 
 <div class="box-body">
     <div id="datagrid"></div>
+    <div class="dcd-info-bar">
+        <div class="dcd-info-msg"><i class="fa fa-info-circle"></i> Click on document number or eye icon to view document details.</div>
+        <div class="dcd-legend">
+            <span><i class="fa fa-check-circle"></i> Effective</span>
+            <span><i class="fa fa-clock-o"></i> Review Soon &mdash; due for review within 30 days</span>
+            <span><i class="fa fa-times-circle"></i> Obsolete &mdash; no longer in use</span>
+        </div>
+    </div>
 </div>
 
 <script type="text/javascript">
@@ -41,23 +86,54 @@
         return rows.length > 0 ? rows[0] : null;
     }
 
-    function updateActionButtons() {
-        var row = getSelectedRowData();
-        var sendable = row != null && row.STATUS == 0;
-
-        $("#btn_send").prop("disabled", !sendable);
-    }
-
     function computeGridHeight() {
         var gridTop = $("#datagrid").offset().top;
         var footerHeight = $("#divFooter").outerHeight(true) || 0;
 
-        return Math.max(300, $(window).height() - gridTop - footerHeight - 40);
+        return Math.max(300, $(window).height() - gridTop - footerHeight - 70);
+    }
+
+    // ---------- KPI cards (Total / Effective / Need Review / Obsolete / Pending Acknowledgement) ----------
+    function updateHeaderStats(rows) {
+        rows = rows || [];
+        var total = rows.length;
+        var effective = 0, needReview = 0, obsolete = 0, pendingAck = 0;
+        var today = moment().startOf("day");
+        var in30Days = moment().startOf("day").add(30, "days");
+
+        rows.forEach(function (r) {
+            if (r.DOC_STATUS == "5") effective++;
+            if (r.DOC_STATUS == "4") obsolete++;
+
+            if (r.NEXT_REVIEW_DATE) {
+                var reviewDate = moment(r.NEXT_REVIEW_DATE).startOf("day");
+                if (!reviewDate.isBefore(today) && !reviewDate.isAfter(in30Days)) needReview++;
+            }
+
+            if (r.ACK_TOTAL != null && r.ACK_DONE != null && r.ACK_DONE < r.ACK_TOTAL) pendingAck++;
+        });
+
+        $("#dcdTotal").text(total);
+        $("#dcdEffective").text(effective);
+        $("#dcdNeedReview").text(needReview);
+        $("#dcdObsolete").text(obsolete);
+        $("#dcdPendingAck").text(pendingAck);
+
+        $("#dcdEffectivePct").text(total > 0 ? (Math.round((effective / total) * 1000) / 10) + "% of total" : "");
+    }
+
+    var dcdCategoryPillClasses = ["dms-pill-info", "dms-pill-success", "dms-pill-warning", "dms-pill-primary", "dms-pill-default"];
+    function dcdCategoryPillClass(code) {
+        var sum = 0;
+        for (var i = 0; i < (code || "").length; i++) sum += code.charCodeAt(i);
+        return dcdCategoryPillClasses[sum % dcdCategoryPillClasses.length];
+    }
+
+    function dcdOpenDocument(row) {
+        onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
     }
 
     $(document).ready(function () {
-        $("#btn_send").prop("disabled", true);
-
         var gridStore = new DevExpress.data.CustomStore({
             key: "DOCUMENT_CTRL_ID",
             loadMode: "raw",
@@ -74,7 +150,9 @@
                         initialMode: false
                     }
                 }).done(function (result) {
-                    d.resolve(result.data == "" ? [] : result.data);
+                    var rows = result.data == "" ? [] : result.data;
+                    updateHeaderStats(rows);
+                    d.resolve(rows);
                 }).fail(function () {
                     d.reject("Data loading error");
                 });
@@ -93,13 +171,13 @@
             sorting: { mode: "none" },
             noDataText: "Data not found.",
             height: computeGridHeight(),
-            filterRow: { visible: true, applyFilter: "auto" },
+            filterRow: { visible: false, applyFilter: "auto" },
             headerFilter: { visible: true },
             toolbar: { visible: false },
             selection: {
                 mode: "multiple",
                 showCheckBoxesMode: "always",
-                allowSelectAll: false
+                allowSelectAll: true
             },
             paging: { pageSize: 10 },
             pager: {
@@ -115,13 +193,6 @@
                 mode: "select"
             },
             columnFixing: { enabled: true },
-            onSelectionChanged: function (e) {
-                if (e.selectedRowKeys.length > 1) {
-                    e.component.selectRows(e.currentSelectedRowKeys, false);
-                    return;
-                }
-                updateActionButtons();
-            },
             columns: [
                 { type: "selection", width: 40, fixed: true, fixedPosition: "left" },
                 {
@@ -138,57 +209,167 @@
                         container.text(pageIndex * pageSize + options.row.rowIndex + 1);
                     }
                 },
-                { dataField: "DOCUMENT_CODE", caption: "Document No", fixed: true, fixedPosition: "left" },
+                {
+                    dataField: "DOCUMENT_CODE",
+                    caption: "Document No",
+                    fixed: true,
+                    fixedPosition: "left",
+                    cellTemplate: function (container, options) {
+                        $("<span>").addClass("dcd-doc-link").text(options.data.DOCUMENT_CODE)
+                            .on("click", function () { dcdOpenDocument(options.data); })
+                            .appendTo(container);
+                    }
+                },
                 { dataField: "DOCUMENT_NAME", caption: "Document Name" },
                 {
-                    caption: "Division",
-                    width: 220,
-                    calculateCellValue: function (row) {
-                        return row.DIVISION != null ? row.DIVISION + " - " + row.DIVISION_NAME : "";
+                    dataField: "CATEGORY_CODE",
+                    caption: "Category",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+                        if (!row.CATEGORY_CODE) return;
+
+                        $("<span>")
+                            .addClass("dms-pill " + dcdCategoryPillClass(row.CATEGORY_CODE))
+                            .attr("title", row.CATEGORY_NAME || "")
+                            .text(row.CATEGORY_CODE)
+                            .appendTo(container);
                     }
                 },
                 {
-                    caption: "Department",
-                    width: 260,
-                    calculateCellValue: function (row) {
-                        return row.DEPARTMENT_CODE != null ? row.DEPARTMENT_CODE + " - " + row.DEPARTMENT_NAME : "";
+                    dataField: "REVISION",
+                    caption: "Revision",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.REVISION;
+                        $("<span>").addClass("dms-pill dms-pill-info").text("Rev. " + (value != null ? value : 0)).appendTo(container);
                     }
                 },
-                { dataField: "CLASSIFIED_VAL", caption: "Classified" },
-                { dataField: "REVISION", caption: "Revision", alignment: "center" },
                 {
-                    dataField: "STATUS",
+                    dataField: "DOC_STATUS_VAL",
                     caption: "Status",
                     alignment: "center",
                     cellTemplate: function (container, options) {
                         var row = options.data;
-                        var pillClass = "dms-pill dms-pill-danger";
-                        var labelText = row.STATUS_VAL;
-                        var icon = "fa-times-circle";
+                        var pillClass = "dms-pill-default";
+                        var icon = "fa-question-circle";
 
-                        if (row.STATUS == 0) {
-                            pillClass = "dms-pill dms-pill-info";
-                            labelText = "REQUESTED";
-                            icon = "fa-clock-o";
-                        } else if (row.STATUS == 1) {
-                            pillClass = "dms-pill dms-pill-warning";
-                            icon = "fa-hourglass-half";
-                        } else if (row.STATUS == 5) {
-                            pillClass = "dms-pill dms-pill-primary";
-                            icon = "fa-paper-plane";
-                        } else if (row.STATUS == 2) {
-                            pillClass = "dms-pill dms-pill-success";
-                            icon = "fa-check-circle";
+                        switch (row.DOC_STATUS) {
+                            case "0": pillClass = "dms-pill-info"; icon = "fa-clock-o"; break;
+                            case "1": pillClass = "dms-pill-success"; icon = "fa-check-circle"; break;
+                            case "2": pillClass = "dms-pill-danger"; icon = "fa-times-circle"; break;
+                            case "3": pillClass = "dms-pill-default"; icon = "fa-trash-o"; break;
+                            case "4": pillClass = "dms-pill-danger"; icon = "fa-ban"; break;
+                            case "5": pillClass = "dms-pill-success"; icon = "fa-check-circle"; break;
                         }
 
-                        $("<span>").addClass(pillClass).html('<i class="fa ' + icon + '"></i> ' + labelText).appendTo(container);
+                        $("<span>").addClass("dms-pill " + pillClass).html('<i class="fa ' + icon + '"></i> ' + (row.DOC_STATUS_VAL || "-")).appendTo(container);
                     }
                 },
-                { dataField: "CREATED_BY", caption: "Created By" },
+                {
+                    dataField: "DOCUMENT_DATE",
+                    caption: "Effective Date",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.DOCUMENT_DATE;
+                        container.text(value != null ? moment(value).format("DD MMM YYYY") : "");
+                    }
+                },
+                {
+                    dataField: "NEXT_REVIEW_DATE",
+                    caption: "Next Review",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.NEXT_REVIEW_DATE;
+                        if (value == null) { container.text(""); return; }
+
+                        var reviewDate = moment(value).startOf("day");
+                        var overdue = reviewDate.isBefore(moment().startOf("day"));
+
+                        $("<span>")
+                            .css({ color: overdue ? "#C62828" : "#B36B00", fontWeight: 600 })
+                            .text(reviewDate.format("DD MMM YYYY"))
+                            .appendTo(container);
+                    }
+                },
+                {
+                    dataField: "OWNER_FULL_NAME",
+                    caption: "Document Owner",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+                        $("<span>").text(row.OWNER_FULL_NAME || "-").appendTo(container);
+                        if (row.DEPARTMENT_NAME) {
+                            $("<span>").addClass("dcd-owner-dept").text(row.DEPARTMENT_NAME).appendTo(container);
+                        }
+                    }
+                },
+                {
+                    caption: "Acknowledgement",
+                    alignment: "center",
+                    calculateCellValue: function (row) {
+                        return (row.ACK_DONE != null ? row.ACK_DONE : 0) + "/" + (row.ACK_TOTAL != null ? row.ACK_TOTAL : 0);
+                    },
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+                        var total = row.ACK_TOTAL != null ? row.ACK_TOTAL : 0;
+                        var done = row.ACK_DONE != null ? row.ACK_DONE : 0;
+                        var complete = total > 0 && done >= total;
+
+                        $("<span>").css({ fontWeight: 700, display: "block" }).text(done + " / " + total).appendTo(container);
+                        $("<span>")
+                            .css({ fontSize: "10.5px", fontWeight: 600, color: complete ? "#1E9E63" : "#B36B00" })
+                            .text(complete ? "Read" : "Pending")
+                            .appendTo(container);
+                    }
+                },
+                {
+                    dataField: "DEPARTMENT_CODE",
+                    caption: "Department",
+                    calculateDisplayValue: function (row) {
+                        return row.DEPARTMENT_CODE != null ? row.DEPARTMENT_CODE + " - " + row.DEPARTMENT_NAME : "";
+                    }
+                },
+                {
+                    dataField: "CLASSIFIED_VAL",
+                    caption: "Classification",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+                        if (!row.CLASSIFIED_VAL) return;
+
+                        var pillClass = row.CLASSIFIED_VAL.toUpperCase().indexOf("RAHASIA") >= 0 ? "dms-pill-danger" : "dms-pill-default";
+                        $("<span>").addClass("dms-pill " + pillClass).text(row.CLASSIFIED_VAL).appendTo(container);
+                    }
+                },
+                {
+                    caption: "Last Updated",
+                    alignment: "right",
+                    calculateCellValue: function (row) {
+                        return row.CHANGED_DT || row.CREATED_DT;
+                    },
+                    cellTemplate: function (container, options) {
+                        var value = options.data.CHANGED_DT || options.data.CREATED_DT;
+                        container.text(value != null ? moment(value).format("DD MMM YYYY HH:mm") : "");
+                    }
+                },
+                { dataField: "LOCATION", caption: "Location", visible: false },
+                { dataField: "REFERENCE_NO", caption: "Reference No", visible: false },
+                {
+                    dataField: "STATUS_VAL",
+                    caption: "Registration Status",
+                    visible: false,
+                    calculateCellValue: function (row) {
+                        return row.STATUS == 0 ? "REQUESTED" : row.STATUS_VAL;
+                    }
+                },
+                { dataField: "ITEM_CHANGED", caption: "Item Changed", visible: false },
+                { dataField: "REASON", caption: "Reason", visible: false },
+                { dataField: "CREATED_BY", caption: "Created By", visible: false },
                 {
                     dataField: "CREATED_DT",
                     caption: "Created Date",
                     alignment: "right",
+                    visible: false,
                     cellTemplate: function (container, options) {
                         var value = options.data.CREATED_DT;
                         container.text(value != null ? moment(value).format("DD-MM-YYYY HH:mm") : "");
@@ -196,13 +377,34 @@
                 },
                 { dataField: "CHANGED_BY", caption: "Changed By", visible: false },
                 {
-                    dataField: "CHANGED_DT",
-                    caption: "Changed Date",
-                    alignment: "right",
-                    visible: false,
+                    caption: "Action",
+                    alignment: "center",
+                    width: 90,
+                    allowHiding: false,
+                    allowFiltering: false,
+                    fixed: true,
+                    fixedPosition: "right",
                     cellTemplate: function (container, options) {
-                        var value = options.data.CHANGED_DT;
-                        container.text(value != null ? moment(value).format("DD-MM-YYYY HH:mm") : "");
+                        var row = options.data;
+
+                        container.css("white-space", "nowrap");
+
+                        $("<button>")
+                            .attr({ type: "button", title: "View" })
+                            .addClass("dp-act-eye")
+                            .html('<i class="fa fa-eye"></i>')
+                            .on("click", function () { dcdOpenDocument(row); })
+                            .appendTo(container);
+
+                        $("<button>")
+                            .attr({ type: "button", title: "Download" })
+                            .addClass("dp-act-eye")
+                            .css("margin-left", "6px")
+                            .html('<i class="fa fa-download"></i>')
+                            .on("click", function () {
+                                onDownloadAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+                            })
+                            .appendTo(container);
                     }
                 }
             ],
@@ -221,8 +423,43 @@
             $("#datagrid").dxDataGrid("instance").showColumnChooser();
         });
 
+        // ---------- toggle summary/KPI cards, so the grid below can move up ----------
+        $("#btn_toggleStats").on("click", function () {
+            var $btn = $(this);
+            var $icon = $btn.find("i");
+
+            $("#dcdStatsRow").slideToggle(200, function () {
+                var collapsed = $(this).is(":hidden");
+                $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
+                $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
+                $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+            });
+        });
+
+        $("#btn_export").on("click", function () {
+            window.location.href = "@Url.Action("DownloadExcel", "DocumentControlDashboard")";
+        });
+
+        // ---------- toolbar: show/hide column filter row ("More Filters") ----------
+        $("#btn_toggleFilters").on("click", function () {
+            var grid = $("#datagrid").dxDataGrid("instance");
+            var visible = !grid.option("filterRow.visible");
+            grid.option("filterRow.visible", visible);
+            $(this).toggleClass("active", visible);
+        });
+
+        // ---------- toolbar: reset ----------
+        $("#btn_resetFilters").on("click", function () {
+            var grid = $("#datagrid").dxDataGrid("instance");
+            grid.clearFilter();
+            grid.searchByText("");
+            grid.clearSelection();
+        });
+
         $(window).on("resize", function () {
             $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
         });
+
+        $('body').tooltip({ selector: '[data-toggle="tooltip"]' });
     });
 </script>

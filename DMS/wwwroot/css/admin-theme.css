@@ -1416,7 +1416,8 @@ body.adm-body {
 /* ---------- unified card wrapper (toolbar + grid) ---------- */
 .dp-card {
     background: #fff;
-    border-radius: 5px;
+    border: 1px solid #E3E8EE;
+    border-radius: 12px;
     overflow: hidden;
 }
 

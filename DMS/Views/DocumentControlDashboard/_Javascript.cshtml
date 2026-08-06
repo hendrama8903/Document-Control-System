@@ -41,6 +41,41 @@
         sendDocument();
     });
 
+    function onViewAttachment(attachment, documentId) {
+        gFilePath = attachment;
+        gDocumentTransactionId = documentId;
+        viewAttachment();
+    }
+
+    function viewAttachment() {
+        if (gFilePath !== "null" && gFilePath !== null && gFilePath !== "") {
+            var link = '@Html.Raw(Url.Action("ViewAttachment", "DocumentMaintenance", new { FILE_PATH = "-1", DOCUMENT_TRANSACTION_ID = "-2", type = "-3" }))';
+            link = link.replace("-1", gFilePath);
+            link = link.replace("-2", gDocumentTransactionId);
+            link = link.replace("-3", "2");
+            window.open(link, '_blank');
+        } else {
+            showErrorMesgGrowl("This data does not have an attachment");
+        }
+    }
+
+    function onDownloadAttachment(attachment, documentId) {
+        gFilePath = attachment;
+        gDocumentTransactionId = documentId;
+        downloadAttachment();
+    }
+
+    function downloadAttachment() {
+        if (gFilePath !== "null" && gFilePath !== null && gFilePath !== "") {
+            var link = '@Html.Raw(Url.Action("downloadAttachment", "DocumentMaintenance", new { FILE_PATH = "-1", DOCUMENT_TRANSACTION_ID = "-2" }))';
+            link = link.replace("-1", gFilePath);
+            link = link.replace("-2", gDocumentTransactionId);
+            window.location.href = link;
+        } else {
+            showErrorMesgGrowl("This data does not have an attachment");
+        }
+    }
+
     function sendDocument() {
         popUpProgressHide();
         $.ajax({

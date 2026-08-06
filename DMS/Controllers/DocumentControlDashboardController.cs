@@ -10,6 +10,8 @@ using MDC.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
+using NPOI.SS.UserModel;
+using NPOI.XSSF.UserModel;
 using System.Data;
 using System.Globalization;
 using System.Text;
@@ -64,7 +66,7 @@ namespace DMS.Controllers
             ViewData["Send"] = HttpContext.Session.GetString("functionList").Contains("DOCUMENTCONTROLDASHBOARD-SEND");
 
 
-            ViewData["Title"] = "Distribution Approval";
+            ViewData["Title"] = "Document Control";
 
             return View();
         }
@@ -100,10 +102,14 @@ namespace DMS.Controllers
                 }
                 else
                 {
-                    data.OPERATION_TYPE = 2;
-
-                    var listData = P4DMaintenanceRepo.Search(data, null, db, pageNumber, pageSize);
-                    var dataCount = P4DMaintenanceRepo.Search(data, null, db, null, null).Count;
+                    // Deliberately no OPERATION_TYPE filter here (unlike the old
+                    // Distribution Approval behaviour of forcing =2/"Request" only):
+                    // this page now covers the whole Document Control register -
+                    // both user-requested entries (OPERATION_TYPE=2) and normal P4D
+                    // registrations (OPERATION_TYPE=1), across every status, replacing
+                    // the now-removed DocumentArchive module.
+                    var listData = DocumentControlDashboardRepo.Search(data, db, pageNumber, pageSize);
+                    var dataCount = DocumentControlDashboardRepo.Search(data, db, null, null).Count;
                     recordsTotal = dataCount;
                     var jsonData = new { draw = draw, recordsFiltered = recordsTotal, recordsTotal = recordsTotal, data = listData };
                     return Ok(jsonData);
@@ -360,6 +366,62 @@ namespace DMS.Controllers
             byte[] bytes = System.IO.File.ReadAllBytes(fullPath);
 
             return File(bytes, "application/force-download", fileName);
+        }
+
+        public IActionResult DownloadExcel()
+        {
+            IList<DocumentControlDashboardDocument> listData = DocumentControlDashboardRepo.Search(
+                new DocumentControlMaintenance(), db, null, null);
+
+            var memoryStream = new MemoryStream();
+            IWorkbook workbook = new XSSFWorkbook();
+            ISheet sheet = workbook.CreateSheet("Document Control");
+
+            string[] headers = {
+                "No", "Document No", "Document Name", "Category", "Revision", "Status",
+                "Effective Date", "Next Review", "Document Owner", "Acknowledged",
+                "Department", "Classification", "Last Updated"
+            };
+
+            IRow headerRow = sheet.CreateRow(0);
+            for (int col = 0; col < headers.Length; col++)
+            {
+                headerRow.CreateCell(col).SetCellValue(headers[col]);
+            }
+
+            int rowIndex = 1;
+            int no = 1;
+            foreach (DocumentControlDashboardDocument item in listData)
+            {
+                IRow row = sheet.CreateRow(rowIndex);
+                row.CreateCell(0).SetCellValue(no);
+                row.CreateCell(1).SetCellValue(item.DOCUMENT_CODE);
+                row.CreateCell(2).SetCellValue(item.DOCUMENT_NAME);
+                row.CreateCell(3).SetCellValue(item.CATEGORY_CODE);
+                row.CreateCell(4).SetCellValue(item.REVISION ?? 0);
+                row.CreateCell(5).SetCellValue(item.DOC_STATUS_VAL);
+                row.CreateCell(6).SetCellValue(item.DOCUMENT_DATE?.ToString("dd-MM-yyyy") ?? "");
+                row.CreateCell(7).SetCellValue(item.NEXT_REVIEW_DATE?.ToString("dd-MM-yyyy") ?? "");
+                row.CreateCell(8).SetCellValue(item.OWNER_FULL_NAME);
+                row.CreateCell(9).SetCellValue((item.ACK_DONE ?? 0) + "/" + (item.ACK_TOTAL ?? 0));
+                row.CreateCell(10).SetCellValue(item.DEPARTMENT_CODE + " - " + item.DEPARTMENT_NAME);
+                row.CreateCell(11).SetCellValue(item.CLASSIFIED_VAL);
+                row.CreateCell(12).SetCellValue((item.CHANGED_DT ?? item.CREATED_DT)?.ToString("dd-MM-yyyy HH:mm") ?? "");
+
+                rowIndex++;
+                no++;
+            }
+
+            for (int col = 0; col < headers.Length; col++)
+            {
+                sheet.AutoSizeColumn(col);
+            }
+
+            workbook.Write(memoryStream);
+            memoryStream.Position = 0;
+
+            return File(memoryStream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "DOCUMENT-CONTROL-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
 
         public JsonResult SendDocument(DocumentControlMaintenance data)

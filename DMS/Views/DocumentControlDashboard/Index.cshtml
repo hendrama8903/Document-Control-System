@@ -1,17 +1,79 @@
-﻿            <!-- RECOMMIT DINA -->
+            <!-- RECOMMIT DINA -->
+<style>
+    /* site.css forces .fa-chevron-up/-down to white globally (for a dark-background
+       use elsewhere) - override back to the normal dp-icon-btn color for this button. */
+    #btn_toggleStats i {
+        color: #344054;
+    }
+</style>
 <section class="content">
     <div class="row">
         <div class="col-xs-12">
             <div id="divTitle">
-                <div class="content-header">
-                    <h1>@ViewData["Title"]</h1>
+                <div class="dp-header">
+                    <div class="dp-header-left">
+                        <div class="dp-header-icon"><i class="fa fa-file-text-o"></i></div>
+                        <div>
+                            <h1>@ViewData["Title"]</h1>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <button type="button" class="dp-btn dp-btn-primary" id="btn_export"><i class="fa fa-file-excel-o"></i> Export</button>
+                        <a href="@Url.Action("Index", "Home")" class="dp-btn dp-btn-outline"><i class="fa fa-th-large"></i> Dashboard</a>
+                        <button type="button" class="dp-icon-btn" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
+                        <button type="button" class="dp-icon-btn" id="btn_toggleStats" title="Hide Summary Cards"><i class="fa fa-chevron-up"></i></button>
+                    </div>
+                    <div class="dp-header-stats dp-header-stats-grid" id="dcdStatsRow">
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon blue"><i class="fa fa-file-text-o"></i></div>
+                            <div>
+                                <span>Total Documents</span>
+                                <b id="dcdTotal">-</b>
+                                <small>All registered documents</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon green"><i class="fa fa-check-circle"></i></div>
+                            <div>
+                                <span>Effective Documents</span>
+                                <b id="dcdEffective">-</b>
+                                <small id="dcdEffectivePct">&nbsp;</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon amber"><i class="fa fa-clock-o"></i></div>
+                            <div>
+                                <span>Need Review</span>
+                                <b id="dcdNeedReview">-</b>
+                                <small>Within 30 days</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon red"><i class="fa fa-times-circle"></i></div>
+                            <div>
+                                <span>Obsolete Documents</span>
+                                <b id="dcdObsolete">-</b>
+                                <small>No longer in use</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon purple"><i class="fa fa-users"></i></div>
+                            <div>
+                                <span>Pending Acknowledgement</span>
+                                <b id="dcdPendingAck">-</b>
+                                <small>Documents need action</small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div id="divSearch">
-                @Html.Partial("_SearchCriteria")
-            </div>
-            <div id="divGrid">
-                @Html.Partial("_GridView")
+            <div class="dp-card">
+                <div id="divSearch">
+                    @Html.Partial("_SearchCriteria")
+                </div>
+                <div id="divGrid">
+                    @Html.Partial("_GridView")
+                </div>
             </div>
         </div>
     </div>
