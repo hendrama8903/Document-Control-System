@@ -1,16 +1,81 @@
-﻿<section class="content">
+<style>
+    /* site.css forces .fa-chevron-up/-down to white globally (for a dark-background
+       use elsewhere) - override back to the normal dp-icon-btn color for this button. */
+    #btn_toggleStats i {
+        color: #344054;
+    }
+</style>
+<section class="content">
     <div class="row">
         <div class="col-xs-12">
-            <div id="divTitle" >
-                <div class="content-header">
-                    <h1>@ViewData["Title"]</h1>
+            <div id="divTitle">
+                <div class="dp-header">
+                    <div class="dp-header-left">
+                        <div class="dp-header-icon"><i class="fa fa-file-text-o"></i></div>
+                        <div>
+                            <h1>@ViewData["Title"]</h1>
+                            <p>Manage document master data in the system.</p>
+                        </div>
+                    </div>
+                    <div class="dp-header-actions">
+                        @if ((bool)ViewData["Add"])
+                        {
+                            <button type="button" class="dp-btn dp-btn-primary" id="btn_add"><i class="fa fa-plus"></i> Add Document</button>
+                        }
+                        @if ((bool)ViewData["Edit"])
+                        {
+                            <button type="button" class="dp-btn dp-btn-outline" id="btn_edit"><i class="fa fa-pencil-square-o"></i> Edit</button>
+                        }
+                        @if ((bool)ViewData["Delete"])
+                        {
+                            <button type="button" class="dp-btn dp-btn-outline-danger" id="btn_delete"><i class="fa fa-trash-o"></i> Delete</button>
+                        }
+                        <button type="button" class="dp-icon-btn" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
+                        <button type="button" class="dp-icon-btn" id="btn_toggleStats" title="Hide Summary Cards"><i class="fa fa-chevron-up"></i></button>
+                    </div>
+                    <div class="dp-header-stats dp-header-stats-grid" id="dmStatsRow">
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon blue"><i class="fa fa-file-text-o"></i></div>
+                            <div>
+                                <span>Total Documents</span>
+                                <b id="dmStatTotal">-</b>
+                                <small>All document categories</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon purple"><i class="fa fa-list"></i></div>
+                            <div>
+                                <span>Levels</span>
+                                <b id="dmStatLevels">-</b>
+                                <small>Distinct levels</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon green"><i class="fa fa-paperclip"></i></div>
+                            <div>
+                                <span>With Template</span>
+                                <b id="dmStatWithTemplate">-</b>
+                                <small>Has attached template</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon amber"><i class="fa fa-calendar"></i></div>
+                            <div>
+                                <span>Last Updated</span>
+                                <b id="dmStatLastUpdated" style="font-size:13px;">-</b>
+                                <small>&nbsp;</small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div id="divSearch">
-                @Html.Partial("_SearchCriteria")
-            </div>
-            <div id="divGrid">
-                @Html.Partial("_GridView")
+            <div class="dp-card">
+                <div id="divSearch">
+                    @Html.Partial("_SearchCriteria")
+                </div>
+                <div id="divGrid">
+                    @Html.Partial("_GridView")
+                </div>
             </div>
         </div>
     </div>

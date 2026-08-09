@@ -18,6 +18,7 @@
     var gDocumentName = null;
     var gDocumentDepartment = null;
     var gDocumentClassified = null;
+    var gDocumentCreatedDate = null;
     var gApprovalMode = null;
     var gImpactOther = null;
     var gReffNo = null;
@@ -152,6 +153,7 @@
         gDocumentName = row.DOCUMENT_TRANSACTION_NAME;
         gDocumentDepartment = row.DEPARTMENT_NAME;
         gDocumentClassified = row.CLASSIFIED_VAL;
+        gDocumentCreatedDate = row.CREATED_DT;
         gApprovalId = row.APPROVAL_ID;
 
         getApprovalHeader();
@@ -177,14 +179,12 @@
                     $('#approvalDocumentDepartment').html(gDocumentDepartment);
                     $('#approvalDocumentClassified').html(gDocumentClassified);
                     $('#approvalCreator').html(approvalHeaderData["CREATOR_NAME"]);
+                    $('#approvalCreatedDate').html(gDocumentCreatedDate ? moment(gDocumentCreatedDate).format("DD-MM-YYYY HH:mm:ss") : "-");
 
-                    if (approvalHeaderData["APPROVAL_STATUS"] == 0) {
-                        $('#approvalStatus').html('<span class="label label-info">' + approvalHeaderData["APPROVAL_STATUS_DESC"] + '</span>');
-                    } else if (approvalHeaderData["APPROVAL_STATUS"] == 1) {
-                        $('#approvalStatus').html('<span class="label label-success">' + approvalHeaderData["APPROVAL_STATUS_DESC"] + '</span>');
+                    if (approvalHeaderData["APPROVAL_STATUS"] == 1) {
                         $('#pengesahanLayout').show();
                     } else {
-                        $('#approvalStatus').html('<span class="label label-danger">' + approvalHeaderData["APPROVAL_STATUS_DESC"] + '</span>');
+                        $('#pengesahanLayout').hide();
                     }
                 } else {
                     showErrorMesgGrowl(result.message);
@@ -195,6 +195,70 @@
                 showErrorMesgGrowl(result);
             }
         });
+    }
+
+    // Satu sumber kebenaran untuk status per baris approval detail - dipakai
+    // stepper, tabel Approval Route, dan panel Approval Status supaya warnanya
+    // konsisten. "current" = ini langkah aktif (WORKFLOW_SEQ == CURRENT_SEQ,
+    // header masih berjalan); "upcoming" = STATUS 0 tapi belum giliran.
+    function getApprovalStepState(row) {
+        if (row["STATUS"] == 1) return "done";
+
+        if (row["STATUS"] == 0) {
+            if (approvalHeaderData != null &&
+                approvalHeaderData["CURRENT_SEQ"] == row["WORKFLOW_SEQ"] &&
+                approvalHeaderData["APPROVAL_STATUS"] == 0) {
+                return "current";
+            }
+            return "upcoming";
+        }
+
+        return "rejected";
+    }
+
+    function approvalStatusPillHtml(state) {
+        var cls = "dms-pill-info", icon = "fa-hourglass-half", text = "PENDING";
+
+        if (state === "done") { cls = "dms-pill-success"; icon = "fa-check"; text = "APPROVED"; }
+        else if (state === "current") { cls = "dms-pill-warning"; icon = "fa-clock-o"; text = "WAITING"; }
+        else if (state === "rejected") { cls = "dms-pill-danger"; icon = "fa-times"; text = "REJECTED"; }
+
+        return '<span class="dms-pill ' + cls + '"><i class="fa ' + icon + '"></i> ' + text + '</span>';
+    }
+
+    // Kotak "APPROVAL STATUS" di sebelah Document Information - dipanggil
+    // setelah approvalHeaderData & approvalDetailData dua-duanya siap.
+    function updateApprovalStatusPanel() {
+        if (approvalHeaderData == null) return;
+
+        var $panel = $('#approvalStatusPanel');
+        $panel.removeClass('adf-status-info adf-status-success adf-status-warning adf-status-danger');
+
+        var status = approvalHeaderData["APPROVAL_STATUS"];
+
+        if (status == 1) {
+            $panel.addClass('adf-status-success');
+            $('#approvalStatusIcon').attr('class', 'fa fa-check');
+            $('#approvalStatusPre').text('STATUS');
+            $('#approvalStatusText').text('APPROVED');
+            $('#approvalStatusHint').text('This document has completed the approval process.');
+        } else if (status == 0) {
+            var currentRow = (approvalDetailData || []).filter(function (r) {
+                return r["WORKFLOW_SEQ"] == approvalHeaderData["CURRENT_SEQ"];
+            })[0];
+
+            $panel.addClass('adf-status-warning');
+            $('#approvalStatusIcon').attr('class', 'fa fa-clock-o');
+            $('#approvalStatusPre').text('WAITING FOR');
+            $('#approvalStatusText').text(currentRow ? currentRow["APPROVER_NAME"].toUpperCase() : "-");
+            $('#approvalStatusHint').text('Please review and take action.');
+        } else {
+            $panel.addClass('adf-status-danger');
+            $('#approvalStatusIcon').attr('class', 'fa fa-times');
+            $('#approvalStatusPre').text('STATUS');
+            $('#approvalStatusText').text('REJECTED');
+            $('#approvalStatusHint').text('This document was rejected. See remarks below.');
+        }
     }
 
     function getApprovalDetail() {
@@ -210,6 +274,7 @@
                     var data = result.data;
                     approvalDetailData = data;
                     renderApprovalStepper();
+                    updateApprovalStatusPanel();
 
                     $("#approvalgrid").dataTable().fnDestroy();
                     $('#approvalgrid').DataTable({
@@ -222,26 +287,34 @@
                         "data": data,
                         "columns": [
                             {
-                                data: 'APPROVER_NAME'
-                            },
-                            {
-                                render: function (data, type, row) {
-                                    if (row["STATUS"] == 0) {
-                                        return '<span class="label label-info">' + row["STATUS_DESC"] + '</span>';
-                                    } else if (row["STATUS"] == 1) {
-                                        return '<span class="label label-success">' + row["STATUS_DESC"] + '</span>';
-                                    } else {
-                                        return '<span class="label label-danger">' + row["STATUS_DESC"] + '</span>';
-                                    }
+                                render: function (data, type, row, meta) {
+                                    return meta.row + 1;
                                 }
                             },
                             {
                                 render: function (data, type, row) {
-                                    if (row["CHANGED_DT"] != null) {
-                                        return moment(row["CHANGED_DT"]).format("DD-MM-YYYY HH:mm:ss");
-                                    } else {
-                                        return "";
-                                    }
+                                    return '<span class="approver-name">' + row["APPROVER_NAME"] + '</span>';
+                                }
+                            },
+                            {
+                                data: 'LABEL',
+                                defaultContent: '<span class="cell-muted">&ndash;</span>'
+                            },
+                            {
+                                render: function (data, type, row) {
+                                    return approvalStatusPillHtml(getApprovalStepState(row));
+                                }
+                            },
+                            {
+                                render: function (data, type, row) {
+                                    return row["CHANGED_DT"]
+                                        ? moment(row["CHANGED_DT"]).format("DD-MM-YYYY HH:mm:ss")
+                                        : '<span class="cell-muted">&ndash;</span>';
+                                }
+                            },
+                            {
+                                render: function (data, type, row) {
+                                    return row["REMARK"] ? row["REMARK"] : '<span class="cell-muted">&ndash;</span>';
                                 }
                             },
                             {
@@ -250,26 +323,24 @@
                                         if (approvalHeaderData["CURRENT_SEQ"] == row["WORKFLOW_SEQ"] &&
                                             row["APPROVER"] === '@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("USERNAME"))'
                                             && approvalHeaderData["APPROVAL_STATUS"] == 0) {
-                                            return '<button class="btn btn-info" id="btn_approval_form" onClick="onApprovalForm(' + row["WORKFLOW_SEQ"] + ', \'' + row["APPROVER"] + '\')">Approval</button>';
+                                            return '<button class="btn-review" id="btn_approval_form" onClick="onApprovalForm(' + row["WORKFLOW_SEQ"] + ', \'' + row["APPROVER"] + '\')"><i class="fa fa-eye"></i> Review</button>';
                                         }
                                     }
-                                    return null;
+                                    return '<span class="cell-muted">&ndash;</span>';
                                 }
                             }
                         ],
                         "columnDefs": [
-                            { "width": "15%", "targets": 1 },
-                            { "width": "15%", "targets": 2 },
-                            { "width": "10%", "targets": 3 },
-                            {
-                                "targets": [1],
-                                "className": "text-center",
-                            },
-                            {
-                                "targets": [2],
-                                "className": "text-center",
-                            },
-                        ]
+                            { "width": "36px", "targets": 0, "className": "text-center" },
+                            { "targets": [3], "className": "text-center" },
+                            { "width": "150px", "targets": 4 },
+                            { "width": "110px", "targets": 6, "className": "text-center" }
+                        ],
+                        "createdRow": function (rowEl, rowData) {
+                            if (getApprovalStepState(rowData) === "current") {
+                                $(rowEl).addClass("current-row");
+                            }
+                        }
                     });
 
                     $('#modalApproval').on('shown.bs.modal', function () {
@@ -310,28 +381,39 @@
                         "data": data,
                         "columns": [
                             {
-                                data: 'APPROVER_NAME'
-                            },
-                            {
                                 render: function (data, type, row) {
-                                    if (row["CHANGED_DT"] != null) {
-                                        return moment(row["CHANGED_DT"]).format("DD-MM-YYYY HH:mm:ss");
-                                    } else {
-                                        return "";
-                                    }
+                                    var approved = row["STATUS"] == 1;
+                                    return '<div class="history-approver">' +
+                                        '<div class="history-icon' + (approved ? '' : ' rejected') + '"><i class="fa ' + (approved ? 'fa-check' : 'fa-times') + '"></i></div>' +
+                                        '<div><div class="history-name">' + row["APPROVER_NAME"] + '</div>' +
+                                        '<div class="history-role">' + (row["LABEL"] || "") + '</div></div>' +
+                                        '</div>';
                                 }
                             },
                             {
-                                data: 'REMARK'
+                                render: function (data, type, row) {
+                                    var approved = row["STATUS"] == 1;
+                                    var cls = approved ? "dms-pill-success" : "dms-pill-danger";
+                                    var icon = approved ? "fa-check" : "fa-times";
+                                    return '<span class="dms-pill ' + cls + '"><i class="fa ' + icon + '"></i> ' + (approved ? "APPROVED" : "REJECTED") + '</span>';
+                                }
+                            },
+                            {
+                                render: function (data, type, row) {
+                                    return row["CHANGED_DT"]
+                                        ? moment(row["CHANGED_DT"]).format("DD-MM-YYYY HH:mm:ss")
+                                        : '<span class="cell-muted">&ndash;</span>';
+                                }
+                            },
+                            {
+                                render: function (data, type, row) {
+                                    return row["REMARK"] ? row["REMARK"] : '<span class="cell-muted">&ndash;</span>';
+                                }
                             },
                         ],
                         "columnDefs": [
-                            {
-                                "targets": [1],
-                                "className": "text-center",
-                            },
-                            { "width": "15%", "targets": 0 },
-                            { "width": "15%", "targets": 1 },
+                            { "targets": [1], "className": "text-center" },
+                            { "width": "150px", "targets": 2 },
                         ]
                     });
 
@@ -349,10 +431,12 @@
         });
     }
 
-    // Visual progression Dibuat -> Menunggu Approval -> Approve/Reject, dibangun dari
-    // approvalHeaderData (langkah "Dibuat") + approvalDetailData (satu langkah per approver).
-    // Dipanggil setelah getApprovalDetail() selesai, karena getApprovalHeader() sudah
-    // dipanggil lebih dulu secara sinkron di onApprovalPrepare().
+    // Visual progression Created -> Approved/Waiting per approver, dibangun dari
+    // approvalHeaderData (langkah "Created") + approvalDetailData (satu langkah
+    // per approver). Dipanggil setelah getApprovalDetail() selesai, karena
+    // getApprovalHeader() sudah dipanggil lebih dulu secara sinkron di
+    // onApprovalPrepare(). Warna & state sama persis dengan getApprovalStepState()
+    // supaya konsisten dengan tabel Approval Route.
     function renderApprovalStepper() {
         if (approvalHeaderData == null || approvalDetailData == null) {
             return;
@@ -360,9 +444,9 @@
 
         var steps = [];
         steps.push({
-            label: "Dibuat",
+            title: "Created",
             sub: approvalHeaderData["CREATOR_NAME"] || "",
-            date: approvalHeaderData["CREATED_DT"],
+            date: gDocumentCreatedDate,
             state: "done"
         });
 
@@ -370,25 +454,16 @@
             return a["WORKFLOW_SEQ"] - b["WORKFLOW_SEQ"];
         });
 
-        var stopped = false;
         sortedDetail.forEach(function (row) {
-            var state;
-
-            if (stopped) {
-                state = "upcoming";
-            } else if (row["STATUS"] == 1) {
-                state = "done";
-            } else if (row["STATUS"] == 0) {
-                state = (approvalHeaderData["CURRENT_SEQ"] == row["WORKFLOW_SEQ"] && approvalHeaderData["APPROVAL_STATUS"] == 0)
-                    ? "current" : "upcoming";
-            } else {
-                state = "rejected";
-                stopped = true;
-            }
+            var state = getApprovalStepState(row);
+            var title = state === "done" ? "Approved"
+                : state === "current" ? "Waiting"
+                : state === "rejected" ? "Rejected"
+                : "Pending";
 
             steps.push({
-                label: row["APPROVER_NAME"],
-                sub: row["STATUS_DESC"] || "",
+                title: title,
+                sub: row["APPROVER_NAME"],
                 date: row["CHANGED_DT"],
                 state: state
             });
@@ -396,20 +471,23 @@
 
         var iconByState = {
             done: "fa-check",
-            current: "fa-hourglass-half",
+            current: "fa-clock-o",
             rejected: "fa-times",
-            upcoming: "fa-clock-o"
+            upcoming: ""
         };
 
         var html = "";
         steps.forEach(function (step, idx) {
             var dateHtml = step.date ? '<div class="stepper-date">' + moment(step.date).format("DD-MM-YYYY HH:mm") + "</div>" : "";
+            var iconHtml = iconByState[step.state] ? '<i class="fa ' + iconByState[step.state] + '"></i>' : "";
+            var badgeHtml = step.state === "current" ? '<div class="stepper-current-badge">CURRENT STEP</div>' : "";
 
             html += '<div class="stepper-step stepper-' + step.state + '">' +
-                        '<div class="stepper-icon"><i class="fa ' + iconByState[step.state] + '"></i></div>' +
-                        '<div class="stepper-label">' + step.label + "</div>" +
+                        '<div class="stepper-icon">' + iconHtml + '</div>' +
+                        '<div class="stepper-title">' + (idx + 1) + ". " + step.title + "</div>" +
                         '<div class="stepper-sub">' + step.sub + "</div>" +
                         dateHtml +
+                        badgeHtml +
                     "</div>";
 
             if (idx < steps.length - 1) {
@@ -1423,6 +1501,8 @@
                         $('#editRevision').prop('disabled', true);
 
                         $('#modalEdit-title').html("Edit Document Maintenance");
+                        $('#modalEdit-subtitle').text(data.DOCUMENT_CODE + " • Rev. " + data.REVISION);
+                        updateEditStatusPanel(data);
                         $('#editDocumentId').val(data.DOCUMENT_TRANSACTION_ID);
                         $('#editDocumentNo').val(data.DOCUMENT_CODE);
                         $('#editRevision').val(data.REVISION);

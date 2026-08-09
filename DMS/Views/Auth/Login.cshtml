@@ -7,16 +7,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DMS - Document Management System | Login</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@@400;500;600;700;800&family=Inter:wght@@400;500;600&display=swap" rel="stylesheet">
+<link href="~/css/fonts.css" rel="stylesheet">
 <style>
   :root{
     --blue-900:#0b1f4d;
-    --blue-800:#0f2a63;
-    --blue-700:#13328a;
-    --blue-600:#1a3fae;
-    --blue-500:#2451c9;
-    --blue-400:#4f7fe0;
+    --blue-800:#122a8f;
+    --blue-700:#1C3FA6;
+    --blue-600:#2450D8;
+    --blue-500:#3f63ea;
+    --blue-400:#6685f0;
     --blue-100:#e7edfb;
     --blue-50:#f2f6fd;
     --ink:#0e1b3d;
@@ -91,12 +90,12 @@
   .brand{
     display:flex;
     align-items:center;
-    gap:14px;
-    margin-bottom:clamp(10px, 2.4vh, 30px);
+    gap:18px;
+    margin-bottom:clamp(14px, 2.8vh, 34px);
   }
   .brand-icon{
-    width:clamp(50px,6vh,74px);
-    height:clamp(50px,6vh,74px);
+    width:clamp(66px,8.4vh,98px);
+    height:clamp(66px,8.4vh,98px);
     display:flex;
     align-items:center;
     justify-content:center;
@@ -105,16 +104,16 @@
   .brand-icon svg{width:56%;height:56%;}
   .brand-text h1{
     font-family:'Poppins',sans-serif;
-    font-size:clamp(20px,3vh,31px);
+    font-size:clamp(28px,6vh,44px);
     font-weight:800;
     color:var(--blue-900);
     letter-spacing:.5px;
     line-height:1;
   }
   .brand-text p{
-    font-size:clamp(10px,1.4vh,12.5px);
+    font-size:clamp(13px,1.8vh,16px);
     color:#5a6478;
-    margin-top:4px;
+    margin-top:6px;
     letter-spacing:.3px;
   }
 
@@ -145,11 +144,12 @@
     position:relative;
     width:100%;
     max-width:560px;
-    margin-bottom:clamp(10px,2vh,24px);
+    margin:0 0 clamp(10px,2vh,24px);
     flex:1;
     min-height:0;
     display:flex;
     align-items:center;
+    justify-content:center;
   }
   .illustration svg{width:100%; height:auto; max-height:100%; display:block;}
 
@@ -191,7 +191,7 @@
   .right{
     position:relative;
     z-index:2;
-    flex:0 0 clamp(300px, 27vw, 400px);
+    flex:0 0 clamp(280px, 22vw, 360px);
     height:100%;
     display:flex;
     align-items:center;
@@ -282,7 +282,7 @@
   input::placeholder{color:#a7aec0;}
   input:focus{
     border-color:var(--blue-500);
-    box-shadow:0 0 0 3px rgba(36,81,201,.12);
+    box-shadow:0 0 0 3px rgba(36,80,216,.12);
   }
   input#password{padding-right:40px;}
 
@@ -297,7 +297,10 @@
     align-items:center;
     gap:7px;
     font-size:clamp(11.5px,1.5vh,13px);
+    font-weight:400;
     color:#3a4459;
+    margin-bottom:0;
+    cursor:pointer;
   }
   .remember input{
     width:15px;height:15px;
@@ -314,6 +317,7 @@
 
   .btn-login{
     width:100%;
+    margin-top:clamp(30px,4.5vh,42px);
     padding:clamp(10px,1.9vh,13px);
     border:none;
     border-radius:9px;
@@ -420,6 +424,39 @@
     border:none;
   }
   .bootstrap-growl .close:hover{opacity:1;}
+
+  /* ===== TABLET / MOBILE — show login form only ===== */
+  @@media (max-width: 900px){
+    html, body{height:auto; min-height:100%; overflow-y:auto;}
+    body{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
+      padding:24px 16px;
+    }
+    .wrap{
+      background:transparent;
+      box-shadow:none;
+      border-radius:0;
+      width:100%;
+      max-width:400px;
+      height:auto;
+      max-height:none;
+      margin:0 auto;
+      padding:0;
+      gap:0;
+      overflow:visible;
+      justify-content:center;
+    }
+    .curve-bg, .dots, .left{display:none;}
+    .right{flex:none; width:100%; height:auto;}
+    .card-outer{max-width:400px; margin:0 auto; width:100%;}
+  }
+
+  @@media (max-width: 420px){
+    .card{padding:28px 20px 34px;}
+  }
 </style>
 </head>
 <body>
@@ -427,9 +464,9 @@
   <svg class="curve-bg" viewBox="0 0 1536 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="curveGrad" x1="10%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#a9c3f4"/>
-        <stop offset="40%" stop-color="#88abee"/>
-        <stop offset="100%" stop-color="#5f88e6"/>
+        <stop offset="0%" stop-color="#5b7bef"/>
+        <stop offset="45%" stop-color="#3a5aea"/>
+        <stop offset="100%" stop-color="#1c34b8"/>
       </linearGradient>
     </defs>
     <!-- outer light halo, creates the thin layered edge -->
@@ -451,7 +488,7 @@
   <div class="left">
     <div class="brand">
       <div class="brand-icon">
-        <img src="~/images/img_login2.png" alt="Folder icon" style="width:100%;height:100%;object-fit:contain;">
+        <img src="~/images/img_login2.png" alt="Folder icon" style="height:100%;object-fit:contain;">
       </div>
       <div class="brand-text">
         <h1>DMS</h1>
@@ -459,12 +496,12 @@
       </div>
     </div>
 
-    <h2 class="headline">Manage Documents More Easily, Securely and Systematically</h2>
+    <h2 class="headline">Manage Your Documents</h2>
     <div class="rule"></div>
-    <p class="desc">Store, manage, and find important documents quickly and securely in one integrated system.</p>
+   
 
     <div class="illustration">
-                <img src="~/images/img_login1.png"  alt="Document Management System illustration" style="width:100%;height:auto;max-height:100%;object-fit:contain;display:block;margin:0 auto;">
+                <img src="~/images/img_login1.png"  alt="Document Management System illustration" style="height:auto;max-height:100%;object-fit:contain;display:block;margin:0 auto;">
     </div>
 
     <div class="features">
@@ -504,18 +541,18 @@
       <div class="card">
         <div class="card-logo">
           <div class="card-logo-inner">
-            <img src="~/images/img_login2.png" alt="Folder icon" style="width:100%;height:100%;object-fit:contain;">
+            <img src="~/images/img_login2.png" alt="Folder icon" style="height:100%;object-fit:contain;">
           </div>
         </div>
         <h2>Welcome</h2>
-        <p class="sub">Please login to continue</p>
+        <p class="sub">Sign in to access your documents</p>
 
         <form id="loginForm">
           <div class="field">
-            <label for="username">Username / Email</label>
+            <label for="username">Username</label>
             <div class="input-group">
               <svg class="leading" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
-              <input type="text" id="username" name="username" placeholder="Enter username or email" autocomplete="username" required>
+              <input type="text" id="username" name="username" placeholder="Enter username" autocomplete="username" required>
             </div>
           </div>
 

@@ -89,7 +89,7 @@
             sorting: { mode: "none" },
             noDataText: "Data not found.",
             height: computeGridHeight(),
-            filterRow: { visible: true, applyFilter: "auto" },
+            filterRow: { visible: false, applyFilter: "auto" },
             headerFilter: { visible: true },
             toolbar: { visible: false },
             selection: {
@@ -296,6 +296,13 @@
             var visible = !grid.option("filterRow.visible");
             grid.option("filterRow.visible", visible);
             $(this).toggleClass("active", visible);
+        });
+
+        // ---------- toolbar: reset ----------
+        $("#btn_resetFilters").on("click", function () {
+            var grid = $("#datagrid").dxDataGrid("instance");
+            grid.clearFilter();
+            grid.clearSelection();
         });
 
         // ---------- toolbar: refresh ----------

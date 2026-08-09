@@ -76,7 +76,7 @@
             sorting: { mode: "none" },
             noDataText: "Data not found.",
             height: computeGridHeight(),
-            filterRow: { visible: true, applyFilter: "auto" },
+            filterRow: { visible: false, applyFilter: "auto" },
             headerFilter: { visible: true },
             toolbar: { visible: false },
             selection: {
@@ -250,7 +250,7 @@
                 {
                     caption: "Action",
                     alignment: "center",
-                    width: 100,
+                    width: 70,
                     allowHiding: false,
                     allowFiltering: false,
                     fixed: true,
@@ -259,15 +259,6 @@
                         var row = options.data;
 
                         container.css("white-space", "nowrap");
-
-                        $("<button>")
-                            .attr({ type: "button", title: "Preview" })
-                            .addClass("dp-act-eye")
-                            .html('<i class="fa fa-eye"></i>')
-                            .on("click", function () {
-                                previewDocument(row);
-                            })
-                            .appendTo(container);
 
                         $("<button>")
                             .attr({ type: "button", title: "More actions" })
@@ -325,6 +316,13 @@
             $(this).toggleClass("active", visible);
         });
 
+        // ---------- toolbar: reset ----------
+        $("#btn_resetFilters").on("click", function () {
+            var grid = $("#datagrid").dxDataGrid("instance");
+            grid.clearFilter();
+            grid.clearSelection();
+        });
+
         // ---------- toolbar: refresh ----------
         $("#btn_refresh").on("click", function () {
             $("#datagrid").dxDataGrid("instance").clearSelection();
@@ -349,15 +347,6 @@
         });
 
         $("#dpLastUpdated").text(latest ? latest.format("DD MMM YYYY") : "-");
-    }
-
-    // ---------- unified preview (Excel viewer for xlsx/xls, PDF preview otherwise) ----------
-    function previewDocument(row) {
-        if (row.FILE_PATH && /\.(xlsx|xls)$/i.test(row.FILE_PATH)) {
-            onExcelPreview(row.FILE_PATH);
-        } else {
-            onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
-        }
     }
 
     // ---------- per-row "more actions" kebab menu ----------
@@ -391,8 +380,12 @@
         var $menu = buildRowActionMenu();
         $menu.empty();
 
-        $menu.append(menuItem("dp-menu-preview", "fa-eye", "Preview", function () {
-            previewDocument(row);
+        $menu.append(menuItem("dp-menu-preview", "fa-file-pdf-o", "Preview PDF", function () {
+            onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+        }));
+
+        $menu.append(menuItem("dp-menu-preview", "fa-file-excel-o", "Preview Excel", function () {
+            onExcelPreview(row.FILE_PATH);
         }));
 
         var downloadLabel = "Download File";

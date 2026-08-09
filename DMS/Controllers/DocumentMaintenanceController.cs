@@ -1287,30 +1287,36 @@ namespace DMS.Controllers
                 // ter-scope divisi/department viewer (Search akan filter berdasarkan
                 // TB_M_USER_POS milik loginUser kalau diisi, yang bisa membuat dokumen
                 // current dari divisi lain salah dianggap obsolete).
-                bool isObsolete = documentMaintenanceRepo
+                DocumentMaintenance currentDocument = documentMaintenanceRepo
                     .Search(new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = documentMaintenance.DOCUMENT_TRANSACTION_ID }, null, db, 1, 1)
-                    .FirstOrDefault() == null;
-                // Document control staff (DOCUMENT_CONTROL_ACCESS) are viewing/printing the
-                // controlling master copy, so they get "MASTER" instead of "CONTROLLED COPY" -
-                // and see it on every view/print, not just on download like everyone else.
-                bool isDocumentControlViewer = GetDocumentAccessControl() == true;
-                string watermarkText;
-                bool shouldWatermark;
+                    .FirstOrDefault();
+                bool isObsolete = currentDocument == null;
+
+                // Stempel gambar (bukan teks) berdasarkan STATUS dokumen, bukan siapa yang
+                // login - request user 2026-08-09. DOC_STATUS: 1=Approved, 5=Published
+                // (Effective, di-set sp_P4DMaintenance_UpdateDistributionPublish begitu
+                // SEMUA department sudah acknowledge distribusinya). Stempel MASTER
+                // (cap_master.png, pojok kiri-atas) muncul begitu disetujui QMS; stempel
+                // CONTROLLED COPY (cap_controlledcopy.png, pojok kanan-bawah) DITAMBAHKAN
+                // LAGI (bukan menggantikan) begitu distribusi ke semua dept sudah
+                // di-acknowledge semua - jadi keduanya bisa tampil sekaligus di posisi beda.
+                bool isApprovedOrPublished = !isObsolete && (currentDocument.STATUS == "1" || currentDocument.STATUS == "5");
+                bool isFullyAcknowledged = !isObsolete && currentDocument.STATUS == "5";
+
+                string watermarkText = null;
+                bool shouldWatermark = false;
+                string masterStampPath = null;
+                string controlledCopyStampPath = null;
 
                 if (isObsolete)
                 {
                     watermarkText = "OBSOLETE";
                     shouldWatermark = true;
                 }
-                else if (isDocumentControlViewer)
-                {
-                    watermarkText = "MASTER";
-                    shouldWatermark = true;
-                }
                 else
                 {
-                    watermarkText = "CONTROLLED COPY";
-                    shouldWatermark = type == "3";
+                    if (isApprovedOrPublished) masterStampPath = webRootPath + "/images/cap_master.png";
+                    if (isFullyAcknowledged) controlledCopyStampPath = webRootPath + "/images/cap_controlledcopy.png";
                 }
 
                 string[] split = documentMaintenance.FILE_PATH.Split("/");
@@ -1346,17 +1352,23 @@ namespace DMS.Controllers
                     {
                         string servePath = cachedPdfRelative;
 
-                        if (shouldWatermark)
+                        if (shouldWatermark || masterStampPath != null || controlledCopyStampPath != null)
                         {
                             string watermarkedRelative = cachedPdfRelative.Replace(".pdf", "_wm.pdf");
                             string watermarkedFullPath = webRootPath + watermarkedRelative;
                             System.IO.File.Copy(cachedPdfFullPath, watermarkedFullPath, overwrite: true);
-                            AddWatermark(watermarkedFullPath, watermarkedFullPath, watermarkText);
+                            if (shouldWatermark) AddWatermark(watermarkedFullPath, watermarkedFullPath, watermarkText);
+                            else AddImageStamps(watermarkedFullPath, watermarkedFullPath, masterStampPath, controlledCopyStampPath);
                             servePath = watermarkedRelative;
                         }
 
                         ViewData["Title"] = "Document Preview";
-                        ViewData["FilePath"] = servePath; // ← pakai servePath, bukan cachedPdfRelative
+                        // Query-string cache-buster - file-nya SELALU di-regenerate ulang di
+                        // atas (overwrite: true) tiap request, tapi nama filenya tetap sama,
+                        // jadi tanpa ini browser bisa nyangkut nge-serve versi PDF lama dari
+                        // HTTP cache-nya sendiri walau isi file di server sudah beda (bug lama,
+                        // ketauan pas nambahin stempel gambar - request user 2026-08-09).
+                        ViewData["FilePath"] = servePath + "?v=" + DateTime.UtcNow.Ticks;
                         return View("~/Views/Preview/PDFPreview.cshtml");
                     }
                     // ✅ SAMPAI SINI
@@ -1395,17 +1407,19 @@ namespace DMS.Controllers
                 string convertedFullPath = webRootPath + convertedRelative;
                 string serveRelative = convertedRelative;
 
-                if (shouldWatermark)
+                if (shouldWatermark || masterStampPath != null || controlledCopyStampPath != null)
                 {
                     string watermarkedRelative = convertedRelative.Replace(".pdf", "_wm.pdf");
                     string watermarkedFullPath = webRootPath + watermarkedRelative;
                     System.IO.File.Copy(convertedFullPath, watermarkedFullPath, overwrite: true);
-                    AddWatermark(watermarkedFullPath, watermarkedFullPath, watermarkText);
+                    if (shouldWatermark) AddWatermark(watermarkedFullPath, watermarkedFullPath, watermarkText);
+                    else AddImageStamps(watermarkedFullPath, watermarkedFullPath, masterStampPath, controlledCopyStampPath);
                     serveRelative = watermarkedRelative;
                 }
 
                 ViewData["Title"] = "Document Preview";
-                ViewData["FilePath"] = serveRelative;
+                // Cache-buster - lihat komentar di cabang cached-PDF di atas.
+                ViewData["FilePath"] = serveRelative + "?v=" + DateTime.UtcNow.Ticks;
                 return View("~/Views/Preview/PDFPreview.cshtml");
             }
             catch (Exception ex)
@@ -1461,6 +1475,31 @@ namespace DMS.Controllers
                 Response.StatusCode = (int)HttpStatusCode.InternalServerError;
                 ViewBag.ErrorMessage = "File Not Found";
                 return View("Error500");
+            }
+
+            // Bundled spreadsheet-viewer JS lib cuma paham format OOXML (.xlsx) -
+            // file .xls lama (binary/HSSF) gagal dibuka dengan error "Sorry, this
+            // workbook file format is not supported yet." Convert dulu ke .xlsx
+            // pakai DevExpress Spreadsheet Document API (library yang sama dipakai
+            // ConvertToPdf untuk baca .xls), hasilnya di-cache di DOCUMENT_TEMP
+            // seperti pola cache PDF yang sudah ada di ViewAttachment.
+            string extension = GetFileExtension(System.IO.Path.GetFileName(fullPath));
+            if (extension != null && extension.Equals("xls", StringComparison.OrdinalIgnoreCase))
+            {
+                string convertedRelative = "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
+                    + System.IO.Path.GetFileNameWithoutExtension(fullPath) + ".xlsx";
+                string convertedFullPath = webRootPath + convertedRelative;
+
+                if (!System.IO.File.Exists(convertedFullPath))
+                {
+                    using (var workbook = new DevExpress.Spreadsheet.Workbook())
+                    {
+                        workbook.LoadDocument(fullPath);
+                        workbook.SaveDocument(convertedFullPath, DevExpress.Spreadsheet.DocumentFormat.Xlsx);
+                    }
+                }
+
+                filePath = convertedRelative;
             }
 
             ViewData["Title"] = "Excel Viewer Preview";
@@ -1530,6 +1569,58 @@ namespace DMS.Controllers
             // Save the modified document to the output file
             document.Save(outputFilePath);
         }
+
+        // Stempel gambar di pojok kanan-bawah tiap halaman (luar footer), sesuai
+        // mockup user 2026-08-09 - MASTER (cap_master.png) di posisi paling kanan,
+        // CONTROLLED COPY (cap_controlledcopy.png) DITAMBAHKAN LAGI persis di
+        // sebelah kirinya kalau dua-duanya berlaku sekaligus (dokumen approved DAN
+        // sudah fully-acknowledged). Beda dari AddWatermark: ini gambar asli
+        // (opacity penuh, kayak stempel tinta beneran), bukan teks transparan diagonal.
+        public void AddImageStamps(string inputFilePath, string outputFilePath, string masterImagePath, string controlledCopyImagePath)
+        {
+            const double stampWidth = 130; // points
+            const double margin = 20;
+            const double gap = 10;
+
+            PdfDocument document = PdfReader.Open(inputFilePath, PdfDocumentOpenMode.Modify);
+            document.Version = 17;
+
+            XImage masterImage = masterImagePath != null && System.IO.File.Exists(masterImagePath)
+                ? XImage.FromFile(masterImagePath) : null;
+            XImage controlledCopyImage = controlledCopyImagePath != null && System.IO.File.Exists(controlledCopyImagePath)
+                ? XImage.FromFile(controlledCopyImagePath) : null;
+
+            try
+            {
+                foreach (PdfPage page in document.Pages)
+                {
+                    using XGraphics gfx = XGraphics.FromPdfPage(page);
+
+                    double rightEdge = page.Width - margin;
+
+                    if (masterImage != null)
+                    {
+                        double h = stampWidth * masterImage.PixelHeight / masterImage.PixelWidth;
+                        gfx.DrawImage(masterImage, rightEdge - stampWidth, page.Height - h - margin, stampWidth, h);
+                        rightEdge -= stampWidth + gap;
+                    }
+
+                    if (controlledCopyImage != null)
+                    {
+                        double h = stampWidth * controlledCopyImage.PixelHeight / controlledCopyImage.PixelWidth;
+                        gfx.DrawImage(controlledCopyImage, rightEdge - stampWidth, page.Height - h - margin, stampWidth, h);
+                    }
+                }
+
+                document.Save(outputFilePath);
+            }
+            finally
+            {
+                masterImage?.Dispose();
+                controlledCopyImage?.Dispose();
+            }
+        }
+
         public string pengesahanModifiedfileName(string webRootPath, string filePath, DocumentMaintenance documentMaintenanceParam)
         {
             // ── 1. Ambil data document maintenance ──────────────────────────────────
@@ -2856,36 +2947,35 @@ namespace DMS.Controllers
                 if (!System.IO.File.Exists(fullPath))
                     return Json(new { status = false, message = "File Not Found" });
 
-                // Document control staff printing the current document get "MASTER"
-                // instead of "CONTROLLED COPY" - see ViewAttachment for the same rule.
-                bool isDocumentControlViewer = GetDocumentAccessControl() == true;
-
                 // Obsolete-control (Aug 2026): sama seperti ViewAttachment - dokumen yang
                 // sudah disupersede tidak lagi punya baris live di TB_R_DOCUMENT, jadi kalau
                 // tidak ketemu di sana berarti ini dokumen lama/obsolete. Sebelumnya print
                 // tidak pernah cek ini, jadi dokumen obsolete bisa dicetak tanpa watermark
                 // OBSOLETE sama sekali. loginUser sengaja null - ini cek eksistensi murni.
-                bool isObsolete = documentMaintenanceRepo
+                DocumentMaintenance currentDocument = documentMaintenanceRepo
                     .Search(new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = documentMaintenance.DOCUMENT_TRANSACTION_ID }, null, db, 1, 1)
-                    .FirstOrDefault() == null;
+                    .FirstOrDefault();
+                bool isObsolete = currentDocument == null;
 
-                string documentWatermarkText;
-                bool shouldWatermark;
+                // Stempel gambar berdasarkan status dokumen, bukan siapa yang login - lihat
+                // ViewAttachment untuk penjelasan lengkap aturannya (sama persis di sini).
+                bool isApprovedOrPublished = !isObsolete && (currentDocument.STATUS == "1" || currentDocument.STATUS == "5");
+                bool isFullyAcknowledged = !isObsolete && currentDocument.STATUS == "5";
+
+                string documentWatermarkText = null;
+                bool shouldWatermark = false;
+                string masterStampPath = null;
+                string controlledCopyStampPath = null;
 
                 if (isObsolete)
                 {
                     documentWatermarkText = "OBSOLETE";
                     shouldWatermark = true;
                 }
-                else if (isDocumentControlViewer)
-                {
-                    documentWatermarkText = "MASTER";
-                    shouldWatermark = true;
-                }
                 else
                 {
-                    documentWatermarkText = "CONTROLLED COPY";
-                    shouldWatermark = type == "3";
+                    if (isApprovedOrPublished) masterStampPath = webRootPath + "/images/cap_master.png";
+                    if (isFullyAcknowledged) controlledCopyStampPath = webRootPath + "/images/cap_controlledcopy.png";
                 }
 
                 string[] split = documentMaintenance.FILE_PATH.Split("/");
@@ -2902,9 +2992,11 @@ namespace DMS.Controllers
                     System.IO.File.Copy(fullPath, outputFullPath);
 
                     // outputFullPath sudah salinan sekali-pakai (bukan file asli/cache
-                    // bersama), jadi aman di-watermark langsung di tempat.
+                    // bersama), jadi aman di-watermark/stempel langsung di tempat.
                     if (shouldWatermark)
                         AddWatermark(outputFullPath, outputFullPath, documentWatermarkText);
+                    else if (masterStampPath != null || controlledCopyStampPath != null)
+                        AddImageStamps(outputFullPath, outputFullPath, masterStampPath, controlledCopyStampPath);
 
                     pengesahanModifiedfileNames = outputFileName;
                 }
@@ -2919,16 +3011,17 @@ namespace DMS.Controllers
                     {
                         pengesahanModifiedfileNames = cachedPdfRelative;
 
-                        if (shouldWatermark)
+                        if (shouldWatermark || masterStampPath != null || controlledCopyStampPath != null)
                         {
-                            // Jangan watermark file cache-nya langsung - file itu dipakai
-                            // bersama oleh request lain yang belum tentu butuh watermark
-                            // yang sama (mis. viewer MASTER vs viewer biasa). Salin dulu ke
-                            // path sendiri, sama seperti pola di ViewAttachment.
+                            // Jangan watermark/stempel file cache-nya langsung - file itu
+                            // dipakai bersama oleh request lain yang belum tentu butuh
+                            // stempel yang sama. Salin dulu ke path sendiri, sama seperti
+                            // pola di ViewAttachment.
                             string watermarkedRelative = cachedPdfRelative.Replace(".pdf", "_print_wm.pdf");
                             string watermarkedFullPath = webRootPath + watermarkedRelative;
                             System.IO.File.Copy(cachedPdfFullPath, watermarkedFullPath, overwrite: true);
-                            AddWatermark(watermarkedFullPath, watermarkedFullPath, documentWatermarkText);
+                            if (shouldWatermark) AddWatermark(watermarkedFullPath, watermarkedFullPath, documentWatermarkText);
+                            else AddImageStamps(watermarkedFullPath, watermarkedFullPath, masterStampPath, controlledCopyStampPath);
                             pengesahanModifiedfileNames = watermarkedRelative;
                         }
                     }
@@ -2956,9 +3049,11 @@ namespace DMS.Controllers
 
                         string pdfFullPath = webRootPath + pengesahanModifiedfileNames;
 
-                        // File hasil konversi ini baru & sekali-pakai, aman di-watermark langsung.
+                        // File hasil konversi ini baru & sekali-pakai, aman di-watermark/stempel langsung.
                         if (shouldWatermark)
                             AddWatermark(pdfFullPath, pdfFullPath, documentWatermarkText);
+                        else if (masterStampPath != null || controlledCopyStampPath != null)
+                            AddImageStamps(pdfFullPath, pdfFullPath, masterStampPath, controlledCopyStampPath);
                     }
                 }
 
@@ -3059,7 +3154,9 @@ namespace DMS.Controllers
                     finalRelativePath = multiCopyRelative;
                 }
 
-                return Json(new { status = true, data = finalRelativePath });
+                // Cache-buster - lihat komentar di ViewAttachment untuk alasannya (nama file
+                // hasil selalu sama meski isinya di-regenerate tiap request).
+                return Json(new { status = true, data = finalRelativePath + "?v=" + DateTime.UtcNow.Ticks });
             }
             catch (Exception ex)
             {

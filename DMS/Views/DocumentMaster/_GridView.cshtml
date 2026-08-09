@@ -21,6 +21,7 @@
         text-overflow: unset;
         line-height: 1.3;
     }
+
 </style>
 
 <div class="box-body">
@@ -28,6 +29,10 @@
 </div>
 
 <script type="text/javascript">
+    var gCanEdit = @(((bool)ViewData["Edit"]) ? "true" : "false");
+    var gCanDelete = @(((bool)ViewData["Delete"]) ? "true" : "false");
+    var gCanDownload = "@ViewData["Download-FilePath"]" == "True";
+
     function getSelectedRowData() {
         var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
         return rows.length > 0 ? rows[0] : null;
@@ -46,6 +51,27 @@
         var footerHeight = $("#divFooter").outerHeight(true) || 0;
 
         return Math.max(300, $(window).height() - gridTop - footerHeight - 40);
+    }
+
+    function dmRenderStats(data) {
+        var total = data.length;
+        var levels = new Set(data.map(function (r) { return r.LEVEL_VAL; }).filter(function (v) { return v != null; })).size;
+        var withTemplate = data.filter(function (r) { return r.FILE_PATH != null; }).length;
+
+        var lastUpdated = null;
+        data.forEach(function (r) {
+            var dt = r.CHANGED_DT || r.CREATED_DT;
+            if (dt != null && (lastUpdated == null || moment(dt).isAfter(lastUpdated))) {
+                lastUpdated = dt;
+            }
+        });
+
+        $("#dmStatTotal").text(total);
+        $("#dmStatLevels").text(levels);
+        $("#dmStatWithTemplate").text(withTemplate);
+        $("#dmStatLastUpdated").html(lastUpdated != null
+            ? moment(lastUpdated).format("DD MMM YYYY") + "<br><span style='font-size:11px;font-weight:600;color:#66788A;'>" + moment(lastUpdated).format("HH:mm") + "</span>"
+            : "-");
     }
 
     $(document).ready(function () {
@@ -69,7 +95,9 @@
                         initialMode: false
                     }
                 }).done(function (result) {
-                    d.resolve(result.data == "" ? [] : result.data);
+                    var data = result.data == "" ? [] : result.data;
+                    dmRenderStats(data);
+                    d.resolve(data);
                 }).fail(function () {
                     d.reject("Data loading error");
                 });
@@ -88,8 +116,9 @@
             sorting: { mode: "none" },
             noDataText: "Data not found.",
             height: computeGridHeight(),
-            filterRow: { visible: true, applyFilter: "auto" },
+            filterRow: { visible: false, applyFilter: "auto" },
             headerFilter: { visible: true },
+            searchPanel: { visible: false, highlightCaseSensitive: false },
             toolbar: { visible: false },
             selection: {
                 mode: "multiple",
@@ -179,16 +208,13 @@
                     cellTemplate: function (container, options) {
                         var row = options.data;
 
-                        if (row.FILE_PATH == null || "@ViewData["Download-FilePath"]" == "False") {
-                            return;
-                        }
-
                         $("<button>")
-                            .attr({ type: "button", title: "Download" })
-                            .addClass("btn btn-primary btn-sm")
-                            .html('<i class="fa fa-download"></i>')
-                            .on("click", function () {
-                                onDownload(row.FILE_PATH);
+                            .attr({ type: "button", title: "More actions" })
+                            .addClass("dp-act-kebab")
+                            .html('<i class="fa fa-ellipsis-v"></i>')
+                            .on("click", function (e) {
+                                e.stopPropagation();
+                                openRowActionMenu($(this), row);
                             })
                             .appendTo(container);
                     }
@@ -200,10 +226,89 @@
             $("#datagrid").dxDataGrid("instance").showColumnChooser();
         });
 
+        // ---------- toolbar: show/hide column filter row ("More Filters") ----------
+        $("#btn_toggleFilters").on("click", function () {
+            var grid = $("#datagrid").dxDataGrid("instance");
+            var visible = !grid.option("filterRow.visible");
+            grid.option("filterRow.visible", visible);
+            $(this).toggleClass("active", visible);
+        });
+
+        // ---------- toolbar: reset ----------
+        $("#btn_resetFilters").on("click", function () {
+            var grid = $("#datagrid").dxDataGrid("instance");
+            grid.clearFilter();
+            grid.clearSelection();
+        });
+
+        // ---------- toolbar: refresh ----------
+        $("#btn_refresh").on("click", function () {
+            $("#datagrid").dxDataGrid("instance").clearSelection();
+            $("#datagrid").dxDataGrid("instance").refresh();
+        });
+
         $(window).on("resize", function () {
             $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
         });
 
         $('body').tooltip({ selector: '[data-toggle="tooltip"]' });
     });
+
+    // ---------- per-row "more actions" kebab menu ----------
+    var $dmRowMenu = null;
+
+    function buildRowActionMenu() {
+        if ($dmRowMenu) return $dmRowMenu;
+
+        $dmRowMenu = $('<ul class="dropdown-menu dp-dropdown-menu" role="menu"></ul>')
+            .css({ position: "absolute", display: "none", "z-index": 2000, "min-width": "170px" })
+            .appendTo("body");
+
+        $(document).on("click", function () {
+            $dmRowMenu.hide();
+        });
+
+        return $dmRowMenu;
+    }
+
+    function menuItem(cssClass, icon, label, onClick) {
+        var $li = $('<li><a href="#" class="' + cssClass + '"><i class="fa ' + icon + '"></i> ' + label + '</a></li>');
+        $li.find("a").on("click", function (e) {
+            e.preventDefault();
+            $dmRowMenu.hide();
+            onClick();
+        });
+        return $li;
+    }
+
+    function openRowActionMenu($btn, row) {
+        var $menu = buildRowActionMenu();
+        $menu.empty();
+        var grid = $("#datagrid").dxDataGrid("instance");
+
+        if (gCanEdit) {
+            $menu.append(menuItem("dp-menu-edit", "fa-pencil-square-o", "Edit", function () {
+                grid.selectRows([row.DOCUMENT_ID], false);
+                onEditPrepare();
+            }));
+        }
+
+        if (gCanDownload && row.FILE_PATH != null) {
+            $menu.append(menuItem("dp-menu-download", "fa-download", "Download", function () {
+                onDownload(row.FILE_PATH);
+            }));
+        }
+
+        if (gCanDelete) {
+            $menu.append('<li class="divider"></li>');
+            $menu.append(menuItem("dp-menu-delete", "fa-trash-o", "Delete", function () {
+                grid.selectRows([row.DOCUMENT_ID], false);
+                onDeletePrepare();
+            }));
+        }
+
+        var offset = $btn.offset();
+        $menu.css({ top: offset.top + $btn.outerHeight() + 4, left: offset.left - $menu.outerWidth() + $btn.outerWidth() })
+            .show();
+    }
 </script>

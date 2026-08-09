@@ -46,5 +46,13 @@ namespace DMS.Models.DB
         public int? OPERATION_TYPE { get; set; }
         public string? OPERATION_TYPE_VAL { get; set; }
         public int? PUBLISH_FLAG { get; set; }
+
+        // Dihitung di C# (bukan dari sp_P4DMaintenance_Search) supaya SP yang
+        // dipakai bersama P4DMaintenanceController tidak perlu diubah - lihat
+        // DocumentSubmissionController.SearchP4DPendingDocuments. Merujuk ke
+        // kode DOC_SUBMISSION_CATEGORY (Pedoman/SOP-EIS-IK-OPL-ACUAN/Prosedur/
+        // Checksheet-Form/Lain Lain) berdasarkan TB_M_DOCUMENT.LEVEL dokumen.
+        [NotMapped]
+        public string? DOC_CATEGORY_CODE { get; set; }
     }
 }
