@@ -17,7 +17,7 @@
                                     <label class="col-sm-4 control-label">Sequence Code<span class="text-red"> *</span></label>
                                     <div class="col-sm-7">
                                         <input class="form-control" id="editSeqCode" type="text" />
-                                        <p class="help-block" style="margin-top:6px;">Mengubah ini memindahkan counter ke prefix baru - prefix lama akan mulai dari nomor baru (1) lagi kalau dipakai sistem berikutnya.</p>
+                                        <p class="help-block" style="margin-top:6px;">Changing this moves the counter to the new prefix - the old prefix will start over from 1 the next time the system uses it.</p>
                                     </div>
                                 </div>
                             </div>
@@ -40,7 +40,7 @@
                                     <label class="col-sm-4 control-label">Last Number Used<span class="text-red"> *</span></label>
                                     <div class="col-sm-7">
                                         <input class="form-control" id="editSeqNo" type="number" min="0" />
-                                        <p class="help-block" style="margin-top:6px;">Nomor berikutnya yang akan dibuat sistem adalah nilai ini + 1. Tidak bisa diubah ke angka lebih kecil dari yang tersimpan sekarang.</p>
+                                        <p class="help-block" style="margin-top:6px;">The next number the system will generate is this value + 1. It cannot be changed to a number lower than what is currently stored.</p>
                                     </div>
                                 </div>
                             </div>
@@ -72,9 +72,9 @@
             <!-- Modal Body -->
             <div class="modal-body">
                 <div class="alert alert-danger" style="margin: 0 15px 15px 15px;">
-                    <strong>Peringatan:</strong> Aksi ini melewati proteksi normal dan bisa membuat sistem menghasilkan
-                    document code yang <u>sudah pernah dipakai</u> jika angka diturunkan sampai di bawah nomor yang
-                    sudah pernah digunakan. Gunakan hanya jika Anda yakin belum ada dokumen yang memakai nomor tersebut.
+                    <strong>Warning:</strong> This action bypasses the normal safeguard and can cause the system to generate a
+                    document code that has <u>already been used</u> if the number is lowered below a number that
+                    was already used. Only use this if you are sure no document has used that number yet.
                 </div>
                 <div class="row">
                     <div class="col-lg-12 form-horizontal" style="margin-left:15px">

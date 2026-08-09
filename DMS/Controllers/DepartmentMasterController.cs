@@ -6,6 +6,8 @@ using DMS.Models.DB.Commons;
 using DMS.Models.Repo;
 using Microsoft.AspNetCore.Mvc;
 using NPOI.POIFS.Crypt.Dsig;
+using NPOI.SS.UserModel;
+using NPOI.XSSF.UserModel;
 using System.Data;
 using System.Text;
 
@@ -63,7 +65,7 @@ namespace DMS.Controllers
             }
         }
 
-        public ActionResult Search(DepartmentMaster data, bool initialMode)
+        public ActionResult Search(DepartmentMaster data, bool initialMode, bool showAll = false)
         {
             try
             {
@@ -82,8 +84,8 @@ namespace DMS.Controllers
                 }
                 else
                 {
-                    var listData = departmentMasterRepo.Search(data, db, pageNumber, pageSize);
-                    var dataCount = departmentMasterRepo.Search(data, db, null, null).Count;
+                    var listData = departmentMasterRepo.Search(data, db, pageNumber, pageSize, showAll);
+                    var dataCount = departmentMasterRepo.Search(data, db, null, null, showAll).Count;
                     recordsTotal = dataCount;
                     var jsonData = new { draw = draw, recordsFiltered = recordsTotal, recordsTotal = recordsTotal, data = listData };
                     return Ok(jsonData);
@@ -101,6 +103,52 @@ namespace DMS.Controllers
                     error = ex.Message
                 });
             }
+        }
+
+        public IActionResult DownloadExcel()
+        {
+            IList<DepartmentMaster> listData = departmentMasterRepo.Search(new DepartmentMaster(), db, null, null, true);
+
+            IWorkbook workbook = new XSSFWorkbook();
+            ISheet sheet = workbook.CreateSheet("Department Master");
+
+            string[] headers = { "No", "Department Code", "Department Name", "Division", "Status" };
+
+            IRow headerRow = sheet.CreateRow(0);
+            for (int col = 0; col < headers.Length; col++)
+            {
+                headerRow.CreateCell(col).SetCellValue(headers[col]);
+            }
+
+            int rowIndex = 1;
+            int no = 1;
+            foreach (DepartmentMaster item in listData)
+            {
+                IRow row = sheet.CreateRow(rowIndex);
+                row.CreateCell(0).SetCellValue(no);
+                row.CreateCell(1).SetCellValue(item.DEPARTMENT_CODE);
+                row.CreateCell(2).SetCellValue(item.DEPARTMENT_NAME);
+                row.CreateCell(3).SetCellValue(item.DIVISION);
+                row.CreateCell(4).SetCellValue(item.DELETE_FLAG == 1 ? "Inactive" : "Active");
+
+                rowIndex++;
+                no++;
+            }
+
+            for (int col = 0; col < headers.Length; col++)
+            {
+                sheet.AutoSizeColumn(col);
+            }
+
+            byte[] fileBytes;
+            using (var ms = new MemoryStream())
+            {
+                workbook.Write(ms);
+                fileBytes = ms.ToArray();
+            }
+
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "DEPARTMENT-MASTER-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
 
         public IActionResult SearchByDistribution(DocumentDistribution data)

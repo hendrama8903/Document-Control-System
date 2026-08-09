@@ -1,42 +1,130 @@
-﻿<script type="text/javascript">
+<script type="text/javascript">
     var gScreenMode = null;
     var gId = null;
-    var fromDT = null;
-    var toDT = null;
     var gStartDate = null;
     var gEndDate = null;
+    var gAllLogs = [];
 
     $(document).ready(function () {
+        var today = moment().format("YYYY-MM-DD");
+        gStartDate = today;
+        gEndDate = today;
+
         $('#searchDate').daterangepicker({
-            autoUpdateInput: false,
-            locale: {
-                cancelLabel: 'Clear'
-            }
+            startDate: moment(),
+            endDate: moment(),
+            autoUpdateInput: true,
+            locale: { cancelLabel: 'Clear' }
         });
+        $('#searchDate').val(moment().format('DD-MM-YYYY') + ' - ' + moment().format('DD-MM-YYYY'));
 
         $('#searchDate').on('apply.daterangepicker', function (ev, picker) {
-            fromDT = picker.startDate;
-            toDT = picker.endDate;
-            $(this).val(picker.startDate.format('DD-MM-YYYY') + ' - ' + picker.endDate.format('DD-MM-YYYY'));
-
             gStartDate = picker.startDate.format("YYYY-MM-DD");
             gEndDate = picker.endDate.format("YYYY-MM-DD");
-            onSearch();
+            $("#datagrid").dxDataGrid("instance").refresh();
         });
 
         $('#searchDate').on('cancel.daterangepicker', function (ev, picker) {
-            fromDT = null;
-            toDT = null;
-            $(this).val('');
-
             gStartDate = null;
             gEndDate = null;
-            onSearch();
+            $(this).val('');
+            $("#datagrid").dxDataGrid("instance").refresh();
+        });
+
+        $("#btn_export").on("click", function () {
+            var params = $.param({
+                startDt: gStartDate,
+                endDt: gEndDate,
+                module: $("#filterModule").val() || null,
+                createdBy: $("#filterUser").val() || null
+            });
+            window.location.href = "@Url.Action("DownloadExcel", "LogMonitoring")?" + params;
+        });
+
+        $("#btn_toggleStats").on("click", function () {
+            var $btn = $(this);
+            var $icon = $btn.find("i");
+            var $row = $("#alStatsRow");
+            $row.stop(true, true).animate(
+                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
+                {
+                    duration: 220,
+                    easing: "swing",
+                    progress: function () { $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight()); },
+                    complete: function () {
+                        var collapsed = !$row.is(":visible");
+                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
+                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
+                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+                    }
+                }
+            );
         });
     });
 
-    function onSearch() {
-        $("#datagrid").dxDataGrid("instance").refresh();
+    // called once per grid load, with the full (date-range-only-filtered) result set -
+    // drives the Module/User dropdown options and the KPI cards, both independent of
+    // whatever Module/User/Status the user currently has selected.
+    function alOnDataLoaded(data) {
+        gAllLogs = data;
+        alPopulateFilterOptions(data);
+        alRenderStats(alApplyClientFilters(data));
+    }
+
+    function alPopulateFilterOptions(data) {
+        var modules = Array.from(new Set(data.map(function (r) { return r.MODULE; }).filter(Boolean))).sort();
+        var users = Array.from(new Set(data.map(function (r) { return r.CREATED_BY; }).filter(Boolean))).sort();
+
+        alFillSelect($("#filterModule"), modules, "All Module");
+        alFillSelect($("#filterUser"), users, "All User");
+    }
+
+    function alFillSelect($select, values, allLabel) {
+        var current = $select.val();
+        $select.empty();
+        $select.append($("<option>").val("").text(allLabel));
+        values.forEach(function (v) {
+            $select.append($("<option>").val(v).text(v));
+        });
+        if (values.indexOf(current) > -1) {
+            $select.val(current);
+        }
+    }
+
+    function alApplyClientFilters(data) {
+        var module = $("#filterModule").val();
+        var user = $("#filterUser").val();
+        var status = $("#filterStatus").val();
+
+        return data.filter(function (row) {
+            if (module && row.MODULE != module) { return false; }
+            if (user && row.CREATED_BY != user) { return false; }
+            if (status && alStatusCategory(row.PROCESS_STATUS) != status) { return false; }
+            return true;
+        });
+    }
+
+    function alRenderStats(filtered) {
+        var total = filtered.length;
+        var success = filtered.filter(function (r) { return alStatusCategory(r.PROCESS_STATUS) == "SUCCESS"; }).length;
+        var failed = filtered.filter(function (r) { return alStatusCategory(r.PROCESS_STATUS) == "FAILED"; }).length;
+        var running = total - success - failed;
+
+        var todayStr = moment().format("YYYY-MM-DD");
+        var todayRows = filtered.filter(function (r) { return r.START_DT != null && moment(r.START_DT).format("YYYY-MM-DD") == todayStr; });
+        var activeUsersToday = new Set(todayRows.map(function (r) { return r.CREATED_BY; }).filter(Boolean));
+
+        var pct = function (n) { return total > 0 ? ((n / total) * 100).toFixed(1) + "% of total" : "-"; };
+
+        $("#alStatTotal").text(total);
+        $("#alStatSuccess").text(success);
+        $("#alStatSuccessPct").text(pct(success));
+        $("#alStatFailed").text(failed);
+        $("#alStatFailedPct").text(pct(failed));
+        $("#alStatRunning").text(running);
+        $("#alStatRunningPct").text(pct(running));
+        $("#alStatToday").text(todayRows.length);
+        $("#alStatActiveUser").text(activeUsersToday.size);
     }
 
     function onDetail(processID) {
@@ -50,19 +138,10 @@
             success: function (result) {
                 if (result.status == true) {
                     var data = result.data;
+                    var category = alStatusCategory(data.PROCESS_STATUS);
                     $('#txtProcessID').html('<b>: </b>' + data.PROCESS_ID);
                     $('#txtModuleName').html('<b>: </b>' + data.MODULE);
-                    if (data.PROCESS_STATUS == 0) {
-                        $('#txtStatus').html('<b>: </b>' + data.PROCESS_STATUS + ':Start');
-                    } else if (data.PROCESS_STATUS == 1) {
-                        $('#txtStatus').html('<b>: </b>' + data.PROCESS_STATUS + ':Process');
-                    } else if (data.PROCESS_STATUS == 2) {
-                        $('#txtStatus').html('<b>: </b>' + data.PROCESS_STATUS + ':Finish');
-                    } else if (data.PROCESS_STATUS == 3) {
-                        $('#txtStatus').html('<b>: </b>' + data.PROCESS_STATUS + ':Finish with error');
-                    } else {
-                        $('#txtStatus').html('<b>: </b>' + data.PROCESS_STATUS + ':Abnormal');
-                    }
+                    $('#txtStatus').html('<b>: </b>' + alStatusLabel(category));
                     $('#txtStartDate').html('<b>: </b>' + moment(data.START_DT).format("DD-MM-YYYY HH:mm:ss"));
                     $('#txtFunction').html('<b>: </b>' + data.FUNCTION);
                     $('#txtUsername').html('<b>: </b>' + data.CREATED_BY);
@@ -74,7 +153,6 @@
                 }
             },
             error: function (result) {
-                //popUpProgressHide();
                 showErrorMesgGrowl(result);
             }
         });
@@ -138,16 +216,11 @@
                             },
                         ]
                     });
-
-                    $('#modalApproval').on('shown.bs.modal', function () {
-                        $("#approvalgrid").DataTable().columns.adjust().draw();
-                    });
                 } else {
                     showErrorMesgGrowl(result.message);
                 }
             },
             error: function (result) {
-                //popUpProgressHide();
                 showErrorMesgGrowl(result);
             }
         });

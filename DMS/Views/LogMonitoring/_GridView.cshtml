@@ -2,20 +2,8 @@
 <script src="~/js/devextreme/dx.web.js"></script>
 
 <style>
-    /* pastikan editor filter row terlihat jelas (hindari bentrok styling tema) */
-    #datagrid .dx-datagrid-filter-row .dx-texteditor {
-        border: 1px solid #d9d9d9;
-        border-radius: 6px;
-        background: #fff;
-    }
-
-    #datagrid .dx-datagrid-filter-row .dx-texteditor-input {
-        padding: 5px 8px;
-        min-height: 28px;
-    }
-
     #datagrid .process-id-link {
-        color: #0078D4;
+        color: #2450D8;
         font-weight: 600;
         cursor: pointer;
         text-decoration: underline;
@@ -28,6 +16,41 @@
         text-overflow: unset;
         line-height: 1.3;
     }
+
+    .al-pill {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 11.5px;
+        font-weight: 700;
+    }
+
+    .al-pill.blue { background: #E7F1FB; color: #2450D8; }
+    .al-pill.green { background: #E4F7EC; color: #1E9E63; }
+    .al-pill.red { background: #FDECEC; color: #C62828; }
+    .al-pill.amber { background: #FFF4DC; color: #B36B00; }
+    .al-pill.purple { background: #F1EAFB; color: #6C3FB5; }
+    .al-pill.gray { background: #F2F4F7; color: #475467; }
+
+    .al-status-cell { display: flex; align-items: center; gap: 6px; }
+    .al-status-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+    .al-status-dot.success { background: #1E9E63; }
+    .al-status-dot.failed { background: #C62828; }
+    .al-status-dot.running { background: #2450D8; }
+
+    .al-detail-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 1.5px solid #D0D6DE;
+        background: #fff;
+        color: #344054;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .al-detail-btn:hover { background: #F4F6F8; }
 </style>
 
 <div class="box-body">
@@ -35,6 +58,47 @@
 </div>
 
 <script type="text/javascript">
+    // status codes per sp_StartLog/sp_WriteLog: 0=Start, 1=Process, 2=Finish, 3=Finish with error, 4=Abnormal
+    function alStatusCategory(processStatus) {
+        var s = String(processStatus);
+        if (s == "2") { return "SUCCESS"; }
+        if (s == "3" || s == "4") { return "FAILED"; }
+        return "RUNNING";
+    }
+
+    function alStatusLabel(category) {
+        if (category == "SUCCESS") { return "Success"; }
+        if (category == "FAILED") { return "Failed"; }
+        return "Running";
+    }
+
+    function alStatusDotClass(category) {
+        if (category == "SUCCESS") { return "success"; }
+        if (category == "FAILED") { return "failed"; }
+        return "running";
+    }
+
+    // FUNCTION is the real, factual field from the log - Action is a short, derived
+    // label for readability only (not a separate field in the database).
+    function alDeriveAction(func) {
+        var f = (func || "").toLowerCase();
+        if (f.indexOf("delete") > -1) { return { label: "Delete", color: "red" }; }
+        if (f.indexOf("reject") > -1) { return { label: "Reject", color: "red" }; }
+        if (f.indexOf("approve") > -1) { return { label: "Approve", color: "green" }; }
+        if (f.indexOf("validate") > -1) { return { label: "Login", color: "blue" }; }
+        if (f.indexOf("togglestatus") > -1 || f.indexOf("update") > -1) { return { label: "Update", color: "amber" }; }
+        if (f.indexOf("insert") > -1) { return { label: "Create", color: "green" }; }
+        if (f.indexOf("send") > -1) { return { label: "Send", color: "purple" }; }
+        return { label: func || "-", color: "gray" };
+    }
+
+    function alFormatDuration(startDt, endDt) {
+        if (!startDt || !endDt) { return ""; }
+        var ms = moment(endDt).diff(moment(startDt));
+        if (ms < 1000) { return ms + " ms"; }
+        return (ms / 1000).toFixed(2) + " s";
+    }
+
     function computeGridHeight() {
         var gridTop = $("#datagrid").offset().top;
         var footerHeight = $("#divFooter").outerHeight(true) || 0;
@@ -59,7 +123,9 @@
                         END_DT: gEndDate
                     }
                 }).done(function (result) {
-                    d.resolve(result.data == "" ? [] : result.data);
+                    var data = result.data == "" ? [] : result.data;
+                    alOnDataLoaded(data);
+                    d.resolve(alApplyClientFilters(data));
                 }).fail(function () {
                     d.reject("Data loading error");
                 });
@@ -78,8 +144,8 @@
             sorting: { mode: "none" },
             noDataText: "Data not found.",
             height: computeGridHeight(),
-            filterRow: { visible: true, applyFilter: "auto" },
-            headerFilter: { visible: true },
+            filterRow: { visible: false },
+            headerFilter: { visible: false },
             toolbar: { visible: false },
             paging: { pageSize: 10 },
             pager: {
@@ -101,7 +167,6 @@
                     width: 50,
                     alignment: "center",
                     allowHiding: false,
-                    allowFiltering: false,
                     fixed: true,
                     fixedPosition: "left",
                     cellTemplate: function (container, options) {
@@ -114,62 +179,88 @@
                     dataField: "PROCESS_ID",
                     caption: "Process ID",
                     alignment: "center",
+                    width: 100
+                },
+                {
+                    dataField: "START_DT",
+                    caption: "Time",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.START_DT;
+                        container.text(value != null ? moment(value).format("DD MMM YYYY HH:mm:ss") : "");
+                    }
+                },
+                {
+                    caption: "Relative Time",
+                    calculateCellValue: function (row) {
+                        return row.START_DT != null ? moment(row.START_DT).fromNow() : "";
+                    }
+                },
+                { dataField: "CREATED_BY", caption: "User" },
+                { dataField: "MODULE", caption: "Module" },
+                { dataField: "FUNCTION", caption: "Function" },
+                {
+                    caption: "Action",
+                    calculateCellValue: function (row) {
+                        return alDeriveAction(row.FUNCTION).label;
+                    },
+                    cellTemplate: function (container, options) {
+                        var action = alDeriveAction(options.data.FUNCTION);
+                        $("<span>").addClass("al-pill " + action.color).text(action.label).appendTo(container);
+                    }
+                },
+                {
+                    caption: "Status",
+                    calculateCellValue: function (row) {
+                        return alStatusLabel(alStatusCategory(row.PROCESS_STATUS));
+                    },
+                    cellTemplate: function (container, options) {
+                        var category = alStatusCategory(options.data.PROCESS_STATUS);
+                        var $cell = $("<div>").addClass("al-status-cell");
+                        $("<span>").addClass("al-status-dot " + alStatusDotClass(category)).appendTo($cell);
+                        $("<span>").text(alStatusLabel(category)).appendTo($cell);
+                        $cell.appendTo(container);
+                    }
+                },
+                {
+                    caption: "Duration",
+                    alignment: "right",
+                    calculateCellValue: function (row) {
+                        return alFormatDuration(row.START_DT, row.END_DT);
+                    }
+                },
+                {
+                    caption: "Detail",
+                    alignment: "center",
+                    width: 70,
+                    allowHiding: false,
                     fixed: true,
-                    fixedPosition: "left",
+                    fixedPosition: "right",
                     cellTemplate: function (container, options) {
                         var row = options.data;
-
-                        $("<a>")
-                            .addClass("process-id-link")
-                            .text(row.PROCESS_ID)
+                        $("<button>")
+                            .attr({ type: "button", title: "Detail" })
+                            .addClass("al-detail-btn")
+                            .html('<i class="fa fa-eye"></i>')
                             .on("click", function () {
                                 onDetail(row.PROCESS_ID);
                             })
                             .appendTo(container);
                     }
-                },
-                { dataField: "MODULE", caption: "Module Name" },
-                { dataField: "FUNCTION", caption: "Function Name" },
-                {
-                    dataField: "START_DT",
-                    caption: "Start Date",
-                    alignment: "center",
-                    cellTemplate: function (container, options) {
-                        var value = options.data.START_DT;
-                        container.text(value != null ? moment(value).format("DD-MM-YYYY HH:mm:ss") : "");
-                    }
-                },
-                {
-                    dataField: "END_DT",
-                    caption: "End Date",
-                    alignment: "center",
-                    cellTemplate: function (container, options) {
-                        var value = options.data.END_DT;
-                        container.text(value != null ? moment(value).format("DD-MM-YYYY HH:mm:ss") : "");
-                    }
-                },
-                {
-                    caption: "Process Status",
-                    alignment: "center",
-                    calculateCellValue: function (row) {
-                        if (row.PROCESS_STATUS == 0) {
-                            return "0:Start";
-                        } else if (row.PROCESS_STATUS == 1) {
-                            return "1:Process";
-                        } else if (row.PROCESS_STATUS == 2) {
-                            return "2:Finish";
-                        } else if (row.PROCESS_STATUS == 3) {
-                            return "3:Finish with error";
-                        }
-                        return row.PROCESS_STATUS + ":Abnormal";
-                    }
-                },
-                { dataField: "CREATED_BY", caption: "User Name" }
+                }
             ]
         });
 
         $("#btn_columns").on("click", function () {
             $("#datagrid").dxDataGrid("instance").showColumnChooser();
+        });
+
+        $("#btn_refresh").on("click", function () {
+            $("#datagrid").dxDataGrid("instance").refresh();
+        });
+
+        $("#filterModule, #filterUser, #filterStatus").on("change", function () {
+            $("#datagrid").dxDataGrid("instance").refresh();
         });
 
         $(window).on("resize", function () {

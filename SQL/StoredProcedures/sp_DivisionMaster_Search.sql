@@ -8,20 +8,23 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_DivisionMaster_Search]
 	@DIVISION_CODE_NAME VARCHAR(255),
 	@IS_VALID_ONLY		 	CHAR(1),
 	@PageNumber 				int,
-	@PageSize 					int
+	@PageSize 					int,
+	@SHOW_DELETED				CHAR(1) = NULL,
+	@SHOW_ALL						CHAR(1) = NULL
 AS
-BEGIN  
+BEGIN
 
 	DECLARE @QUERY VARCHAR(MAX)
-	
-	SET @QUERY = 'WITH data AS 
+
+	SET @QUERY = 'WITH data AS
 								(
-									SELECT 
-										ROW_NUMBER() OVER (ORDER BY S.DIVISION_CODE ASC) as RowNumber, 
+									SELECT
+										ROW_NUMBER() OVER (ORDER BY S.DIVISION_CODE ASC) as RowNumber,
 										S.DIVISION_ID,
 										S.DIVISION_CODE,
 										S.DIVISION_NAME,
 										S.DIVISION_CODE + '' - '' + S.DIVISION_NAME AS DIVISION_CODE_NAME,
+										ISNULL(S.DELETE_FLAG, 0) AS DELETE_FLAG,
 										S.VALID_FROM,
 										S.VALID_TO,
 										S.CREATED_DT,
@@ -29,10 +32,20 @@ BEGIN
 										S.CHANGED_DT,
 										S.CHANGED_BY
 									FROM [dbo].[TB_M_DIVISION] S
-									WHERE 1 = 1
-									AND S.DELETE_FLAG = 0'	
-									
-									
+									WHERE 1 = 1 '
+
+									IF ISNULL(@SHOW_ALL, '0') <> '1'
+									BEGIN
+										IF ISNULL(@SHOW_DELETED, '0') = '1'
+										BEGIN
+											SET @QUERY += ' AND ISNULL(S.DELETE_FLAG, 0) = 1 '
+										END
+										ELSE
+										BEGIN
+											SET @QUERY += ' AND ISNULL(S.DELETE_FLAG, 0) = 0 '
+										END
+									END
+
 									IF @DIVISION_CODE IS NOT NULL
 									BEGIN
 										SET @QUERY += ' AND S.DIVISION_CODE LIKE ''' + REPLACE(@DIVISION_CODE , '*', '%') + ''' '

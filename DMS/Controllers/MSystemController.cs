@@ -5,6 +5,8 @@ using DMS.Models.DB;
 using DMS.Models.DB.Commons;
 using DMS.Models.Repo;
 using Microsoft.AspNetCore.Mvc;
+using NPOI.SS.UserModel;
+using NPOI.XSSF.UserModel;
 using System.Data;
 using System.Text;
 
@@ -88,6 +90,52 @@ namespace DMS.Controllers
             {
                 return Json("Error : " + ex.Message);
             }
+        }
+
+        public IActionResult DownloadExcel()
+        {
+            IList<MSystem> listData = msystemRepo.Search(new MSystem(), db, null, null);
+
+            IWorkbook workbook = new XSSFWorkbook();
+            ISheet sheet = workbook.CreateSheet("System Parameters");
+
+            string[] headers = { "No", "System Type", "System Code", "System Value", "Status" };
+
+            IRow headerRow = sheet.CreateRow(0);
+            for (int col = 0; col < headers.Length; col++)
+            {
+                headerRow.CreateCell(col).SetCellValue(headers[col]);
+            }
+
+            int rowIndex = 1;
+            int no = 1;
+            foreach (MSystem item in listData)
+            {
+                IRow row = sheet.CreateRow(rowIndex);
+                row.CreateCell(0).SetCellValue(no);
+                row.CreateCell(1).SetCellValue(item.SYSTEM_TYPE);
+                row.CreateCell(2).SetCellValue(item.SYSTEM_CODE);
+                row.CreateCell(3).SetCellValue(item.SYSTEM_VALUE);
+                row.CreateCell(4).SetCellValue(item.STATUS == 1 ? "Active" : "Inactive");
+
+                rowIndex++;
+                no++;
+            }
+
+            for (int col = 0; col < headers.Length; col++)
+            {
+                sheet.AutoSizeColumn(col);
+            }
+
+            byte[] fileBytes;
+            using (var ms = new MemoryStream())
+            {
+                workbook.Write(ms);
+                fileBytes = ms.ToArray();
+            }
+
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "SYSTEM-PARAMETERS-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
 
         public IActionResult SearchSystem(MSystem data)

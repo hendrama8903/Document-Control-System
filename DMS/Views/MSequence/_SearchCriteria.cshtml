@@ -1,15 +1,5 @@
-<div class="box-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:0 0 14px 0;">
-    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-        @if ((bool)ViewData["Edit"])
-        {
-            <button type="button" class="btn btn-warning btn-sm" id="btn_edit" style="min-width: 84px;"><i class="fa fa-pencil-square-o"></i> Edit</button>
-        }
-        @if ((bool)ViewData["Reset"])
-        {
-            <button type="button" class="btn btn-danger btn-sm" id="btn_reset" style="min-width: 84px;" title="Force set the counter to any number, bypassing the normal lower-value guard"><i class="fa fa-undo"></i> Reset</button>
-        }
-    </div>
-    <div>
-        <button type="button" class="btn btn-primary btn-sm" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
-    </div>
+<div class="dp-filter-row">
+    <button type="button" class="dp-btn dp-btn-outline" id="btn_toggleFilters"><i class="fa fa-filter"></i> More Filters</button>
+    <button type="button" class="dp-btn dp-btn-outline" id="btn_resetFilters"><i class="fa fa-refresh"></i> Reset</button>
+    <button type="button" class="dp-btn dp-btn-outline" id="btn_refresh"><i class="fa fa-refresh"></i> Refresh</button>
 </div>

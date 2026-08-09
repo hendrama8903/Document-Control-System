@@ -21,6 +21,10 @@
         text-overflow: unset;
         line-height: 1.3;
     }
+
+    .ms-status-cell { display: flex; align-items: center; gap: 6px; }
+    .ms-status-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: #1E9E63; }
+    .ms-status-dot.inactive { background: #C62828; }
 </style>
 
 <div class="box-body">
@@ -28,6 +32,9 @@
 </div>
 
 <script type="text/javascript">
+    var gCanEdit = @(((bool)ViewData["Edit"]) ? "true" : "false");
+    var gCanDelete = @(((bool)ViewData["Delete"]) ? "true" : "false");
+
     function getSelectedRowData() {
         var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
         return rows.length > 0 ? rows[0] : null;
@@ -47,12 +54,25 @@
         return Math.max(300, $(window).height() - gridTop - footerHeight - 40);
     }
 
+    function msRenderStats(data) {
+        var total = data.length;
+        var active = data.filter(function (r) { return r.STATUS == 1; }).length;
+        var inactive = total - active;
+        var types = new Set(data.map(function (r) { return r.SYSTEM_TYPE; })).size;
+
+        $("#msStatTotal").text(total);
+        $("#msStatActive").text(active);
+        $("#msStatInactive").text(inactive);
+        $("#msStatTypes").text(types);
+    }
+
     $(document).ready(function () {
         $("#btn_add").prop("disabled", false);
         $("#btn_edit").prop("disabled", true);
         $("#btn_delete").prop("disabled", true);
 
         var gridStore = new DevExpress.data.CustomStore({
+            key: ["SYSTEM_TYPE", "SYSTEM_CODE"],
             loadMode: "raw",
             load: function () {
                 var d = $.Deferred();
@@ -67,7 +87,9 @@
                         initialMode: false
                     }
                 }).done(function (result) {
-                    d.resolve(result.data == "" ? [] : result.data);
+                    var data = result.data == "" ? [] : result.data;
+                    msRenderStats(data);
+                    d.resolve(data);
                 }).fail(function () {
                     d.reject("Data loading error");
                 });
@@ -86,8 +108,9 @@
             sorting: { mode: "none" },
             noDataText: "Data not found.",
             height: computeGridHeight(),
-            filterRow: { visible: true, applyFilter: "auto" },
+            filterRow: { visible: false, applyFilter: "auto" },
             headerFilter: { visible: true },
+            searchPanel: { visible: false, highlightCaseSensitive: false },
             toolbar: { visible: false },
             selection: {
                 mode: "multiple",
@@ -135,18 +158,24 @@
                 { dataField: "SYSTEM_CODE", caption: "System Code" },
                 { dataField: "SYSTEM_VALUE", caption: "System Value" },
                 {
+                    dataField: "STATUS",
                     caption: "Status",
                     alignment: "center",
+                    width: 130,
                     calculateCellValue: function (row) {
                         return row.STATUS == 1 ? "Active" : "Inactive";
                     },
+                    lookup: {
+                        dataSource: [{ v: "Active" }, { v: "Inactive" }],
+                        valueExpr: "v",
+                        displayExpr: "v"
+                    },
                     cellTemplate: function (container, options) {
                         var active = options.data.STATUS == 1;
-
-                        $("<span>")
-                            .addClass(active ? "label label-success" : "label label-danger")
-                            .text(active ? "Active" : "Inactive")
-                            .appendTo(container);
+                        var $cell = $("<div>").addClass("ms-status-cell");
+                        $("<span>").addClass("ms-status-dot").toggleClass("inactive", !active).appendTo($cell);
+                        $("<span>").text(active ? "Active" : "Inactive").appendTo($cell);
+                        $cell.appendTo(container);
                     }
                 },
                 { dataField: "CREATED_BY", caption: "Created By", visible: false },
@@ -170,6 +199,28 @@
                         var value = options.data.CHANGED_DT;
                         container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
                     }
+                },
+                {
+                    caption: "Action",
+                    alignment: "center",
+                    width: 70,
+                    allowHiding: false,
+                    allowFiltering: false,
+                    fixed: true,
+                    fixedPosition: "right",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+
+                        $("<button>")
+                            .attr({ type: "button", title: "More actions" })
+                            .addClass("dp-act-kebab")
+                            .html('<i class="fa fa-ellipsis-v"></i>')
+                            .on("click", function (e) {
+                                e.stopPropagation();
+                                openRowActionMenu($(this), row);
+                            })
+                            .appendTo(container);
+                    }
                 }
             ]
         });
@@ -178,10 +229,84 @@
             $("#datagrid").dxDataGrid("instance").showColumnChooser();
         });
 
+        // ---------- toolbar: show/hide column filter row ("More Filters") ----------
+        $("#btn_toggleFilters").on("click", function () {
+            var grid = $("#datagrid").dxDataGrid("instance");
+            var visible = !grid.option("filterRow.visible");
+            grid.option("filterRow.visible", visible);
+            $(this).toggleClass("active", visible);
+        });
+
+        // ---------- toolbar: reset ----------
+        $("#btn_resetFilters").on("click", function () {
+            var grid = $("#datagrid").dxDataGrid("instance");
+            grid.clearFilter();
+            grid.clearSelection();
+        });
+
+        // ---------- toolbar: refresh ----------
+        $("#btn_refresh").on("click", function () {
+            $("#datagrid").dxDataGrid("instance").clearSelection();
+            $("#datagrid").dxDataGrid("instance").refresh();
+        });
+
         $(window).on("resize", function () {
             $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
         });
 
         $('body').tooltip({ selector: '[data-toggle="tooltip"]' });
     });
+
+    // ---------- per-row "more actions" kebab menu ----------
+    var $msRowMenu = null;
+
+    function buildRowActionMenu() {
+        if ($msRowMenu) return $msRowMenu;
+
+        $msRowMenu = $('<ul class="dropdown-menu dp-dropdown-menu" role="menu"></ul>')
+            .css({ position: "absolute", display: "none", "z-index": 2000, "min-width": "170px" })
+            .appendTo("body");
+
+        $(document).on("click", function () {
+            $msRowMenu.hide();
+        });
+
+        return $msRowMenu;
+    }
+
+    function menuItem(cssClass, icon, label, onClick) {
+        var $li = $('<li><a href="#" class="' + cssClass + '"><i class="fa ' + icon + '"></i> ' + label + '</a></li>');
+        $li.find("a").on("click", function (e) {
+            e.preventDefault();
+            $msRowMenu.hide();
+            onClick();
+        });
+        return $li;
+    }
+
+    function openRowActionMenu($btn, row) {
+        var $menu = buildRowActionMenu();
+        $menu.empty();
+        var grid = $("#datagrid").dxDataGrid("instance");
+        var key = { SYSTEM_TYPE: row.SYSTEM_TYPE, SYSTEM_CODE: row.SYSTEM_CODE };
+
+        if (gCanEdit) {
+            $menu.append(menuItem("dp-menu-edit", "fa-pencil-square-o", "Edit", function () {
+                grid.selectRows([key], false);
+                onEditPrepare();
+            }));
+        }
+
+        if (gCanDelete) {
+            $menu.append('<li class="divider"></li>');
+            $menu.append(menuItem("dp-menu-delete", "fa-trash-o", "Delete", function () {
+                grid.selectRows([key], false);
+                onDeletePrepare();
+            }));
+        }
+
+        var offset = $btn.offset();
+        $menu.css({ top: offset.top + $btn.outerHeight() + 4, left: offset.left - $menu.outerWidth() + $btn.outerWidth() })
+            .show();
+    }
 </script>

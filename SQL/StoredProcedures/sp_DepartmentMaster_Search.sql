@@ -10,22 +10,25 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_DepartmentMaster_Search]
 	@DOCUMENT_CONTROL_ACCESS	VARCHAR(5),
 	@IS_VALID_ONLY		 	CHAR(1),
 	@PageNumber 				int,
-	@PageSize 					int
+	@PageSize 					int,
+	@SHOW_DELETED				CHAR(1) = NULL,
+	@SHOW_ALL						CHAR(1) = NULL
 AS
-BEGIN  
+BEGIN
 
 	DECLARE @QUERY VARCHAR(MAX)
-	
-	SET @QUERY = 'WITH data AS 
+
+	SET @QUERY = 'WITH data AS
 								(
-									SELECT 
-										ROW_NUMBER() OVER (ORDER BY S.DIVISION ASC) as RowNumber, 
+									SELECT
+										ROW_NUMBER() OVER (ORDER BY S.DIVISION ASC) as RowNumber,
 										S.DEPARTMENT_ID,
 										S.DEPARTMENT_CODE,
 										S.DEPARTMENT_NAME,
 										S.DEPARTMENT_CODE + '' - '' + S.DEPARTMENT_NAME AS DEPARTMENT_CODE_NAME,
 										S.DIVISION + '' - '' + Y.DIVISION_NAME AS DIVISION,
 										S.DOCUMENT_CONTROL_ACCESS,
+										ISNULL(S.DELETE_FLAG, 0) AS DELETE_FLAG,
 										S.VALID_FROM,
 										S.VALID_TO,
 										S.CREATED_DT,
@@ -34,10 +37,20 @@ BEGIN
 										S.CHANGED_BY
 									FROM [dbo].[TB_M_DEPARTMENT] S
 									JOIN [dbo].[TB_M_DIVISION] Y ON Y.[DIVISION_CODE] = S.[DIVISION]
-									WHERE 1 = 1
-									AND S.DELETE_FLAG = 0'	
-									
-									
+									WHERE 1 = 1 '
+
+									IF ISNULL(@SHOW_ALL, '0') <> '1'
+									BEGIN
+										IF ISNULL(@SHOW_DELETED, '0') = '1'
+										BEGIN
+											SET @QUERY += ' AND ISNULL(S.DELETE_FLAG, 0) = 1 '
+										END
+										ELSE
+										BEGIN
+											SET @QUERY += ' AND ISNULL(S.DELETE_FLAG, 0) = 0 '
+										END
+									END
+
 									IF @DEPARTMENT_CODE IS NOT NULL
 									BEGIN
 										SET @QUERY += ' AND S.DEPARTMENT_CODE LIKE ''' + REPLACE(@DEPARTMENT_CODE , '*', '%') + ''' '

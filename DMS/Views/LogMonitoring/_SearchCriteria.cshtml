@@ -1,12 +1,31 @@
-<div class="box-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:0 0 14px 0;">
-    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-        <label class="control-label" style="margin: 0;">Date From - To</label>
-        <div class="has-feedback" style="width: 230px;">
-            <input class="form-control input-sm" id="searchDate" type="text" placeholder="Pilih rentang tanggal" />
-            <span class="glyphicon glyphicon-calendar form-control-feedback"></span>
+<div class="dp-filter-row">
+    <div>
+        <label>Date Range</label>
+        <div class="has-feedback" style="display:inline-block; width: 230px;">
+            <input class="form-control input-sm" id="searchDate" type="text" placeholder="Select date range" />
         </div>
     </div>
     <div>
-        <button type="button" class="btn btn-primary btn-sm" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
+        <label>Module</label>
+        <select id="filterModule">
+            <option value="">All Module</option>
+        </select>
     </div>
+    <div>
+        <label>User</label>
+        <select id="filterUser">
+            <option value="">All User</option>
+        </select>
+    </div>
+    <div>
+        <label>Status</label>
+        <select id="filterStatus">
+            <option value="">All Status</option>
+            <option value="SUCCESS">Success</option>
+            <option value="FAILED">Failed</option>
+            <option value="RUNNING">Running</option>
+        </select>
+    </div>
+    <button type="button" class="dp-icon-btn" id="btn_refresh" title="Refresh"><i class="fa fa-refresh"></i></button>
+    <button type="button" class="dp-icon-btn" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
 </div>

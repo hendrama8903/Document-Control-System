@@ -6,27 +6,41 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_PositionMaster_Search]
 	@POSITION_NAME  	VARCHAR(255),
 	@POSITION_LEVEL		INT,
 	@PageNumber 			int,
-	@PageSize 				int
+	@PageSize 				int,
+	@SHOW_DELETED			CHAR(1) = NULL,
+	@SHOW_ALL					CHAR(1) = NULL
 AS
-BEGIN  
+BEGIN
 
 	DECLARE @QUERY VARCHAR(MAX)
-	
-	SET @QUERY = 'WITH data AS 
+
+	SET @QUERY = 'WITH data AS
 								(
-									SELECT 
-										ROW_NUMBER() OVER (ORDER BY P.POSITION_LEVEL ASC) as RowNumber, 
+									SELECT
+										ROW_NUMBER() OVER (ORDER BY P.POSITION_LEVEL ASC) as RowNumber,
 										P.POSITION_ID,
 										P.POSITION_NAME,
 										P.POSITION_LEVEL,
-										P.DELETE_FLAG,
+										ISNULL(P.DELETE_FLAG, 0) AS DELETE_FLAG,
 										P.CREATED_DT,
 										P.CREATED_BY,
 										P.CHANGED_DT,
 										P.CHANGED_BY
 									FROM [dbo].[TB_M_POSITION] P
-									WHERE P.DELETE_FLAG <> 1'
-									
+									WHERE 1 = 1 '
+
+									IF ISNULL(@SHOW_ALL, '0') <> '1'
+									BEGIN
+										IF ISNULL(@SHOW_DELETED, '0') = '1'
+										BEGIN
+											SET @QUERY += ' AND ISNULL(P.DELETE_FLAG, 0) = 1 '
+										END
+										ELSE
+										BEGIN
+											SET @QUERY += ' AND ISNULL(P.DELETE_FLAG, 0) = 0 '
+										END
+									END
+
 									IF @POSITION_NAME IS NOT NULL
 									BEGIN
 										SET @QUERY += ' AND P.POSITION_NAME LIKE ''' + REPLACE(@POSITION_NAME , '*', '%') + ''' '

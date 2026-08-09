@@ -31,6 +31,30 @@
             $("#resetConfirmText").val("");
             $("#btn_reset_save").prop("disabled", true);
         });
+
+        $("#btn_export").on("click", function () {
+            window.location.href = "@Url.Action("DownloadExcel", "MSequence")";
+        });
+
+        $("#btn_toggleStats").on("click", function () {
+            var $btn = $(this);
+            var $icon = $btn.find("i");
+            var $row = $("#msqStatsRow");
+            $row.stop(true, true).animate(
+                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
+                {
+                    duration: 220,
+                    easing: "swing",
+                    progress: function () { $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight()); },
+                    complete: function () {
+                        var collapsed = !$row.is(":visible");
+                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
+                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
+                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+                    }
+                }
+            );
+        });
     });
 
     function onSearch() {
@@ -158,8 +182,8 @@
     function confirmResetData() {
         var newSeqNo = $('#resetSeqNoNew').val();
         showConfirmMesg(
-            "Anda akan memaksa nomor \"" + gResetSeqCode + "\" dari " + gResetCurrentSeqNo + " menjadi " + newSeqNo +
-            ". Jika angka ini lebih kecil dari nomor tertinggi yang sudah pernah dipakai, sistem bisa menghasilkan document code duplikat. Lanjutkan?",
+            "You are about to force the number \"" + gResetSeqCode + "\" from " + gResetCurrentSeqNo + " to " + newSeqNo +
+            ". If this number is lower than the highest number already used, the system may generate a duplicate document code. Continue?",
             resetData,
             "Confirmation"
         );

@@ -4,6 +4,8 @@ using DMS.Models;
 using DMS.Models.DB;
 using DMS.Models.Repo;
 using Microsoft.AspNetCore.Mvc;
+using NPOI.SS.UserModel;
+using NPOI.XSSF.UserModel;
 
 namespace DMS.Controllers
 {
@@ -57,7 +59,7 @@ namespace DMS.Controllers
             }
         }
 
-        public ActionResult Search(PositionMaster data, bool initialMode)
+        public ActionResult Search(PositionMaster data, bool initialMode, bool showAll = false)
         {
             try
             {
@@ -75,8 +77,8 @@ namespace DMS.Controllers
                 }
                 else
                 {
-                    var listData = positionMasterRepo.Search(data, db, pageNumber, pageSize);
-                    var dataCount = positionMasterRepo.Search(data, db, null, null).Count;
+                    var listData = positionMasterRepo.Search(data, db, pageNumber, pageSize, showAll);
+                    var dataCount = positionMasterRepo.Search(data, db, null, null, showAll).Count;
                     recordsTotal = dataCount;
                     var jsonData = new { draw = draw, recordsFiltered = recordsTotal, recordsTotal = recordsTotal, data = listData };
                     return Ok(jsonData);
@@ -93,6 +95,51 @@ namespace DMS.Controllers
                     error = ex.Message
                 });
             }
+        }
+
+        public IActionResult DownloadExcel()
+        {
+            IList<PositionMaster> listData = positionMasterRepo.Search(new PositionMaster(), db, null, null, true);
+
+            IWorkbook workbook = new XSSFWorkbook();
+            ISheet sheet = workbook.CreateSheet("Position Master");
+
+            string[] headers = { "No", "Position Name", "Position Level", "Status" };
+
+            IRow headerRow = sheet.CreateRow(0);
+            for (int col = 0; col < headers.Length; col++)
+            {
+                headerRow.CreateCell(col).SetCellValue(headers[col]);
+            }
+
+            int rowIndex = 1;
+            int no = 1;
+            foreach (PositionMaster item in listData)
+            {
+                IRow row = sheet.CreateRow(rowIndex);
+                row.CreateCell(0).SetCellValue(no);
+                row.CreateCell(1).SetCellValue(item.POSITION_NAME);
+                row.CreateCell(2).SetCellValue(item.POSITION_LEVEL ?? 0);
+                row.CreateCell(3).SetCellValue(item.DELETE_FLAG == 1 ? "Inactive" : "Active");
+
+                rowIndex++;
+                no++;
+            }
+
+            for (int col = 0; col < headers.Length; col++)
+            {
+                sheet.AutoSizeColumn(col);
+            }
+
+            byte[] fileBytes;
+            using (var ms = new MemoryStream())
+            {
+                workbook.Write(ms);
+                fileBytes = ms.ToArray();
+            }
+
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "POSITION-MASTER-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
 
         public JsonResult AddEdit(string screenMode, PositionMaster data)

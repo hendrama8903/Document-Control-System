@@ -25,17 +25,19 @@ namespace DMS.Models.Repo
         }
         #endregion
 
-        public IList<PositionMaster> Search(PositionMaster data, DBContext db, int? PageNumber, int? PageSize)
+        public IList<PositionMaster> Search(PositionMaster data, DBContext db, int? PageNumber, int? PageSize, bool showAll = false)
         {
             List<SqlParameter> param = new List<SqlParameter>
             {
                 new SqlParameter ( "@POSITION_NAME", CheckNullValue(data.POSITION_NAME) ),
                 new SqlParameter ( "@POSITION_LEVEL", CheckNullValue(data.POSITION_LEVEL) ),
                 new SqlParameter ( "@PageNumber", CheckNullValue(PageNumber) ),
-                new SqlParameter ( "@PageSize", CheckNullValue(PageSize) )
+                new SqlParameter ( "@PageSize", CheckNullValue(PageSize) ),
+                new SqlParameter ( "@SHOW_DELETED", "0" ),
+                new SqlParameter ( "@SHOW_ALL", showAll ? "1" : "0" )
             };
 
-            string query = "EXEC [dbo].[sp_PositionMaster_Search] @POSITION_NAME, @POSITION_LEVEL, @PageNumber, @PageSize";
+            string query = "EXEC [dbo].[sp_PositionMaster_Search] @POSITION_NAME, @POSITION_LEVEL, @PageNumber, @PageSize, @SHOW_DELETED, @SHOW_ALL";
             IList<PositionMaster> Result = db.PositionMaster.FromSqlRaw<PositionMaster>(query, param.ToArray()).ToList();
 
             return Result;

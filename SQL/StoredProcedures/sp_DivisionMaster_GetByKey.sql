@@ -15,6 +15,7 @@ BEGIN
 										S.DIVISION_CODE,
 										S.DIVISION_NAME,
 										S.DIVISION_CODE + '' - '' + S.DIVISION_NAME AS DIVISION_CODE_NAME,
+										ISNULL(S.DELETE_FLAG, 0) AS DELETE_FLAG,
 										S.VALID_FROM,
 										S.VALID_TO,
 										S.CREATED_DT,

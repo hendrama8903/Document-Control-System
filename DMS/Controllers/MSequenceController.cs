@@ -4,6 +4,8 @@ using DMS.Models;
 using DMS.Models.DB;
 using DMS.Models.Repo;
 using Microsoft.AspNetCore.Mvc;
+using NPOI.SS.UserModel;
+using NPOI.XSSF.UserModel;
 
 namespace DMS.Controllers
 {
@@ -98,6 +100,53 @@ namespace DMS.Controllers
             {
                 return Json(new { status = false, message = ex.Message });
             }
+        }
+
+        public IActionResult DownloadExcel()
+        {
+            IList<MSequence> listData = mSequenceRepo.Search(new MSequence(), db, null, null);
+
+            IWorkbook workbook = new XSSFWorkbook();
+            ISheet sheet = workbook.CreateSheet("Document Numbering");
+
+            string[] headers = { "No", "Sequence Code", "Type", "Last Number Used", "Changed By", "Changed Date" };
+
+            IRow headerRow = sheet.CreateRow(0);
+            for (int col = 0; col < headers.Length; col++)
+            {
+                headerRow.CreateCell(col).SetCellValue(headers[col]);
+            }
+
+            int rowIndex = 1;
+            int no = 1;
+            foreach (MSequence item in listData)
+            {
+                IRow row = sheet.CreateRow(rowIndex);
+                row.CreateCell(0).SetCellValue(no);
+                row.CreateCell(1).SetCellValue(item.SEQ_CODE);
+                row.CreateCell(2).SetCellValue(item.SEQ_TYPE);
+                row.CreateCell(3).SetCellValue(item.SEQ_NO ?? 0);
+                row.CreateCell(4).SetCellValue(item.CHANGED_BY);
+                row.CreateCell(5).SetCellValue(item.CHANGED_DT != null ? item.CHANGED_DT.Value.ToString("yyyy-MM-dd HH:mm:ss") : "");
+
+                rowIndex++;
+                no++;
+            }
+
+            for (int col = 0; col < headers.Length; col++)
+            {
+                sheet.AutoSizeColumn(col);
+            }
+
+            byte[] fileBytes;
+            using (var ms = new MemoryStream())
+            {
+                workbook.Write(ms);
+                fileBytes = ms.ToArray();
+            }
+
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "DOCUMENT-NUMBERING-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
 
         public JsonResult Reset(MSequence data)

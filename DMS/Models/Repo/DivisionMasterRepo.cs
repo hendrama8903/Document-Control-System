@@ -25,7 +25,7 @@ namespace DMS.Models.Repo
         }
         #endregion
 
-        public IList<DivisionMaster> Search(DivisionMaster data, DBContext db, int? PageNumber, int? PageSize)
+        public IList<DivisionMaster> Search(DivisionMaster data, DBContext db, int? PageNumber, int? PageSize, bool showAll = false)
         {
             List<SqlParameter> param = new List<SqlParameter>
             {
@@ -34,10 +34,12 @@ namespace DMS.Models.Repo
                 new SqlParameter ( "@DIVISION_CODE_NAME", CheckNullValue(data.DIVISION_CODE_NAME) ),
                 new SqlParameter ("@IS_VALID_ONLY", CheckNullValue(data.IS_VALID_ONLY)),
                 new SqlParameter ( "@PageNumber", CheckNullValue(PageNumber) ),
-                new SqlParameter ( "@PageSize", CheckNullValue(PageSize) )
+                new SqlParameter ( "@PageSize", CheckNullValue(PageSize) ),
+                new SqlParameter ( "@SHOW_DELETED", "0" ),
+                new SqlParameter ( "@SHOW_ALL", showAll ? "1" : "0" )
             };
 
-            string query = "EXEC [dbo].[sp_DivisionMaster_Search] @DIVISION_CODE, @DIVISION_NAME, @DIVISION_CODE_NAME,@IS_VALID_ONLY, @PageNumber, @PageSize";
+            string query = "EXEC [dbo].[sp_DivisionMaster_Search] @DIVISION_CODE, @DIVISION_NAME, @DIVISION_CODE_NAME,@IS_VALID_ONLY, @PageNumber, @PageSize, @SHOW_DELETED, @SHOW_ALL";
             IList<DivisionMaster> Result = db.DivisionMaster.FromSqlRaw<DivisionMaster>(query, param.ToArray()).ToList();
 
             return Result;

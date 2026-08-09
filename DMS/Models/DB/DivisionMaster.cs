@@ -12,6 +12,7 @@ namespace DMS.Models.DB
         public string? DIVISION_CODE { get; set; }
         public string? DIVISION_NAME { get; set; }
         public string? DIVISION_CODE_NAME { get; set; }
+        public int? DELETE_FLAG { get; set; }
         [NotMapped]
         public string? IS_VALID_ONLY { get; set; }
         [NotMapped]

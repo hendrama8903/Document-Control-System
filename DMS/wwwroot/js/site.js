@@ -464,8 +464,8 @@ function populateFieldsFromURL(dataArray) {
     var $draggedDialog = null;
     var startX, startY, startTop, startLeft;
 
-    $(document).on('mousedown', '.modal-header', function (e) {
-        if ($(e.target).closest('.close').length || e.which !== 1) {
+    $(document).on('mousedown', '.modal-header, .adf-header', function (e) {
+        if ($(e.target).closest('.close, .adf-close').length || e.which !== 1) {
             return;
         }
 

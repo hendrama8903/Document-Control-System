@@ -25,7 +25,7 @@ namespace DMS.Models.Repo
         }
         #endregion
 
-        public IList<DepartmentMaster> Search(DepartmentMaster data, DBContext db, int? PageNumber, int? PageSize)
+        public IList<DepartmentMaster> Search(DepartmentMaster data, DBContext db, int? PageNumber, int? PageSize, bool showAll = false)
         {
             List<SqlParameter> param = new List<SqlParameter>
             {
@@ -36,11 +36,12 @@ namespace DMS.Models.Repo
                 new SqlParameter ( "@DOCUMENT_CONTROL_ACCESS", CheckNullValue(data.DOCUMENT_CONTROL_ACCESS) ),
                 new SqlParameter ("@IS_VALID_ONLY", CheckNullValue(data.IS_VALID_ONLY)),
                 new SqlParameter ( "@PageNumber", CheckNullValue(PageNumber) ),
-                new SqlParameter ( "@PageSize", CheckNullValue(PageSize) )
-            
+                new SqlParameter ( "@PageSize", CheckNullValue(PageSize) ),
+                new SqlParameter ( "@SHOW_DELETED", "0" ),
+                new SqlParameter ( "@SHOW_ALL", showAll ? "1" : "0" )
             };
 
-            string query = "EXEC [dbo].[sp_DepartmentMaster_Search] @DEPARTMENT_CODE, @DEPARTMENT_NAME, @DEPARTMENT_CODE_NAME, @DIVISION, @DOCUMENT_CONTROL_ACCESS,@IS_VALID_ONLY, @PageNumber, @PageSize";
+            string query = "EXEC [dbo].[sp_DepartmentMaster_Search] @DEPARTMENT_CODE, @DEPARTMENT_NAME, @DEPARTMENT_CODE_NAME, @DIVISION, @DOCUMENT_CONTROL_ACCESS,@IS_VALID_ONLY, @PageNumber, @PageSize, @SHOW_DELETED, @SHOW_ALL";
             IList<DepartmentMaster> Result = db.DepartmentMaster.FromSqlRaw<DepartmentMaster>(query, param.ToArray()).ToList();
 
             return Result;
