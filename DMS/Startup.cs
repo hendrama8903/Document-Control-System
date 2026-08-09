@@ -47,7 +47,6 @@ namespace DMS
                 );
 
             services.AddOptions();
-            services.Configure<AWSConfiguration>(Configuration.GetSection("AWSConfiguration"));
             services.Configure<EmailConfiguration>(Configuration.GetSection("EmailConfiguration"));
 
             var connectionString = Configuration.GetConnectionString("defaultConnection");
