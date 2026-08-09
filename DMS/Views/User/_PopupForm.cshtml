@@ -1,155 +1,374 @@
-﻿<div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+<style>
+    #modalAddEdit .modal-content.adf-modal-content,
+    #modalAddEditPosition .modal-content.adf-modal-content {
+        border: none;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    #modalAddEdit .adf-header,
+    #modalAddEditPosition .adf-header {
+        background: linear-gradient(135deg, #2450D8, #1C3FA6);
+        color: #fff;
+        padding: 16px 22px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    #modalAddEdit .adf-header-icon,
+    #modalAddEditPosition .adf-header-icon {
+        flex: none;
+        width: 38px;
+        height: 38px;
+        border-radius: 9px;
+        background: rgba(255,255,255,.18);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+
+    #modalAddEdit .adf-header-title,
+    #modalAddEditPosition .adf-header-title { font-size: 15.5px; font-weight: 700; margin: 0; }
+    #modalAddEdit .adf-header-sub { font-size: 11.5px; color: rgba(255,255,255,.85); margin: 2px 0 0; }
+
+    #modalAddEdit .adf-close,
+    #modalAddEditPosition .adf-close {
+        margin-left: auto;
+        background: transparent;
+        border: none;
+        color: rgba(255,255,255,.9);
+        font-size: 18px;
+        line-height: 1;
+        padding: 6px;
+        cursor: pointer;
+        align-self: flex-start;
+    }
+
+    #modalAddEdit .adf-close:hover,
+    #modalAddEditPosition .adf-close:hover { color: #fff; }
+
+    /* ---------- Add/Edit User: two-column layout ---------- */
+    #modalAddEdit .modal-dialog { width: 900px; max-width: 96vw; }
+    #modalAddEdit .modal-body { padding: 0; background: #F4F6F8; }
+
+    #modalAddEdit .uf-layout { display: flex; align-items: stretch; }
+
+    #modalAddEdit .uf-sidebar {
+        flex: none;
+        width: 220px;
+        background: #EEF1F5;
+        border-right: 1px solid #E3E8EE;
+        padding: 22px 18px;
+        text-align: center;
+    }
+    #modalAddEdit .uf-sidebar h5 { font-weight: 700; font-size: 13.5px; color: #1D2939; margin: 0 0 4px; }
+    #modalAddEdit .uf-sidebar > p { font-size: 11px; color: #66788A; margin: 0 0 6px; }
+
+    #modalAddEdit .uf-avatar-wrap { position: relative; width: 118px; height: 118px; margin: 14px auto 16px; }
+    #modalAddEdit .uf-avatar {
+        width: 118px;
+        height: 118px;
+        border-radius: 50%;
+        background: #D7DCE3;
+        border: 2px dashed #C3CAD3;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    #modalAddEdit .uf-avatar img { width: 100%; height: 100%; object-fit: cover; display: none; }
+    #modalAddEdit .uf-avatar i { font-size: 44px; color: #98A2B3; }
+    #modalAddEdit .uf-avatar-cam {
+        position: absolute;
+        right: 2px;
+        bottom: 2px;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #2450D8;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 3px solid #EEF1F5;
+        cursor: pointer;
+        font-size: 12.5px;
+    }
+    #modalAddEdit .uf-avatar-cam:hover { background: #1C3FA6; }
+
+    #modalAddEdit .uf-sidebar .dp-btn { width: 100%; justify-content: center; }
+    #modalAddEdit .uf-hint { font-size: 10.5px; color: #98A2B3; margin-top: 8px; }
+    #modalAddEdit .uf-remove-photo {
+        display: none;
+        margin-top: 10px;
+        font-size: 11px;
+        color: #C62828;
+        font-weight: 600;
+        cursor: pointer;
+        background: none;
+        border: none;
+    }
+    #modalAddEdit .uf-remove-photo:hover { text-decoration: underline; }
+
+    #modalAddEdit .uf-main { flex: 1; min-width: 0; padding: 20px 24px; max-height: 62vh; overflow-y: auto; }
+
+    #modalAddEdit .uf-section { margin-bottom: 18px; }
+    #modalAddEdit .uf-section:last-child { margin-bottom: 0; }
+    #modalAddEdit .uf-section-title {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #1D2939;
+        margin-bottom: 3px;
+    }
+    #modalAddEdit .uf-section-icon {
+        flex: none;
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        background: #E7F1FB;
+        color: #2450D8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+    }
+    #modalAddEdit .uf-section-sub { font-size: 11.5px; color: #98A2B3; margin: 0 0 14px 35px; }
+
+    #modalAddEdit .uf-row { display: flex; gap: 16px; margin-bottom: 14px; }
+    #modalAddEdit .uf-row:last-child { margin-bottom: 0; }
+    #modalAddEdit .uf-row > div { flex: 1; min-width: 0; }
+
+    #modalAddEdit .uf-field label { display: block; font-size: 12px; font-weight: 600; color: #26314f; margin-bottom: 5px; }
+    #modalAddEdit .uf-input-group { position: relative; }
+    #modalAddEdit .uf-input-group i.uf-leading {
+        position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+        color: #98A2B3; font-size: 12.5px; pointer-events: none;
+    }
+    #modalAddEdit .uf-input-group i.uf-trailing {
+        position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+        color: #98A2B3; font-size: 12.5px; cursor: pointer;
+    }
+    #modalAddEdit .uf-input-group input,
+    #modalAddEdit .uf-input-group select.form-control {
+        width: 100%;
+        padding: 8px 12px 8px 34px;
+        border: 1.5px solid #D0D6DE;
+        border-radius: 8px;
+        font-size: 12.5px;
+        color: #1D2939;
+        height: auto;
+    }
+    #modalAddEdit .uf-input-group input:focus { border-color: #2450D8; outline: none; box-shadow: 0 0 0 3px rgba(36,80,216,.12); }
+    #modalAddEdit .uf-input-group.uf-has-trailing input { padding-right: 34px; }
+    #modalAddEdit .uf-input-group .select2-container { width: 100% !important; }
+    #modalAddEdit .uf-input-group .select2-container .select2-selection--single {
+        height: 35px; border: 1.5px solid #D0D6DE; border-radius: 8px; padding-left: 22px;
+    }
+    #modalAddEdit .uf-input-group .select2-container .select2-selection__rendered { line-height: 33px; font-size: 12.5px; }
+    #modalAddEdit .uf-input-group .select2-container .select2-selection__arrow { height: 33px; }
+
+    #modalAddEdit .uf-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 400; color: #344054; margin: 2px 0 0; cursor: pointer; }
+    #modalAddEdit .uf-check input { width: 15px; height: 15px; cursor: pointer; margin: 0; }
+
+    #modalAddEdit .uf-divider { border-top: 1px solid #E3E8EE; margin: 18px 0; }
+
+    #modalAddEdit .uf-dropzone {
+        border: 1.5px dashed #C6D0DB;
+        border-radius: 10px;
+        background: #F9FAFB;
+        padding: 14px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        flex-wrap: wrap;
+        position: relative;
+    }
+    #modalAddEdit .uf-dropzone-left { display: flex; align-items: center; gap: 12px; }
+    #modalAddEdit .uf-dropzone i.fa-cloud-upload { font-size: 20px; color: #98A2B3; }
+    #modalAddEdit .uf-dropzone-text { font-size: 12px; color: #66788A; }
+    #modalAddEdit .uf-dropzone-text .uf-browse { color: #2450D8; font-weight: 600; cursor: pointer; }
+    #modalAddEdit .uf-dropzone-hint { font-size: 10.5px; color: #98A2B3; margin-top: 2px; }
+    #modalAddEdit .uf-dropzone-filename { font-size: 11px; color: #1E9E63; font-weight: 600; margin-top: 4px; }
+    #modalAddEdit .uf-dropzone .bootstrap-filestyle { display: none; }
+
+    #modalAddEdit .modal-footer { background: #fff; border-top: 1px solid #E3E8EE; padding: 14px 22px; margin: 0; }
+</style>
+
+<div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
     <div class="modal-dialog modal-md">
-        <div class="modal-content">
+        <div class="modal-content adf-modal-content">
             <!-- Modal Header -->
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-                <h4 class="modal-title" id="modal-title">Add / Edit @ViewData["Title"]</h4>
+            <div class="adf-header">
+                <div class="adf-header-icon"><i class="fa fa-user-plus"></i></div>
+                <div>
+                    <h4 class="adf-header-title" id="modal-title">Add User</h4>
+                    <p class="adf-header-sub">Create a new user account and assign access role.</p>
+                </div>
+                <button type="button" class="adf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
             </div>
 
             <!-- Modal Body -->
             <div class="modal-body">
-                <div class="row">
-                    <div class="col-lg-12 form-horizontal" style="margin-top:15px;">
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Username <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditUsername" type="text" oninput="removeWhiteSpace(this)" maxlength="50" />
+                <div class="uf-layout">
+                    <!-- Sidebar: Profile Photo -->
+                    <div class="uf-sidebar">
+                        <h5>Profile Photo</h5>
+                        <p>Upload a profile photo for this user.</p>
+                        <div class="uf-avatar-wrap">
+                            <div class="uf-avatar">
+                                <img id="ufAvatarImg" src="" alt="Profile photo preview" />
+                                <i class="fa fa-user" id="ufAvatarPlaceholder"></i>
+                            </div>
+                            <div class="uf-avatar-cam" id="ufAvatarCam" title="Upload photo"><i class="fa fa-camera"></i></div>
+                        </div>
+                        <button type="button" class="dp-btn dp-btn-outline" id="ufUploadPhotoBtn"><i class="fa fa-upload"></i> Upload Photo</button>
+                        <div class="uf-hint">JPG, PNG (Max. 2MB)</div>
+                        <button type="button" class="uf-remove-photo" id="btn_delete_attachment">Remove photo</button>
+
+                        <!-- FILE_PATH (profile photo) upload - kept functionally identical to the
+                             pre-redesign markup (filestyle-wrapped input inside #inputContainer /
+                             #fileNameContainer) so _Javascript.cshtml's existing class/value toggling
+                             for the photo keeps working untouched; just visually hidden here since the
+                             sidebar's camera icon / "Upload Photo" button trigger it instead. -->
+                        <div class="form-group has-feedback" id="inputContainer" style="display:none;">
+                            <div id="fileNameContainer">
+                                <input type="file" class="filestyle" data-btnClass="btn-primary" id="filePath" accept=".jpg,.jpeg,.png">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main: form sections -->
+                    <div class="uf-main">
+                        <div class="uf-section">
+                            <div class="uf-section-title"><span class="uf-section-icon"><i class="fa fa-id-badge"></i></span> User Information</div>
+
+                            <div class="uf-row" style="margin-top:14px;">
+                                <div class="uf-field">
+                                    <label>Username <span class="text-red">*</span></label>
+                                    <div class="uf-input-group">
+                                        <i class="fa fa-user uf-leading"></i>
+                                        <input id="addEditUsername" type="text" placeholder="Enter username" oninput="removeWhiteSpace(this)" maxlength="50" />
+                                    </div>
+                                </div>
+                                <div class="uf-field">
+                                    <label>Reg No <span class="text-red">*</span></label>
+                                    <div class="uf-input-group">
+                                        <i class="fa fa-id-badge uf-leading"></i>
+                                        <input id="addEditRegNo" type="text" placeholder="Enter registration number" oninput="removeWhiteSpace(this)" maxlength="50" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="uf-row">
+                                <div class="uf-field">
+                                    <label>Full Name <span class="text-red">*</span></label>
+                                    <div class="uf-input-group">
+                                        <i class="fa fa-user uf-leading"></i>
+                                        <input id="addEditFullname" type="text" placeholder="Enter full name" oninput="removeWhiteSpace(this)" maxlength="255" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="uf-row">
+                                <div class="uf-field">
+                                    <label>Email <span class="text-red">*</span></label>
+                                    <div class="uf-input-group">
+                                        <i class="fa fa-envelope-o uf-leading"></i>
+                                        <input id="addEditEmail" type="text" placeholder="Enter email address" oninput="removeWhiteSpace(this)" maxlength="255" />
+                                    </div>
+                                </div>
+                                <div class="uf-field">
+                                    <label>Phone</label>
+                                    <div class="uf-input-group">
+                                        <i class="fa fa-phone uf-leading"></i>
+                                        <input id="addEditPhone" type="text" placeholder="Enter phone number (optional)" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="uf-row">
+                                <div class="uf-field">
+                                    <label>Role <span class="text-red">*</span></label>
+                                    <div class="uf-input-group">
+                                        <i class="fa fa-shield uf-leading" style="z-index:1;"></i>
+                                        <select class="form-control select2" id="addEditRoleId"></select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <label class="uf-check" for="addEditAdUser">
+                                <input type="checkbox" id="addEditAdUser" />
+                                Login menggunakan akun Active Directory (domain)
+                            </label>
+                        </div>
+
+                        <div class="uf-divider"></div>
+
+                        <div class="uf-section">
+                            <div class="uf-section-title"><span class="uf-section-icon"><i class="fa fa-lock"></i></span> Password</div>
+                            <div class="uf-section-sub">Password is required if not using Active Directory.</div>
+
+                            <div class="uf-row" id="rowOldPassword">
+                                <div class="uf-field">
+                                    <label>Old Password <span class="text-red">*</span></label>
+                                    <div class="uf-input-group">
+                                        <i class="fa fa-lock uf-leading"></i>
+                                        <input id="addEditOldPassword" type="password" placeholder="Enter old password" />
+                                    </div>
+                                    <span id="spanOldPassword" class="text-red" style="font-size:11px;">*Keep it blank if you don't change the password</span>
+                                </div>
+                            </div>
+
+                            <div class="uf-row">
+                                <div class="uf-field" id="rowNewPassword">
+                                    <label id="labelNewPassword">Password <span class="text-red">*</span></label>
+                                    <div class="uf-input-group uf-has-trailing">
+                                        <i class="fa fa-lock uf-leading"></i>
+                                        <input id="addEditPassword" type="password" placeholder="Enter password" />
+                                        <i class="fa fa-eye uf-trailing uf-toggle-pw" data-target="#addEditPassword"></i>
+                                    </div>
+                                    <span id="spanEditPassword" class="text-red" style="font-size:11px;">*Keep it blank if you don't change the password</span>
+                                </div>
+                                <div class="uf-field" id="rowConfirmPassword">
+                                    <label>Confirm Password <span class="text-red">*</span></label>
+                                    <div class="uf-input-group uf-has-trailing">
+                                        <i class="fa fa-lock uf-leading"></i>
+                                        <input id="addEditConfirmPassword" type="password" placeholder="Confirm password" />
+                                        <i class="fa fa-eye uf-trailing uf-toggle-pw" data-target="#addEditConfirmPassword"></i>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Reg No <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditRegNo" type="text" oninput="removeWhiteSpace(this)" maxlength="50" />
+
+                        <div class="uf-divider"></div>
+
+                        <div class="uf-section">
+                            <div class="uf-section-title"><span class="uf-section-icon"><i class="fa fa-pencil"></i></span> Signature</div>
+                            <div class="uf-section-sub">Upload user signature (optional). Stored separately from the profile photo, saved once you click Save User.</div>
+
+                            <div class="uf-dropzone" id="ufSignatureDropzone">
+                                <div class="uf-dropzone-left">
+                                    <img id="ufSignaturePreview" alt="Signature preview" style="display:none; max-height:40px; max-width:90px; object-fit:contain;" />
+                                    <i class="fa fa-cloud-upload" id="ufSignatureIcon"></i>
+                                    <div>
+                                        <div class="uf-dropzone-text"><span class="uf-browse" id="ufBrowseSignature">Click to browse</span> or drag &amp; drop file here</div>
+                                        <div class="uf-dropzone-hint">JPG, PNG (Max. 2MB)</div>
+                                        <div class="uf-dropzone-filename" id="ufSignatureFileName"></div>
                                     </div>
                                 </div>
+                                <div style="display:flex; gap:8px;">
+                                    <button type="button" class="dp-btn dp-btn-outline" id="ufChooseFileBtn"><i class="fa fa-folder-open-o"></i> Choose File</button>
+                                    <button type="button" class="dp-btn dp-btn-outline-danger" id="btn_delete_signature" style="display:none;"><i class="fa fa-trash-o"></i></button>
+                                </div>
+                                <input type="file" id="ufSignatureFile" accept=".jpg,.jpeg,.png" style="display:none;">
                             </div>
                         </div>
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Full Name <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditFullname" type="text" oninput="removeWhiteSpace(this)" maxlength="255"/>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Email <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditEmail" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Phone</label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditPhone" type="text" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Role <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <select class="form-control select2" id="addEditRoleId">
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">AD User</label>
-                                    <div class="col-sm-8" style="padding-top: 7px;">
-                                        <input type="checkbox" id="addEditAdUser" style="cursor: pointer; vertical-align: middle;" />
-                                        <label for="addEditAdUser" style="margin-left: 6px; margin-bottom: 0; font-weight: normal; cursor: pointer; vertical-align: middle;">Login menggunakan akun Active Directory (domain)</label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row" id="rowOldPassword">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Old Password <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditOldPassword" type="password" />
-                                        <span id="spanOldPassword" class="text-red">*Keep it blank if you don't change the password</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row" id="rowNewPassword">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label id="labelNewPassword" class="col-sm-3 control-label">New Password <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditPassword" type="password" />
-                                        <span id="spanEditPassword" class="text-red">*Keep it blank if you don't change the password</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row" id="rowConfirmPassword">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Confirm Password <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditConfirmPassword" type="password" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group has-feedback" id="inputContainer">
-                                    <label class="col-sm-3 control-label">Signature</label>
-                                    <div class="col-sm-8" id="fileNameContainer">
-                                        <input type="file" class="filestyle" data-btnClass="btn-primary" id="filePath" style="height: 31px;" accept=".jpg,.jpeg,.png">
-                                    </div>
-                                    <div class="col-sm-2" style="padding-left: 0px">
-                                        <div class="btn-group">
-                                            <button type="button" id="btn_delete_attachment" class="btn btn-danger" data-toggle="tooltip" data-placement="bottom" title="Remove Signature"><i class="fa fa-trash"></i></button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-@*                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Division <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <select class="form-control" id="addEditDivision" onchange="setDepartment(this.value)"></select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Department <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <select class="form-control" id="addEditDepartment"></select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>*@
                     </div>
                 </div>
             </div>
@@ -157,10 +376,161 @@
             <!-- Modal Footer -->
             <div class="modal-footer">
                 <div class="col-xs-12 text-right">
-                    <button type="button" class="btn btn-primary" id="btn_save" style="width: 80px;">Save</button>
-                    <button type="button" class="btn btn-danger" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>
+                    <button type="button" class="dp-btn dp-btn-outline" id="btn_cancel" data-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
+                    <button type="button" class="dp-btn dp-btn-primary" id="btn_save"><i class="fa fa-save"></i> Save User</button>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<script type="text/javascript">
+    // ---------- Add/Edit User popup: photo preview, password toggle, dropzone triggers ----------
+    // FILE_PATH (profile photo) and SIGNATURE_PATH are separate columns/uploads, same
+    // separation as the redesigned Profile page (UploadSignature/DeleteSignature +
+    // sp_User_UpdateSignature) - the signature file is staged client-side and only
+    // actually uploaded once the user record itself has been saved (needed for ADD mode,
+    // where the row doesn't exist yet to attach a signature to).
+    var gSignatureFile = null;
+    var gSignaturePath = null;
+
+    $(document).on('click', '#modalAddEdit .uf-toggle-pw', function () {
+        var $input = $($(this).data('target'));
+        var isPassword = $input.attr('type') === 'password';
+        $input.attr('type', isPassword ? 'text' : 'password');
+        $(this).toggleClass('fa-eye fa-eye-slash');
+    });
+
+    $(document).on('click', '#ufAvatarCam, #ufUploadPhotoBtn', function () {
+        $('#filePath').trigger('click');
+    });
+
+    $(document).on('change', '#filePath', function (e) {
+        var files = e.target.files;
+        if (files && files.length > 0) {
+            var reader = new FileReader();
+            reader.onload = function (ev) {
+                $('#ufAvatarImg').attr('src', ev.target.result).show();
+                $('#ufAvatarPlaceholder').hide();
+            };
+            reader.readAsDataURL(files[0]);
+        }
+    });
+
+    $(document).on('click', '#ufChooseFileBtn, #ufBrowseSignature', function () {
+        $('#ufSignatureFile').trigger('click');
+    });
+
+    $(document).on('change', '#ufSignatureFile', function (e) {
+        var file = e.target.files && e.target.files.length ? e.target.files[0] : null;
+        if (!file) return;
+
+        var ext = file.name.split('.').pop().toLowerCase();
+        if (['jpg', 'jpeg', 'png'].indexOf(ext) === -1) {
+            showErrorMesgGrowl('Only JPG and PNG files are allowed.');
+            $(this).val('');
+            return;
+        }
+        if (file.size > 2 * 1024 * 1024) {
+            showErrorMesgGrowl('Signature file must be 2 MB or smaller.');
+            $(this).val('');
+            return;
+        }
+
+        gSignatureFile = file;
+        $('#ufSignatureFileName').text(file.name + ' (will be saved with the user)');
+        $('#btn_delete_signature').show();
+
+        var reader = new FileReader();
+        reader.onload = function (ev) {
+            $('#ufSignaturePreview').attr('src', ev.target.result).show();
+            $('#ufSignatureIcon').hide();
+        };
+        reader.readAsDataURL(file);
+    });
+
+    $(document).on('click', '#btn_delete_signature', function () {
+        if (gSignaturePath) {
+            // an already-saved signature exists server-side - remove it for real
+            showConfirmMesg('Are you sure you want to remove this signature?', function () {
+                popUpProgressShow();
+                $.ajax({
+                    type: 'POST',
+                    url: '@Url.Action("DeleteSignature", "User")',
+                    data: { USERNAME: $('#addEditUsername').val(), SIGNATURE_PATH: gSignaturePath },
+                    success: function (result) {
+                        popUpProgressHide();
+                        if (result.status == true) {
+                            gSignaturePath = null;
+                            resetSignatureWidget();
+                            showSuccessMesgGrowl(result.message);
+                        } else {
+                            showErrorMesgGrowl(result.message);
+                        }
+                    },
+                    error: function (result) {
+                        popUpProgressHide();
+                        showErrorMesgGrowl(result);
+                    }
+                });
+            }, 'Confirmation');
+        } else {
+            // only a staged, not-yet-saved file - just clear it client-side
+            gSignatureFile = null;
+            resetSignatureWidget();
+        }
+    });
+
+    function resetSignatureWidget() {
+        gSignatureFile = null;
+        $('#ufSignatureFile').val('');
+        $('#ufSignatureFileName').text('');
+        $('#ufSignaturePreview').attr('src', '').hide();
+        $('#ufSignatureIcon').show();
+        $('#btn_delete_signature').hide();
+    }
+
+    function updateSignaturePreview(signaturePath) {
+        gSignaturePath = signaturePath || null;
+        if (signaturePath) {
+            $('#ufSignaturePreview').attr('src', signaturePath).show();
+            $('#ufSignatureIcon').hide();
+            $('#ufSignatureFileName').text('');
+            $('#btn_delete_signature').show();
+        } else {
+            resetSignatureWidget();
+        }
+    }
+
+    // called after the user record itself has been successfully saved (ADD or EDIT) -
+    // uploads the staged signature file, if any, then invokes done() regardless of outcome
+    // so the main save flow (refresh grid, close modal) isn't blocked by this side-effect.
+    function uploadStagedSignatureIfAny(username, done) {
+        if (!gSignatureFile) {
+            done();
+            return;
+        }
+
+        var data = new FormData();
+        data.append('USERNAME', username);
+        data.append('file0', gSignatureFile);
+
+        $.ajax({
+            type: 'POST',
+            url: '@Url.Action("UploadSignature", "User")',
+            contentType: false,
+            processData: false,
+            data: data,
+            success: function (result) {
+                if (result.status != true) {
+                    showErrorMesgGrowl(result.message);
+                }
+                done();
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+                done();
+            }
+        });
+    }
+</script>

@@ -33,7 +33,8 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_User_Search]
 	@DOCUMENT_CONTROL_ACCESS VARCHAR(5),
 	@PageNumber int,
 	@PageSize int,
-	@SHOW_DELETED CHAR(1) = NULL
+	@SHOW_DELETED CHAR(1) = NULL,
+	@SHOW_ALL CHAR(1) = NULL
 AS
 BEGIN
 
@@ -66,6 +67,7 @@ BEGIN
 										S.SECTION_NAME,
 										A.FILE_PATH,
 										A.AD_USER,
+										ISNULL(A.DELETE_FLAG, ''0'') AS DELETE_FLAG,
 										A.CREATED_DT,
 										A.CREATED_BY,
 										A.CHANGED_DT,
@@ -80,13 +82,16 @@ BEGIN
 									LEFT JOIN [dbo].[TB_M_DIVISION] Y ON Y.[DIVISION_CODE] = P.[DIVISION]
 									WHERE 1 = 1 '
 
-									IF ISNULL(@SHOW_DELETED, '0') = '1'
+									IF ISNULL(@SHOW_ALL, '0') <> '1'
 									BEGIN
-										SET @QUERY += ' AND ISNULL(A.DELETE_FLAG, ''0'') = ''1'' '
-									END
-									ELSE
-									BEGIN
-										SET @QUERY += ' AND ISNULL(A.DELETE_FLAG, ''0'') <> ''1'' '
+										IF ISNULL(@SHOW_DELETED, '0') = '1'
+										BEGIN
+											SET @QUERY += ' AND ISNULL(A.DELETE_FLAG, ''0'') = ''1'' '
+										END
+										ELSE
+										BEGIN
+											SET @QUERY += ' AND ISNULL(A.DELETE_FLAG, ''0'') <> ''1'' '
+										END
 									END
 
 									IF @USERNAME IS NOT NULL

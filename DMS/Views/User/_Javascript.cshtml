@@ -21,14 +21,6 @@
             onAddPrepare();
         });
 
-        $("#btn_edit").on("click", function () {
-            onEditPrepare();
-        });
-
-        $("#btn_delete").on("click", function () {
-            onDeletePrepare();
-        });
-
         $("#btn_save").on("click", function () {
             confirmAddEditData();
         });
@@ -40,10 +32,6 @@
         if (url === "/User/Profile") {
             getProfileData();
         }
-
-        $("#btn_position").on("click", function () {
-            onAddPositionPrepare();
-        });
 
         $("#btn_save_position").on("click", function () {
             confirmAddEditPositionData();
@@ -57,28 +45,28 @@
             toggleAdUserFields();
         });
 
-        $("#btn_restore").on("click", function () {
-            onRestorePrepare();
+        $("#btn_export").on("click", function () {
+            window.location.href = "@Url.Action("DownloadExcel", "User")";
         });
 
-        $("#chk_showDeleted").on("change", function () {
-            gShowDeleted = $(this).is(":checked");
-
-            if (gShowDeleted) {
-                $("#btn_add").hide();
-                $("#btn_edit").hide();
-                $("#btn_delete").hide();
-                $("#btn_position").hide();
-                $("#btn_restore").show();
-            } else {
-                $("#btn_add").show();
-                $("#btn_edit").show();
-                $("#btn_delete").show();
-                $("#btn_position").show();
-                $("#btn_restore").hide();
-            }
-
-            onSearch();
+        $("#btn_toggleStats").on("click", function () {
+            var $btn = $(this);
+            var $icon = $btn.find("i");
+            var $row = $("#userStatsRow");
+            $row.stop(true, true).animate(
+                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
+                {
+                    duration: 220,
+                    easing: "swing",
+                    progress: function () { $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight()); },
+                    complete: function () {
+                        var collapsed = !$row.is(":visible");
+                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
+                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
+                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+                    }
+                }
+            );
         });
     });
 
@@ -108,7 +96,7 @@
 
     function onAddPrepare() {
         gScreenMode = 'ADD';
-        $('#modal-title').html("Add User");
+        $('#modal-title').html("Add New User");
 
         $('#addEditUsername').prop('disabled', false);
 
@@ -128,6 +116,9 @@
         
         $('#btn_download_attachment').hide();
         $('#btn_delete_attachment').hide();
+        $('#ufAvatarImg').attr('src', '').hide();
+        $('#ufAvatarPlaceholder').show();
+        resetSignatureWidget();
 
         $('#rowOldPassword').hide();
         $('#spanEditPassword').hide();
@@ -150,13 +141,7 @@
         });
     }
 
-    function onEditPrepare() {
-
-        var row = getSelectedRowData();
-        if (row == null) {
-            return;
-        }
-
+    function onEditPrepare(row) {
         gId = row.USERNAME;
 
         $.ajax({
@@ -197,20 +182,35 @@
 
                     gAttachmentPath = data.FILE_PATH;
                     if (data.FILE_PATH == null) {
-                        $('#fileNameContainer').removeClass();
-                        $('#fileNameContainer').addClass('col-sm-8');
                         $('#btn_delete_attachment').hide();
+                        $('#ufAvatarImg').attr('src', '').hide();
+                        $('#ufAvatarPlaceholder').show();
                     } else {
+                        $('#ufAvatarImg').attr('src', data.FILE_PATH).show();
+                        $('#ufAvatarPlaceholder').hide();
+
                         if ("@ViewData["Delete-Attachment"]" == "False") {
-                            $('#fileNameContainer').removeClass();
-                            $('#fileNameContainer').addClass('col-sm-8');
                             $('#btn_delete_attachment').hide();
                         } else {
-                            $('#fileNameContainer').removeClass();
-                            $('#fileNameContainer').addClass('col-sm-7');
                             $('#btn_delete_attachment').show();
                         }
                     }
+
+                    // SIGNATURE_PATH lives in a separate column from FILE_PATH (profile photo)
+                    // and isn't returned by GetByKey (kept untouched for the admin grid) -
+                    // fetch it via the same GetProfileDetail endpoint the Profile page uses.
+                    resetSignatureWidget();
+                    $.ajax({
+                        type: "POST",
+                        url: "@Url.Action("GetProfileDetail", "User")",
+                        async: false,
+                        data: { USERNAME: gId },
+                        success: function (profileResult) {
+                            if (profileResult.status == true) {
+                                updateSignaturePreview(profileResult.data.SIGNATURE_PATH);
+                            }
+                        }
+                    });
 
                     //if (data.DIVISION != null) {
                     //    $('#addEditDivision').select2("trigger", "select", { data: { id: data.DIVISION, text: data.DIVISION + " - " + data.DIVISION_NAME } });
@@ -364,15 +364,18 @@
             success: function (result) {
                 //popUpProgressHide();
                 if (result.status == true) {
-                    showSuccessMesgGrowl(result.message);
                     //if (gScreenMode === 'EDIT_PROFILE') {
                     if (url === "/User/Profile") {
+                        showSuccessMesgGrowl(result.message);
                         getProfileData();
                         popUpProgressHide();
                     } else {
-                        onSearch();
-                        $("#modalAddEdit").modal('hide');
-                        popUpProgressHide();
+                        uploadStagedSignatureIfAny($('#addEditUsername').val(), function () {
+                            showSuccessMesgGrowl(result.message);
+                            onSearch();
+                            $("#modalAddEdit").modal('hide');
+                            popUpProgressHide();
+                        });
                     }
                 }else {
                    showErrorMesgGrowl(result.message);
@@ -432,12 +435,7 @@
         });
     }
 
-    function onDeletePrepare() {
-        var row = getSelectedRowData();
-        if (row == null) {
-            return;
-        }
-
+    function onDeletePrepare(row) {
         gId = row.USERNAME;
 
         showConfirmMesg("Are you sure you want to delete user " + gId + "?", deleteData, "Confirmation");
@@ -466,12 +464,7 @@
         });
     }
 
-    function onRestorePrepare() {
-        var row = getSelectedRowData();
-        if (row == null) {
-            return;
-        }
-
+    function onRestorePrepare(row) {
         gId = row.USERNAME;
 
         showConfirmMesg("Are you sure you want to restore user " + gId + "?", restoreData, "Confirmation");
@@ -500,12 +493,7 @@
         });
     }
 
-    function onAddPositionPrepare() {
-        var row = getSelectedRowData();
-        if (row == null) {
-            return;
-        }
-
+    function onAddPositionPrepare(row) {
         gId = row.USERNAME;
 
         $('#addEditUsernamePosition').prop('disabled', true);
@@ -667,10 +655,11 @@
             success: function (result) {
                 if (result.status != false) {
                     $('#inputContainer :input[type="text"]').val("");
-                    $('#fileNameContainer').removeClass();
-                    $('#fileNameContainer').addClass('col-sm-8');
                     $('#btn_download_attachment').hide();
                     $('#btn_delete_attachment').hide();
+                    $('#ufAvatarImg').attr('src', '').hide();
+                    $('#ufAvatarPlaceholder').show();
+                    $('#ufSignatureFileName').text('');
 
                     gAttachmentPath = null;
                     $(":file").filestyle('clear');

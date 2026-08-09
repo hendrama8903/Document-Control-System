@@ -1,0 +1,226 @@
+<script type="text/javascript">
+    // Dedicated script for the redesigned User Profile page - deliberately NOT shared
+    // with Views/User/_Javascript.cshtml (the admin User Management CRUD script), so
+    // this page's redesign can't accidentally break the admin grid/popup.
+    var gHasLocalPassword = true;
+    var gAvatarFile = null;
+
+    $(document).ready(function () {
+        getProfileData();
+
+        $("#btn_changeAvatar").on("click", function () {
+            $("#avatarFileInput").trigger("click");
+        });
+
+        $("#avatarFileInput").on("change", function () {
+            var file = this.files && this.files.length ? this.files[0] : null;
+            if (!file) return;
+
+            var ext = file.name.split(".").pop().toLowerCase();
+            if (["jpg", "jpeg", "png"].indexOf(ext) === -1) {
+                showErrorMesgGrowl("Only JPG and PNG files are allowed.");
+                $(this).val("");
+                return;
+            }
+
+            gAvatarFile = file;
+
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                $("#imgAvatar").attr("src", e.target.result);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        $("#btn_changeSignature").on("click", function () {
+            $("#signatureFileInput").trigger("click");
+        });
+
+        $("#signatureFileInput").on("change", function () {
+            var file = this.files && this.files.length ? this.files[0] : null;
+            if (!file) return;
+
+            var ext = file.name.split(".").pop().toLowerCase();
+            if (["jpg", "jpeg", "png"].indexOf(ext) === -1) {
+                showErrorMesgGrowl("Only JPG and PNG files are allowed.");
+                $(this).val("");
+                return;
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                showErrorMesgGrowl("Signature file must be 2 MB or smaller.");
+                $(this).val("");
+                return;
+            }
+
+            uploadSignature(file);
+        });
+
+        $("#btn_save_sidebar").on("click", function () {
+            confirmSaveProfile();
+        });
+
+        $("#btn_cancel_profile_sidebar").on("click", function () {
+            gAvatarFile = null;
+            $("#avatarFileInput, #signatureFileInput").val("");
+            getProfileData();
+        });
+    });
+
+    function getProfileData() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetProfileDetail", "User")",
+            async: false,
+            data: {
+                USERNAME: $("#txtUserNameLayout").text()
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    var data = result.data;
+
+                    $("#txtFullName").text(data.FULL_NAME || "-");
+                    $("#txtRoleName").text(data.ROLE_NAME || "-");
+                    $("#txtUsername").text(data.USERNAME || "-");
+                    $("#txtRegNo").text(data.REG_NO || "-");
+                    $("#txtEmailSidebar").text(data.EMAIL || "-");
+                    $("#txtPhoneSidebar").text(data.PHONE || "-");
+                    $("#txtMemberSince").text(data.CREATED_DT ? moment(data.CREATED_DT).format("DD MMM YYYY") : "-");
+
+                    $("#addEditUsername").val(data.USERNAME);
+                    $("#addEditRegNo").val(data.REG_NO);
+                    $("#addEditFullname").val(data.FULL_NAME);
+                    $("#addEditPhone").val(data.PHONE);
+                    $("#addEditEmail").val(data.EMAIL);
+                    $("#addEditRoleName").val(data.ROLE_NAME);
+                    $("#addEditRoleId").val(data.ROLE_ID);
+
+                    $("#addEditOldPassword").val("");
+                    $("#addEditPassword").val("");
+                    $("#addEditConfirmPassword").val("");
+                    gHasLocalPassword = (data.PASSWORD != null);
+
+                    gAvatarFile = null;
+                    $("#avatarFileInput").val("");
+                    $("#imgAvatar").attr("src", data.FILE_PATH ? data.FILE_PATH : "@Url.Content("~/dist/img/user.png")");
+
+                    updateSignaturePreview(data.SIGNATURE_PATH);
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function updateSignaturePreview(signaturePath) {
+        if (signaturePath) {
+            $("#imgSignature").attr("src", signaturePath).show();
+            $("#noSignatureText").hide();
+        } else {
+            $("#imgSignature").attr("src", "").hide();
+            $("#noSignatureText").show();
+        }
+    }
+
+    function uploadSignature(file) {
+        popUpProgressShow();
+
+        var data = new FormData();
+        data.append("USERNAME", $("#addEditUsername").val());
+        data.append("file0", file);
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("UploadSignature", "User")",
+            contentType: false,
+            processData: false,
+            data: data,
+            success: function (result) {
+                popUpProgressHide();
+                $("#signatureFileInput").val("");
+                if (result.status == true) {
+                    updateSignaturePreview(result.filePath);
+                    showSuccessMesgGrowl(result.message);
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function confirmSaveProfile() {
+        var newPassword = $("#addEditPassword").val();
+        var confirmPassword = $("#addEditConfirmPassword").val();
+        var oldPassword = $("#addEditOldPassword").val();
+
+        if (newPassword || confirmPassword || oldPassword) {
+            if (!newPassword || !confirmPassword) {
+                showErrorMesgGrowl("New Password and Confirm New Password must both be filled to change the password.");
+                return;
+            }
+            if (newPassword !== confirmPassword) {
+                showErrorMesgGrowl("New Password and Confirm New Password do not match.");
+                return;
+            }
+            if (gHasLocalPassword && !oldPassword) {
+                showErrorMesgGrowl("Current Password is required to change your password.");
+                return;
+            }
+        }
+
+        showConfirmMesg("Are you sure you want to save these changes?", saveProfileData, "Confirmation");
+    }
+
+    function saveProfileData() {
+        popUpProgressShow();
+
+        var data = new FormData();
+        data.append("screenMode", "EDIT");
+        data.append("USERNAME", $("#addEditUsername").val());
+        data.append("REG_NO", $("#addEditRegNo").val());
+        data.append("FULL_NAME", $("#addEditFullname").val());
+        data.append("EMAIL", $("#addEditEmail").val());
+        data.append("PHONE", $("#addEditPhone").val());
+        data.append("ROLE_ID", $("#addEditRoleId").val());
+        data.append("AD_USER", "0");
+
+        var newPassword = $("#addEditPassword").val();
+        if (newPassword) {
+            data.append("OLD_PASSWORD", $("#addEditOldPassword").val());
+            data.append("PASSWORD", newPassword);
+            data.append("CONFIRM_PASSWORD", $("#addEditConfirmPassword").val());
+        }
+
+        if (gAvatarFile) {
+            data.append("file0", gAvatarFile);
+        }
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("AddEdit", "User")",
+            contentType: false,
+            processData: false,
+            data: data,
+            success: function (result) {
+                popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    gAvatarFile = null;
+                    getProfileData();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+</script>

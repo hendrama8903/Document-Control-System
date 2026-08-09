@@ -45,6 +45,27 @@ namespace DMS.Models.Repo
             return Result;
         }
 
+        public IList<UserListItem> SearchAll(User data, DBContext db, int? PageNumber, int? PageSize)
+        {
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                new SqlParameter ( "@USERNAME", CheckNullValue(data.USERNAME) ),
+                new SqlParameter ( "@FULL_NAME", CheckNullValue(data.FULL_NAME) ),
+                new SqlParameter ( "@DIVISION", CheckNullValue(data.DIVISION) ),
+                new SqlParameter ( "@DEPARTMENT_ID", CheckNullValue(data.DEPARTMENT_ID) ),
+                new SqlParameter ( "@DOCUMENT_CONTROL_ACCESS", CheckNullValue(data.DOCUMENT_CONTROL_ACCESS) ),
+                new SqlParameter ( "@PageNumber", CheckNullValue(PageNumber) ),
+                new SqlParameter ( "@PageSize", CheckNullValue(PageSize) ),
+                new SqlParameter ( "@SHOW_DELETED", "0" ),
+                new SqlParameter ( "@SHOW_ALL", "1" )
+            };
+
+            string query = "EXEC [dbo].[sp_User_Search] @USERNAME, @FULL_NAME, @DIVISION, @DEPARTMENT_ID, @DOCUMENT_CONTROL_ACCESS, @PageNumber, @PageSize, @SHOW_DELETED, @SHOW_ALL";
+            IList<UserListItem> Result = db.UserListItem.FromSqlRaw<UserListItem>(query, param.ToArray()).ToList();
+
+            return Result;
+        }
+
         public User GetByKey(User data, DBContext db)
         {
             List<SqlParameter> param = new List<SqlParameter>
@@ -56,6 +77,43 @@ namespace DMS.Models.Repo
             User Result = db.User.FromSqlRaw<User>(query, param.ToArray()).AsEnumerable().FirstOrDefault();
 
             return Result;
+        }
+
+        // Same sp_User_GetByKey as above, but projected onto UserProfileDetail (adds
+        // SIGNATURE_PATH) for the redesigned Profile page - kept separate from GetByKey()
+        // above so the admin User Management grid's User-typed call is unaffected.
+        public UserProfileDetail GetProfileDetail(User data, DBContext db)
+        {
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                new SqlParameter ( "@USERNAME", CheckNullValue(data.USERNAME) )
+            };
+
+            string query = "EXEC [dbo].[sp_User_GetByKey] @USERNAME";
+            UserProfileDetail Result = db.UserProfileDetail.FromSqlRaw<UserProfileDetail>(query, param.ToArray()).AsEnumerable().FirstOrDefault();
+
+            return Result;
+        }
+
+        public DBResult UpdateSignature(UserProfileDetail data, string loginUser, DBContext db)
+        {
+            SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
+            SqlParameter returnMsg = CreateSqlParameterOutputString("@RETURN_MSG");
+
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                returnVal,
+                new SqlParameter ( "@USERNAME", CheckNullValue(data.USERNAME) ),
+                new SqlParameter ( "@SIGNATURE_PATH", CheckNullValue(data.SIGNATURE_PATH) ),
+                new SqlParameter ( "@LOGIN_USER", loginUser ),
+                returnMsg
+            };
+
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_User_UpdateSignature] @USERNAME, @SIGNATURE_PATH, @LOGIN_USER, @RETURN_MSG OUTPUT";
+            int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
+
+            DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
+            return result;
         }
 
         public DBResult Insert(User data, string loginUser, DBContext db)

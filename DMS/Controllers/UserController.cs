@@ -15,6 +15,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
+using NPOI.SS.UserModel;
+using NPOI.XSSF.UserModel;
 
 namespace DMS.Controllers
 {
@@ -122,6 +124,76 @@ namespace DMS.Controllers
             {
                 return Json(new { status = false, message = ex.Message });
             }
+        }
+
+        public ActionResult SearchAll(User data)
+        {
+            try
+            {
+                var draw = Request.Form["draw"].FirstOrDefault();
+                var start = Request.Form["start"].FirstOrDefault();
+                var length = Request.Form["length"].FirstOrDefault();
+                int pageSize = length != null ? Convert.ToInt32(length) : 0;
+                int skip = start != null ? Convert.ToInt32(start) : 0;
+                int pageNumber = skip / pageSize + 1;
+
+                var userData = userRepo.SearchAll(data, db, pageNumber, pageSize);
+                var dataCount = userRepo.SearchAll(data, db, null, null).Count;
+                var jsonData = new { draw = draw, recordsFiltered = dataCount, recordsTotal = dataCount, data = userData };
+                return Ok(jsonData);
+            }
+            catch (Exception ex)
+            {
+                return Json("Error : " + ex.Message);
+            }
+        }
+
+        public IActionResult DownloadExcel()
+        {
+            IList<UserListItem> listData = userRepo.SearchAll(new User(), db, null, null);
+
+            var memoryStream = new MemoryStream();
+            IWorkbook workbook = new XSSFWorkbook();
+            ISheet sheet = workbook.CreateSheet("Users");
+
+            string[] headers = { "No", "Username", "Employee ID", "Full Name", "Email", "Phone", "Department", "Role", "Login Type", "Status" };
+
+            IRow headerRow = sheet.CreateRow(0);
+            for (int col = 0; col < headers.Length; col++)
+            {
+                headerRow.CreateCell(col).SetCellValue(headers[col]);
+            }
+
+            int rowIndex = 1;
+            int no = 1;
+            foreach (UserListItem item in listData)
+            {
+                IRow row = sheet.CreateRow(rowIndex);
+                row.CreateCell(0).SetCellValue(no);
+                row.CreateCell(1).SetCellValue(item.USERNAME);
+                row.CreateCell(2).SetCellValue(item.REG_NO);
+                row.CreateCell(3).SetCellValue(item.FULL_NAME);
+                row.CreateCell(4).SetCellValue(item.EMAIL);
+                row.CreateCell(5).SetCellValue(item.PHONE);
+                row.CreateCell(6).SetCellValue(item.DEPARTMENT_CODE != null ? item.DEPARTMENT_CODE + " - " + item.DEPARTMENT_NAME : "");
+                row.CreateCell(7).SetCellValue(item.ROLE_NAME);
+                row.CreateCell(8).SetCellValue(item.AD_USER == "1" ? "AD" : "Local");
+                row.CreateCell(9).SetCellValue(item.DELETE_FLAG == "1" ? "Inactive" : "Active");
+
+                rowIndex++;
+                no++;
+            }
+
+            for (int col = 0; col < headers.Length; col++)
+            {
+                sheet.AutoSizeColumn(col);
+            }
+
+            workbook.Write(memoryStream);
+            memoryStream.Position = 0;
+
+            return File(memoryStream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "USERS-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
 
         public async Task<JsonResult> AddEditAsync(string screenMode, User data)
@@ -241,6 +313,110 @@ namespace DMS.Controllers
             try
             {
                 DBResult result = userRepo.Restore(data, GetLoginUsername(), db);
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        // Richer version of GetByKey (adds SIGNATURE_PATH) for the redesigned Profile
+        // page - GetByKey above stays untouched for the admin User Management grid.
+        public JsonResult GetProfileDetail(User data)
+        {
+            try
+            {
+                UserProfileDetail result = userRepo.GetProfileDetail(data, db);
+                return Json(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        // Independent of AddEditAsync's own (avatar) file handling - reads the upload by
+        // form field name rather than position, so it can't collide with an avatar file
+        // sent in the same or a different request.
+        public async Task<JsonResult> UploadSignatureAsync(UserProfileDetail data)
+        {
+            string folderName = "/Upload/";
+            string webRootPath = Environment.WebRootPath;
+
+            try
+            {
+                if (Request.Form.Files.Count == 0)
+                {
+                    return Json(new { status = false, message = "No signature file uploaded." });
+                }
+
+                IFormFile file = Request.Form.Files[0];
+                string extension = Path.GetExtension(file.FileName).ToLower();
+                if (extension != ".jpg" && extension != ".jpeg" && extension != ".png")
+                {
+                    return Json(new { status = false, message = "Only JPG and PNG files are allowed." });
+                }
+                if (file.Length > 2 * 1024 * 1024)
+                {
+                    return Json(new { status = false, message = "Signature file must be 2 MB or smaller." });
+                }
+
+                // Look up the current signature path server-side (rather than trusting a
+                // client-supplied value) so the old file gets cleaned up on replacement.
+                UserProfileDetail existing = userRepo.GetProfileDetail(new User { USERNAME = data.USERNAME }, db);
+
+                MSystem mSystem = mSystemRepo.GetByKey(new MSystem { SYSTEM_TYPE = "UPLOAD_FOLDER", SYSTEM_CODE = "USER" }, db);
+                string path = folderName + mSystem.SYSTEM_VALUE.Trim();
+                string pathSave = webRootPath + folderName + mSystem.SYSTEM_VALUE.Trim();
+                string fileName = "Signature-" + DateTime.Now.ToFileTime() + extension;
+                string finalPath = pathSave + fileName;
+
+                if (!Directory.Exists(pathSave))
+                {
+                    Directory.CreateDirectory(pathSave);
+                }
+
+                if (existing?.SIGNATURE_PATH != null)
+                {
+                    string pathCheck = webRootPath + existing.SIGNATURE_PATH.Trim();
+                    if (System.IO.File.Exists(pathCheck))
+                    {
+                        System.IO.File.Delete(pathCheck);
+                    }
+                }
+
+                using (var stream = new FileStream(finalPath, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
+
+                data.SIGNATURE_PATH = path + fileName;
+                DBResult result = userRepo.UpdateSignature(data, GetLoginUsername(), db);
+                return Json(new { status = result.status, message = result.message, filePath = data.SIGNATURE_PATH });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public JsonResult DeleteSignature(UserProfileDetail data)
+        {
+            string webRootPath = Environment.WebRootPath;
+            try
+            {
+                if (data.SIGNATURE_PATH != null)
+                {
+                    string pathCheck = webRootPath + data.SIGNATURE_PATH.Trim();
+                    if (System.IO.File.Exists(pathCheck))
+                    {
+                        System.IO.File.Delete(pathCheck);
+                    }
+                }
+
+                data.SIGNATURE_PATH = null;
+                DBResult result = userRepo.UpdateSignature(data, GetLoginUsername(), db);
                 return Json(result);
             }
             catch (Exception ex)
