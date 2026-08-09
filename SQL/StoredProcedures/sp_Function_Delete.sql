@@ -1,3 +1,11 @@
+-- =====================================================================
+-- Fix: sp_Function_Delete sebelumnya melakukan hard DELETE tanpa mengecek
+-- apakah function tsb masih diberikan ke role manapun (TB_M_AUTH_FUNCTION),
+-- meninggalkan baris yatim (role masih "punya" izin ke function yang
+-- sudah tidak ada). Sekarang menolak penghapusan (RETURN 0, pesan error)
+-- kalau function masih terpasang di Role Authorization untuk role manapun.
+-- =====================================================================
+
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -9,12 +17,19 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_Function_Delete]
 AS
 BEGIN TRY
 	SET NOCOUNT ON;
-	
+
 	DECLARE @PROCESS_ID BIGINT,
 					@LOCATION VARCHAR(255) = 'sp_Function_Delete';
-					
-	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'Menu & Function - Function', 'Delete', @LOCATION, @LOGIN_USER	
-	
+
+	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'Menu & Function - Function', 'Delete', @LOCATION, @LOGIN_USER
+
+	IF EXISTS (SELECT 1 FROM [dbo].[TB_M_AUTH_FUNCTION] WHERE FUNCTION_ID = @FUNCTION_ID)
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Function masih diberikan ke satu atau lebih role - nonaktifkan function ini atau cabut aksesnya dari Role Authorization dulu sebelum menghapus';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+		RETURN 0;
+	END
+
 	BEGIN
 	DELETE FROM [dbo].[TB_M_FUNCTION]
 	WHERE FUNCTION_ID = @FUNCTION_ID

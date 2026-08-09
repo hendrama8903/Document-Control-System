@@ -45,6 +45,22 @@ namespace DMS.Models.Repo
             return Result;
         }
 
+        public IList<RoleListItem> SearchGrid(Role data, DBContext db, int? PageNumber, int? PageSize)
+        {
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                new SqlParameter ( "@ROLE_ID", CheckNullValue(data.ROLE_ID) ),
+                new SqlParameter ( "@ROLE_NAME", CheckNullValue(data.ROLE_NAME) ),
+                new SqlParameter ( "@PageNumber", CheckNullValue(PageNumber) ),
+                new SqlParameter ( "@PageSize", CheckNullValue(PageSize) )
+            };
+
+            string query = "EXEC [dbo].[sp_Role_Search] @ROLE_ID, @ROLE_NAME, @PageNumber, @PageSize";
+            IList<RoleListItem> Result = db.RoleListItem.FromSqlRaw<RoleListItem>(query, param.ToArray()).ToList();
+
+            return Result;
+        }
+
         public Role GetByKey(Role data, DBContext db)
         {
             List<SqlParameter> param = new List<SqlParameter>

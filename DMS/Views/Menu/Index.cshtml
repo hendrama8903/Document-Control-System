@@ -1,16 +1,79 @@
-﻿<section class="content">
+<style>
+    /* site.css forces .fa-chevron-up/-down to white globally (for a dark-background
+       use elsewhere) - override back to the normal dp-icon-btn color for this button. */
+    #btn_toggleStats i {
+        color: #344054;
+    }
+</style>
+<section class="content">
     <div class="row">
         <div class="col-xs-12">
-            <div id="divTitle" >
-                <div class="content-header">
-                    <h1>@ViewData["Title"]</h1>
+            <div id="divTitle">
+                <div class="dp-header">
+                    <div class="dp-header-left">
+                        <div class="dp-header-icon"><i class="fa fa-sitemap"></i></div>
+                        <div>
+                            <h1>@ViewData["Title"]</h1>
+                            <p>Manage menu structure and functions used in the system.</p>
+                        </div>
+                    </div>
+                    <div class="dp-header-actions">
+                        @if ((bool)ViewData["Add"])
+                        {
+                            <button type="button" class="dp-btn dp-btn-success" id="btn_add"><i class="fa fa-plus"></i> Add Menu</button>
+                        }
+                        <button type="button" class="dp-btn dp-btn-outline" id="btn_export"><i class="fa fa-download"></i> Export</button>
+                        <button type="button" class="dp-icon-btn" id="btn_toggleStats" title="Hide Summary Cards"><i class="fa fa-chevron-up"></i></button>
+                    </div>
+                    <div class="dp-header-stats dp-header-stats-grid" id="mfStatsRow">
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon blue"><i class="fa fa-th-large"></i></div>
+                            <div>
+                                <span>Total Menu</span>
+                                <b id="mfStatMenus">-</b>
+                                <small>Menu items</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon green"><i class="fa fa-cubes"></i></div>
+                            <div>
+                                <span>Total Function</span>
+                                <b id="mfStatFunctions">-</b>
+                                <small>Functions</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon purple"><i class="fa fa-users"></i></div>
+                            <div>
+                                <span>Used by Roles</span>
+                                <b id="mfStatRoles">-</b>
+                                <small>Roles</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon amber"><i class="fa fa-toggle-off"></i></div>
+                            <div>
+                                <span>Inactive</span>
+                                <b id="mfStatInactive">-</b>
+                                <small>Menu / Function</small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div id="divSearch">
-                @Html.Partial("_SearchCriteria")
-            </div>
-            <div id="divGrid">
-                @Html.Partial("_GridView")
+            <div class="dp-card">
+                <div class="mf-layout">
+                    <div class="mf-tree-panel">
+                        @Html.Partial("_SearchCriteria")
+                    </div>
+                    <div class="mf-function-panel">
+                        @Html.Partial("_GridView")
+                    </div>
+                </div>
+                <div class="dp-info-bar">
+                    <i class="fa fa-info-circle"></i>
+                    Inactive menus will not be shown in the application. Make sure functions are created before setting up role permissions.
+                </div>
             </div>
         </div>
     </div>

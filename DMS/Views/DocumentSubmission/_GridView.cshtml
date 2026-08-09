@@ -2,24 +2,15 @@
 <script src="~/js/devextreme/dx.web.js"></script>
 
 <style>
-    /* pastikan editor filter row terlihat jelas (hindari bentrok styling tema) */
-    #datagrid .dx-datagrid-filter-row .dx-texteditor {
-        border: 1px solid #d9d9d9;
-        border-radius: 6px;
-        background: #fff;
-    }
-
-    #datagrid .dx-datagrid-filter-row .dx-texteditor-input {
-        padding: 5px 8px;
-        min-height: 28px;
-    }
-
-    /* tampilkan judul kolom penuh (wrap), jangan terpotong "..." */
-    #datagrid .dx-datagrid-headers .dx-header-row td .dx-datagrid-text-content {
-        white-space: normal;
-        overflow: visible;
-        text-overflow: unset;
-        line-height: 1.3;
+    .dp-count-chip {
+        display: inline-block;
+        min-width: 22px;
+        padding: 2px 8px;
+        border-radius: 20px;
+        background: #E7F1FB;
+        color: #2E75B6;
+        font-size: 12px;
+        font-weight: 700;
     }
 </style>
 
@@ -28,9 +19,9 @@
 </div>
 
 <script type="text/javascript">
-    var gCanEdit = @Json.Serialize((bool)ViewData["Edit"]);
-    var gCanDelete = @Json.Serialize((bool)ViewData["Delete"]);
-    var gCanAuthorize = @Json.Serialize((bool)ViewData["Authorization"]);
+    var gCanEdit = @(((bool)ViewData["Edit"]) ? "true" : "false");
+    var gCanDelete = @(((bool)ViewData["Delete"]) ? "true" : "false");
+    var gCanPrint = @(((bool)ViewData["Print"]) ? "true" : "false");
 
     function getSelectedRowData() {
         var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
@@ -38,33 +29,39 @@
     }
 
     function updateActionButtons() {
-        var selected = getSelectedRowData() != null;
-        $("#btn_authorization").prop("disabled", !selected);
+        var row = getSelectedRowData();
+        var editable = row != null && row.STATUS == "0";
+
+        $("#btn_edit").prop("disabled", !editable);
+        $("#btn_delete").prop("disabled", !editable);
     }
 
     function computeGridHeight() {
         var gridTop = $("#datagrid").offset().top;
-        var infoBarHeight = $(".dp-info-bar").outerHeight(true) || 0;
+        var footerHeight = $("#divFooter").outerHeight(true) || 0;
 
-        return Math.max(300, $(window).height() - gridTop - infoBarHeight - 40);
+        return Math.max(300, $(window).height() - gridTop - footerHeight - 40);
     }
 
     $(document).ready(function () {
-        $("#btn_authorization").prop("disabled", true);
+        $("#btn_add").prop("disabled", false);
+        $("#btn_edit").prop("disabled", true);
+        $("#btn_delete").prop("disabled", true);
 
         var gridStore = new DevExpress.data.CustomStore({
-            key: "ROLE_ID",
+            key: "SUBMISSION_ID",
             loadMode: "raw",
             load: function () {
                 var d = $.Deferred();
 
                 $.ajax({
                     type: "POST",
-                    url: "@Url.Action("Search", "Role")",
+                    url: "@Url.Action("Search", "DocumentSubmission")",
                     data: {
                         draw: 1,
                         start: 0,
-                        length: 100000
+                        length: 100000,
+                        initialMode: false
                     }
                 }).done(function (result) {
                     d.resolve(result.data == "" ? [] : result.data);
@@ -86,9 +83,8 @@
             sorting: { mode: "none" },
             noDataText: "Data not found.",
             height: computeGridHeight(),
-            filterRow: { visible: false, applyFilter: "auto" },
+            filterRow: { visible: true, applyFilter: "auto" },
             headerFilter: { visible: true },
-            searchPanel: { visible: false, highlightCaseSensitive: false },
             toolbar: { visible: false },
             selection: {
                 mode: "multiple",
@@ -104,6 +100,11 @@
                 showInfo: true,
                 showNavigationButtons: true
             },
+            columnChooser: {
+                enabled: true,
+                mode: "select"
+            },
+            columnFixing: { enabled: true },
             onSelectionChanged: function (e) {
                 if (e.selectedRowKeys.length > 1) {
                     e.component.selectRows(e.currentSelectedRowKeys, false);
@@ -128,50 +129,58 @@
                     }
                 },
                 {
-                    dataField: "ROLE_ID",
-                    caption: "Role ID",
+                    dataField: "SUBMISSION_NO",
+                    caption: "Submission No",
                     fixed: true,
                     fixedPosition: "left",
                     cellTemplate: function (container, options) {
-                        $("<div>").addClass("ra-role-cell").append(
-                            $("<span>").addClass("ra-role-icon").html('<i class="fa fa-shield"></i>'),
-                            $("<b>").text(options.data.ROLE_ID)
-                        ).appendTo(container);
-                    }
-                },
-                { dataField: "ROLE_NAME", caption: "Role Name" },
-                { dataField: "ROLE_DESC", caption: "Description" },
-                {
-                    dataField: "USERS_COUNT",
-                    caption: "Users",
-                    alignment: "left",
-                    cellTemplate: function (container, options) {
-                        $("<div>").addClass("ra-count-cell").append(
-                            $("<i>").addClass("fa fa-user-o"),
-                            $("<span>").text((options.data.USERS_COUNT || 0) + " Users")
-                        ).appendTo(container);
-                    }
-                },
-                {
-                    dataField: "PERMISSIONS_COUNT",
-                    caption: "Permissions",
-                    alignment: "left",
-                    cellTemplate: function (container, options) {
                         var row = options.data;
-                        var $wrap = $("<div>");
-                        $("<div>").addClass("ra-count-cell").append(
-                            $("<i>").addClass("fa fa-key"),
-                            $("<span>").text(row.PERMISSIONS_COUNT || 0)
-                        ).appendTo($wrap);
 
-                        if (gCanAuthorize) {
-                            $("<button>").attr("type", "button").addClass("dp-link")
-                                .text("View details")
-                                .on("click", function () { openAuthorization(row.ROLE_ID); })
-                                .appendTo($wrap);
+                        if (!row.SUBMISSION_NO) {
+                            container.text("-");
+                            return;
                         }
 
-                        $wrap.appendTo(container);
+                        $("<button>")
+                            .attr("type", "button")
+                            .addClass("dp-link")
+                            .text(row.SUBMISSION_NO)
+                            .on("click", function () {
+                                $("#datagrid").dxDataGrid("instance").selectRows([row.SUBMISSION_ID], false);
+                                onEditPrepare();
+                            })
+                            .appendTo(container);
+                    }
+                },
+                {
+                    dataField: "SUBMISSION_DATE",
+                    caption: "Submission Date",
+                    alignment: "right",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.SUBMISSION_DATE;
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
+                    }
+                },
+                { dataField: "DIVISION_NAME", caption: "Division" },
+                { dataField: "DEPARTMENT_NAME", caption: "Department" },
+                { dataField: "SECTION_NAME", caption: "Section" },
+                {
+                    dataField: "DETAIL_COUNT",
+                    caption: "Documents",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        $("<span>").addClass("dp-count-chip").text(options.data.DETAIL_COUNT || 0).appendTo(container);
+                    }
+                },
+                { dataField: "CREATED_BY", caption: "Created By" },
+                {
+                    dataField: "CREATED_DT",
+                    caption: "Created Date",
+                    alignment: "right",
+                    visible: false,
+                    cellTemplate: function (container, options) {
+                        var value = options.data.CREATED_DT;
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY hh:mm:ss") : "");
                     }
                 },
                 {
@@ -199,22 +208,10 @@
             ]
         });
 
-        // ---------- toolbar: show/hide column filter row ("More Filters") ----------
-        $("#btn_toggleFilters").on("click", function () {
-            var grid = $("#datagrid").dxDataGrid("instance");
-            var visible = !grid.option("filterRow.visible");
-            grid.option("filterRow.visible", visible);
-            $(this).toggleClass("active", visible);
+        $("#btn_columns").on("click", function () {
+            $("#datagrid").dxDataGrid("instance").showColumnChooser();
         });
 
-        // ---------- toolbar: reset ----------
-        $("#btn_resetFilters").on("click", function () {
-            var grid = $("#datagrid").dxDataGrid("instance");
-            grid.clearFilter();
-            grid.clearSelection();
-        });
-
-        // ---------- toolbar: refresh ----------
         $("#btn_refresh").on("click", function () {
             $("#datagrid").dxDataGrid("instance").clearSelection();
             $("#datagrid").dxDataGrid("instance").refresh();
@@ -228,27 +225,27 @@
     });
 
     // ---------- per-row "more actions" kebab menu ----------
-    var $roleRowMenu = null;
+    var $dsRowMenu = null;
 
     function buildRowActionMenu() {
-        if ($roleRowMenu) return $roleRowMenu;
+        if ($dsRowMenu) return $dsRowMenu;
 
-        $roleRowMenu = $('<ul class="dropdown-menu dp-dropdown-menu" role="menu"></ul>')
+        $dsRowMenu = $('<ul class="dropdown-menu dp-dropdown-menu" role="menu"></ul>')
             .css({ position: "absolute", display: "none", "z-index": 2000, "min-width": "170px" })
             .appendTo("body");
 
         $(document).on("click", function () {
-            $roleRowMenu.hide();
+            $dsRowMenu.hide();
         });
 
-        return $roleRowMenu;
+        return $dsRowMenu;
     }
 
     function menuItem(cssClass, icon, label, onClick) {
         var $li = $('<li><a href="#" class="' + cssClass + '"><i class="fa ' + icon + '"></i> ' + label + '</a></li>');
         $li.find("a").on("click", function (e) {
             e.preventDefault();
-            $roleRowMenu.hide();
+            $dsRowMenu.hide();
             onClick();
         });
         return $li;
@@ -258,26 +255,29 @@
         var $menu = buildRowActionMenu();
         $menu.empty();
 
-        $menu.append(menuItem("dp-menu-preview", "fa-eye", "View", function () {
-            onViewRole(row);
-        }));
-
         if (gCanEdit) {
-            $menu.append(menuItem("dp-menu-edit", "fa-pencil-square-o", "Edit", function () {
-                onEditPrepare(row);
+            $menu.append(menuItem("ds-menu-edit", "fa-pencil-square-o", "Edit", function () {
+                var grid = $("#datagrid").dxDataGrid("instance");
+                grid.selectRows([row.SUBMISSION_ID], false);
+                onEditPrepare();
             }));
         }
 
-        if (gCanAuthorize) {
-            $menu.append(menuItem("dp-menu-position", "fa-key", "Permissions", function () {
-                openAuthorization(row.ROLE_ID);
+        if (gCanPrint) {
+            $menu.append(menuItem("ds-menu-print", "fa-print", "Print Form", function () {
+                window.open("@Url.Action("PrintForm", "DocumentSubmission")?submissionId=" + row.SUBMISSION_ID, "_blank");
+            }));
+            $menu.append(menuItem("ds-menu-export-excel", "fa-file-excel-o", "Export Excel", function () {
+                window.open("@Url.Action("ExportExcel", "DocumentSubmission")?submissionId=" + row.SUBMISSION_ID, "_blank");
             }));
         }
 
         if (gCanDelete) {
             $menu.append('<li class="divider"></li>');
-            $menu.append(menuItem("dp-menu-delete", "fa-trash-o", "Delete", function () {
-                onDeletePrepare(row);
+            $menu.append(menuItem("ds-menu-delete", "fa-trash-o", "Delete", function () {
+                var grid = $("#datagrid").dxDataGrid("instance");
+                grid.selectRows([row.SUBMISSION_ID], false);
+                onDeletePrepare();
             }));
         }
 

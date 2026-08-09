@@ -1,0 +1,1092 @@
+@using Microsoft.AspNetCore.Http
+
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+
+<script type="text/javascript">
+    var gScreenMode = null;
+    var gSubmissionId = null;
+    var gApprovalId = null;
+    var gSubmissionNo = null;
+    var gApprovalHeaderRow = null;
+    var approvalHeaderData = null;
+    var approvalDetailData = null;
+    var approvalSeq = null;
+    var approver = null;
+    var gApprovalMode = null;
+    var gDetailRows = [];
+    var gDeletedDetailIds = [];
+    var gEditingDetailIndex = null;
+    var gPdfPreviewWindow = null;
+
+    var SESSION_DIVISION = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("DIVISION"))";
+    var SESSION_DIVISION_NAME = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("DIVISION_NAME"))";
+    var SESSION_DEPARTMENT_ID = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetInt32("DEPARTMENT_ID"))";
+    var SESSION_DEPARTMENT_CODE = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("DEPARTMENT_CODE"))";
+    var SESSION_DEPARTMENT_NAME = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("DEPARTMENT_NAME"))";
+    var SESSION_SECTION_CODE = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("SECTION_CODE"))";
+    var SESSION_SECTION_NAME = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("SECTION_NAME"))";
+    var SESSION_USERNAME = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("USERNAME"))";
+
+    $(document).ready(function () {
+        loadDocumentCategories();
+
+        $("#btn_add").on("click", function () { onAddPrepare(); });
+        $("#btn_edit").on("click", function () { onEditPrepare(); });
+        $("#btn_delete").on("click", function () { onDeletePrepare(); });
+        $("#btn_save").on("click", function () { confirmSaveHeader(); });
+        $("#btn_addDetailRow").on("click", function () { onDocumentPickerPrepare(); });
+        $("#btn_saveDetailRow").on("click", function () { confirmSaveDetailRow(); });
+        $("#btn_addSelectedDocuments").on("click", function () { onAddSelectedDocuments(); });
+
+        $('input[name="detailSubmissionType"]').on('change', function () {
+            var type = $(this).val();
+            $('#detailRevisionNoRow').toggle(type === '02');
+            toggleDocumentNoField(type);
+        });
+
+        $('#detailDocumentNoPicker').on('change', function () {
+            var documentCtrlId = $(this).val();
+            if (!documentCtrlId) {
+                $('#detailDocumentNo').val('');
+                $('#detailDocumentName').val('');
+                $('#detailItemChanged').val('');
+                $('#detailReason').val('');
+                $('#detailEffectiveDate').val('');
+                return;
+            }
+
+            $.ajax({
+                type: "POST",
+                url: "@Url.Action("GetP4DDocumentDetail", "DocumentSubmission")",
+                data: { documentCtrlId: documentCtrlId },
+                success: function (result) {
+                    if (result.status == true && result.data) {
+                        $('#detailDocumentNo').val(result.data.DOCUMENT_CODE || '');
+                        $('#detailDocumentName').val(result.data.DOCUMENT_NAME || '');
+                        $('#detailItemChanged').val(result.data.ITEM_CHANGED || '');
+                        $('#detailReason').val(result.data.REASON || '');
+                        $('#detailEffectiveDate').val(result.data.DOCUMENT_DATE ? moment(result.data.DOCUMENT_DATE).format('YYYY-MM-DD') : '');
+                    }
+                }
+            });
+        });
+
+        $("#btn_approve").on("click", function () {
+            gApprovalMode = "approve";
+            onApproveRejectPrepare();
+        });
+
+        $("#btn_reject").on("click", function () {
+            gApprovalMode = "reject";
+            onApproveRejectPrepare();
+        });
+
+        $('#approvalRouteToggle').on('click', function () {
+            $(this).toggleClass('collapsed');
+            $('#approvalRouteBody').slideToggle(180);
+        });
+
+        $('#approvalHistoryToggle').on('click', function () {
+            $(this).toggleClass('collapsed');
+            $('#approvalHistoryBody').slideToggle(180);
+        });
+    });
+
+    function onSearch() {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        grid.clearSelection();
+        grid.refresh();
+    }
+
+    // ---------- header add/edit ----------
+
+    // Checkbox Document Category diambil dari TB_M_SYSTEM (SYSTEM_TYPE =
+    // DOC_SUBMISSION_CATEGORY), bukan hardcode di HTML, supaya tambah/ubah/
+    // hapus kategori cukup lewat System Parameters tanpa perlu deploy ulang.
+    function loadDocumentCategories() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("SearchSystem", "MSystem")",
+            data: { SYSTEM_TYPE: "DOC_SUBMISSION_CATEGORY", STATUS: 1 },
+            success: function (result) {
+                var rows = (result.data || []).slice().sort(function (a, b) {
+                    return (a.SYSTEM_CODE > b.SYSTEM_CODE) ? 1 : -1;
+                });
+
+                var $container = $('#docCategoryContainer').empty();
+                rows.forEach(function (row) {
+                    $('<label>')
+                        .append($('<input type="checkbox" class="addEditDocCategory">').val(row.SYSTEM_CODE))
+                        .append(' ' + row.SYSTEM_VALUE)
+                        .appendTo($container);
+                });
+            }
+        });
+    }
+
+    function onAddPrepare() {
+        gScreenMode = 'ADD';
+        gSubmissionId = null;
+        gDetailRows = [];
+        gDeletedDetailIds = [];
+        $('#modal-title').text('Add Document Submission Form');
+        resetHeaderForm();
+        renderDetailGrid([]);
+        $("#modalAddEdit").modal();
+    }
+
+    // Division/Department/Section tidak lagi ditampilkan di form (selalu ikut
+    // sesi login user, sama seperti Division/Department yang memang sudah
+    // read-only) - Section untuk submission BARU diambil dari sesi;
+    // Section untuk EDIT tetap nilai yang sudah tersimpan di baris itu
+    // (lihat onEditPrepare), bukan dari sesi user yang sedang login.
+    function resetHeaderForm() {
+        $('#addEditSubmissionId').val('');
+        $('#addEditSection').val(SESSION_SECTION_CODE || '');
+        $('#addEditSubmissionDate').val(moment().format('YYYY-MM-DD'));
+        $('#addEditRemark').val('');
+        $('.addEditDocCategory').prop('checked', false);
+    }
+
+    function onEditPrepare() {
+        var row = getSelectedRowData();
+        if (row == null) return;
+
+        if (row.STATUS != "0") {
+            showErrorMesgGrowl("Only Draft submissions can be edited");
+            return;
+        }
+
+        gScreenMode = 'EDIT';
+        gSubmissionId = row.SUBMISSION_ID;
+        gDeletedDetailIds = [];
+        $('#modal-title').text('Edit Document Submission Form');
+
+        $('#addEditSubmissionId').val(row.SUBMISSION_ID);
+        $('#addEditSection').val(row.SECTION_CODE || '');
+        $('#addEditSubmissionDate').val(row.SUBMISSION_DATE ? moment(row.SUBMISSION_DATE).format('YYYY-MM-DD') : '');
+        $('#addEditRemark').val(row.REMARK || '');
+
+        $('.addEditDocCategory').prop('checked', false);
+        (row.DOC_CATEGORY || '').split(',').forEach(function (c) {
+            if (c) $('.addEditDocCategory[value="' + c + '"]').prop('checked', true);
+        });
+
+        loadDetailGrid();
+
+        $("#modalAddEdit").modal();
+    }
+
+    function confirmSaveHeader() {
+        if (!$('#addEditSubmissionDate').val()) {
+            showErrorMesgGrowl('Submission Date is required');
+            return;
+        }
+        if (gDetailRows.length === 0) {
+            showErrorMesgGrowl('Please add at least one document before saving.');
+            return;
+        }
+        showConfirmMesg("Are you sure you want to continue process?", saveHeader, "Confirmation");
+    }
+
+    // Header + seluruh baris dokumen (gDetailRows, di-stage di client selama
+    // modal terbuka) disimpan sekaligus dalam satu aksi Save - user tidak perlu
+    // save header dulu baru bisa nambah dokumen. Urutannya: simpan header dulu
+    // (perlu SUBMISSION_ID nyata sebagai FK), baru sinkronkan baris dokumen.
+    // Buka tab kosong SEKARANG (langsung di dalam click handler tombol Yes
+    // konfirmasi), bukan nanti setelah rangkaian AJAX save selesai - kalau
+    // window.open() dipanggil di dalam success callback AJAX, sebagian
+    // browser (termasuk Chrome) menganggapnya bukan bagian dari user gesture
+    // asli lagi dan mem-blokir sebagai popup. Tab ini di-redirect ke PDF
+    // begitu save selesai, lihat finishSaveHeader().
+    function saveHeader() {
+        gPdfPreviewWindow = window.open('', '_blank');
+        popUpProgressShow();
+
+        var categories = [];
+        $('.addEditDocCategory:checked').each(function () { categories.push($(this).val()); });
+
+        var data = {
+            screenMode: gScreenMode,
+            SUBMISSION_ID: gSubmissionId,
+            SECTION_CODE: $('#addEditSection').val(),
+            SUBMISSION_DATE: $('#addEditSubmissionDate').val(),
+            DOC_CATEGORY: categories.join(','),
+            REMARK: $('#addEditRemark').val()
+        };
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("AddEdit", "DocumentSubmission")",
+            data: data,
+            success: function (result) {
+                if (result.status != true) {
+                    popUpProgressHide();
+                    showErrorMesgGrowl(result.message);
+                    if (gPdfPreviewWindow) { gPdfPreviewWindow.close(); gPdfPreviewWindow = null; }
+                    return;
+                }
+
+                if (gScreenMode == 'ADD') {
+                    gScreenMode = 'EDIT';
+                    gSubmissionId = result.returnId;
+                    $('#addEditSubmissionId').val(gSubmissionId);
+                }
+
+                syncDetailRows(0);
+            },
+            error: function (result) {
+                popUpProgressHide();
+                showErrorMesgGrowl(result);
+                if (gPdfPreviewWindow) { gPdfPreviewWindow.close(); gPdfPreviewWindow = null; }
+            }
+        });
+    }
+
+    // Sinkronkan gDetailRows (baris baru/diubah) + gDeletedDetailIds (baris yang
+    // dihapus user selagi modal terbuka) ke server satu-satu, lalu tutup modal.
+    function syncDetailRows(index) {
+        if (index === 0 && gDeletedDetailIds.length === 0 && gDetailRows.length === 0) {
+            finishSaveHeader();
+            return;
+        }
+
+        if (index < gDeletedDetailIds.length) {
+            $.ajax({
+                type: "POST",
+                url: "@Url.Action("DeleteDetail", "DocumentSubmission")",
+                data: { SUBMISSION_DETAIL_ID: gDeletedDetailIds[index] },
+                complete: function () { syncDetailRows(index + 1); }
+            });
+            return;
+        }
+
+        var rowIndex = index - gDeletedDetailIds.length;
+
+        if (rowIndex >= gDetailRows.length) {
+            finishSaveHeader();
+            return;
+        }
+
+        var row = gDetailRows[rowIndex];
+        row.SUBMISSION_ID = gSubmissionId;
+
+        var data = {
+            screenMode: row.SUBMISSION_DETAIL_ID ? 'EDIT' : 'ADD',
+            SUBMISSION_DETAIL_ID: row.SUBMISSION_DETAIL_ID,
+            SUBMISSION_ID: gSubmissionId,
+            DOCUMENT_NO: row.DOCUMENT_NO,
+            DOCUMENT_NAME: row.DOCUMENT_NAME,
+            CLASSIFICATION: row.CLASSIFICATION,
+            SUBMISSION_TYPE: row.SUBMISSION_TYPE,
+            REVISION_NO: row.REVISION_NO,
+            ITEM_CHANGED: row.ITEM_CHANGED,
+            REASON: row.REASON,
+            EFFECTIVE_DATE: row.EFFECTIVE_DATE,
+            COPY_TYPE: row.COPY_TYPE,
+            COPY_QTY: row.COPY_QTY,
+            DISTRIBUTION_DEPT_IDS: row.DISTRIBUTION_DEPT_IDS
+        };
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("AddEditDetail", "DocumentSubmission")",
+            data: data,
+            success: function (result) {
+                if (!result.status) {
+                    showErrorMesgGrowl((row.DOCUMENT_NAME || 'Document row') + ': ' + result.message);
+                }
+                syncDetailRows(index + 1);
+            },
+            error: function () { syncDetailRows(index + 1); }
+        });
+    }
+
+    // Tidak ada lagi Submit for Approval - begitu Save selesai, langsung
+    // buka preview PDF form-nya (request user 2026-08-08). Tab-nya sudah
+    // dibuka kosong sejak awal klik Save di saveHeader(), di sini tinggal
+    // diarahkan ke URL PDF-nya supaya tidak kena popup blocker.
+    function finishSaveHeader() {
+        popUpProgressHide();
+        gDeletedDetailIds = [];
+        showSuccessMesgGrowl('Saved Successfully');
+        onSearch();
+        $("#modalAddEdit").modal('hide');
+
+        var printUrl = "@Url.Action("PrintForm", "DocumentSubmission")?submissionId=" + gSubmissionId;
+        if (gPdfPreviewWindow && !gPdfPreviewWindow.closed) {
+            gPdfPreviewWindow.location.href = printUrl;
+        } else {
+            window.open(printUrl, '_blank');
+        }
+        gPdfPreviewWindow = null;
+    }
+
+    function onDeletePrepare() {
+        var row = getSelectedRowData();
+        if (row == null) return;
+
+        if (row.STATUS != "0") {
+            showErrorMesgGrowl("Only Draft submissions can be deleted");
+            return;
+        }
+
+        showConfirmMesg("Are you sure you want to delete the record?", function () { deleteHeader(row); }, "Confirmation");
+    }
+
+    function deleteHeader(row) {
+        popUpProgressShow();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("Delete", "DocumentSubmission")",
+            data: { SUBMISSION_ID: row.SUBMISSION_ID },
+            success: function (result) {
+                popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    function onSubmitPrepare(submissionId) {
+        showConfirmMesg("Submit this form for approval? You won't be able to edit the documents after this.", function () { submitForm(submissionId); }, "Confirmation");
+    }
+
+    function submitForm(submissionId) {
+        popUpProgressShow();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("Submit", "DocumentSubmission")",
+            data: { submissionId: submissionId },
+            success: function (result) {
+                popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    // ---------- detail rows (documents) ----------
+    // Baris dokumen di-stage di gDetailRows selama modal terbuka (tidak langsung
+    // ke server) - baru benar-benar disimpan saat user klik Save di header,
+    // lihat syncDetailRows(). Ini yang bikin "Add Document"/"Add Manually" bisa
+    // dipakai langsung tanpa harus save header dulu.
+
+    function submissionTypeDisplay(code) {
+        if (code === '01') return 'Baru';
+        if (code === '02') return 'Revisi';
+        if (code === '03') return 'Pemusnahan';
+        return code || '-';
+    }
+
+    // Cuma dipakai saat buka Edit submission yang sudah ada - ambil baris yang
+    // sudah tersimpan supaya bisa terus diedit/dihapus/ditambah di client
+    // sebelum akhirnya di-sync ulang saat Save.
+    function loadDetailGrid() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("SearchDetail", "DocumentSubmission")",
+            data: { SUBMISSION_ID: gSubmissionId },
+            success: function (result) {
+                gDetailRows = result.data || [];
+                renderDetailGrid(gDetailRows);
+            }
+        });
+    }
+
+    function renderDetailGrid(rows) {
+        if ($.fn.DataTable.isDataTable('#detailGrid')) {
+            $('#detailGrid').DataTable().destroy();
+        }
+
+        $('#detailGrid').DataTable({
+            "ordering": false,
+            "paging": false,
+            "info": false,
+            "searching": false,
+            "bDestroy": true,
+            "oLanguage": { "sEmptyTable": "<i class=\"fa fa-inbox\" style=\"font-size:26px; color:#C0C6CE; display:block; margin-bottom:8px;\"></i><b>No documents added yet.</b><br><span style=\"font-size:11.5px; color:#98A2B3;\">Click \"Add Document\" to select documents.</span>" },
+            "data": rows,
+            "columns": [
+                { render: function (data, type, row, meta) { return meta.row + 1; } },
+                { render: function (data, type, row) { return row.DOCUMENT_NO || "-"; } },
+                { data: "DOCUMENT_NAME" },
+                { render: function (data, type, row) { return submissionTypeDisplay(row.SUBMISSION_TYPE); } },
+                { render: function (data, type, row) { return row.EFFECTIVE_DATE ? moment(row.EFFECTIVE_DATE).format("DD-MM-YYYY") : "-"; } },
+                {
+                    render: function (data, type, row, meta) {
+                        return '<button type="button" class="btn btn-warning btn-xs detail-edit-btn" data-index="' + meta.row + '"><i class="fa fa-pencil"></i></button> ' +
+                            '<button type="button" class="btn btn-danger btn-xs detail-delete-btn" data-index="' + meta.row + '"><i class="fa fa-trash"></i></button>';
+                    }
+                }
+            ]
+        });
+
+        $('#detailGrid').off('click', '.detail-edit-btn').on('click', '.detail-edit-btn', function () {
+            var index = $(this).data('index');
+            var row = gDetailRows[index];
+            if (row) onEditDetailRowPrepare(row, index);
+        });
+
+        $('#detailGrid').off('click', '.detail-delete-btn').on('click', '.detail-delete-btn', function () {
+            var index = $(this).data('index');
+            showConfirmMesg("Are you sure you want to delete this document row?", function () { deleteDetailRow(index); }, "Confirmation");
+        });
+    }
+
+    function deleteDetailRow(index) {
+        var row = gDetailRows[index];
+        if (!row) return;
+
+        if (row.SUBMISSION_DETAIL_ID) {
+            gDeletedDetailIds.push(row.SUBMISSION_DETAIL_ID);
+        }
+
+        gDetailRows.splice(index, 1);
+        renderDetailGrid(gDetailRows);
+    }
+
+    // Untuk Revisi/Pemusnahan, Document No dipilih dari daftar dokumen approved
+    // di Document Preparation yang boleh direvisi (bukan diketik manual) -
+    // menghindari salah ketik dan memastikan kodenya benar-benar valid.
+    // Untuk Baru, dokumennya belum ada di sistem sama sekali jadi field ini
+    // dikosongkan (diisi otomatis nanti setelah approved & dibuatkan di
+    // Document Preparation).
+    function toggleDocumentNoField(type) {
+        // Baru & Revisi: dokumennya sudah teregistrasi di P4D (belum di-approve
+        // di sana) - tinggal dipilih, tidak perlu ketik ulang. Pemusnahan: P4D
+        // tidak punya konsep ini, tetap isi manual.
+        var usesP4DPicker = (type === '01' || type === '02');
+
+        $('#detailDocNoMandatory').toggle(usesP4DPicker);
+        $('#detailDocNoHint').toggle(usesP4DPicker);
+        $('#detailDocumentNoPicker').toggle(usesP4DPicker);
+        $('#detailDocumentNo').toggle(!usesP4DPicker);
+        $('#detailDocumentName').prop('readonly', usesP4DPicker);
+        $('#detailItemChanged').prop('readonly', usesP4DPicker);
+        $('#detailReason').prop('readonly', usesP4DPicker);
+        $('#detailEffectiveDate').prop('readonly', usesP4DPicker);
+
+        if (usesP4DPicker) {
+            setDataSelect2WithParam('detailDocumentNoPicker', '@Url.Action("GetP4DPendingDocuments", "DocumentSubmission")', '- Choose Document -', type);
+        } else {
+            $('#detailDocumentNo').val('');
+            $('#detailDocumentName').val('');
+            $('#detailItemChanged').val('');
+            $('#detailReason').val('');
+            $('#detailEffectiveDate').val('');
+        }
+    }
+
+    // ---------- bulk document picker ("Add Document") ----------
+    var gPickerRows = {};
+
+    function onDocumentPickerPrepare() {
+        var checkedCategories = $('.addEditDocCategory:checked').map(function () { return $(this).val(); }).get();
+
+        if (checkedCategories.length === 0) {
+            showErrorMesgGrowl('Please select at least one Document Category before adding documents.');
+            return;
+        }
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("SearchP4DPendingDocuments", "DocumentSubmission")",
+            success: function (result) {
+                var rows = (result.data || []).filter(function (row) {
+                    return checkedCategories.indexOf(row.DOC_CATEGORY_CODE) !== -1;
+                });
+                renderPickerGrid(rows);
+                $('#modalDocumentPicker').modal();
+            }
+        });
+    }
+
+    function renderPickerGrid(rows) {
+        gPickerRows = {};
+        updatePickerSelectedCount();
+
+        if ($.fn.DataTable.isDataTable('#pickerGrid')) {
+            $('#pickerGrid').DataTable().destroy();
+        }
+
+        $('#pickerGrid').DataTable({
+            "bDestroy": true,
+            "ordering": false,
+            "oLanguage": { "sEmptyTable": "No pending P4D documents found." },
+            "data": rows,
+            "columns": [
+                {
+                    render: function (data, type, row) {
+                        return '<input type="checkbox" class="picker-row-check" data-id="' + row.DOCUMENT_CTRL_ID + '">';
+                    }
+                },
+                { data: 'DOCUMENT_CODE' },
+                { data: 'DOCUMENT_NAME' },
+                {
+                    render: function (data, type, row) {
+                        var isRevision = row.DOCUMENT_TYPE === 'Revision';
+                        return '<span class="picker-type-badge ' + (isRevision ? 'picker-type-revisi' : 'picker-type-baru') + '">' + (isRevision ? 'Revisi' : 'Baru') + '</span>';
+                    }
+                },
+                { data: 'CLASSIFIED_VAL' }
+            ]
+        });
+
+        $('#pickerGrid').off('change', '.picker-row-check').on('change', '.picker-row-check', function () {
+            var id = $(this).data('id');
+            var row = rows.filter(function (r) { return r.DOCUMENT_CTRL_ID == id; })[0];
+
+            if (this.checked) {
+                gPickerRows[id] = row;
+            } else {
+                delete gPickerRows[id];
+            }
+
+            updatePickerSelectedCount();
+        });
+    }
+
+    function updatePickerSelectedCount() {
+        var count = Object.keys(gPickerRows).length;
+        $('#pickerSelectedCount').text(count);
+        $('#btn_addSelectedDocuments').prop('disabled', count === 0);
+    }
+
+    // Cuma nambah ke gDetailRows di client (tidak ke server) - baru benar-benar
+    // tersimpan saat header di-Save, lihat syncDetailRows().
+    function onAddSelectedDocuments() {
+        var rows = Object.keys(gPickerRows).map(function (id) { return gPickerRows[id]; });
+
+        if (rows.length === 0) {
+            showErrorMesgGrowl('Select at least one document');
+            return;
+        }
+
+        rows.forEach(function (p4d) {
+            gDetailRows.push({
+                SUBMISSION_DETAIL_ID: null,
+                DOCUMENT_NO: p4d.DOCUMENT_CODE,
+                DOCUMENT_NAME: p4d.DOCUMENT_NAME,
+                CLASSIFICATION: p4d.CLASSIFIED,
+                SUBMISSION_TYPE: p4d.DOCUMENT_TYPE === 'Revision' ? '02' : '01',
+                REVISION_NO: null,
+                ITEM_CHANGED: p4d.ITEM_CHANGED,
+                REASON: p4d.REASON,
+                EFFECTIVE_DATE: p4d.DOCUMENT_DATE,
+                COPY_TYPE: null,
+                COPY_QTY: null,
+                DISTRIBUTION_DEPT_IDS: null
+            });
+        });
+
+        renderDetailGrid(gDetailRows);
+        $('#modalDocumentPicker').modal('hide');
+    }
+
+    function onEditDetailRowPrepare(row, index) {
+        gEditingDetailIndex = index;
+        $('#modalDetailRow-title').text('Edit Document');
+        $('#detailSubmissionId').val(gSubmissionId);
+        $('#detailSubmissionDetailId').val(row.SUBMISSION_DETAIL_ID);
+
+        // Set Jenis Pengajuan & jalankan toggleDocumentNoField DULU (tanpa
+        // trigger('change'), supaya efek "kosongkan field" di dalamnya tidak
+        // menimpa nilai row.* yang baru diisi setelah baris ini - bug lama:
+        // buka Edit untuk baris Pemusnahan diam-diam mengosongkan Document
+        // Name/Item Changed/Reason/Effective Date karena urutan ini kebalik.
+        $('input[name="detailClassification"][value="' + row.CLASSIFICATION + '"]').prop('checked', true);
+        $('input[name="detailSubmissionType"][value="' + row.SUBMISSION_TYPE + '"]').prop('checked', true);
+        $('#detailRevisionNoRow').toggle(row.SUBMISSION_TYPE === '02');
+        toggleDocumentNoField(row.SUBMISSION_TYPE);
+
+        $('#detailDocumentNo').val(row.DOCUMENT_NO);
+        $('#detailDocumentNoPicker').val(null);
+        $('#detailDocumentName').val(row.DOCUMENT_NAME);
+
+        if ((row.SUBMISSION_TYPE === '01' || row.SUBMISSION_TYPE === '02') && row.DOCUMENT_NO) {
+            $('#detailDocumentNoPicker').append(new Option(row.DOCUMENT_NO, row.DOCUMENT_NO, true, true)).trigger('change.select2');
+        }
+
+        $('#detailRevisionNo').val(row.REVISION_NO);
+        $('#detailItemChanged').val(row.ITEM_CHANGED);
+        $('#detailReason').val(row.REASON);
+        $('#detailEffectiveDate').val(row.EFFECTIVE_DATE ? moment(row.EFFECTIVE_DATE).format('YYYY-MM-DD') : '');
+        $('input[name="detailCopyType"][value="' + row.COPY_TYPE + '"]').prop('checked', true);
+        $('#detailCopyQty').val(row.COPY_QTY);
+
+        setDataSelect2WithParamMultiple('detailDistribution', '@Url.Action("GetDepartmentIdAndName", "DepartmentMaster")', 'Select departments', '');
+        $('#detailDistribution').val(null).trigger('change');
+
+        if (row.DISTRIBUTION_DEPT_IDS) {
+            var ids = row.DISTRIBUTION_DEPT_IDS.split(',');
+            var names = (row.DISTRIBUTION_DEPT_NAMES || '').split(', ');
+            ids.forEach(function (id, idx) {
+                $('#detailDistribution').append(new Option(names[idx] || id, id, true, true));
+            });
+            $('#detailDistribution').trigger('change');
+        }
+
+        $('#modalDetailRow').modal();
+    }
+
+    function confirmSaveDetailRow() {
+        if (!$('#detailDocumentName').val()) {
+            showErrorMesgGrowl('Document Name is required');
+            return;
+        }
+        saveDetailRow();
+    }
+
+    // Cuma update gDetailRows di client (tidak ke server) - baru benar-benar
+    // tersimpan saat header di-Save, lihat syncDetailRows().
+    function saveDetailRow() {
+        var existing = gEditingDetailIndex != null ? gDetailRows[gEditingDetailIndex] : null;
+
+        var row = {
+            SUBMISSION_DETAIL_ID: existing ? existing.SUBMISSION_DETAIL_ID : null,
+            DOCUMENT_NO: $('#detailDocumentNo').val(),
+            DOCUMENT_NAME: $('#detailDocumentName').val(),
+            CLASSIFICATION: $('input[name="detailClassification"]:checked').val(),
+            SUBMISSION_TYPE: $('input[name="detailSubmissionType"]:checked').val(),
+            REVISION_NO: $('#detailRevisionNo').val(),
+            ITEM_CHANGED: $('#detailItemChanged').val(),
+            REASON: $('#detailReason').val(),
+            EFFECTIVE_DATE: $('#detailEffectiveDate').val(),
+            COPY_TYPE: $('input[name="detailCopyType"]:checked').val(),
+            COPY_QTY: $('#detailCopyQty').val(),
+            DISTRIBUTION_DEPT_IDS: ($('#detailDistribution').val() || []).join(',')
+        };
+
+        if (gEditingDetailIndex != null) {
+            gDetailRows[gEditingDetailIndex] = row;
+        } else {
+            gDetailRows.push(row);
+        }
+
+        renderDetailGrid(gDetailRows);
+        $('#modalDetailRow').modal('hide');
+    }
+
+    // ---------- Approval List (cloned pattern from DocumentMaintenance) ----------
+
+    function onApprovalPrepare(row) {
+        if (row == null) return;
+
+        gSubmissionId = row.SUBMISSION_ID;
+        gApprovalId = row.APPROVAL_ID;
+        gSubmissionNo = row.SUBMISSION_NO;
+        gApprovalHeaderRow = row;
+
+        getApprovalHeader();
+        getApprovalDetail();
+        getApprovalHistoryDetail();
+        $("#modalApproval").modal();
+    }
+
+    function getApprovalHeader() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetApprovalHeader", "DocumentSubmission")",
+            async: false,
+            data: { approvalId: gApprovalId },
+            success: function (result) {
+                if (result.status == true) {
+                    approvalHeaderData = result.data;
+
+                    $('#approvalSubmissionNo').html(gSubmissionNo || '-');
+                    $('#approvalDivision').html(gApprovalHeaderRow.DIVISION_NAME ? (gApprovalHeaderRow.DIVISION + ' - ' + gApprovalHeaderRow.DIVISION_NAME) : (gApprovalHeaderRow.DIVISION || '-'));
+                    $('#approvalDepartment').html(gApprovalHeaderRow.DEPARTMENT_NAME || '-');
+                    $('#approvalSection').html(gApprovalHeaderRow.SECTION_NAME || '-');
+                    $('#approvalSubmissionDate').html(gApprovalHeaderRow.SUBMISSION_DATE ? moment(gApprovalHeaderRow.SUBMISSION_DATE).format('DD-MM-YYYY') : '-');
+                    $('#approvalTotalDocuments').html(gApprovalHeaderRow.DETAIL_COUNT != null ? gApprovalHeaderRow.DETAIL_COUNT : '-');
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    // Sama seperti DocumentMaintenance/_Javascript.cshtml - satu sumber kebenaran
+    // untuk state per baris approval detail, dipakai stepper & tabel Approval Route.
+    function getApprovalStepState(row) {
+        if (row["STATUS"] == 1) return "done";
+
+        if (row["STATUS"] == 0) {
+            if (approvalHeaderData != null &&
+                approvalHeaderData["CURRENT_SEQ"] == row["WORKFLOW_SEQ"] &&
+                approvalHeaderData["APPROVAL_STATUS"] == 0) {
+                return "current";
+            }
+            return "upcoming";
+        }
+
+        return "rejected";
+    }
+
+    function approvalStatusPillHtml(state) {
+        var cls = "dms-pill-info", icon = "fa-hourglass-half", text = "PENDING";
+
+        if (state === "done") { cls = "dms-pill-success"; icon = "fa-check"; text = "APPROVED"; }
+        else if (state === "current") { cls = "dms-pill-warning"; icon = "fa-clock-o"; text = "WAITING"; }
+        else if (state === "rejected") { cls = "dms-pill-danger"; icon = "fa-times"; text = "REJECTED"; }
+
+        return '<span class="dms-pill ' + cls + '"><i class="fa ' + icon + '"></i> ' + text + '</span>';
+    }
+
+    function updateApprovalStatusPanel() {
+        if (approvalHeaderData == null) return;
+
+        var $panel = $('#approvalStatusPanel');
+        $panel.removeClass('adf-status-info adf-status-success adf-status-warning adf-status-danger');
+
+        var status = approvalHeaderData["APPROVAL_STATUS"];
+
+        if (status == 1) {
+            $panel.addClass('adf-status-success');
+            $('#approvalStatusIcon').attr('class', 'fa fa-check');
+            $('#approvalStatusPre').text('STATUS');
+            $('#approvalStatusText').text('APPROVED');
+            $('#approvalStatusHint').text('This submission has completed the approval process.');
+        } else if (status == 0) {
+            var currentRow = (approvalDetailData || []).filter(function (r) {
+                return r["WORKFLOW_SEQ"] == approvalHeaderData["CURRENT_SEQ"];
+            })[0];
+
+            $panel.addClass('adf-status-warning');
+            $('#approvalStatusIcon').attr('class', 'fa fa-clock-o');
+            $('#approvalStatusPre').text('WAITING FOR');
+            $('#approvalStatusText').text(currentRow ? currentRow["APPROVER_NAME"].toUpperCase() : "-");
+            $('#approvalStatusHint').text('Please review and take action.');
+        } else {
+            $panel.addClass('adf-status-danger');
+            $('#approvalStatusIcon').attr('class', 'fa fa-times');
+            $('#approvalStatusPre').text('STATUS');
+            $('#approvalStatusText').text('REJECTED');
+            $('#approvalStatusHint').text('This submission was rejected. See remarks below.');
+        }
+    }
+
+    function getApprovalDetail() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetApprovalDetail", "DocumentSubmission")",
+            async: false,
+            data: { approvalId: gApprovalId },
+            success: function (result) {
+                if (result.status == true) {
+                    var data = result.data;
+                    approvalDetailData = data;
+                    renderApprovalStepper();
+                    updateApprovalStatusPanel();
+                    loadApprovalDocumentList();
+
+                    $("#approvalgrid").dataTable().fnDestroy();
+                    $('#approvalgrid').DataTable({
+                        "ordering": false,
+                        "oLanguage": { "sEmptyTable": "Data not found." },
+                        "scrollCollapse": false,
+                        "paging": false,
+                        "info": false,
+                        "searching": false,
+                        "data": data,
+                        "columns": [
+                            {
+                                render: function (data, type, row, meta) {
+                                    return meta.row + 1;
+                                }
+                            },
+                            {
+                                render: function (data, type, row) {
+                                    return '<span class="approver-name">' + row["APPROVER_NAME"] + '</span>';
+                                }
+                            },
+                            {
+                                data: 'LABEL',
+                                defaultContent: '<span class="cell-muted">&ndash;</span>'
+                            },
+                            {
+                                render: function (data, type, row) {
+                                    return approvalStatusPillHtml(getApprovalStepState(row));
+                                }
+                            },
+                            {
+                                render: function (data, type, row) {
+                                    return row["CHANGED_DT"]
+                                        ? moment(row["CHANGED_DT"]).format("DD-MM-YYYY HH:mm:ss")
+                                        : '<span class="cell-muted">&ndash;</span>';
+                                }
+                            },
+                            {
+                                render: function (data, type, row) {
+                                    return row["REMARK"] ? row["REMARK"] : '<span class="cell-muted">&ndash;</span>';
+                                }
+                            },
+                            {
+                                render: function (data, type, row) {
+                                    if (approvalHeaderData != null) {
+                                        if (approvalHeaderData["CURRENT_SEQ"] == row["WORKFLOW_SEQ"] &&
+                                            row["APPROVER"] === SESSION_USERNAME
+                                            && approvalHeaderData["APPROVAL_STATUS"] == 0) {
+                                            return '<button class="btn-review" id="btn_approval_form" onClick="onApprovalForm(' + row["WORKFLOW_SEQ"] + ', \'' + row["APPROVER"] + '\')"><i class="fa fa-eye"></i> Review</button>';
+                                        }
+                                    }
+                                    return '<span class="cell-muted">&ndash;</span>';
+                                }
+                            }
+                        ],
+                        "columnDefs": [
+                            { "width": "36px", "targets": 0, "className": "text-center" },
+                            { "targets": [3], "className": "text-center" },
+                            { "width": "150px", "targets": 4 },
+                            { "width": "110px", "targets": 6, "className": "text-center" }
+                        ],
+                        "createdRow": function (rowEl, rowData) {
+                            if (getApprovalStepState(rowData) === "current") {
+                                $(rowEl).addClass("current-row");
+                            }
+                        }
+                    });
+
+                    $('#modalApproval').on('shown.bs.modal', function () {
+                        $("#approvalgrid").DataTable().columns.adjust().draw();
+                    });
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    // Kartu tambahan di popup Approval List - daftar dokumen yang diajukan, supaya
+    // QMS bisa cocokkan langsung dengan hardcopy tanpa buka layar lain.
+    function loadApprovalDocumentList() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("SearchDetail", "DocumentSubmission")",
+            data: { SUBMISSION_ID: gSubmissionId },
+            success: function (result) {
+                var rows = result.data || [];
+                var html = '';
+
+                rows.forEach(function (r, idx) {
+                    html += '<div style="display:flex; gap:10px; padding:6px 0; border-bottom:1px solid #EEF1F4; font-size:12.5px;">' +
+                        '<div style="width:22px; color:#98A2B3;">' + (idx + 1) + '</div>' +
+                        '<div style="flex:1;">' + (r.DOCUMENT_NO || '-') + ' &mdash; ' + r.DOCUMENT_NAME + '</div>' +
+                        '<div style="width:100px; color:#5A6472;">' + (r.SUBMISSION_TYPE_DISPLAY || '') + '</div>' +
+                        '<div style="width:110px; text-align:right; color:#98A2B3;">' + (r.EFFECTIVE_DATE ? moment(r.EFFECTIVE_DATE).format('DD-MM-YYYY') : '-') + '</div>' +
+                        '</div>';
+                });
+
+                $('#approvalDocumentList').html(html || '<div class="text-muted" style="font-size:12.5px;">No documents.</div>');
+            }
+        });
+    }
+
+    function getApprovalHistoryDetail() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetApprovalHistoryDetail", "DocumentSubmission")",
+            async: false,
+            data: {
+                MENU_ID: "M00006-09",
+                TRANSACTION_ID: gSubmissionId
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    var data = result.data;
+
+                    $("#historyGrid").dataTable().fnDestroy();
+                    $('#historyGrid').DataTable({
+                        "ordering": false,
+                        "oLanguage": { "sEmptyTable": "Data not found." },
+                        "scrollCollapse": false,
+                        "paging": false,
+                        "info": false,
+                        "searching": false,
+                        "data": data,
+                        "columns": [
+                            {
+                                render: function (data, type, row) {
+                                    var approved = row["STATUS"] == 1;
+                                    return '<div class="history-approver">' +
+                                        '<div class="history-icon' + (approved ? '' : ' rejected') + '"><i class="fa ' + (approved ? 'fa-check' : 'fa-times') + '"></i></div>' +
+                                        '<div><div class="history-name">' + row["APPROVER_NAME"] + '</div>' +
+                                        '<div class="history-role">' + (row["LABEL"] || "") + '</div></div>' +
+                                        '</div>';
+                                }
+                            },
+                            {
+                                render: function (data, type, row) {
+                                    var approved = row["STATUS"] == 1;
+                                    var cls = approved ? "dms-pill-success" : "dms-pill-danger";
+                                    var icon = approved ? "fa-check" : "fa-times";
+                                    return '<span class="dms-pill ' + cls + '"><i class="fa ' + icon + '"></i> ' + (approved ? "APPROVED" : "REJECTED") + '</span>';
+                                }
+                            },
+                            {
+                                render: function (data, type, row) {
+                                    return row["CHANGED_DT"]
+                                        ? moment(row["CHANGED_DT"]).format("DD-MM-YYYY HH:mm:ss")
+                                        : '<span class="cell-muted">&ndash;</span>';
+                                }
+                            },
+                            {
+                                render: function (data, type, row) {
+                                    return row["REMARK"] ? row["REMARK"] : '<span class="cell-muted">&ndash;</span>';
+                                }
+                            },
+                        ],
+                        "columnDefs": [
+                            { "targets": [1], "className": "text-center" },
+                            { "width": "150px", "targets": 2 },
+                        ]
+                    });
+
+                    $('#modalApproval').on('shown.bs.modal', function () {
+                        $("#historyGrid").DataTable().columns.adjust().draw();
+                    });
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    // Visual progression Created -> Approved/Waiting per approver. Sama persis
+    // dengan DocumentMaintenance/_Javascript.cshtml, cuma "Created" pakai
+    // CREATED_DT dari header submission (bukan approval header, yang tidak
+    // punya kolom itu).
+    function renderApprovalStepper() {
+        if (approvalHeaderData == null || approvalDetailData == null) {
+            return;
+        }
+
+        var steps = [];
+        steps.push({
+            title: "Created",
+            sub: approvalHeaderData["CREATOR_NAME"] || "",
+            date: gApprovalHeaderRow ? gApprovalHeaderRow.CREATED_DT : null,
+            state: "done"
+        });
+
+        var sortedDetail = approvalDetailData.slice().sort(function (a, b) {
+            return a["WORKFLOW_SEQ"] - b["WORKFLOW_SEQ"];
+        });
+
+        sortedDetail.forEach(function (row) {
+            var state = getApprovalStepState(row);
+            var title = state === "done" ? "Approved"
+                : state === "current" ? "Waiting"
+                : state === "rejected" ? "Rejected"
+                : "Pending";
+
+            steps.push({
+                title: title,
+                sub: row["APPROVER_NAME"],
+                date: row["CHANGED_DT"],
+                state: state
+            });
+        });
+
+        var iconByState = {
+            done: "fa-check",
+            current: "fa-clock-o",
+            rejected: "fa-times",
+            upcoming: ""
+        };
+
+        var html = "";
+        steps.forEach(function (step, idx) {
+            var dateHtml = step.date ? '<div class="stepper-date">' + moment(step.date).format("DD-MM-YYYY HH:mm") + "</div>" : "";
+            var iconHtml = iconByState[step.state] ? '<i class="fa ' + iconByState[step.state] + '"></i>' : "";
+            var badgeHtml = step.state === "current" ? '<div class="stepper-current-badge">CURRENT STEP</div>' : "";
+
+            html += '<div class="stepper-step stepper-' + step.state + '">' +
+                        '<div class="stepper-icon">' + iconHtml + '</div>' +
+                        '<div class="stepper-title">' + (idx + 1) + ". " + step.title + "</div>" +
+                        '<div class="stepper-sub">' + step.sub + "</div>" +
+                        dateHtml +
+                        badgeHtml +
+                    "</div>";
+
+            if (idx < steps.length - 1) {
+                var connectorState = (step.state == "done" || step.state == "rejected") ? step.state : "upcoming";
+                html += '<div class="stepper-connector stepper-connector-' + connectorState + '"></div>';
+            }
+        });
+
+        $("#approvalStepper").html(html);
+    }
+
+    function onApprovalForm(approval_seq, approver_name) {
+        approvalSeq = approval_seq;
+        approver = approver_name;
+        $("#approvalRemark").val("");
+        $("#modalApprovalForm").modal();
+    }
+
+    function onApproveRejectPrepare() {
+        showConfirmMesg("Are you sure you want to continue process?", onApproveReject, "Confirmation");
+    }
+
+    function onApproveReject() {
+        popUpProgressShow();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("ApproveReject", "DocumentSubmission")",
+            async: false,
+            data: {
+                approvalId: gApprovalId,
+                workflowSeq: approvalSeq,
+                approver: approver,
+                remark: $('#approvalRemark').val(),
+                mode: gApprovalMode,
+                SUBMISSION_ID: gSubmissionId
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    getApprovalHeader();
+                    getApprovalDetail();
+                    getApprovalHistoryDetail();
+                    popUpProgressHide();
+                    $("#modalApprovalForm").modal('hide');
+                } else {
+                    popUpProgressHide();
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+</script>

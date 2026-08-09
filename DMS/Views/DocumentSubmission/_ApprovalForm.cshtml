@@ -1,0 +1,532 @@
+<style>
+    #modalApproval .modal-dialog {
+        width: 900px;
+        max-width: 96vw;
+    }
+
+    #modalApproval .modal-content {
+        display: flex;
+        flex-direction: column;
+        max-height: 92vh;
+        border: none;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    /* header */
+    #modalApproval .adf-header {
+        flex: none;
+        background: linear-gradient(135deg, #2450D8, #1C3FA6);
+        color: #fff;
+        padding: 16px 22px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    #modalApproval .adf-header-title {
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    #modalApproval .adf-close {
+        margin-left: auto;
+        background: transparent;
+        border: none;
+        color: rgba(255,255,255,.9);
+        font-size: 18px;
+        line-height: 1;
+        padding: 6px;
+        cursor: pointer;
+    }
+
+    #modalApproval .adf-close:hover { color: #fff; }
+
+    /* body */
+    #modalApproval .modal-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        background: #F4F6F8;
+        padding: 18px 22px;
+    }
+
+    #modalApproval .adf-section {
+        background: #fff;
+        border: 1px solid #E3E8EE;
+        border-radius: 10px;
+        padding: 16px 18px;
+        margin-bottom: 16px;
+    }
+
+    #modalApproval .adf-section:last-child { margin-bottom: 0; }
+
+    #modalApproval .adf-section-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12.5px;
+        font-weight: 700;
+        color: #5A6472;
+        letter-spacing: .03em;
+        text-transform: uppercase;
+        margin-bottom: 14px;
+    }
+
+    #modalApproval .adf-section-title i { color: #2450D8; }
+
+    /* Document Information + Approval Status panel */
+    #modalApproval .adf-info-layout {
+        display: flex;
+        gap: 18px;
+        align-items: flex-start;
+    }
+
+    #modalApproval .adf-info-main {
+        flex: 1;
+        min-width: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px 24px;
+    }
+
+    #modalApproval .adf-info-field {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    #modalApproval .adf-info-field > i {
+        color: #2450D8;
+        font-size: 13px;
+        margin-top: 3px;
+        flex: none;
+        width: 14px;
+        text-align: center;
+    }
+
+    #modalApproval .adf-info-label {
+        font-size: 10.5px;
+        font-weight: 700;
+        color: #8A94A3;
+        text-transform: uppercase;
+        letter-spacing: .02em;
+    }
+
+    #modalApproval .adf-info-value {
+        font-size: 13.5px;
+        color: #1D2939;
+        font-weight: 600;
+        margin-top: 2px;
+        word-break: break-word;
+    }
+
+    #modalApproval .adf-status-panel {
+        flex: none;
+        width: 230px;
+        border-radius: 10px;
+        padding: 14px 16px;
+    }
+
+    #modalApproval .adf-status-panel .adf-status-label {
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        opacity: .8;
+        margin-bottom: 10px;
+    }
+
+    #modalApproval .adf-status-panel .adf-status-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    #modalApproval .adf-status-panel .adf-status-icon {
+        flex: none;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: currentColor;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #modalApproval .adf-status-panel .adf-status-icon i {
+        color: #fff;
+        font-size: 15px;
+    }
+
+    #modalApproval .adf-status-panel .adf-status-text-wrap { min-width: 0; }
+
+    #modalApproval .adf-status-panel .adf-status-pre {
+        font-size: 10.5px;
+        font-weight: 700;
+        opacity: .85;
+    }
+
+    #modalApproval .adf-status-panel .adf-status-text {
+        font-weight: 800;
+        font-size: 14.5px;
+        line-height: 1.25;
+        word-break: break-word;
+    }
+
+    #modalApproval .adf-status-panel .adf-status-hint {
+        font-size: 11px;
+        opacity: .85;
+        margin-top: 8px;
+        line-height: 1.4;
+    }
+
+    #modalApproval .adf-status-info { background: #E7F1FB; color: #2E75B6; }
+    #modalApproval .adf-status-success { background: #E6F4EA; color: #1E7E34; }
+    #modalApproval .adf-status-warning { background: #FFF3E0; color: #B36B00; }
+    #modalApproval .adf-status-danger { background: #FDECEA; color: #C62828; }
+
+    /* Approval Progress stepper */
+    #modalApproval .approval-stepper {
+        display: flex;
+        align-items: flex-start;
+        overflow-x: auto;
+        padding: 6px 4px;
+    }
+
+    #modalApproval .stepper-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 120px;
+        max-width: 150px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    #modalApproval .stepper-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        font-size: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    #modalApproval .stepper-done .stepper-icon { background: #1E9E5A; color: #fff; }
+    #modalApproval .stepper-current .stepper-icon { background: #F2A93B; color: #fff; box-shadow: 0 0 0 5px rgba(242,169,59,.22); }
+    #modalApproval .stepper-rejected .stepper-icon { background: #D64545; color: #fff; }
+    #modalApproval .stepper-upcoming .stepper-icon { background: #fff; border: 2px solid #D5DAE1; }
+
+    #modalApproval .stepper-title {
+        margin-top: 8px;
+        font-weight: 700;
+        font-size: 12.5px;
+    }
+
+    #modalApproval .stepper-done .stepper-title { color: #1E9E5A; }
+    #modalApproval .stepper-current .stepper-title { color: #B36B00; }
+    #modalApproval .stepper-rejected .stepper-title { color: #D64545; }
+    #modalApproval .stepper-upcoming .stepper-title { color: #9AA4B2; }
+
+    #modalApproval .stepper-sub {
+        font-size: 11px;
+        color: #5A6472;
+        margin-top: 2px;
+        word-break: break-word;
+    }
+
+    #modalApproval .stepper-date {
+        font-size: 10.5px;
+        color: #98A2B3;
+        margin-top: 2px;
+    }
+
+    #modalApproval .stepper-current-badge {
+        display: inline-block;
+        margin-top: 6px;
+        font-size: 9.5px;
+        font-weight: 700;
+        letter-spacing: .03em;
+        color: #B36B00;
+        background: #FFF3E0;
+        border: 1px solid #F2D9A6;
+        border-radius: 20px;
+        padding: 2px 8px;
+    }
+
+    #modalApproval .stepper-connector {
+        flex: 1 0 24px;
+        height: 3px;
+        margin-top: 19px;
+        min-width: 24px;
+        background: #D5DAE1;
+    }
+
+    #modalApproval .stepper-connector-done { background: #1E9E5A; }
+    #modalApproval .stepper-connector-rejected { background: #D64545; }
+
+    /* Approval Route / Approval History / Documents tables */
+    #modalApproval .approval-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12.5px;
+    }
+
+    #modalApproval .approval-table th {
+        text-align: left;
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: .03em;
+        text-transform: uppercase;
+        color: #8A94A3;
+        padding: 8px 10px;
+        border-bottom: 1px solid #E3E8EE;
+        white-space: nowrap;
+    }
+
+    #modalApproval .approval-table td {
+        padding: 10px;
+        border-bottom: 1px solid #EEF1F4;
+        vertical-align: middle;
+    }
+
+    #modalApproval .approval-table tbody tr:last-child td { border-bottom: none; }
+    #modalApproval .approval-table tr.current-row { background: #FFFBF0; }
+    #modalApproval .approver-name { font-weight: 700; color: #1D2939; }
+    #modalApproval .cell-muted { color: #C0C6CE; }
+
+    #modalApproval .btn-review {
+        background: #2450D8;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 5px 12px;
+        font-size: 11.5px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    #modalApproval .btn-review:hover { background: #1C3FA6; color: #fff; }
+
+    #modalApproval .history-approver {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    #modalApproval .history-icon {
+        flex: none;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: #1E9E5A;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        margin-top: 1px;
+    }
+
+    #modalApproval .history-icon.rejected { background: #D64545; }
+    #modalApproval .history-name { font-weight: 700; font-size: 12.5px; color: #1D2939; }
+    #modalApproval .history-role { font-size: 11px; color: #8A94A3; }
+
+    /* collapsible section headers */
+    #modalApproval .adf-collapsible-header {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    #modalApproval .adf-collapsible-header .chevron {
+        margin-left: auto;
+        transition: transform .15s ease;
+        color: #8A94A3;
+    }
+
+    #modalApproval .adf-collapsible-header.collapsed .chevron {
+        transform: rotate(-90deg);
+    }
+
+    #modalApproval .modal-footer {
+        flex: none;
+        background: #fff;
+        border-top: 1px solid #E3E8EE;
+        padding: 14px 22px;
+    }
+</style>
+
+<div class="modal fade" id="modalApproval" role="dialog" aria-labelledby="basicModal" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <!-- Header -->
+            <div class="adf-header">
+                <div class="adf-header-title" id="modal-title-function">Approval List</div>
+                <button type="button" class="adf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
+            </div>
+
+            <!-- Body -->
+            <div class="modal-body">
+                <!-- Submission Information + Approval Status -->
+                <div class="adf-section">
+                    <div class="adf-section-title"><i class="fa fa-file-text-o"></i> Submission Information</div>
+
+                    <div class="adf-info-layout">
+                        <div class="adf-info-main">
+                            <div class="adf-info-field">
+                                <i class="fa fa-file-text-o"></i>
+                                <div>
+                                    <div class="adf-info-label">Submission No.</div>
+                                    <div class="adf-info-value" id="approvalSubmissionNo"></div>
+                                </div>
+                            </div>
+                            <div class="adf-info-field">
+                                <i class="fa fa-building-o"></i>
+                                <div>
+                                    <div class="adf-info-label">Division</div>
+                                    <div class="adf-info-value" id="approvalDivision"></div>
+                                </div>
+                            </div>
+                            <div class="adf-info-field">
+                                <i class="fa fa-sitemap"></i>
+                                <div>
+                                    <div class="adf-info-label">Department</div>
+                                    <div class="adf-info-value" id="approvalDepartment"></div>
+                                </div>
+                            </div>
+                            <div class="adf-info-field">
+                                <i class="fa fa-sitemap"></i>
+                                <div>
+                                    <div class="adf-info-label">Section</div>
+                                    <div class="adf-info-value" id="approvalSection"></div>
+                                </div>
+                            </div>
+                            <div class="adf-info-field">
+                                <i class="fa fa-calendar"></i>
+                                <div>
+                                    <div class="adf-info-label">Submission Date</div>
+                                    <div class="adf-info-value" id="approvalSubmissionDate"></div>
+                                </div>
+                            </div>
+                            <div class="adf-info-field">
+                                <i class="fa fa-list-alt"></i>
+                                <div>
+                                    <div class="adf-info-label">Total Documents</div>
+                                    <div class="adf-info-value" id="approvalTotalDocuments"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="adf-status-panel adf-status-warning" id="approvalStatusPanel">
+                            <div class="adf-status-label">APPROVAL STATUS</div>
+                            <div class="adf-status-row">
+                                <div class="adf-status-icon"><i class="fa fa-clock-o" id="approvalStatusIcon"></i></div>
+                                <div class="adf-status-text-wrap">
+                                    <div class="adf-status-pre" id="approvalStatusPre">WAITING FOR</div>
+                                    <div class="adf-status-text" id="approvalStatusText">-</div>
+                                </div>
+                            </div>
+                            <div class="adf-status-hint" id="approvalStatusHint"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Document list, so QMS can eyeball it against the hardcopy -->
+                <div class="adf-section">
+                    <div class="adf-section-title"><i class="fa fa-file-o"></i> Submitted Documents</div>
+                    <div id="approvalDocumentList"></div>
+                </div>
+
+                <!-- Approval Progress -->
+                <div class="adf-section">
+                    <div class="adf-section-title"><i class="fa fa-sitemap"></i> Approval Progress</div>
+                    <div id="approvalStepper" class="approval-stepper"></div>
+                </div>
+
+                <!-- Approval Route -->
+                <div class="adf-section">
+                    <div class="adf-section-title adf-collapsible-header" id="approvalRouteToggle">
+                        <i class="fa fa-users"></i> Approval Route
+                        <i class="fa fa-chevron-down chevron"></i>
+                    </div>
+                    <div id="approvalRouteBody" style="overflow-x:auto;">
+                        <table id="approvalgrid" class="approval-table" width="100%">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Approver</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th>Approval Date</th>
+                                    <th>Remark</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Approval History (collapsible) -->
+                <div class="adf-section">
+                    <div class="adf-section-title adf-collapsible-header" id="approvalHistoryToggle">
+                        <i class="fa fa-history"></i> Approval History
+                        <i class="fa fa-chevron-down chevron"></i>
+                    </div>
+                    <div id="approvalHistoryBody" style="overflow-x:auto;">
+                        <table id="historyGrid" class="approval-table" width="100%">
+                            <thead>
+                                <tr>
+                                    <th>Approver</th>
+                                    <th>Status</th>
+                                    <th>Approval Date</th>
+                                    <th>Remark</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-grey" id="btn_close_approvalList" style="width: 80px;" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalApprovalForm" role="dialog" aria-labelledby="basicModal" aria-hidden="true">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modal-title-function">Approval</h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <div class="row" style="margin-top: 15px;">
+                    <div class="col-lg-12">
+                        <p><b>Remark :</b></p>
+                    </div>
+                    <div class="col-lg-12">
+                        <textarea id="approvalRemark" rows="5" class="form-control"></textarea>
+                    </div>
+                </div>
+                <div class="text-right" style="margin-top: 20px">
+                    <button type="button" class="btn btn-primary" id="btn_approve"><i class="fa fa-check"></i> Approve</button>
+                    <button type="button" class="btn btn-reject" id="btn_reject"><i class="fa fa-ban"></i> Reject</button>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-grey" id="btn_close_approval" style="width: 80px;" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>

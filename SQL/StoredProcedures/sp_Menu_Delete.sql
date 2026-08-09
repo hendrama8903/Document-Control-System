@@ -49,6 +49,13 @@ BEGIN TRY
 		RETURN 0;
 	END
 
+	IF EXISTS (SELECT 1 FROM [dbo].[TB_M_AUTH_MENU] WHERE MENU_ID = @MENU_ID)
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Menu masih diberikan ke satu atau lebih role - nonaktifkan menu ini atau cabut aksesnya dari Role Authorization dulu sebelum menghapus';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+		RETURN 0;
+	END
+
 	BEGIN
 	DELETE FROM [dbo].[TB_M_MENU]
 	WHERE MENU_ID = @MENU_ID

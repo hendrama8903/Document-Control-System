@@ -1,57 +1,88 @@
-﻿<script type="text/javascript">
+<script type="text/javascript">
     var gScreenMode = null;
     var gParentID = null;
     var gId = null;
-    var gParent = null;
+
+    var gCanEdit = @Json.Serialize((bool)ViewData["Edit"]);
+    var gCanDelete = @Json.Serialize((bool)ViewData["Delete"]);
+    var gCanFunction = @Json.Serialize((bool)ViewData["Function"]);
+
+    var gAllMenus = [];
+    var gExpandedTopMenus = new Set();
+    var gSelectedMenu = null;
+    var gCurrentFunctions = [];
+    var gFunctionPage = 1;
+    var gFunctionPageSize = 10;
+    var gFunctionScreenMode = null;
 
     $(document).ready(function () {
         setDataSelect2("addEditParentID", "@Url.Action("GetMenuParent", "Menu")", "- Parent -");
 
+        loadStats();
+        loadMenuTree();
+
         $("#btn_add").on("click", function () {
             onAddPrepare();
-        });
-
-        $("#btn_edit").on("click", function () {
-            onEditPrepare();
-        });
-
-        $("#btn_delete").on("click", function () {
-            onDeletePrepare();
         });
 
         $("#btn_save").on("click", function () {
             confirmAddEditData();
         });
 
-        $("#btn_function").on("click", function () {
-            onFunctionPrepare();
+        $("#btn_export").on("click", function () {
+            window.location.href = "@Url.Action("DownloadExcel", "Menu")";
+        });
+
+        $("#btn_toggleStats").on("click", function () {
+            var $btn = $(this);
+            var $icon = $btn.find("i");
+            var $row = $("#mfStatsRow");
+            $row.stop(true, true).animate(
+                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
+                {
+                    duration: 220,
+                    easing: "swing",
+                    complete: function () {
+                        var collapsed = !$row.is(":visible");
+                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
+                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
+                    }
+                }
+            );
+        });
+
+        $("#mfSearchMenu").on("input", function () {
+            renderTree();
         });
 
         $("#btn_add_function").on("click", function () {
             onAddFunctionPrepare();
         });
 
-        $("#btn_edit_function").on("click", function () {
-            onEditFunctionPrepare();
+        $("#btn_save_function").on("click", function () {
+            confirmSaveFunction();
         });
 
-        $("#btn_delete_function").on("click", function () {
-            onDeleteFunctionPrepare();
+        $("#mfPageSize").on("change", function () {
+            gFunctionPageSize = parseInt($(this).val());
+            gFunctionPage = 1;
+            renderFunctionTable();
         });
 
-        $("#btn_clear_function").on("click", function () {
-            onClearFunction();
+        $("#mfPagePrev").on("click", function () {
+            if (gFunctionPage > 1) { gFunctionPage--; renderFunctionTable(); }
         });
 
-        $("#functiongrid").on("click", "tbody tr", function (e) {
-            selectFunction($(this));
+        $("#mfPageNext").on("click", function () {
+            var totalPages = Math.max(1, Math.ceil(gCurrentFunctions.length / gFunctionPageSize));
+            if (gFunctionPage < totalPages) { gFunctionPage++; renderFunctionTable(); }
         });
-        
+
         $("#chkMenuParent").click(function (e) {
             $("#addEditMenuID").attr("disabled", true);
             $("#addEditParentID").attr("disabled", true);
             $('#addEditParentID').val(null).trigger('change');
-            
+
             gParentID = null;
             GetMenuLastSeq();
             GetMenuLastID();
@@ -74,40 +105,390 @@
                 GetMenuLastSeq();
             }
         });
-
     });
 
-    function onSearch() {
-        var grid = $("#datagrid").dxDataGrid("instance");
-        grid.clearSelection();
-        grid.refresh();
+    /* ---------- stats ---------- */
+    function loadStats() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetMenuFunctionStats", "Menu")",
+            success: function (result) {
+                if (result.status == true) {
+                    $("#mfStatMenus").text(result.data.TOTAL_MENUS);
+                    $("#mfStatFunctions").text(result.data.TOTAL_FUNCTIONS);
+                    $("#mfStatRoles").text(result.data.USED_BY_ROLES);
+                    $("#mfStatInactive").text(result.data.INACTIVE_COUNT);
+                }
+            }
+        });
     }
 
+    /* ---------- tree ---------- */
+    function loadMenuTree() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetMenuTree", "Menu")",
+            success: function (result) {
+                if (result.status == true) {
+                    gAllMenus = result.data;
+
+                    var topMenus = mfGetTopMenus();
+                    var firstWithChildren = topMenus.find(function (m) { return mfGetChildren(m.MENU_ID).length > 0; });
+                    if (firstWithChildren) {
+                        gExpandedTopMenus.add(firstWithChildren.MENU_ID);
+                    }
+
+                    renderTree();
+
+                    if (firstWithChildren) {
+                        var firstChild = mfGetChildren(firstWithChildren.MENU_ID)[0];
+                        if (firstChild) { selectMenu(firstChild); }
+                    }
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) { showErrorMesgGrowl(result); }
+        });
+    }
+
+    function mfGetTopMenus() {
+        return gAllMenus.filter(function (m) { return m.PARENT_ID == null; });
+    }
+
+    function mfGetChildren(topId) {
+        return gAllMenus.filter(function (m) { return m.PARENT_ID === topId; });
+    }
+
+    function renderTree() {
+        var search = ($("#mfSearchMenu").val() || "").toLowerCase();
+        var $tree = $("#mfTree").empty();
+
+        mfGetTopMenus().forEach(function (topMenu) {
+            var children = mfGetChildren(topMenu.MENU_ID);
+            var topMatches = topMenu.MENU_NAME.toLowerCase().indexOf(search) !== -1;
+            var matchingChildren = search ? children.filter(function (c) { return c.MENU_NAME.toLowerCase().indexOf(search) !== -1; }) : children;
+
+            if (search && !topMatches && matchingChildren.length === 0) {
+                return;
+            }
+
+            var expanded = !!(gExpandedTopMenus.has(topMenu.MENU_ID) || (search && matchingChildren.length > 0));
+
+            var $top = $("<div>").addClass("mf-tree-top").toggleClass("expanded", expanded);
+            $("<i>").addClass("fa fa-chevron-right mf-tree-chevron").css("visibility", children.length > 0 ? "visible" : "hidden").appendTo($top);
+            $("<i>").addClass("fa mf-tree-icon " + (topMenu.MENU_ICON || "fa-folder-o")).appendTo($top);
+            $("<span>").addClass("mf-tree-name").text(topMenu.MENU_NAME).appendTo($top);
+            $("<span>").addClass("mf-tree-count").text(topMenu.FUNCTION_COUNT || 0).appendTo($top);
+            mfAppendKebab($top, topMenu, true);
+
+            $top.on("click", function (e) {
+                if ($(e.target).closest(".dp-act-kebab, .dp-dropdown-menu").length > 0) { return; }
+                if (gExpandedTopMenus.has(topMenu.MENU_ID)) { gExpandedTopMenus.delete(topMenu.MENU_ID); } else { gExpandedTopMenus.add(topMenu.MENU_ID); }
+                renderTree();
+            });
+
+            $tree.append($top);
+
+            if (expanded && children.length > 0) {
+                var $children = $("<div>").addClass("mf-tree-children");
+                (search ? matchingChildren : children).forEach(function (child) {
+                    var $child = $("<div>").addClass("mf-tree-child").toggleClass("selected", !!(gSelectedMenu && gSelectedMenu.MENU_ID === child.MENU_ID));
+                    $("<i>").addClass("fa fa-file-o mf-tree-icon").appendTo($child);
+                    $("<span>").addClass("mf-tree-name").text(child.MENU_NAME).appendTo($child);
+                    $("<span>").addClass("mf-tree-count").text(child.FUNCTION_COUNT || 0).appendTo($child);
+                    $("<span>").addClass("mf-tree-status").toggleClass("inactive", child.DELETE_FLAG === 1).attr("title", child.DELETE_FLAG === 1 ? "Inactive" : "Active").appendTo($child);
+                    mfAppendKebab($child, child, false);
+
+                    $child.on("click", function (e) {
+                        if ($(e.target).closest(".dp-act-kebab, .dp-dropdown-menu").length > 0) { return; }
+                        selectMenu(child);
+                    });
+
+                    $children.append($child);
+                });
+                $tree.append($children);
+            }
+        });
+
+        if ($tree.children().length === 0) {
+            $("<div>").addClass("mf-empty-state").text("No menu found.").appendTo($tree);
+        }
+    }
+
+    // body-appended + fixed-position kebab menu, so it can't be clipped by the
+    // scrollable tree panel's overflow (mf-tree has overflow-y:auto, which implies
+    // overflow-x:auto too and was cutting the menu off at the panel edge).
+    function mfCloseTreeMenu() {
+        $(".mf-tree-dropdown-menu").remove();
+    }
+
+    function mfAppendKebab($row, menu, isTop) {
+        if (!gCanEdit && !gCanDelete) { return; }
+
+        var $btn = $("<button>").attr("type", "button").addClass("dp-act-kebab").html('<i class="fa fa-ellipsis-v"></i>')
+            .css({ width: "24px", height: "24px", "margin-left": "auto" })
+            .on("click", function (e) {
+                e.stopPropagation();
+                var alreadyOpenForThisButton = $btn.data("menu-open");
+                mfCloseTreeMenu();
+                if (alreadyOpenForThisButton) {
+                    $btn.data("menu-open", false);
+                    return;
+                }
+                mfOpenTreeMenu($btn, menu);
+                $btn.data("menu-open", true);
+            });
+
+        $row.append($btn);
+    }
+
+    function mfOpenTreeMenu($btn, menu) {
+        var $menu = $("<ul>").addClass("dropdown-menu dp-dropdown-menu mf-tree-dropdown-menu")
+            .css({ position: "fixed", "z-index": 2000, "min-width": "160px", background: "#fff", margin: 0, "list-style": "none" });
+
+        if (gCanEdit) {
+            $("<li>").append($("<button>").attr("type", "button").addClass("dp-menu-edit").html('<i class="fa fa-pencil"></i> Edit').on("click", function (e) {
+                e.stopPropagation(); mfCloseTreeMenu(); onEditPrepare(menu);
+            })).appendTo($menu);
+
+            var activeNow = menu.DELETE_FLAG !== 1;
+            $("<li>").append($("<button>").attr("type", "button").addClass("dp-menu-toggle").html('<i class="fa fa-toggle-' + (activeNow ? "off" : "on") + '"></i> ' + (activeNow ? "Deactivate" : "Activate")).on("click", function (e) {
+                e.stopPropagation(); mfCloseTreeMenu(); onToggleMenuStatus(menu);
+            })).appendTo($menu);
+        }
+
+        if (gCanDelete) {
+            if ($menu.children().length > 0) {
+                $menu.append('<li class="divider"></li>');
+            }
+            $("<li>").append($("<button>").attr("type", "button").addClass("dp-menu-delete").html('<i class="fa fa-trash-o"></i> Delete').on("click", function (e) {
+                e.stopPropagation(); mfCloseTreeMenu(); onDeletePrepare(menu);
+            })).appendTo($menu);
+        }
+
+        $menu.appendTo("body").show();
+
+        var btnRect = $btn[0].getBoundingClientRect();
+        var menuWidth = $menu.outerWidth();
+        var menuHeight = $menu.outerHeight();
+        var left = Math.min(btnRect.right - menuWidth, window.innerWidth - menuWidth - 8);
+        var top = btnRect.bottom + 4;
+        if (top + menuHeight > window.innerHeight) {
+            top = btnRect.top - menuHeight - 4;
+        }
+        $menu.css({ left: Math.max(8, left) + "px", top: top + "px" });
+    }
+
+    $(document).on("click", function () {
+        $(".dp-act-kebab").data("menu-open", false);
+        mfCloseTreeMenu();
+        mfCloseFunctionMenu();
+    });
+
+    function selectMenu(menu) {
+        gSelectedMenu = menu;
+        gFunctionPage = 1;
+
+        var parent = gAllMenus.find(function (m) { return m.MENU_ID === menu.PARENT_ID; });
+        $("#mfBreadcrumb").html(
+            '<span class="mf-breadcrumb-icon"><i class="fa fa-folder-open-o"></i></span>' +
+            '<span>' + (parent ? parent.MENU_NAME : "") + '</span>' +
+            '<i class="fa fa-angle-right" style="font-size:11px;"></i>' +
+            '<span class="current">' + menu.MENU_NAME + '</span>'
+        );
+
+        $("#btn_add_function").prop("disabled", !gCanFunction);
+        renderTree();
+        loadFunctions(menu.MENU_ID);
+    }
+
+    /* ---------- functions (right panel) ---------- */
+    function loadFunctions(menuId) {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetFunctionByMenu", "Menu")",
+            data: { MENU_ID: menuId },
+            success: function (result) {
+                if (result.status == true) {
+                    gCurrentFunctions = result.data;
+                    renderFunctionTable();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) { showErrorMesgGrowl(result); }
+        });
+    }
+
+    function renderFunctionTable() {
+        var $body = $("#mfFunctionBody").empty();
+        var total = gCurrentFunctions.length;
+        var totalPages = Math.max(1, Math.ceil(total / gFunctionPageSize));
+        if (gFunctionPage > totalPages) { gFunctionPage = totalPages; }
+
+        var start = (gFunctionPage - 1) * gFunctionPageSize;
+        var pageItems = gCurrentFunctions.slice(start, start + gFunctionPageSize);
+
+        if (pageItems.length === 0) {
+            $("<tr>").append($("<td>").attr("colspan", 6).addClass("mf-empty-state").text("No functions in this menu yet.")).appendTo($body);
+        }
+
+        pageItems.forEach(function (f) {
+            var $tr = $("<tr>");
+            $("<td>").addClass("mf-fn-id").text(f.FUNCTION_ID).appendTo($tr);
+            $("<td>").text(f.FUNCTION_NAME).appendTo($tr);
+            $("<td>").addClass("mf-fn-desc").text(f.FUNCTION_DESC || "").appendTo($tr);
+
+            var $statusTd = $("<td>");
+            var $toggle = $("<label>").addClass("dms-toggle");
+            $("<input>").attr("type", "checkbox").prop("checked", f.DELETE_FLAG !== 1).prop("disabled", !gCanEdit)
+                .on("change", function () { onToggleFunctionStatus(f, !this.checked); })
+                .appendTo($toggle);
+            $("<span>").addClass("dms-toggle-slider").appendTo($toggle);
+            $toggle.appendTo($statusTd);
+            $statusTd.appendTo($tr);
+
+            $("<td>").append($("<span>").addClass("mf-used-by").html('<i class="fa fa-users"></i> ' + (f.USED_BY_ROLES || 0) + ' Roles')).appendTo($tr);
+
+            var $actionTd = $("<td>");
+            if (gCanEdit || gCanDelete) {
+                mfAppendFunctionKebab($actionTd, f);
+            }
+            $actionTd.appendTo($tr);
+
+            $body.append($tr);
+        });
+
+        var showingFrom = total === 0 ? 0 : start + 1;
+        var showingTo = Math.min(start + gFunctionPageSize, total);
+        $("#mfPaginationInfo").text("Showing " + showingFrom + " to " + showingTo + " of " + total + " functions");
+        $("#mfPageCurrent").text(gFunctionPage);
+        $("#mfPagePrev").prop("disabled", gFunctionPage <= 1);
+        $("#mfPageNext").prop("disabled", gFunctionPage >= totalPages);
+    }
+
+    // same body-appended + fixed-position technique as mfAppendKebab - the function
+    // table wrapper (mf-function-table-wrap) also has overflow-x:auto and was clipping
+    // the menu near the table's right edge.
+    function mfCloseFunctionMenu() {
+        $(".mf-fn-dropdown-menu").remove();
+    }
+
+    function mfAppendFunctionKebab($cell, func) {
+        var $btn = $("<button>").attr("type", "button").addClass("dp-act-kebab").html('<i class="fa fa-ellipsis-v"></i>')
+            .on("click", function (e) {
+                e.stopPropagation();
+                var alreadyOpenForThisButton = $btn.data("menu-open");
+                mfCloseFunctionMenu();
+                if (alreadyOpenForThisButton) {
+                    $btn.data("menu-open", false);
+                    return;
+                }
+                mfOpenFunctionMenu($btn, func);
+                $btn.data("menu-open", true);
+            });
+
+        $cell.append($btn);
+    }
+
+    function mfOpenFunctionMenu($btn, func) {
+        var $menu = $("<ul>").addClass("dropdown-menu dp-dropdown-menu mf-fn-dropdown-menu")
+            .css({ position: "fixed", "z-index": 2000, "min-width": "140px", background: "#fff", margin: 0, "list-style": "none" });
+
+        if (gCanEdit) {
+            $("<li>").append($("<button>").attr("type", "button").addClass("dp-menu-edit").html('<i class="fa fa-pencil"></i> Edit').on("click", function (e) {
+                e.stopPropagation(); mfCloseFunctionMenu(); onEditFunctionPrepare(func);
+            })).appendTo($menu);
+        }
+
+        if (gCanDelete) {
+            if ($menu.children().length > 0) {
+                $menu.append('<li class="divider"></li>');
+            }
+            $("<li>").append($("<button>").attr("type", "button").addClass("dp-menu-delete").html('<i class="fa fa-trash-o"></i> Delete').on("click", function (e) {
+                e.stopPropagation(); mfCloseFunctionMenu(); onDeleteFunctionPrepare(func);
+            })).appendTo($menu);
+        }
+
+        $menu.appendTo("body").show();
+
+        var btnRect = $btn[0].getBoundingClientRect();
+        var menuWidth = $menu.outerWidth();
+        var menuHeight = $menu.outerHeight();
+        var left = Math.min(btnRect.right - menuWidth, window.innerWidth - menuWidth - 8);
+        var top = btnRect.bottom + 4;
+        if (top + menuHeight > window.innerHeight) {
+            top = btnRect.top - menuHeight - 4;
+        }
+        $menu.css({ left: Math.max(8, left) + "px", top: top + "px" });
+    }
+
+    /* ---------- menu status toggle ---------- */
+    function onToggleMenuStatus(menu) {
+        var newFlag = menu.DELETE_FLAG === 1 ? 0 : 1;
+        var verb = newFlag === 1 ? "deactivate" : "activate";
+        showConfirmMesg("Are you sure you want to " + verb + " this menu?", function () {
+            popUpProgressShow();
+            $.ajax({
+                type: "POST",
+                url: "@Url.Action("ToggleMenuStatus", "Menu")",
+                data: { menuId: menu.MENU_ID, deleteFlag: newFlag },
+                success: function (result) {
+                    popUpProgressHide();
+                    if (result.status == true) {
+                        showSuccessMesgGrowl(result.message);
+                        loadMenuTree();
+                        loadStats();
+                    } else {
+                        showErrorMesgGrowl(result.message);
+                    }
+                },
+                error: function (result) { popUpProgressHide(); showErrorMesgGrowl(result); }
+            });
+        }, "Confirmation");
+    }
+
+    function onToggleFunctionStatus(func, deactivate) {
+        var newFlag = deactivate ? 1 : 0;
+        popUpProgressShow();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("ToggleFunctionStatus", "Menu")",
+            data: { functionId: func.FUNCTION_ID, deleteFlag: newFlag },
+            success: function (result) {
+                popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    func.DELETE_FLAG = newFlag;
+                    loadStats();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                    renderFunctionTable();
+                }
+            },
+            error: function (result) { popUpProgressHide(); showErrorMesgGrowl(result); renderFunctionTable(); }
+        });
+    }
+
+    /* ---------- Add/Edit Menu (existing flow, adapted to work off an explicit row) ---------- */
     function GetMenuLastSeq() {
         $.ajax({
             type: "POST",
             url: "@Url.Action("GetMenuLastSeq", "Menu")",
             async: false,
-            data: {
-                PARENT_ID: gParentID
-            },
-            success: function (result) {
-                $("#addEditMenuSeq").val(result)
-            }
+            data: { PARENT_ID: gParentID },
+            success: function (result) { $("#addEditMenuSeq").val(result) }
         });
     }
-    
+
     function GetMenuLastID() {
         $.ajax({
             type: "POST",
             url: "@Url.Action("GetMenuLastID", "Menu")",
             async: false,
-            data: {
-                PARENT_ID: gParentID
-            },
-            success: function (result) {
-                $("#addEditMenuID").val(result)
-            }
+            data: { PARENT_ID: gParentID },
+            success: function (result) { $("#addEditMenuID").val(result) }
         });
     }
 
@@ -136,22 +517,14 @@
         });
     }
 
-    function onEditPrepare() {
-
-        var row = getSelectedRowData();
-        if (row == null) {
-            return;
-        }
-
-        gId = row.MENU_ID;
+    function onEditPrepare(menu) {
+        gId = menu.MENU_ID;
 
         $.ajax({
             type: "POST",
             url: "@Url.Action("GetByKey", "Menu")",
             async: false,
-            data: {
-                MENU_ID: gId
-            },
+            data: { MENU_ID: gId },
             success: function (result) {
                 if (result.status == true) {
                     var data = result.data;
@@ -176,7 +549,7 @@
                     $('#addEditMenuIcon').val(data.MENU_ICON);
                     $('#addEditMenuURL').val(data.MENU_URL);
                     $('#addEditMenuSeq').val(data.MENU_SEQ);
-                    
+
                     $('#addEditMenuID').prop('disabled', true);
                     $('#addEditMenuName').prop('disabled', false);
                     $('#addEditMenuIcon').prop('disabled', false);
@@ -186,16 +559,12 @@
                     $("#modalAddEdit").modal();
                     $('#modalAddEdit').on('shown.bs.modal', function () {
                         $('#addEditMenuName').focus();
-                        
                     });
                 } else {
                     showErrorMesgGrowl(result.message);
                 }
             },
-            error: function(result){
-                //popUpProgressHide();
-                showErrorMesgGrowl(result);
-            }
+            error: function (result) { showErrorMesgGrowl(result); }
         });
     }
 
@@ -223,29 +592,20 @@
                 popUpProgressHide();
                 if (result.status == true) {
                     showSuccessMesgGrowl(result.message);
-                    onSearch();
+                    loadMenuTree();
+                    loadStats();
                     $("#modalAddEdit").modal('hide');
-                }else {
-                   showErrorMesgGrowl(result.message);
+                } else {
+                    showErrorMesgGrowl(result.message);
                 }
             },
-            error: function (result) {
-                popUpProgressHide();
-                showErrorMesgGrowl(result);
-            }
+            error: function (result) { popUpProgressHide(); showErrorMesgGrowl(result); }
         });
     }
 
-    function onDeletePrepare() {
-
-        var row = getSelectedRowData();
-        if (row == null) {
-            return;
-        }
-
-        gId = row.MENU_ID;
-
-        showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
+    function onDeletePrepare(menu) {
+        gId = menu.MENU_ID;
+        showConfirmMesg("Are you sure you want to delete this menu?", deleteData, "Confirmation");
     }
 
     function deleteData() {
@@ -255,153 +615,65 @@
             url: "@Url.Action("Delete", "Menu")",
             dataType: 'json',
             traditional: true,
-            data: {
-                MENU_ID: gId
-            },
+            data: { MENU_ID: gId },
             success: function (result) {
                 popUpProgressHide();
                 if (result.status == true) {
                     showSuccessMesgGrowl(result.message);
-                    onSearch();
-                }else {
-                   showErrorMesgGrowl(result.message);
-                }
-            },
-            error: function (result) {
-                popUpProgressHide();
-                showErrorMesgGrowl(result);
-            }
-        });
-    }
-
-    function onFunctionPrepare() {
-        var row = getSelectedRowData();
-        if (row == null) {
-            return;
-        }
-
-        gId = row.MENU_ID;
-        gParent = row.MENU_NAME;
-
-        getFunction();
-    }
-
-    function getFunction(){
-        $.ajax({
-            type: "POST",
-            url: "@Url.Action("GetFunctionByMenu", "Menu")",
-            async: false,
-            data: {
-                MENU_ID: gId
-            },
-            success: function (result) {
-                if (result.status == true) {
-                    var data = result.data;
-                    
-                    $("#functiongrid").dataTable().fnDestroy();
-                    $('#functiongrid').DataTable({
-                        "ordering": false,
-                        "oLanguage": { "sEmptyTable": "Data not found." },
-                        "scrollY": '150px',
-                        "scrollCollapse": false,
-                        "paging": false,
-                        "info": false,
-                        "searching": false,
-                        "data": data,
-                        "columns": [
-                            {
-                                data: 'FUNCTION_ID'
-                            },
-                            {
-                                data: 'FUNCTION_NAME'
-                            },
-                            {
-                                data: 'FUNCTION_DESC'
-                            }
-                        ]
-                    });
-
-                    $('#addEditFunctionId').val("");
-                    $('#addEditFunctionName').val("");
-                    $('#addEditFunctionDesc').val("");
-
-                    $("#addEditFunctionId").prop("disabled", false);
-                    $("#btn_add_function").prop("disabled", false);
-                    $("#btn_edit_function").prop("disabled", true);
-                    $("#btn_delete_function").prop("disabled", true);
-                    
-                    $('#modal-title-function').html("Function List : " + gParent);
-
-                    $("#modalFunction").modal();
-                    $('#modalFunction').on('shown.bs.modal', function () {
-                        $('#addEditFunctionID').focus();
-                        $("#functiongrid").DataTable().columns.adjust().draw();
-                    });
+                    if (gSelectedMenu && gSelectedMenu.MENU_ID === gId) {
+                        gSelectedMenu = null;
+                        gCurrentFunctions = [];
+                        renderFunctionTable();
+                        $("#mfBreadcrumb").html('<span class="mf-breadcrumb-icon"><i class="fa fa-folder-open-o"></i></span><span>Select a menu</span>');
+                        $("#btn_add_function").prop("disabled", true);
+                    }
+                    loadMenuTree();
+                    loadStats();
                 } else {
                     showErrorMesgGrowl(result.message);
                 }
             },
-            error: function(result){
-                //popUpProgressHide();
-                showErrorMesgGrowl(result);
-            }
+            error: function (result) { popUpProgressHide(); showErrorMesgGrowl(result); }
         });
     }
 
-    function onClearFunction() {
-        $('#addEditFunctionId').val("");
+    /* ---------- Add/Edit Function (own modal now, list lives in the main right panel) ---------- */
+    function onAddFunctionPrepare() {
+        if (!gSelectedMenu) { return; }
+
+        gFunctionScreenMode = 'ADD';
+        $('#modal-title-function').html("Add Function");
+        $('#functionMenuId').val(gSelectedMenu.MENU_ID);
+        $('#addEditFunctionId').val("").prop('disabled', false);
         $('#addEditFunctionName').val("");
         $('#addEditFunctionDesc').val("");
 
-        $("#addEditFunctionId").prop("disabled", false);
-        $("#btn_add_function").prop("disabled", false);
-        $("#btn_edit_function").prop("disabled", true);
-        $("#btn_delete_function").prop("disabled", true);
-
-        $('#functiongrid tr').removeClass("selected");
+        $("#modalFunction").modal();
+        $('#modalFunction').on('shown.bs.modal', function () {
+            $('#addEditFunctionId').focus();
+        });
     }
 
-    function selectFunction($row) {
-        if(!$row.find("td:nth-child(1)").hasClass("dataTables_empty")){
-            var $functionId = $row.find("td:nth-child(1)").text();
-            var $functionName = $row.find("td:nth-child(2)").text();
-            var $functionDesc = $row.find("td:nth-child(3)").text();
+    function onEditFunctionPrepare(func) {
+        gFunctionScreenMode = 'EDIT';
+        $('#modal-title-function').html("Edit Function");
+        $('#functionMenuId').val(func.MENU_ID);
+        $('#addEditFunctionId').val(func.FUNCTION_ID).prop('disabled', true);
+        $('#addEditFunctionName').val(func.FUNCTION_NAME);
+        $('#addEditFunctionDesc').val(func.FUNCTION_DESC);
 
-            $('#addEditFunctionId').val($functionId);
-            $('#addEditFunctionName').val($functionName);
-            $('#addEditFunctionDesc').val($functionDesc);
-        
-            $("#addEditFunctionId").prop("disabled", true);
-            $("#btn_add_function").prop("disabled", true);
-            $("#btn_edit_function").prop("disabled", false);
-            $("#btn_delete_function").prop("disabled", false);
-            
-            $('#functiongrid tr').removeClass("selected");
-            $row.addClass('selected');
-        }
+        $("#modalFunction").modal();
     }
 
-    function onAddFunctionPrepare(){
-        if($('#addEditFunctionId').val().length > 0){
-            gScreenMode = 'ADD';
-            showConfirmMesg("Are you sure you want to add this data ?", addEditFunction, "Confirmation");
-        }
+    function onDeleteFunctionPrepare(func) {
+        showConfirmMesg("Are you sure you want to delete this function?", function () { deleteFunction(func); }, "Confirmation");
     }
 
-    function onEditFunctionPrepare(){
-        if($('#addEditFunctionId').val().length > 0){
-            gScreenMode = 'EDIT';
-            showConfirmMesg("Are you sure you want to edit this data ?", addEditFunction, "Confirmation");
-        }
+    function confirmSaveFunction() {
+        showConfirmMesg("Are you sure you want to continue process?", addEditFunction, "Confirmation");
     }
 
-    function onDeleteFunctionPrepare(){
-        if($('#addEditFunctionId').val().length > 0){
-            showConfirmMesg("Are you sure you want to delete this data ?", deleteFunction, "Confirmation");
-        }
-    }
-
-    function addEditFunction(){
+    function addEditFunction() {
         popUpProgressShow();
         $.ajax({
             type: "POST",
@@ -409,8 +681,8 @@
             dataType: 'json',
             traditional: true,
             data: {
-                screenMode: gScreenMode,
-                MENU_ID: gId,
+                screenMode: gFunctionScreenMode,
+                MENU_ID: $('#functionMenuId').val(),
                 FUNCTION_ID: $('#addEditFunctionId').val(),
                 FUNCTION_NAME: $('#addEditFunctionName').val(),
                 FUNCTION_DESC: $('#addEditFunctionDesc').val(),
@@ -419,42 +691,38 @@
                 popUpProgressHide();
                 if (result.status == true) {
                     showSuccessMesgGrowl(result.message);
-                    getFunction();
-                }else {
-                   showErrorMesgGrowl(result.message);
+                    $("#modalFunction").modal('hide');
+                    loadFunctions(gSelectedMenu.MENU_ID);
+                    loadMenuTree();
+                    loadStats();
+                } else {
+                    showErrorMesgGrowl(result.message);
                 }
             },
-            error: function (result) {
-                popUpProgressHide();
-                showErrorMesgGrowl(result);
-            }
+            error: function (result) { popUpProgressHide(); showErrorMesgGrowl(result); }
         });
     }
 
-    function deleteFunction() {
+    function deleteFunction(func) {
         popUpProgressShow();
         $.ajax({
             type: "POST",
             url: "@Url.Action("DeleteFunction", "Menu")",
             dataType: 'json',
             traditional: true,
-            data: {
-                FUNCTION_ID: $('#addEditFunctionId').val()
-            },
+            data: { FUNCTION_ID: func.FUNCTION_ID },
             success: function (result) {
                 popUpProgressHide();
                 if (result.status == true) {
                     showSuccessMesgGrowl(result.message);
-                    getFunction();
-                }else {
-                   showErrorMesgGrowl(result.message);
+                    loadFunctions(gSelectedMenu.MENU_ID);
+                    loadMenuTree();
+                    loadStats();
+                } else {
+                    showErrorMesgGrowl(result.message);
                 }
             },
-            error: function (result) {
-                popUpProgressHide();
-                showErrorMesgGrowl(result);
-            }
+            error: function (result) { popUpProgressHide(); showErrorMesgGrowl(result); }
         });
     }
-
 </script>

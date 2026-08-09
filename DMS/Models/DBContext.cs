@@ -9,6 +9,12 @@ namespace DMS.Models
         public DBContext(DbContextOptions<DBContext> options) : base(options) { }
 
         public virtual DbSet<User>? User { get; set; }
+        public virtual DbSet<UserListItem>? UserListItem { get; set; }
+        public virtual DbSet<RoleListItem>? RoleListItem { get; set; }
+        public virtual DbSet<MenuListItem>? MenuListItem { get; set; }
+        public virtual DbSet<FunctionListItem>? FunctionListItem { get; set; }
+        public virtual DbSet<MenuFunctionStats>? MenuFunctionStats { get; set; }
+        public virtual DbSet<UserProfileDetail>? UserProfileDetail { get; set; }
         public virtual DbSet<UserPosition>? UserPosition { get; set; }
         public virtual DbSet<Role>? Role { get; set; }
         public virtual DbSet<Menu>? Menu { get; set; }
@@ -46,6 +52,8 @@ namespace DMS.Models
         public virtual DbSet<DocumentMasterlist>? DocumentMasterlist { get; set; }
         public virtual DbSet<Select2DivisionUser>? Select2DivisionUser { get; set; }
         public virtual DbSet<ExternalDocument>? ExternalDocument { get; set; }
+        public virtual DbSet<DocumentSubmission>? DocumentSubmission { get; set; }
+        public virtual DbSet<DocumentSubmissionDetail>? DocumentSubmissionDetail { get; set; }
         public virtual DbSet<MSequence>? MSequence { get; set; }
         public virtual DbSet<DocumentReceiptReport>? DocumentReceiptReport { get; set; }
 
@@ -56,6 +64,12 @@ namespace DMS.Models
             // which also maps to this table for its own (different) FromSqlRaw queries.
             builder.Entity<UserDashboardDocument>().HasNoKey().ToView(null);
             builder.Entity<DocumentControlDashboardDocument>().HasNoKey().ToView(null);
+            builder.Entity<UserProfileDetail>().HasNoKey().ToView(null);
+            builder.Entity<RoleListItem>().HasNoKey().ToView(null);
+            builder.Entity<MenuListItem>().HasNoKey().ToView(null);
+            builder.Entity<FunctionListItem>().HasNoKey().ToView(null);
+            builder.Entity<MenuFunctionStats>().HasNoKey().ToView(null);
+            builder.Entity<UserListItem>().HasNoKey().ToView(null);
 
             builder.Entity<MSystem>().HasKey(table => new
             {

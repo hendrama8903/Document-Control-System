@@ -9,6 +9,8 @@ using DMS.Models.DB.Commons;
 using DMS.Models.Repo;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using NPOI.SS.UserModel;
+using NPOI.XSSF.UserModel;
 
 namespace DMS.Controllers
 {
@@ -79,8 +81,8 @@ namespace DMS.Controllers
                 int skip = start != null ? Convert.ToInt32(start) : 0;
                 int pageNumber = skip / pageSize + 1;
                 int recordsTotal = 0;
-                var roleData = roleRepo.Search(data, db, pageNumber, pageSize);
-                var dataCount = roleRepo.Search(data, db, null, null).Count;
+                var roleData = roleRepo.SearchGrid(data, db, pageNumber, pageSize);
+                var dataCount = roleRepo.SearchGrid(data, db, null, null).Count;
                 recordsTotal = dataCount;
                 var jsonData = new { draw = draw, recordsFiltered = recordsTotal, recordsTotal = recordsTotal, data = roleData };
                 return Ok(jsonData);
@@ -89,6 +91,50 @@ namespace DMS.Controllers
             {
                 return Json("Error : " + ex.Message);
             }
+        }
+
+        public IActionResult DownloadExcel()
+        {
+            IList<RoleListItem> listData = roleRepo.SearchGrid(new Role(), db, null, null);
+
+            var memoryStream = new MemoryStream();
+            IWorkbook workbook = new XSSFWorkbook();
+            ISheet sheet = workbook.CreateSheet("Role Authorization");
+
+            string[] headers = { "No", "Role ID", "Role Name", "Description", "Users", "Permissions" };
+
+            IRow headerRow = sheet.CreateRow(0);
+            for (int col = 0; col < headers.Length; col++)
+            {
+                headerRow.CreateCell(col).SetCellValue(headers[col]);
+            }
+
+            int rowIndex = 1;
+            int no = 1;
+            foreach (RoleListItem item in listData)
+            {
+                IRow row = sheet.CreateRow(rowIndex);
+                row.CreateCell(0).SetCellValue(no);
+                row.CreateCell(1).SetCellValue(item.ROLE_ID);
+                row.CreateCell(2).SetCellValue(item.ROLE_NAME);
+                row.CreateCell(3).SetCellValue(item.ROLE_DESC);
+                row.CreateCell(4).SetCellValue(item.USERS_COUNT ?? 0);
+                row.CreateCell(5).SetCellValue(item.PERMISSIONS_COUNT ?? 0);
+
+                rowIndex++;
+                no++;
+            }
+
+            for (int col = 0; col < headers.Length; col++)
+            {
+                sheet.AutoSizeColumn(col);
+            }
+
+            workbook.Write(memoryStream);
+            memoryStream.Position = 0;
+
+            return File(memoryStream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "ROLE-AUTHORIZATION-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
 
         public JsonResult AddEdit(string screenMode, Role data)

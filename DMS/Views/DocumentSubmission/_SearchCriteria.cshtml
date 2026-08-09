@@ -1,0 +1,20 @@
+<div class="box-header dp-toolbar">
+    <div class="dp-toolbar-left">
+        @if ((bool)ViewData["Add"])
+        {
+            <button type="button" class="btn dp-btn dp-btn-primary" id="btn_add"><i class="fa fa-plus"></i> Add</button>
+        }
+        @if ((bool)ViewData["Edit"])
+        {
+            <button type="button" class="btn dp-btn dp-btn-outline" id="btn_edit"><i class="fa fa-pencil-square-o"></i> Edit</button>
+        }
+        @if ((bool)ViewData["Delete"])
+        {
+            <button type="button" class="btn dp-btn dp-btn-outline-danger" id="btn_delete"><i class="fa fa-trash-o"></i> Delete</button>
+        }
+        <button type="button" class="btn dp-btn dp-btn-outline" id="btn_refresh"><i class="fa fa-refresh"></i> Refresh</button>
+    </div>
+    <div class="dp-toolbar-right">
+        <button type="button" class="dp-icon-btn" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
+    </div>
+</div>

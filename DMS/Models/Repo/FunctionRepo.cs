@@ -79,6 +79,40 @@ namespace DMS.Models.Repo
             return Result;
         }
 
+        public IList<FunctionListItem> GetByMenuList(Function data, DBContext db)
+        {
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                new SqlParameter ( "@MENU_ID", CheckNullValue(data.MENU_ID) )
+            };
+
+            string query = "EXEC [dbo].[sp_Function_GetByMenu] @MENU_ID";
+            IList<FunctionListItem> Result = db.FunctionListItem.FromSqlRaw<FunctionListItem>(query, param.ToArray()).ToList();
+
+            return Result;
+        }
+
+        public DBResult ToggleStatus(string functionId, int deleteFlag, string loginUser, DBContext db)
+        {
+            SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
+            SqlParameter returnMsg = CreateSqlParameterOutputString("@RETURN_MSG");
+
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                returnVal,
+                new SqlParameter ( "@FUNCTION_ID", CheckNullValue(functionId) ),
+                new SqlParameter ( "@DELETE_FLAG", deleteFlag ),
+                new SqlParameter ( "@LOGIN_USER", loginUser ),
+                returnMsg
+            };
+
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_Function_ToggleStatus] @FUNCTION_ID, @DELETE_FLAG, @LOGIN_USER, @RETURN_MSG OUTPUT";
+            int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
+
+            DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
+            return result;
+        }
+
         public DBResult Insert(Function data, string loginUser, DBContext db)
         {
             SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");

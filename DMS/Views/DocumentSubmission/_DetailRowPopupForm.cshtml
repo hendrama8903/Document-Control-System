@@ -1,0 +1,91 @@
+<div class="modal fade" id="modalDetailRow" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modalDetailRow-title">Add Document</h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <input type="hidden" id="detailSubmissionId" />
+                <input type="hidden" id="detailSubmissionDetailId" />
+
+                <div class="row">
+                    <div class="col-md-6 form-group">
+                        <label class="control-label">Document No <span id="detailDocNoMandatory" class="text-red" style="display:none;">*</span></label>
+                        <input class="form-control" id="detailDocumentNo" type="text" maxlength="100" placeholder="Filled in automatically once approved" readonly />
+                        <select class="form-control" id="detailDocumentNoPicker" style="width: 100%; display:none;"></select>
+                        <p class="help-block" id="detailDocNoHint" style="display:none; margin-bottom:0;">Pick from documents already registered in P4D, not yet approved there. Name/Item Changed/Reason/Effective Date fill in automatically.</p>
+                    </div>
+                    <div class="col-md-6 form-group">
+                        <label class="control-label">Document Name <span class="text-red">*</span></label>
+                        <input class="form-control" id="detailDocumentName" type="text" maxlength="255" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 form-group">
+                        <label class="control-label">Status Dokumen</label><br />
+                        <label class="radio-inline"><input type="radio" name="detailClassification" value="1" checked /> Umum</label>
+                        <label class="radio-inline"><input type="radio" name="detailClassification" value="2" /> Rahasia</label>
+                    </div>
+                    <div class="col-md-6 form-group">
+                        <label class="control-label">Jenis Pengajuan</label><br />
+                        <label class="radio-inline"><input type="radio" name="detailSubmissionType" value="01" checked /> Baru</label>
+                        <label class="radio-inline"><input type="radio" name="detailSubmissionType" value="02" /> Revisi</label>
+                        <label class="radio-inline"><input type="radio" name="detailSubmissionType" value="03" /> Pemusnahan</label>
+                    </div>
+                </div>
+
+                <div class="row" id="detailRevisionNoRow" style="display:none;">
+                    <div class="col-md-6 form-group">
+                        <label class="control-label">Revisi Ke-</label>
+                        <input class="form-control" id="detailRevisionNo" type="number" min="1" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 form-group">
+                        <label class="control-label">Item Perubahan</label>
+                        <input class="form-control" id="detailItemChanged" type="text" maxlength="255" />
+                    </div>
+                    <div class="col-md-6 form-group">
+                        <label class="control-label">Alasan</label>
+                        <input class="form-control" id="detailReason" type="text" maxlength="255" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 form-group">
+                        <label class="control-label">Tanggal Efektif</label>
+                        <input class="form-control" id="detailEffectiveDate" type="date" />
+                    </div>
+                    <div class="col-md-4 form-group">
+                        <label class="control-label">Kebutuhan Copy</label><br />
+                        <label class="radio-inline"><input type="radio" name="detailCopyType" value="1" checked /> Hitam Putih</label>
+                        <label class="radio-inline"><input type="radio" name="detailCopyType" value="2" /> Warna</label>
+                    </div>
+                    <div class="col-md-4 form-group">
+                        <label class="control-label">Qty</label>
+                        <input class="form-control" id="detailCopyQty" type="number" min="0" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 form-group">
+                        <label class="control-label">Daftar Distribusi (Nama Div./Dept.)</label>
+                        <select class="form-control" id="detailDistribution" style="width: 100%;" multiple="multiple"></select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-dismiss="modal" style="width: 80px;">Cancel</button>
+                <button type="button" class="btn btn-primary" id="btn_saveDetailRow" style="width: 80px;">Save</button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,131 +1,464 @@
-﻿<div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
-    <div class="modal-dialog modal-md">
-        <div class="modal-content">
-            <!-- Modal Header -->
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-                <h4 class="modal-title" id="modal-title">Add / Edit @ViewData["Title"]</h4>
+<style>
+    /* Shared modal chrome (Add/Edit Role, View Role, Authorization) */
+    .adf-modal-content {
+        border: none;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+
+    .adf-header {
+        background: linear-gradient(135deg, #2450D8, #1C3FA6);
+        color: #fff;
+        padding: 16px 22px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .adf-header-icon {
+        flex: none;
+        width: 38px;
+        height: 38px;
+        border-radius: 9px;
+        background: rgba(255,255,255,.18);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+
+    .adf-header-title { font-size: 15.5px; font-weight: 700; }
+    .adf-header-sub { font-size: 12px; color: rgba(255,255,255,.85); margin-top: 1px; }
+
+    .adf-close {
+        margin-left: auto;
+        background: transparent;
+        border: none;
+        color: rgba(255,255,255,.9);
+        font-size: 18px;
+        line-height: 1;
+        padding: 6px;
+        cursor: pointer;
+    }
+
+    .adf-close:hover { color: #fff; }
+
+    .adf-modal-content .modal-body { background: #fff; padding: 20px 24px; }
+
+    .adf-modal-content .form-group { margin-bottom: 14px; }
+
+    .adf-modal-content .form-group > .control-label {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 12.5px;
+    }
+
+    .adf-modal-content .modal-footer {
+        background: #fff;
+        border-top: 1px solid #E3E8EE;
+        padding: 14px 22px;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    .adf-modal-content .modal-footer::before,
+    .adf-modal-content .modal-footer::after {
+        content: none;
+    }
+
+    .btn-adf-cancel {
+        background: #fff;
+        border: 1px solid #D0D5DD;
+        color: #344054;
+    }
+
+    .btn-adf-cancel:hover { background: #F9FAFB; color: #344054; }
+
+    #modalAddEdit .modal-dialog { width: 520px; max-width: 94vw; }
+    #modalViewRole .modal-dialog { width: 480px; max-width: 94vw; }
+
+    .ra-view-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #F0F2F5;
+        font-size: 13px;
+    }
+
+    .ra-view-row:last-child { border-bottom: none; }
+    .ra-view-row span { color: #667085; }
+    .ra-view-row b { color: #1D2939; text-align: right; max-width: 60%; }
+</style>
+
+<div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content adf-modal-content">
+            <div class="adf-header">
+                <div class="adf-header-icon"><i class="fa fa-shield"></i></div>
+                <div class="adf-header-title" id="modal-title">Add / Edit Role</div>
+                <button type="button" class="adf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
             </div>
 
-            <!-- Modal Body -->
             <div class="modal-body">
-                <div class="row">
-                    <div class="col-lg-12 form-horizontal" style="margin-top:15px; margin-left:15px">
-                        @*<input class="form-control hidden" id="addEditRoleId" type="text" />*@
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Role ID <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditRoleId" type="text" maxlength="50"/>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Role Name <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditRoleName" type="text" maxlength="255"/>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Role Description</label>
-                                    <div class="col-sm-8">
-                                        <textarea class="form-control" rows="4" id="addEditRoleDesc" maxlength="255"></textarea>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="form-group">
+                    <label class="control-label">Role ID <span class="text-red">*</span></label>
+                    <input class="form-control" id="addEditRoleId" type="text" maxlength="50" />
+                </div>
+                <div class="form-group">
+                    <label class="control-label">Role Name <span class="text-red">*</span></label>
+                    <input class="form-control" id="addEditRoleName" type="text" maxlength="255" />
+                </div>
+                <div class="form-group">
+                    <label class="control-label">Description</label>
+                    <textarea class="form-control" rows="4" id="addEditRoleDesc" maxlength="255"></textarea>
                 </div>
             </div>
 
-            <!-- Modal Footer -->
             <div class="modal-footer">
-                <div class="col-xs-12 text-right">
-                    <button type="button" class="btn btn-primary" id="btn_save" style="width: 80px;">Save</button>
-                    <button type="button" class="btn btn-danger" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>
-                </div>
+                <button type="button" class="btn btn-adf-cancel" id="btn_cancel" data-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
+                <button type="button" class="btn btn-primary" id="btn_save"><i class="fa fa-save"></i> Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalViewRole" role="dialog" aria-labelledby="basicModal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content adf-modal-content">
+            <div class="adf-header">
+                <div class="adf-header-icon"><i class="fa fa-shield"></i></div>
+                <div class="adf-header-title">View Role</div>
+                <button type="button" class="adf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="ra-view-row"><span>Role ID</span><b id="viewRoleId">-</b></div>
+                <div class="ra-view-row"><span>Role Name</span><b id="viewRoleName">-</b></div>
+                <div class="ra-view-row"><span>Description</span><b id="viewRoleDesc">-</b></div>
+                <div class="ra-view-row"><span>Users</span><b id="viewRoleUsers">-</b></div>
+                <div class="ra-view-row"><span>Permissions</span><b id="viewRolePermissions">-</b></div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-adf-cancel" data-dismiss="modal"><i class="fa fa-times"></i> Close</button>
             </div>
         </div>
     </div>
 </div>
 
 <style>
-    /* checkbox + label authorization (menu & function) selalu jadi satu grup flex,
-       supaya tidak dipisah oleh justify-content:space-between milik .box-header */
-    #accordion .adm-auth-check {
+    #modalAuth .modal-dialog {
+        width: 1180px;
+        max-width: 96vw;
+    }
+
+    #modalAuth .modal-body { padding: 18px 22px; }
+
+    .ra-auth-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+
+    .ra-auth-stats {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .ra-auth-stat {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        border-radius: 10px;
+        border: 1px solid #E3E8EE;
+        background: #F9FAFB;
+        min-width: 130px;
+    }
+
+    .ra-auth-stat i {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        color: #fff;
+        flex: none;
+    }
+
+    .ra-auth-stat.blue i { background: #2450D8; }
+    .ra-auth-stat.green i { background: #1E9E63; }
+    .ra-auth-stat.purple i { background: #6C3FB5; }
+    .ra-auth-stat.orange i { background: #C6791F; }
+
+    .ra-auth-stat b { display: block; font-size: 16px; color: #1D2939; line-height: 1.1; }
+    .ra-auth-stat span { display: block; font-size: 10.5px; color: #667085; white-space: nowrap; }
+
+    .ra-auth-permsearch input { width: 220px; }
+
+    .ra-auth-columns {
+        display: grid;
+        grid-template-columns: 230px 230px 1fr;
+        gap: 14px;
+    }
+
+    .ra-auth-col {
+        border: 1px solid #E3E8EE;
+        border-radius: 10px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+    }
+
+    .ra-auth-col-title {
+        font-size: 11.5px;
+        font-weight: 700;
+        color: #66788A;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        padding: 10px 12px 0;
+    }
+
+    .ra-auth-col-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px 0;
+        gap: 10px;
+    }
+
+    .ra-auth-col-sub {
+        display: block;
+        font-size: 11px;
+        font-weight: 400;
+        color: #98A2B3;
+        text-transform: none;
+        letter-spacing: 0;
+        margin-top: 2px;
+    }
+
+    .ra-auth-checkall {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        cursor: pointer;
-    }
-
-    #accordion .box.box-primary > .box-header .adm-auth-check label {
-        color: #fff;
-        margin: 0;
+        gap: 6px;
+        font-size: 11.5px;
         font-weight: 600;
+        color: #344054;
         cursor: pointer;
+        white-space: nowrap;
+        margin: 0;
     }
 
-    #accordion .box > .box-header {
-        padding: 8px 16px;
+    .ra-auth-colsearch { padding: 8px 12px; }
+    .ra-auth-colsearch input { width: 100%; }
+
+    .ra-auth-list {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        max-height: 380px;
+        padding: 4px 8px 8px;
     }
 
-    #accordion .btn-box-tool {
-        font-size: 11px;
+    .ra-auth-list-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 8px;
+        border-radius: 7px;
+        cursor: pointer;
+        font-size: 12.5px;
+        color: #344054;
+    }
+
+    .ra-auth-list-item:hover { background: #F4F6F8; }
+    .ra-auth-list-item.selected { background: #E7F1FB; color: #1C3FA6; font-weight: 600; }
+
+    .ra-auth-list-item input[type="checkbox"] { flex: none; margin: 0; cursor: pointer; }
+    .ra-auth-list-item .ra-auth-item-icon { flex: none; width: 16px; text-align: center; color: #98A2B3; }
+    .ra-auth-list-item.selected .ra-auth-item-icon { color: #2450D8; }
+    .ra-auth-list-item .ra-auth-item-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .ra-auth-fraction {
+        flex: none;
+        font-size: 10.5px;
+        font-weight: 700;
+        color: #667085;
+        background: #EEF1F4;
+        border-radius: 6px;
         padding: 2px 6px;
     }
 
-    #accordion .box .box-body {
-        padding: 8px 16px;
+    .ra-auth-permgrid {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        max-height: 380px;
+        padding: 10px 12px 12px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        align-content: start;
     }
 
-    #accordion .box-body .adm-auth-check {
+    .ra-auth-permcard {
         display: flex;
-        padding: 3px 0;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid #E3E8EE;
+        border-radius: 9px;
+        padding: 10px 12px;
     }
 
-    #accordion .box-body .adm-auth-check label {
-        margin: 0;
+    .ra-auth-permcard-icon {
+        flex: none;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        color: #fff;
+    }
+
+    .ra-auth-permcard-body { flex: 1 1 auto; min-width: 0; }
+    .ra-auth-permcard-body b { display: block; font-size: 12.5px; color: #1D2939; }
+    .ra-auth-permcard-body span { display: block; font-size: 10.5px; color: #98A2B3; margin-top: 1px; }
+
+    .ra-auth-empty {
+        padding: 24px 12px;
+        text-align: center;
+        color: #98A2B3;
+        font-size: 12px;
+        grid-column: 1 / -1;
+    }
+
+    .ra-auth-toggle { position: relative; display: inline-block; width: 36px; height: 20px; flex: none; }
+    .ra-auth-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .ra-auth-toggle-slider {
+        position: absolute;
+        inset: 0;
+        background: #D0D6DE;
+        border-radius: 20px;
         cursor: pointer;
-        font-weight: normal;
+        transition: background .15s;
+    }
+    .ra-auth-toggle-slider::before {
+        content: "";
+        position: absolute;
+        height: 14px;
+        width: 14px;
+        left: 3px;
+        top: 3px;
+        background: #fff;
+        border-radius: 50%;
+        transition: transform .15s;
+    }
+    .ra-auth-toggle input:checked + .ra-auth-toggle-slider { background: #2450D8; }
+    .ra-auth-toggle input:checked + .ra-auth-toggle-slider::before { transform: translateX(16px); }
+
+    .ra-auth-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid #F0F2F5;
+        font-size: 11.5px;
+        color: #667085;
     }
 
-    #accordion .box-body .adm-auth-check.adm-auth-function {
-        margin-left: 25px;
+    .ra-auth-legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+    .ra-auth-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        display: inline-block;
     }
 
-    #accordion .adm-auth-check input[type="checkbox"] {
-        margin: 0;
-        cursor: pointer;
+    #modalAuth .modal-footer { justify-content: space-between; }
+    .ra-auth-footer-right { display: flex; gap: 10px; }
+
+    @@media (max-width: 991px) {
+        .ra-auth-columns { grid-template-columns: 1fr; }
     }
 </style>
 
-<div class="modal fade" id="modalAuth" role="dialog" aria-labelledby="basicModal" aria-hidden="true">
-    <div class="modal-dialog modal-scrollable">
-        <div class="modal-content">
-            <!-- Modal Header -->
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-                <h4 class="modal-title" id="modal-title-auth">Authorization</h4>
+<div class="modal fade" id="modalAuth" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content adf-modal-content">
+            <div class="adf-header">
+                <div class="adf-header-icon"><i class="fa fa-shield"></i></div>
+                <div>
+                    <div class="adf-header-title" id="modal-title-auth">Authorization</div>
+                    <div class="adf-header-sub">Manage menus and permissions for this role.</div>
+                </div>
+                <button type="button" class="adf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
             </div>
 
-            <!-- Modal Body -->
-            <div class="modal-body" id="accordion">
+            <div class="modal-body">
+                <div class="ra-auth-toolbar">
+                    <div class="ra-auth-stats">
+                        <div class="ra-auth-stat blue"><i class="fa fa-th-large"></i><div><b id="authStatMenus">0</b><span>Total Menus</span></div></div>
+                        <div class="ra-auth-stat green"><i class="fa fa-shield"></i><div><b id="authStatPermissions">0</b><span>Total Permissions</span></div></div>
+                        <div class="ra-auth-stat purple"><i class="fa fa-check-square-o"></i><div><b id="authStatEnabled">0</b><span>Permissions Enabled</span></div></div>
+                        <div class="ra-auth-stat orange"><i class="fa fa-ban"></i><div><b id="authStatDisabled">0</b><span>Permissions Disabled</span></div></div>
+                    </div>
+                    <div class="dp-search ra-auth-permsearch">
+                        <i class="fa fa-search"></i>
+                        <input type="text" id="authSearchPermission" placeholder="Search permission...">
+                    </div>
+                </div>
+
+                <div class="ra-auth-columns">
+                    <div class="ra-auth-col">
+                        <div class="ra-auth-col-title">1. Menu</div>
+                        <div class="dp-search ra-auth-colsearch"><i class="fa fa-search"></i><input type="text" id="authSearchMenu" placeholder="Search menu..."></div>
+                        <div class="ra-auth-list" id="authMenuList"></div>
+                    </div>
+                    <div class="ra-auth-col">
+                        <div class="ra-auth-col-title">2. Sub Menu</div>
+                        <div class="dp-search ra-auth-colsearch"><i class="fa fa-search"></i><input type="text" id="authSearchSubMenu" placeholder="Search sub menu..."></div>
+                        <div class="ra-auth-list" id="authSubMenuList"></div>
+                    </div>
+                    <div class="ra-auth-col">
+                        <div class="ra-auth-col-title-row">
+                            <div>
+                                <div class="ra-auth-col-title" style="padding:0;">3. Permission</div>
+                                <span class="ra-auth-col-sub" id="authPermTargetLabel">Set permission for: -</span>
+                            </div>
+                            <label class="ra-auth-checkall"><input type="checkbox" id="authCheckAllPermission"> Check All</label>
+                        </div>
+                        <div class="ra-auth-permgrid" id="authPermissionGrid"></div>
+                    </div>
+                </div>
+
+                <div class="ra-auth-legend">
+                    <span><i class="ra-auth-dot" style="background:#1E9E63"></i> Read/View</span>
+                    <span><i class="ra-auth-dot" style="background:#2450D8"></i> Create/Add</span>
+                    <span><i class="ra-auth-dot" style="background:#B36B00"></i> Edit/Update</span>
+                    <span><i class="ra-auth-dot" style="background:#C62828"></i> Delete</span>
+                    <span><i class="ra-auth-dot" style="background:#6C3FB5"></i> Approval</span>
+                    <span><i class="ra-auth-dot" style="background:#0E8074"></i> Process</span>
+                </div>
             </div>
 
-            <!-- Modal Footer -->
             <div class="modal-footer">
-                <div class="col-xs-12 text-right">
-                    <button type="button" class="btn btn-primary" id="btn_save_auth" style="width: 80px;">Save</button>
-                    <button type="button" class="btn btn-grey" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Close</button>
+                <button type="button" class="btn btn-adf-cancel" id="btn_auth_clearall"><i class="fa fa-undo"></i> Clear All</button>
+                <div class="ra-auth-footer-right">
+                    <button type="button" class="btn btn-adf-cancel" data-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
+                    <button type="button" class="btn btn-primary" id="btn_save_auth"><i class="fa fa-save"></i> Save Permission</button>
                 </div>
             </div>
         </div>

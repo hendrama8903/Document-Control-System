@@ -8,6 +8,8 @@ using DMS.Models.DB.Commons;
 using DMS.Models.Repo;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using NPOI.SS.UserModel;
+using NPOI.XSSF.UserModel;
 
 namespace DMS.Controllers
 {
@@ -48,6 +50,106 @@ namespace DMS.Controllers
             ViewData["Title"] = "Menu & Function";
 
             return View();
+        }
+
+        public JsonResult GetMenuFunctionStats()
+        {
+            try
+            {
+                var result = menuRepo.GetStats(db);
+                return Json(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public JsonResult GetMenuTree()
+        {
+            try
+            {
+                var result = menuRepo.GetTree(db);
+                return Json(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public JsonResult ToggleMenuStatus(string menuId, int deleteFlag)
+        {
+            DBResult result = null;
+            try
+            {
+                result = menuRepo.ToggleStatus(menuId, deleteFlag, GetLoginUsername(), db);
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public JsonResult ToggleFunctionStatus(string functionId, int deleteFlag)
+        {
+            DBResult result = null;
+            try
+            {
+                result = functionRepo.ToggleStatus(functionId, deleteFlag, GetLoginUsername(), db);
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public IActionResult DownloadExcel()
+        {
+            IList<MenuListItem> menuList = menuRepo.GetTree(db);
+
+            var memoryStream = new MemoryStream();
+            IWorkbook workbook = new XSSFWorkbook();
+            ISheet sheet = workbook.CreateSheet("Menu & Function");
+
+            string[] headers = { "No", "Menu ID", "Parent Menu", "Menu Name", "Menu URL", "Function Count", "Used By Roles", "Status" };
+
+            IRow headerRow = sheet.CreateRow(0);
+            for (int col = 0; col < headers.Length; col++)
+            {
+                headerRow.CreateCell(col).SetCellValue(headers[col]);
+            }
+
+            int rowIndex = 1;
+            int no = 1;
+            foreach (MenuListItem item in menuList)
+            {
+                IRow row = sheet.CreateRow(rowIndex);
+                row.CreateCell(0).SetCellValue(no);
+                row.CreateCell(1).SetCellValue(item.MENU_ID);
+                row.CreateCell(2).SetCellValue(item.PARENT_NAME);
+                row.CreateCell(3).SetCellValue(item.MENU_NAME);
+                row.CreateCell(4).SetCellValue(item.MENU_URL);
+                row.CreateCell(5).SetCellValue(item.FUNCTION_COUNT ?? 0);
+                row.CreateCell(6).SetCellValue(item.USED_BY_ROLES ?? 0);
+                row.CreateCell(7).SetCellValue(item.DELETE_FLAG == 1 ? "Inactive" : "Active");
+
+                rowIndex++;
+                no++;
+            }
+
+            for (int col = 0; col < headers.Length; col++)
+            {
+                sheet.AutoSizeColumn(col);
+            }
+
+            workbook.Write(memoryStream);
+            memoryStream.Position = 0;
+
+            return File(memoryStream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "MENU-FUNCTION-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
 
         public ActionResult Search(Menu data)
@@ -265,7 +367,7 @@ namespace DMS.Controllers
         {
             try
             {
-                var result = functionRepo.GetByMenu(data, db);
+                var result = functionRepo.GetByMenuList(data, db);
                 return Json(new { status = true, data = result });
             }
             catch (Exception ex)

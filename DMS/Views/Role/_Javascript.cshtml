@@ -1,4 +1,4 @@
-﻿<script type="text/javascript">
+<script type="text/javascript">
     var gScreenMode = null;
     var gId = null;
 
@@ -7,25 +7,26 @@
             onAddPrepare();
         });
 
-        $("#btn_edit").on("click", function () {
-            onEditPrepare();
-        });
-
-        $("#btn_delete").on("click", function () {
-            onDeletePrepare();
-        });
-
         $("#btn_save").on("click", function () {
             confirmAddEditData();
         });
 
         $("#btn_authorization").on("click", function () {
-            onAuthPrepare();
+            var row = getSelectedRowData();
+            if (row == null) {
+                return;
+            }
+            openAuthorization(row.ROLE_ID);
         });
 
         $("#btn_save_auth").on("click", function () {
             confirmAddEditAuthorization();
         });
+
+        $("#btn_export").on("click", function () {
+            window.location.href = "@Url.Action("DownloadExcel", "Role")";
+        });
+
     });
 
     function onSearch() {
@@ -51,60 +52,37 @@
         });
     }
 
-    function onEditPrepare() {
-
-        var row = getSelectedRowData();
-        if (row == null) {
-            return;
-        }
-
+    function onEditPrepare(row) {
         gId = row.ROLE_ID;
+        gScreenMode = 'EDIT';
 
-        $.ajax({
-            type: "POST",
-            url: "@Url.Action("GetByKey", "Role")",
-            async: false,
-            data: {
-                ROLE_ID: gId
-            },
-            success: function (result) {
-                if (result.status == true) {
-                    var data = result.data;
+        $('#modal-title').html("Edit Role");
+        $('#addEditRoleId').val(row.ROLE_ID);
+        $('#addEditRoleName').val(row.ROLE_NAME);
+        $('#addEditRoleDesc').val(row.ROLE_DESC);
 
-                    gScreenMode = 'EDIT';
-                    $('#modal-title').html("Edit Role");
-                    $('#addEditRoleId').val(data.ROLE_ID);
-                    $('#addEditRoleName').val(data.ROLE_NAME);
-                    $('#addEditRoleDesc').val(data.ROLE_DESC);
+        $('#addEditRoleId').prop('disabled', true);
+        $('#addEditRoleName').prop('disabled', false);
+        $('#addEditRoleDesc').prop('disabled', false);
 
-                    $('#addEditRoleId').prop('disabled', true);
-                    $('#addEditRoleName').prop('disabled', false);
-                    $('#addEditRoleDesc').prop('disabled', false);
-
-                    $("#modalAddEdit").modal();
-                    $('#modalAddEdit').on('shown.bs.modal', function () {
-                        $('#addEditRoleName').focus();
-                    });
-                } else {
-                    showErrorMesgGrowl(result.message);
-                }
-            },
-            error: function(result){
-                //popUpProgressHide();
-                showErrorMesgGrowl(result);
-            }
+        $("#modalAddEdit").modal();
+        $('#modalAddEdit').on('shown.bs.modal', function () {
+            $('#addEditRoleName').focus();
         });
     }
 
-    function onDeletePrepare() {
+    function onViewRole(row) {
+        $('#viewRoleId').text(row.ROLE_ID || "-");
+        $('#viewRoleName').text(row.ROLE_NAME || "-");
+        $('#viewRoleDesc').text(row.ROLE_DESC || "-");
+        $('#viewRoleUsers').text((row.USERS_COUNT || 0) + " Users");
+        $('#viewRolePermissions').text(row.PERMISSIONS_COUNT || 0);
 
-        var row = getSelectedRowData();
-        if (row == null) {
-            return;
-        }
+        $("#modalViewRole").modal();
+    }
 
+    function onDeletePrepare(row) {
         gId = row.ROLE_ID;
-
         showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
     }
 
@@ -168,14 +146,15 @@
         });
     }
 
-    function onAuthPrepare() {
-        var row = getSelectedRowData();
-        if (row == null) {
-            return;
-        }
+    var gAuthAllMenu = [];
+    var gAuthAllFunction = [];
+    var gAuthCheckedMenus = new Set();
+    var gAuthCheckedFunctions = new Set();
+    var gAuthSelectedTopMenu = null;
+    var gAuthSelectedSubMenu = null;
 
-        gId = row.ROLE_ID;
-
+    function openAuthorization(roleId) {
+        gId = roleId;
         getAuthorization();
     }
 
@@ -189,20 +168,20 @@
             },
             success: function (result) {
                 if (result.status == true) {
-                    
-                    var arrayMenuId = [];
-                    var arrayFunctionId = [];
+                    gAuthAllMenu = result.param[0];
+                    gAuthAllFunction = result.param[2];
+                    gAuthCheckedMenus = new Set(result.param[1].map(function (x) { return x.MENU_ID; }));
+                    gAuthCheckedFunctions = new Set(result.param[3].map(function (x) { return x.FUNCTION_ID; }));
 
-                    for (MENU_ID in result.param[1]) {
-                        arrayMenuId.push(result.param[1][MENU_ID].MENU_ID);
-                    }
-                    for (FUNCTION_ID in result.param[3]) {
-                        arrayFunctionId.push(result.param[3][FUNCTION_ID].FUNCTION_ID);
-                    }
+                    var topMenus = authGetTopMenus();
+                    gAuthSelectedTopMenu = topMenus.length > 0 ? topMenus[0].MENU_ID : null;
+                    var subMenus = authGetSubMenus(gAuthSelectedTopMenu);
+                    gAuthSelectedSubMenu = subMenus.length > 0 ? subMenus[0].MENU_ID : null;
 
-                    setCollapseItem(result.param[0], arrayMenuId, result.param[2], arrayFunctionId, gId);
-                    
                     $('#modal-title-auth').html("Authorization : " + gId);
+                    $("#authSearchMenu, #authSearchSubMenu, #authSearchPermission").val("");
+                    renderAuthModal();
+
                     $("#modalAuth").modal({
                         backdrop: 'static',
                         keyboard: false
@@ -219,143 +198,256 @@
         });
     }
 
-    function setCollapseItem(allMenu, arrayMenuId, allFunction, arrayFunctionId, roleId) {
-        $("#accordion").empty();
-        $("#accordion").append('<div class="box box-primary box-solid box-collapse collapsed-box">'
-            + '<div class="box-header with-border">'
-            + '<div class="adm-auth-check">'
-            + '<input class="grid-checkbox-menu" type="checkbox" id="checkAllMenu">'
-            + '<label for="checkAllMenu">Check All Menu</label>'
-            + '</div>'
-            + '<div class="adm-auth-check">'
-            + '<input class="grid-checkbox-function" type="checkbox" id="checkAllFunction">'
-            + '<label for="checkAllFunction">Check All Function</label>'
-            + '</div>'
-            + '</div></div>');
+    function authGetTopMenus() {
+        return gAuthAllMenu.filter(function (m) { return m.PARENT_ID == null; });
+    }
 
-        $.each(allMenu, function (key, parent) {
-            if (parent.PARENT_ID == null) {
-                if (arrayMenuId.includes(parent.MENU_ID)) {
-                    checked = "checked";
-                } else {
-                    checked = "";
-                }
-                var returnedData = $.grep(allMenu, function (element) {
-                    return element.PARENT_ID == parent.MENU_ID;
-                });
-                $("#accordion").append('<div class="box box-primary box-solid box-collapse" id="collapseHeader'+ parent.MENU_ID +'">'
-                    + '<div class="box-header with-border" style="border-bottom: 0px">'
-                    + '<div class="adm-auth-check">'
-                    + '<input class="grid-checkbox-menu" type="checkbox" name="menuChkRow" id="checkMenuID' + parent.MENU_ID + '" value="' + parent.MENU_ID + '" data-roleId="' + roleId + '" data-parentId="' + parent.PARENT_ID + '" data-menuId="' + parent.MENU_ID + '" ' + checked + '>'
-                    + '<label for="checkMenuID' + parent.MENU_ID + '">'+ parent.MENU_NAME +'</label>'
-                    + '</div>'
-                    + '<div class="box-tools pull-right" id="collapseButtonDiv' + parent.MENU_ID + '"><button type="button" class="btn btn-box-tool collapseAuthButton" data-toggle="collapse" data-target="#toggle' + parent.MENU_ID + '" id="collapseButton' + parent.MENU_ID + '">'
-                    + '<i class="fa fa-chevron-up"></i></button></div></div>'
-                    + '<div id="toggle' + parent.MENU_ID + '" class="collapse in"><div class="box-body box-id' + parent.MENU_ID + '" style="padding-top:10px;">');
+    function authGetSubMenus(topId) {
+        return gAuthAllMenu.filter(function (m) { return m.PARENT_ID == topId; });
+    }
 
-                if (returnedData.length == 0) {
-                    $("#collapseButtonDiv" + parent.MENU_ID).remove();
-                    $("#collapseHeader"+parent.MENU_ID).addClass("collapsed-box");
-                } else {
-                    var i = 0;
-                    $.each(returnedData, function (key, child) {
+    function authGetFunctionsForMenu(menuId) {
+        return gAuthAllFunction.filter(function (f) { return f.MENU_ID == menuId; });
+    }
 
-                        if (i > 0){
-                             $(".box-id" + parent.MENU_ID).append('<hr style="margin:5px 0 5px 0; border-top: 1px solid #CACACA;">');
-                        }
+    function authGetFunctionsForTopMenu(topId) {
+        var subMenus = authGetSubMenus(topId);
+        var result = [];
+        subMenus.forEach(function (s) { result = result.concat(authGetFunctionsForMenu(s.MENU_ID)); });
+        return result;
+    }
 
-                        if (arrayMenuId.includes(child.MENU_ID)) {
-                            checked = "checked";
-                        } else {
-                            checked = "";
-                        }
-                        $(".box-id" + parent.MENU_ID).append('<div class="adm-auth-check">'
-                            + '<input class="grid-checkbox-menu" type="checkbox" name="menuChkRow" id="checkMenuID' + child.MENU_ID + '" value="' + child.MENU_ID + '" data-roleId="' + roleId + '" data-parentId="' + child.PARENT_ID + '" data-menuId="' + child.MENU_ID + '" ' + checked + '>'
-                            + '<label for="checkMenuID' + child.MENU_ID + '">' + child.MENU_NAME + '</label>'
-                            + '</div>');
+    function authCategorize(functionId) {
+        var id = (functionId || "").toUpperCase();
+        if (id.indexOf("ADD") !== -1) return { color: "#2450D8", icon: "fa-plus-circle" };
+        if (id.indexOf("EDIT") !== -1) return { color: "#B36B00", icon: "fa-pencil" };
+        if (id.indexOf("DELETE") !== -1) return { color: "#C62828", icon: "fa-trash-o" };
+        if (id.indexOf("APPROVE") !== -1) return { color: "#6C3FB5", icon: "fa-check-circle" };
+        if (id.indexOf("REJECT") !== -1) return { color: "#6C3FB5", icon: "fa-times-circle" };
+        if (id.indexOf("VIEW") !== -1) return { color: "#1E9E63", icon: "fa-eye" };
+        return { color: "#0E8074", icon: "fa-cog" };
+    }
 
-                        // add function
-                         $.each(allFunction, function (key, func) {
-                            if (func.MENU_ID == child.MENU_ID){
-                                if (arrayFunctionId.includes(func.FUNCTION_ID)) {
-                                    checked = "checked";
-                                } else {
-                                    checked = "";
-                                }
+    function renderAuthModal() {
+        renderAuthMenuColumn();
+        renderAuthSubMenuColumn();
+        renderAuthPermissionColumn();
+        renderAuthStats();
+    }
 
-                                $(".box-id" + parent.MENU_ID).append('<div class="adm-auth-check adm-auth-function">'
-                                    + '<input class="grid-checkbox-function" type="checkbox" id="checkFunctionID' + func.FUNCTION_ID + '" name="functionChkRow" value="' + func.FUNCTION_ID + '" data-roleId="' + roleId + '" data-functionId="' + func.FUNCTION_ID + '" data-menuId="' + child.MENU_ID + '" ' + checked + '>'
-                                    + '<label for="checkFunctionID' + func.FUNCTION_ID + '">' + func.FUNCTION_NAME + '</label>'
-                                    + '</div>');
-                            }
+    function renderAuthStats() {
+        var totalMenus = gAuthAllMenu.length;
+        var totalPermissions = gAuthAllFunction.length;
+        var enabled = gAuthCheckedFunctions.size;
+        $("#authStatMenus").text(totalMenus);
+        $("#authStatPermissions").text(totalPermissions);
+        $("#authStatEnabled").text(enabled);
+        $("#authStatDisabled").text(totalPermissions - enabled);
+    }
 
-                        });
+    function renderAuthMenuColumn() {
+        var search = ($("#authSearchMenu").val() || "").toLowerCase();
+        var $list = $("#authMenuList").empty();
 
-                        i++;
-                    });
-                }
-            }
+        authGetTopMenus().filter(function (m) {
+            return m.MENU_NAME.toLowerCase().indexOf(search) !== -1;
+        }).forEach(function (m) {
+            var functions = authGetFunctionsForTopMenu(m.MENU_ID);
+            var checkedCount = functions.filter(function (f) { return gAuthCheckedFunctions.has(f.FUNCTION_ID); }).length;
+
+            var $item = $("<div>").addClass("ra-auth-list-item")
+                .toggleClass("selected", m.MENU_ID === gAuthSelectedTopMenu);
+
+            $("<input>").attr("type", "checkbox").prop("checked", gAuthCheckedMenus.has(m.MENU_ID))
+                .on("click", function (e) { e.stopPropagation(); })
+                .on("change", function () { authToggleTopMenu(m.MENU_ID, this.checked); })
+                .appendTo($item);
+            $("<i>").addClass("ra-auth-item-icon fa " + (m.MENU_ICON || "fa-circle-o")).appendTo($item);
+            $("<span>").addClass("ra-auth-item-name").text(m.MENU_NAME).appendTo($item);
+            $("<span>").addClass("ra-auth-fraction").text(checkedCount + "/" + functions.length).appendTo($item);
+
+            $item.on("click", function () {
+                gAuthSelectedTopMenu = m.MENU_ID;
+                var subMenus = authGetSubMenus(m.MENU_ID);
+                gAuthSelectedSubMenu = subMenus.length > 0 ? subMenus[0].MENU_ID : null;
+                renderAuthMenuColumn();
+                renderAuthSubMenuColumn();
+                renderAuthPermissionColumn();
+            });
+
+            $list.append($item);
+        });
+    }
+
+    function renderAuthSubMenuColumn() {
+        var search = ($("#authSearchSubMenu").val() || "").toLowerCase();
+        var $list = $("#authSubMenuList").empty();
+
+        authGetSubMenus(gAuthSelectedTopMenu).filter(function (m) {
+            return m.MENU_NAME.toLowerCase().indexOf(search) !== -1;
+        }).forEach(function (m) {
+            var functions = authGetFunctionsForMenu(m.MENU_ID);
+            var checkedCount = functions.filter(function (f) { return gAuthCheckedFunctions.has(f.FUNCTION_ID); }).length;
+
+            var $item = $("<div>").addClass("ra-auth-list-item")
+                .toggleClass("selected", m.MENU_ID === gAuthSelectedSubMenu);
+
+            $("<input>").attr("type", "checkbox").prop("checked", gAuthCheckedMenus.has(m.MENU_ID))
+                .on("click", function (e) { e.stopPropagation(); })
+                .on("change", function () { authToggleSubMenu(m.MENU_ID, this.checked); })
+                .appendTo($item);
+            $("<span>").addClass("ra-auth-item-name").text(m.MENU_NAME).appendTo($item);
+            $("<span>").addClass("ra-auth-fraction").text(checkedCount + "/" + functions.length).appendTo($item);
+
+            $item.on("click", function () {
+                gAuthSelectedSubMenu = m.MENU_ID;
+                renderAuthSubMenuColumn();
+                renderAuthPermissionColumn();
+            });
+
+            $list.append($item);
+        });
+    }
+
+    function renderAuthPermissionColumn() {
+        var search = ($("#authSearchPermission").val() || "").toLowerCase();
+        var $grid = $("#authPermissionGrid").empty();
+        var subMenu = gAuthAllMenu.find(function (m) { return m.MENU_ID === gAuthSelectedSubMenu; });
+
+        $("#authPermTargetLabel").text("Set permission for: " + (subMenu ? subMenu.MENU_NAME : "-"));
+
+        var functions = authGetFunctionsForMenu(gAuthSelectedSubMenu).filter(function (f) {
+            return f.FUNCTION_NAME.toLowerCase().indexOf(search) !== -1 || (f.FUNCTION_DESC || "").toLowerCase().indexOf(search) !== -1;
         });
 
-        var menuLength = $('input[name=menuChkRow]').length;
-        if (menuLength == $('input[name=menuChkRow]:checked').length) {
-            $("#checkAllMenu").prop('checked', true);
+        if (functions.length === 0) {
+            $("<div>").addClass("ra-auth-empty").text("No permissions in this sub menu.").appendTo($grid);
+            $("#authCheckAllPermission").prop("checked", false);
+            return;
         }
-        var funcLength = $('input[name=functionChkRow]').length;
-        if (funcLength == $('input[name=functionChkRow]:checked').length) {
-            $("#checkAllFunction").prop('checked', true);
-        }
+
+        functions.forEach(function (f) {
+            var cat = authCategorize(f.FUNCTION_ID);
+            var checked = gAuthCheckedFunctions.has(f.FUNCTION_ID);
+
+            var $card = $("<div>").addClass("ra-auth-permcard");
+            $("<div>").addClass("ra-auth-permcard-icon").css("background", cat.color).html('<i class="fa ' + cat.icon + '"></i>').appendTo($card);
+
+            var $body = $("<div>").addClass("ra-auth-permcard-body");
+            $("<b>").text(f.FUNCTION_NAME).appendTo($body);
+            $("<span>").text(f.FUNCTION_DESC || "").appendTo($body);
+            $body.appendTo($card);
+
+            var $toggle = $("<label>").addClass("ra-auth-toggle");
+            $("<input>").attr("type", "checkbox").prop("checked", checked)
+                .on("change", function () { authToggleFunction(f.FUNCTION_ID, this.checked); })
+                .appendTo($toggle);
+            $("<span>").addClass("ra-auth-toggle-slider").appendTo($toggle);
+            $toggle.appendTo($card);
+
+            $grid.append($card);
+        });
+
+        var allChecked = functions.every(function (f) { return gAuthCheckedFunctions.has(f.FUNCTION_ID); });
+        $("#authCheckAllPermission").prop("checked", allChecked);
     }
-    
-    $(document).on("change", "#checkAllMenu", function () {
-        $(".grid-checkbox-menu").prop("checked", $("#checkAllMenu").is(":checked"));
-        if (!this.checked) {
-            $('input[name=functionChkRow]').prop('checked', false);
-        }
-    });
 
-    $(document).on("change", "#checkAllFunction", function () {
-        $(".grid-checkbox-function").prop("checked", $("#checkAllFunction").is(":checked"));
-    });
-
-    $(document).on("click", ".collapseAuthButton", function () {
-        $(this).find('i').toggleClass('fa fa-chevron-up fa fa-chevron-down');
-    });
-
-    $(document).on("change", "input[name=menuChkRow]", function () {
-        $("#checkAllMenu").prop("checked", $('.grid-checkbox-menu:not(#checkAllMenu)').not(':checked').length == 0);
-        if (this.checked) {
-            var parentId = $(this).attr('data-parentId');
-            var menuId = $(this).attr('data-menuId');
-                
-            if (parentId != 'null') {
-                $('input[name=menuChkRow][data-menuId="' + parentId + '"]').prop('checked', true);
-            } else {
-                $('input[name=menuChkRow][data-parentId="' + menuId + '"]').prop('checked', true);
+    function authToggleFunction(functionId, on) {
+        if (on) {
+            gAuthCheckedFunctions.add(functionId);
+            var func = gAuthAllFunction.find(function (f) { return f.FUNCTION_ID === functionId; });
+            if (func) {
+                gAuthCheckedMenus.add(func.MENU_ID);
+                var subMenu = gAuthAllMenu.find(function (m) { return m.MENU_ID === func.MENU_ID; });
+                if (subMenu) { gAuthCheckedMenus.add(subMenu.PARENT_ID); }
             }
-            $("#checkAllMenu").prop("checked", $('.grid-checkbox-menu:not(#checkAllMenu)').not(':checked').length == 0);
         } else {
-            var parentId = $(this).attr('data-parentId');
-            var menuId = $(this).attr('data-menuId');
-                
-            if (parentId != 'null') {
-                if ($('input[name=menuChkRow][data-parentId="' + parentId + '"]:checked').length == 0) {
-                    $('input[name=menuChkRow][data-menuId="' + parentId + '"]').prop('checked', false);
+            gAuthCheckedFunctions.delete(functionId);
+            var func2 = gAuthAllFunction.find(function (f) { return f.FUNCTION_ID === functionId; });
+            if (func2) {
+                var siblingChecked = authGetFunctionsForMenu(func2.MENU_ID).some(function (f) { return gAuthCheckedFunctions.has(f.FUNCTION_ID); });
+                if (!siblingChecked) {
+                    gAuthCheckedMenus.delete(func2.MENU_ID);
+                    var subMenu2 = gAuthAllMenu.find(function (m) { return m.MENU_ID === func2.MENU_ID; });
+                    if (subMenu2) {
+                        var topStillActive = authGetSubMenus(subMenu2.PARENT_ID).some(function (m) { return gAuthCheckedMenus.has(m.MENU_ID); });
+                        if (!topStillActive) { gAuthCheckedMenus.delete(subMenu2.PARENT_ID); }
+                    }
                 }
-                $('input[name=functionChkRow][data-menuId="' + menuId + '"]').prop('checked', false);
-            } else {
-                $('input[name=menuChkRow][data-parentId="' + menuId + '"]').prop('checked', false);
             }
         }
+        renderAuthModal();
+    }
+
+    function authToggleSubMenu(menuId, on) {
+        var functions = authGetFunctionsForMenu(menuId);
+        if (on) {
+            gAuthCheckedMenus.add(menuId);
+            functions.forEach(function (f) { gAuthCheckedFunctions.add(f.FUNCTION_ID); });
+            var subMenu = gAuthAllMenu.find(function (m) { return m.MENU_ID === menuId; });
+            if (subMenu) { gAuthCheckedMenus.add(subMenu.PARENT_ID); }
+        } else {
+            gAuthCheckedMenus.delete(menuId);
+            functions.forEach(function (f) { gAuthCheckedFunctions.delete(f.FUNCTION_ID); });
+            var subMenu2 = gAuthAllMenu.find(function (m) { return m.MENU_ID === menuId; });
+            if (subMenu2) {
+                var topStillActive = authGetSubMenus(subMenu2.PARENT_ID).some(function (m) { return gAuthCheckedMenus.has(m.MENU_ID); });
+                if (!topStillActive) { gAuthCheckedMenus.delete(subMenu2.PARENT_ID); }
+            }
+        }
+        renderAuthModal();
+    }
+
+    function authToggleTopMenu(topId, on) {
+        var subMenus = authGetSubMenus(topId);
+        if (on) {
+            gAuthCheckedMenus.add(topId);
+            subMenus.forEach(function (s) {
+                gAuthCheckedMenus.add(s.MENU_ID);
+                authGetFunctionsForMenu(s.MENU_ID).forEach(function (f) { gAuthCheckedFunctions.add(f.FUNCTION_ID); });
+            });
+        } else {
+            gAuthCheckedMenus.delete(topId);
+            subMenus.forEach(function (s) {
+                gAuthCheckedMenus.delete(s.MENU_ID);
+                authGetFunctionsForMenu(s.MENU_ID).forEach(function (f) { gAuthCheckedFunctions.delete(f.FUNCTION_ID); });
+            });
+        }
+        renderAuthModal();
+    }
+
+    $(document).on("input", "#authSearchMenu", function () { renderAuthMenuColumn(); });
+    $(document).on("input", "#authSearchSubMenu", function () { renderAuthSubMenuColumn(); });
+    $(document).on("input", "#authSearchPermission", function () { renderAuthPermissionColumn(); });
+
+    $(document).on("change", "#authCheckAllPermission", function () {
+        var on = this.checked;
+        authGetFunctionsForMenu(gAuthSelectedSubMenu).forEach(function (f) {
+            if (on) { gAuthCheckedFunctions.add(f.FUNCTION_ID); } else { gAuthCheckedFunctions.delete(f.FUNCTION_ID); }
+        });
+        if (on) {
+            gAuthCheckedMenus.add(gAuthSelectedSubMenu);
+            var subMenu = gAuthAllMenu.find(function (m) { return m.MENU_ID === gAuthSelectedSubMenu; });
+            if (subMenu) { gAuthCheckedMenus.add(subMenu.PARENT_ID); }
+        } else {
+            gAuthCheckedMenus.delete(gAuthSelectedSubMenu);
+            var subMenu2 = gAuthAllMenu.find(function (m) { return m.MENU_ID === gAuthSelectedSubMenu; });
+            if (subMenu2) {
+                var topStillActive = authGetSubMenus(subMenu2.PARENT_ID).some(function (m) { return gAuthCheckedMenus.has(m.MENU_ID); });
+                if (!topStillActive) { gAuthCheckedMenus.delete(subMenu2.PARENT_ID); }
+            }
+        }
+        renderAuthModal();
     });
 
-    $(document).on("change", "input[name=functionChkRow]", function () {
-        if (this.checked) {
-            var menuId = $(this).attr('data-menuId');
-            $('input[name=menuChkRow][data-menuId="' + menuId + '"]').prop('checked', true);
-        }
+    $(document).on("click", "#btn_auth_clearall", function () {
+        showConfirmMesg("Are you sure you want to clear all menus and permissions for this role?", function () {
+            gAuthCheckedMenus.clear();
+            gAuthCheckedFunctions.clear();
+            renderAuthModal();
+        }, "Confirmation");
     });
-    
+
     function confirmAddEditAuthorization() {
         showConfirmMesg("Are you sure you want to continue process?", addEditAuthorization, "Confirmation");
     }
@@ -364,34 +456,16 @@
         var dataMenu = [];
         var dataFunc = [];
 
-        var checkboxMenu = document.querySelectorAll('input[name=menuChkRow]:checked')
-        var checkboxFunc = document.querySelectorAll('input[name=functionChkRow]:checked')
-
-        
-        if (checkboxMenu.length > 0) {
-            for (var i = 0; i < checkboxMenu.length; i++) {
-                var dtl = new Object();
-                dtl.MENU_ID = checkboxMenu[i].value;
-                dtl.ROLE_ID = $('input[name=menuChkRow]:checked').attr('data-roleId');
-                dataMenu.push(dtl);
-            }
+        if (gAuthCheckedMenus.size > 0) {
+            gAuthCheckedMenus.forEach(function (id) { dataMenu.push({ ROLE_ID: gId, MENU_ID: id }); });
         } else {
-            var dtl = new Object();
-            dtl.ROLE_ID = gId;
-            dataMenu.push(dtl);
+            dataMenu.push({ ROLE_ID: gId });
         }
 
-        if (checkboxFunc.length > 0) {
-            for (var i = 0; i < checkboxFunc.length; i++) {
-                var dtl = new Object();
-                dtl.FUNCTION_ID = checkboxFunc[i].value;
-                dtl.ROLE_ID = $('input[name=functionChkRow]:checked').attr('data-roleId');
-                dataFunc.push(dtl);
-            }
+        if (gAuthCheckedFunctions.size > 0) {
+            gAuthCheckedFunctions.forEach(function (id) { dataFunc.push({ ROLE_ID: gId, FUNCTION_ID: id }); });
         } else {
-            var dtl = new Object();
-            dtl.ROLE_ID = gId;
-            dataFunc.push(dtl);
+            dataFunc.push({ ROLE_ID: gId });
         }
 
         popUpProgressShow();
@@ -412,6 +486,7 @@
                     showSuccessMesgGrowl(result.message);
 
                     $("#modalAuth").modal('hide');
+                    onSearch();
                 } else {
                     showErrorMesgGrowl(result.message);
                 }

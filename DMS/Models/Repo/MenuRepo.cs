@@ -29,6 +29,43 @@ namespace DMS.Models.Repo
         }
         #endregion
 
+        public MenuFunctionStats GetStats(DBContext db)
+        {
+            string query = "EXEC [dbo].[sp_Menu_Function_Stats]";
+            MenuFunctionStats Result = db.MenuFunctionStats.FromSqlRaw<MenuFunctionStats>(query).AsEnumerable().FirstOrDefault();
+
+            return Result;
+        }
+
+        public IList<MenuListItem> GetTree(DBContext db)
+        {
+            string query = "EXEC [dbo].[sp_Menu_Tree]";
+            IList<MenuListItem> Result = db.MenuListItem.FromSqlRaw<MenuListItem>(query).ToList();
+
+            return Result;
+        }
+
+        public DBResult ToggleStatus(string menuId, int deleteFlag, string loginUser, DBContext db)
+        {
+            SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
+            SqlParameter returnMsg = CreateSqlParameterOutputString("@RETURN_MSG");
+
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                returnVal,
+                new SqlParameter ( "@MENU_ID", CheckNullValue(menuId) ),
+                new SqlParameter ( "@DELETE_FLAG", deleteFlag ),
+                new SqlParameter ( "@LOGIN_USER", loginUser ),
+                returnMsg
+            };
+
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_Menu_ToggleStatus] @MENU_ID, @DELETE_FLAG, @LOGIN_USER, @RETURN_MSG OUTPUT";
+            int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
+
+            DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
+            return result;
+        }
+
         public IList<Menu> GetAll(DBContext db)
         {
             string query = "EXEC [dbo].[sp_Menu_GetAll]";

@@ -1,0 +1,64 @@
+<style>
+    /* site.css forces .fa-chevron-up/-down to white globally (for a dark-background
+       use elsewhere) - override back to the normal dp-icon-btn color for this button. */
+    #btn_toggleStats i {
+        color: #344054;
+    }
+</style>
+<section class="content">
+    <div class="row">
+        <div class="col-xs-12">
+            <div id="divTitle">
+                <div class="dp-header">
+                    <div class="dp-header-left">
+                        <div class="dp-header-icon"><i class="fa fa-inbox"></i></div>
+                        <div>
+                            <h1>@ViewData["Title"]</h1>
+                            <p>View all your notifications and updates.</p>
+                        </div>
+                    </div>
+                    <div class="dp-header-actions">
+                        <button type="button" class="dp-btn dp-btn-outline" id="btn_markAllRead"><i class="fa fa-check-circle-o"></i> Mark All as Read</button>
+                        <button type="button" class="dp-icon-btn" id="btn_toggleStats" title="Hide Summary Cards"><i class="fa fa-chevron-up"></i></button>
+                    </div>
+                    <div class="dp-header-stats dp-header-stats-grid" id="ibStatsRow">
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon blue"><i class="fa fa-inbox"></i></div>
+                            <div>
+                                <span>Total Notifications</span>
+                                <b id="ibStatTotal">-</b>
+                                <small>All notifications</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon amber"><i class="fa fa-envelope"></i></div>
+                            <div>
+                                <span>Unread</span>
+                                <b id="ibStatUnread">-</b>
+                                <small>Not yet read</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon green"><i class="fa fa-envelope-open-o"></i></div>
+                            <div>
+                                <span>Read</span>
+                                <b id="ibStatRead">-</b>
+                                <small>Already read</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="dp-card">
+                <div id="divSearch">
+                    @Html.Partial("_SearchCriteria")
+                </div>
+                <div id="divGrid">
+                    @Html.Partial("_GridView")
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@Html.Partial("_Javascript")
