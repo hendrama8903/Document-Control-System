@@ -56,6 +56,7 @@ namespace DMS.Models
         public virtual DbSet<DocumentSubmissionDetail>? DocumentSubmissionDetail { get; set; }
         public virtual DbSet<MSequence>? MSequence { get; set; }
         public virtual DbSet<DocumentReceiptReport>? DocumentReceiptReport { get; set; }
+        public virtual DbSet<NotificationSetting>? NotificationSetting { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -70,6 +71,7 @@ namespace DMS.Models
             builder.Entity<FunctionListItem>().HasNoKey().ToView(null);
             builder.Entity<MenuFunctionStats>().HasNoKey().ToView(null);
             builder.Entity<UserListItem>().HasNoKey().ToView(null);
+            builder.Entity<NotificationSetting>().HasNoKey().ToView(null);
 
             builder.Entity<MSystem>().HasKey(table => new
             {

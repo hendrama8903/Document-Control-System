@@ -447,7 +447,8 @@ namespace DMS.Controllers
                     string buttonLink = $"{scheme}://{hostString}{pathBase}" + emailTemplate.Where(x => x.SYSTEM_CODE == "BUTTON_LINK").First().SYSTEM_VALUE
                         .Replace("{DOCUMENT_CODE}", documentControlMaintenance.DOCUMENT_CODE);
 
-                    backgroundJobClient.Enqueue(() => EmailService.SendEmailAsync(toAddresses, subject, title, body, buttonLink));
+                    if (NotificationSettingRepo.Instance.IsEmailEnabled("P4D_APPROVAL_REQUEST", db))
+                        backgroundJobClient.Enqueue(() => EmailService.SendEmailAsync(toAddresses, subject, title, body, buttonLink));
 
                     IList<MSystem> notificationTemplate = MSystemRepo.Instance.Search(new MSystem { SYSTEM_TYPE = "P4D_APPROVAL_REQUEST_NOTIFICATION" }, db, null, null);
 
@@ -505,7 +506,8 @@ namespace DMS.Controllers
                     string buttonLink = $"{scheme}://{hostString}{pathBase}" + emailTemplate.Where(x => x.SYSTEM_CODE == "BUTTON_LINK").First().SYSTEM_VALUE
                         .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE);
 
-                    backgroundJobClient.Enqueue(() => EmailService.SendEmailAsync(toAddresses, subject, title, body, buttonLink));
+                    if (NotificationSettingRepo.Instance.IsEmailEnabled("P4D_APPROVE_REJECT", db))
+                        backgroundJobClient.Enqueue(() => EmailService.SendEmailAsync(toAddresses, subject, title, body, buttonLink));
 
                     IList<MSystem> notificationTemplate = MSystemRepo.Instance.Search(new MSystem { SYSTEM_TYPE = "P4D_APPROVE_REJECT_NOTIFICATION" }, db, null, null);
 
@@ -635,7 +637,8 @@ namespace DMS.Controllers
             string buttonLink = $"{scheme}://{hostString}{pathBase}" + emailTemplate.Where(x => x.SYSTEM_CODE == "BUTTON_LINK").First().SYSTEM_VALUE
                 .Replace("{DOCUMENT_CODE}", documentControlMaintenance.DOCUMENT_CODE);
 
-            backgroundJobClient.Enqueue(() => EmailService.SendEmailAsync(toAddresses, subject, title, body, buttonLink));
+            if (NotificationSettingRepo.Instance.IsEmailEnabled("DISTRIBUTION", db))
+                backgroundJobClient.Enqueue(() => EmailService.SendEmailAsync(toAddresses, subject, title, body, buttonLink));
         }
 
         public void distributionNotif(IList<MSystem> notificationTemplate, DocumentControlMaintenance documentControlMaintenance,

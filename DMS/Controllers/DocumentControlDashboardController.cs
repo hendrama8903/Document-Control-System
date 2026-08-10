@@ -477,7 +477,8 @@ namespace DMS.Controllers
                         string buttonLink = $"{scheme}://{hostString}{pathBase}" + emailTemplate.Where(x => x.SYSTEM_CODE == "BUTTON_LINK").First().SYSTEM_VALUE
                         .Replace("{DOCUMENT_CODE}", documentControlMaintenance.DOCUMENT_CODE);
 
-                        backgroundJobClient.Enqueue(() => EmailService.SendEmailAsync(toAddresses, subject, title, body, buttonLink));
+                        if (NotificationSettingRepo.Instance.IsEmailEnabled("DOCUMENTCONTROL_APPROVE_REJECT", db))
+                            backgroundJobClient.Enqueue(() => EmailService.SendEmailAsync(toAddresses, subject, title, body, buttonLink));
 
                         IList<MSystem> notificationTemplate = MSystemRepo.Instance.Search(new MSystem { SYSTEM_TYPE = "DOCUMENTCONTROL_APPROVE_REJECT_NOTIFICATION" }, db, null, null);
 

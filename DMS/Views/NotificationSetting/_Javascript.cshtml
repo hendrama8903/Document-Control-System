@@ -1,0 +1,89 @@
+<script type="text/javascript">
+    var gCanToggle = @((((bool)ViewData["Toggle"])) ? "true" : "false");
+
+    function htmlEscape(text) {
+        return $("<div>").text(text == null ? "" : text).html();
+    }
+
+    function loadNotificationSettings() {
+        $("#nsBody").html('<tr><td colspan="4" class="mf-empty-state">Memuat...</td></tr>');
+
+        $.ajax({
+            type: "GET",
+            url: "@Url.Action("Search", "NotificationSetting")",
+            dataType: "json",
+            success: function (result) {
+                if (!result.status || !result.data || result.data.length === 0) {
+                    $("#nsBody").html('<tr><td colspan="4" class="mf-empty-state">Tidak ada data.</td></tr>');
+                    return;
+                }
+
+                var rows = "";
+                $.each(result.data, function (i, item) {
+                    var checkedAttr = item.SEND_EMAIL ? "checked" : "";
+                    var disabledAttr = gCanToggle ? "" : "disabled";
+                    var changedDt = item.CHANGED_DT ? new Date(item.CHANGED_DT).toLocaleString("id-ID") : "-";
+                    var changedBy = item.CHANGED_BY ? (" oleh " + htmlEscape(item.CHANGED_BY)) : "";
+
+                    rows += "<tr>"
+                        + "<td>" + htmlEscape(item.MODULE_NAME) + "</td>"
+                        + "<td>" + htmlEscape(item.NOTIFICATION_LABEL) + "</td>"
+                        + "<td style=\"text-align:center;\">"
+                        + "<label class=\"dms-toggle\">"
+                        + "<input type=\"checkbox\" class=\"ns-toggle-email\" data-type=\"" + htmlEscape(item.NOTIFICATION_TYPE) + "\" " + checkedAttr + " " + disabledAttr + " />"
+                        + "<span class=\"dms-toggle-slider\"></span>"
+                        + "</label>"
+                        + "</td>"
+                        + "<td>" + changedDt + changedBy + "</td>"
+                        + "</tr>";
+                });
+
+                $("#nsBody").html(rows);
+            },
+            error: function (result) {
+                $("#nsBody").html('<tr><td colspan="4" class="mf-empty-state">Gagal memuat data.</td></tr>');
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    $(document).ready(function () {
+        loadNotificationSettings();
+
+        $("#btn_refresh").on("click", function () {
+            loadNotificationSettings();
+        });
+
+        $("#nsBody").on("change", ".ns-toggle-email", function () {
+            var $checkbox = $(this);
+            var notificationType = $checkbox.data("type");
+            var sendEmail = $checkbox.is(":checked");
+
+            popUpProgressShow();
+            $.ajax({
+                type: "POST",
+                url: "@Url.Action("ToggleEmail", "NotificationSetting")",
+                dataType: "json",
+                data: {
+                    notificationType: notificationType,
+                    sendEmail: sendEmail
+                },
+                success: function (result) {
+                    popUpProgressHide();
+                    if (result.status) {
+                        showSuccessMesgGrowl(result.message);
+                        loadNotificationSettings();
+                    } else {
+                        $checkbox.prop("checked", !sendEmail);
+                        showErrorMesgGrowl(result.message);
+                    }
+                },
+                error: function (result) {
+                    popUpProgressHide();
+                    $checkbox.prop("checked", !sendEmail);
+                    showErrorMesgGrowl(result);
+                }
+            });
+        });
+    });
+</script>

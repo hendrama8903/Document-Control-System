@@ -49,6 +49,7 @@ namespace DMS.Services
 
             IList<MSystem> emailTemplate = mSystemRepo.Search(new MSystem { SYSTEM_TYPE = "EXTERNAL_DOC_REVIEW_REMINDER_EMAIL_TEMPLATE" }, db, null, null);
             IList<MSystem> notificationTemplate = mSystemRepo.Search(new MSystem { SYSTEM_TYPE = "EXTERNAL_DOC_REVIEW_REMINDER_NOTIFICATION" }, db, null, null);
+            bool emailEnabled = NotificationSettingRepo.Instance.IsEmailEnabled("EXTERNAL_DOC_REVIEW_REMINDER", db);
 
             CultureInfo cultureInfo = new CultureInfo("id-ID");
 
@@ -86,7 +87,7 @@ namespace DMS.Services
 
                 foreach (User recipient in recipients)
                 {
-                    if (!string.IsNullOrEmpty(recipient.EMAIL))
+                    if (emailEnabled && !string.IsNullOrEmpty(recipient.EMAIL))
                     {
                         string body = emailTemplate.Where(x => x.SYSTEM_CODE == "BODY").First().SYSTEM_VALUE
                             .Replace("{FULL_NAME}", recipient.FULL_NAME)

@@ -2386,3 +2386,56 @@ body.adm-body {
 }
 
 .dp-info-bar i { color: #2450D8; }
+
+/* ==========================================================================
+   Reusable toggle switch (checkbox-based) - dipakai pertama kali di
+   Notification Settings (kirim email ya/tidak per jenis notifikasi).
+   ========================================================================== */
+.dms-toggle {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+    flex-shrink: 0;
+}
+
+.dms-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.dms-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background-color: #CBD2D9;
+    border-radius: 22px;
+    transition: background-color .15s ease;
+}
+
+.dms-toggle-slider::before {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    left: 3px;
+    top: 3px;
+    background-color: #fff;
+    border-radius: 50%;
+    transition: transform .15s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,.25);
+}
+
+.dms-toggle input:checked + .dms-toggle-slider {
+    background-color: #1E9E63;
+}
+
+.dms-toggle input:checked + .dms-toggle-slider::before {
+    transform: translateX(18px);
+}
+
+.dms-toggle input:disabled + .dms-toggle-slider {
+    opacity: .5;
+    cursor: not-allowed;
+}
