@@ -37,6 +37,10 @@
             onReceivePrepare();
         });
 
+        $("#btn_unreceive").on("click", function () {
+            onUnReceivePrepare();
+        });
+
         $("#btn_reject").on("click", function () {
             onRejectPrepare();
         });
@@ -868,6 +872,48 @@
         $('#divRemarks').show();
         $('#modalApproveReject').on('shown.bs.modal', function () {
 
+        });
+    }
+
+    function onUnReceivePrepare() {
+
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gDocumentCtrlId = row.DOCUMENT_CTRL_ID;
+        gDocumentNo = row.DOCUMENT_CODE;
+
+        showConfirmMesg("Are you sure you want to un-receive Document No " + gDocumentNo
+            + "? This will revert the registration back to Draft. Only possible if no distribution has been assigned yet.",
+            unReceiveData, "Confirmation");
+    }
+
+    function unReceiveData() {
+        popUpProgressHide();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("UnReceive", "P4DMaintenance")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                DOCUMENT_CTRL_ID: gDocumentCtrlId
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    popUpProgressHide();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                    popUpProgressHide();
+                }
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+                popUpProgressHide();
+            }
         });
     }
 

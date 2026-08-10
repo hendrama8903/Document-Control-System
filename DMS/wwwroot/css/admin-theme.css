@@ -1699,6 +1699,7 @@ body.adm-body {
 .dp-menu-approve i,
 .dp-menu-restore i { color: #1E9E63; }
 .dp-menu-reject i { color: #C62828; }
+.dp-menu-unreceive i { color: #B36B00; }
 .dp-menu-send i { color: #3949AB; }
 .dp-menu-location i { color: #B36B00; }
 

@@ -13,6 +13,7 @@
     var SESSION_DEPARTMENT_ID_LOGIN = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetInt32("DEPARTMENT_ID"))";
 
     var gCanReceive = @((((bool)ViewData["Receive"]) && ((bool)ViewData["DocumentControlAccess"])) ? "true" : "false");
+    var gCanUnReceive = @((((bool)ViewData["UnReceive"]) && ((bool)ViewData["DocumentControlAccess"])) ? "true" : "false");
     var gCanEdit = @((((bool)ViewData["Edit"]) && ((bool)ViewData["DocumentControlAccess"])) ? "true" : "false");
     var gCanSend = @((((bool)ViewData["Send"]) && ((bool)ViewData["DocumentControlAccess"])) ? "true" : "false");
     var gCanDistribution = @(((bool)ViewData["Distribution"]) ? "true" : "false");
@@ -31,6 +32,7 @@
         $("#btn_edit").prop("disabled", !selected);
         $("#btn_delete").prop("disabled", !(selected && (row.STATUS == 1 || row.STATUS == 0) && row.DEPARTMENT_ID == SESSION_DEPARTMENT_ID_LOGIN));
         $("#btn_receive").prop("disabled", !(selected && row.STATUS == 0));
+        $("#btn_unreceive").prop("disabled", !(selected && row.STATUS == 2));
         $("#btn_reject").prop("disabled", !(selected && row.STATUS == 0));
         $("#btn_distribution").prop("disabled", !(selected && row.STATUS != 0 && row.STATUS != 3 && row.STATUS != 4));
         $("#btn_send").prop("disabled", !(selected && (row.STATUS == 2 || row.STATUS == 6)));
@@ -48,6 +50,7 @@
         $("#btn_edit").prop("disabled", true);
         $("#btn_delete").prop("disabled", true);
         $("#btn_receive").prop("disabled", true);
+        $("#btn_unreceive").prop("disabled", true);
         $("#btn_reject").prop("disabled", true);
         $("#btn_distribution").prop("disabled", true);
         $("#btn_send").prop("disabled", true);
@@ -381,6 +384,12 @@
         if (gCanReceive) {
             $menu.append(menuItem("dp-menu-approve", "fa-check-circle", "Approve", row.STATUS == 0, function () {
                 selectRowThen(row, onReceivePrepare);
+            }));
+        }
+
+        if (gCanUnReceive) {
+            $menu.append(menuItem("dp-menu-unreceive", "fa-undo", "Un-Receive", row.STATUS == 2, function () {
+                selectRowThen(row, onUnReceivePrepare);
             }));
         }
 

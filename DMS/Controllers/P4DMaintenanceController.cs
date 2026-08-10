@@ -69,6 +69,7 @@ namespace DMS.Controllers
             ViewData["Download"] = HttpContext.Session.GetString("functionList").Contains("P4D-DOWNLOAD");
             ViewData["Distribution"] = HttpContext.Session.GetString("functionList").Contains("P4D-DISTRIBUTION");
             ViewData["Receive"] = HttpContext.Session.GetString("functionList").Contains("P4D-RECEIVE");
+            ViewData["UnReceive"] = HttpContext.Session.GetString("functionList").Contains("P4D-UNRECEIVE");
             ViewData["Reject"] = HttpContext.Session.GetString("functionList").Contains("P4D-REJECT");
             ViewData["Send"] = HttpContext.Session.GetString("functionList").Contains("P4D-SEND");
             ViewData["DocumentControlAccess"] = GetDocumentAccessControl();
@@ -716,6 +717,21 @@ namespace DMS.Controllers
                     }
                 }
 
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public JsonResult UnReceive(DocumentControlMaintenance data)
+        {
+            DBResult result = null;
+
+            try
+            {
+                result = P4DMaintenanceRepo.UnReceive(data, GetLoginUsername(), db);
                 return Json(result);
             }
             catch (Exception ex)
