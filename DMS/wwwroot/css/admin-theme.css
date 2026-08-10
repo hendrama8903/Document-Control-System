@@ -1246,10 +1246,24 @@ body.adm-body {
     min-height: 28px;
 }
 
+/* Judul kolom yang panjang tadinya selalu terpotong "..." meski
+   wordWrapEnabled grid di-set false (sengaja - biar isi data tetap 1 baris).
+   DevExtreme menandai grid dengan class .dx-datagrid-nowrap saat itu dan
+   punya aturan bawaan (white-space: nowrap) khusus utk .dx-header-row -
+   override di sini HANYA utk baris header (bukan .dx-datagrid-rowsview),
+   pakai !important karena DevExtreme kadang set inline style juga. */
+#datagrid.dx-datagrid-nowrap .dx-datagrid-headers .dx-header-row td,
+#datagrid .dx-datagrid-headers .dx-header-row td {
+    white-space: normal !important;
+    height: auto !important;
+    vertical-align: middle;
+}
+
+#datagrid.dx-datagrid-nowrap .dx-datagrid-headers .dx-header-row td .dx-datagrid-text-content,
 #datagrid .dx-datagrid-headers .dx-header-row td .dx-datagrid-text-content {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: unset;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
     line-height: 1.3;
 }
 
