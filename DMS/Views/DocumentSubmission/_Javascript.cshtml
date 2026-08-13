@@ -129,7 +129,7 @@
         gSubmissionId = null;
         gDetailRows = [];
         gDeletedDetailIds = [];
-        $('#modal-title').text('Add Document Submission Form');
+        $('#modal-title').text('Add Document Request');
         resetHeaderForm();
         renderDetailGrid([]);
         $("#modalAddEdit").modal();
@@ -160,7 +160,7 @@
         gScreenMode = 'EDIT';
         gSubmissionId = row.SUBMISSION_ID;
         gDeletedDetailIds = [];
-        $('#modal-title').text('Edit Document Submission Form');
+        $('#modal-title').text('Edit Document Request');
 
         $('#addEditSubmissionId').val(row.SUBMISSION_ID);
         $('#addEditSection').val(row.SECTION_CODE || '');

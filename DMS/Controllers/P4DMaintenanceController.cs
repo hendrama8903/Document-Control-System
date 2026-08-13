@@ -743,6 +743,21 @@ namespace DMS.Controllers
             }
         }
 
+        public JsonResult Accept(DocumentControlMaintenance data)
+        {
+            DBResult result = null;
+
+            try
+            {
+                result = P4DMaintenanceRepo.Accept(data, GetLoginUsername(), db);
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
         public IActionResult Download()
         {
             DataTable dt = new DataTable();

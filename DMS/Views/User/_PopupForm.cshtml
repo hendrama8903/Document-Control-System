@@ -222,7 +222,7 @@
                         <p>Upload a profile photo for this user.</p>
                         <div class="uf-avatar-wrap">
                             <div class="uf-avatar">
-                                <img id="ufAvatarImg" src="" alt="Profile photo preview" />
+                                <img id="ufAvatarImg" src="" alt="Profile photo preview" onerror="this.onerror=null; $(this).attr('src','').hide(); $('#ufAvatarPlaceholder').show();" />
                                 <i class="fa fa-user" id="ufAvatarPlaceholder"></i>
                             </div>
                             <div class="uf-avatar-cam" id="ufAvatarCam" title="Upload photo"><i class="fa fa-camera"></i></div>

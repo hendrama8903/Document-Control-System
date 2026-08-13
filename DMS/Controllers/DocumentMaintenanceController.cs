@@ -55,6 +55,7 @@ namespace DMS.Controllers
         }
 
         private DocumentMaintenanceRepo documentMaintenanceRepo = DocumentMaintenanceRepo.Instance;
+        private P4DMaintenanceRepo p4DMaintenanceRepo = P4DMaintenanceRepo.Instance;
         private DepartmentMasterRepo departmentMasterRepo = DepartmentMasterRepo.Instance;
         private SectionMasterRepo sectionMasterRepo = SectionMasterRepo.Instance;
         private DocumentMasterRepo documentMasterRepo = DocumentMasterRepo.Instance;
@@ -1295,15 +1296,20 @@ namespace DMS.Controllers
                 bool isObsolete = currentDocument == null;
 
                 // Stempel gambar (bukan teks) berdasarkan STATUS dokumen, bukan siapa yang
-                // login - request user 2026-08-09. DOC_STATUS: 1=Approved, 5=Published
-                // (Effective, di-set sp_P4DMaintenance_UpdateDistributionPublish begitu
-                // SEMUA department sudah acknowledge distribusinya). Stempel MASTER
-                // (cap_master.png, pojok kiri-atas) muncul begitu disetujui QMS; stempel
-                // CONTROLLED COPY (cap_controlledcopy.png, pojok kanan-bawah) DITAMBAHKAN
-                // LAGI (bukan menggantikan) begitu distribusi ke semua dept sudah
-                // di-acknowledge semua - jadi keduanya bisa tampil sekaligus di posisi beda.
-                bool isApprovedOrPublished = !isObsolete && (currentDocument.STATUS == "1" || currentDocument.STATUS == "5");
+                // login - request user 2026-08-09. DOC_STATUS: 1=Approved (Document
+                // Preparation selesai), 5=Published (Effective, di-set
+                // sp_P4DMaintenance_UpdateDistributionPublish begitu SEMUA department sudah
+                // acknowledge distribusinya). Stempel MASTER (cap_master.png, pojok
+                // kiri-atas) BUKAN muncul begitu Document Preparation selesai (STATUS=1) -
+                // itu baru approval internal pembuatan dokumennya. MASTER baru muncul
+                // setelah dokumen diproses lewat P4D dan di-approve/receive oleh QMS
+                // (lihat IsReceivedByQms), atau kalau sudah lebih jauh lagi yaitu
+                // STATUS=5/Published (request user 2026-08-11). Stempel CONTROLLED COPY
+                // (cap_controlledcopy.png, pojok kanan-bawah) DITAMBAHKAN LAGI (bukan
+                // menggantikan) begitu distribusi ke semua dept sudah di-acknowledge semua -
+                // jadi keduanya bisa tampil sekaligus di posisi beda.
                 bool isFullyAcknowledged = !isObsolete && currentDocument.STATUS == "5";
+                bool isMasterStamped = !isObsolete && (isFullyAcknowledged || IsReceivedByQms(currentDocument.DOCUMENT_TRANSACTION_ID));
 
                 string masterStampPath = null;
                 string controlledCopyStampPath = null;
@@ -1318,7 +1324,7 @@ namespace DMS.Controllers
                 }
                 else
                 {
-                    if (isApprovedOrPublished) masterStampPath = webRootPath + "/images/cap_master.png";
+                    if (isMasterStamped) masterStampPath = webRootPath + "/images/cap_master.png";
                     if (isFullyAcknowledged) controlledCopyStampPath = webRootPath + "/images/cap_controlledcopy.png";
                 }
 
@@ -1375,31 +1381,24 @@ namespace DMS.Controllers
                     }
                     // ✅ SAMPAI SINI
 
-                    pengesahanModifiedfileNames = pengesahanModifiedfileName(webRootPath, documentMaintenance.FILE_PATH, documentMaintenance);
-                    string pengesahanModifiedFullPath = webRootPath + pengesahanModifiedfileNames;
-                    if (pengesahanModifiedfileNames == null)
-                    {
-                        ViewBag.ErrorMessage = "Error when modifying pengesahan header";
-                        return Json(new { status = false, message = ViewBag.ErrorMessage });
-                    }
+                    // Tulis field/tanda tangan pengesahan lewat DevExpress langsung dan
+                    // export ke PDF dari workbook yang sama di memory - TIDAK lagi lewat
+                    // NPOI simpan-ke-file lalu DevExpress baca-ulang (lihat
+                    // GeneratePengesahanPdf untuk alasannya: kombinasi itu terbukti bisa
+                    // menghasilkan PDF 0 halaman untuk workbook kompleks, Aug 2026).
+                    string pengesahanPdfRelative = "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
+                        + System.IO.Path.GetFileNameWithoutExtension(fileName) + ".pdf";
+                    string pengesahanPdfFullPath = webRootPath + pengesahanPdfRelative;
 
-                    split = pengesahanModifiedfileNames.Split("/");
-                    fileName = split[4];
-
-                    extension = GetFileExtension(fileName);
-
-                    result = ConvertToPdf(pengesahanModifiedFullPath, pengesahanModifiedFullPath);
+                    result = GeneratePengesahanPdf(webRootPath, documentMaintenance.FILE_PATH, documentMaintenance, pengesahanPdfFullPath);
                     if (!result.status)
                     {
-                        Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                        ViewBag.ErrorMessage = result.message;
-                        return View("Error500");
+                        // Fallback ke Excel viewer kalau convert tetap gagal (Aug 2026).
+                        return RedirectToAction("ExcelViewerPreview", new { filePath = documentMaintenance.FILE_PATH });
                     }
 
-                    if (System.IO.File.Exists(pengesahanModifiedFullPath))
-                    {
-                        System.IO.File.Delete(pengesahanModifiedFullPath);
-                    }
+                    pengesahanModifiedfileNames = pengesahanPdfRelative;
+                    extension = "pdf";
                 }
                 // Ganti bagian ini:
                 // finalPath = webRootPath + pengesahanModifiedfileNames.Replace(extension, "pdf");
@@ -1629,448 +1628,333 @@ namespace DMS.Controllers
             }
         }
 
-        public string pengesahanModifiedfileName(string webRootPath, string filePath, DocumentMaintenance documentMaintenanceParam)
+        /// <summary>
+        /// Tulis field pengesahan (data dokumen, nama/tanda tangan creator &amp;
+        /// approver) langsung lewat DevExpress Spreadsheet API, lalu export ke PDF
+        /// dari workbook yang sama di memory - satu session, tanpa simpan-ke-file
+        /// lalu baca-ulang pakai library lain.
+        ///
+        /// Sebelumnya field-field ini ditulis pakai NPOI, disimpan ke .xlsx, baru
+        /// file itu dibaca lagi oleh DevExpress untuk di-export ke PDF. Ternyata
+        /// kombinasi itu punya bug nyata: NPOI menulis ulang struktur XML file
+        /// dengan caranya sendiri (beda dari cara Excel/SharePoint aslinya), dan
+        /// untuk workbook kompleks (banyak sheet, ada yang hidden) itu bisa
+        /// menghasilkan file yang DevExpress gagal hitung halamannya sama sekali
+        /// (PDF 0 halaman, tampil blank di viewer) - padahal file aslinya normal
+        /// dan DevExpress sendiri baik-baik saja membacanya. Dibuktikan lewat
+        /// reproduksi terisolasi (Aug 2026): bahkan NPOI load+save TANPA modifikasi
+        /// apa pun sudah cukup memicu bug ini. Redesign ini menghilangkan celah
+        /// itu total karena tidak ada lagi serialisasi lewat NPOI di alur ini.
+        /// </summary>
+        public DBResult GeneratePengesahanPdf(string webRootPath, string filePath, DocumentMaintenance documentMaintenanceParam, string outputPdfPath)
         {
-            // ── 1. Ambil data document maintenance ──────────────────────────────────
-            DocumentMaintenance documentMaintenance = documentMaintenanceRepo
-                .Search(documentMaintenanceParam, null, db, 1, 1)
-                .FirstOrDefault();
-
-            if (documentMaintenance == null)
+            try
             {
-                documentMaintenance = documentMaintenanceRepo
-                    .SearchHistoryToMaintenance(documentMaintenanceParam, GetLoginUsername(), db, 1, 1)
+                DocumentMaintenance documentMaintenance = documentMaintenanceRepo
+                    .Search(documentMaintenanceParam, null, db, 1, 1)
                     .FirstOrDefault();
-            }
 
-            if (documentMaintenance == null) return null;
-
-            // ── 2. Siapkan path & workbook ───────────────────────────────────────────
-            IList<ApprovalDetail> approvalDetails =
-                approvalRepo.GetApprovalDetail((int)documentMaintenance.APPROVAL_ID, db, null, null);
-
-            string[] split = filePath.Split("/");
-            string fileName = split[4];
-            string extension = GetFileExtension(fileName);
-            string fullPath = webRootPath + filePath;
-            string outputFileName = "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_" + fileName;
-            string outputFullPath = webRootPath + outputFileName;
-
-            IWorkbook workbook;
-            if (extension.Equals("xlsx"))
-            {
-                byte[] originalBytes = System.IO.File.ReadAllBytes(fullPath);
-                byte[] cleanedBytes = CleanPrintTitlesInMemory(originalBytes);
-                workbook = new XSSFWorkbook(new System.IO.MemoryStream(cleanedBytes));
-            }
-            else
-            {
-                using (FileStream fileStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read))
-                    workbook = new HSSFWorkbook(fileStream);
-            }
-
-            // ── 3. Ambil template ────────────────────────────────────────────────────
-            IList<ExcelTemplateMaster> excelTemplateMasters = documentMasterRepo
-                .SearchTemplate(new ExcelTemplateMaster { DOCUMENT_ID = documentMaintenance.DOCUMENT_ID }, db);
-
-            if (excelTemplateMasters.Count == 0) return null;
-
-            // ── 4. Iterasi setiap sheet ──────────────────────────────────────────────
-            int sheetPosition = 0;
-            int selectedSheetPosition = 0;
-
-            // Definisikan field yang HANYA boleh ditulis di COVER sheet (sheetPosition=0)
-            // Sheet lain sudah punya formula =COVER!xxx sehingga otomatis update
-            var coverOnlyFields = new HashSet<string>
-            {
-                "DOCUMENT_CODE",
-                "DOCUMENT_TRANSACTION_NAME",
-                "DOCUMENT_REVISION_0_DATE",
-                "REVISION",
-                "DOCUMENT_DATE"
-            };
-
-            foreach (ISheet oISheet in workbook)
-            {
-                IPrintSetup printSetup = oISheet.PrintSetup;
-                int orientation = printSetup.Landscape ? 1 : 0;
-
-                // Paksa print area selalu pas di 1 halaman (bukan ukuran kertas asli
-                // dari Excel) - posisi field pengesahan (ROW/COL di TB_M_EXCEL_TEMPLATE)
-                // mengasumsikan layout satu halaman, jadi kalau print area sheet aslinya
-                // sedikit kelebihan lebar/tinggi, hasil convert ke PDF akan kepotong ke
-                // halaman kedua tanpa ini.
-                printSetup.FitWidth = 1;
-                printSetup.FitHeight = 1;
-                oISheet.FitToPage = true;
-
-                IList<ExcelTemplateMaster> excelTemplateMastersBySheet =
-                    excelTemplateMasters.Where(x => x.SHEET_ORIENTATION == orientation).ToList();
-
-                bool hasSheetPositionCheck = excelTemplateMastersBySheet.Any(x => x.CHECK_SHEET_POSITION == 1);
-                if (hasSheetPositionCheck)
+                if (documentMaintenance == null)
                 {
-                    bool sheetPositionMatched = excelTemplateMastersBySheet.Any(x => x.SHEET_POSITION == sheetPosition);
-                    if (sheetPositionMatched)
-                        selectedSheetPosition = sheetPosition;
-
-                    excelTemplateMastersBySheet = excelTemplateMastersBySheet
-                        .Where(x => x.SHEET_POSITION == selectedSheetPosition)
-                        .ToList();
+                    documentMaintenance = documentMaintenanceRepo
+                        .SearchHistoryToMaintenance(documentMaintenanceParam, GetLoginUsername(), db, 1, 1)
+                        .FirstOrDefault();
                 }
 
-                var type2Templates = excelTemplateMastersBySheet
-                 .Where(x => x.TYPE == 2 && x.FIELD_NAME.Equals("DIGITAL_SIGN"))
-                 .OrderBy(x => x.TEMPLATE_ID)   // ✅ urutan insert yang menentukan, bukan posisi visual
-                 .ToList();
+                if (documentMaintenance == null) return new DBResult(false, "Document not found");
 
-                int type2Index = 0;
+                IList<ApprovalDetail> approvalDetails =
+                    approvalRepo.GetApprovalDetail((int)documentMaintenance.APPROVAL_ID, db, null, null);
 
-                foreach (ExcelTemplateMaster template in excelTemplateMastersBySheet)
+                string fullPath = webRootPath + filePath;
+
+                IList<ExcelTemplateMaster> excelTemplateMasters = documentMasterRepo
+                    .SearchTemplate(new ExcelTemplateMaster { DOCUMENT_ID = documentMaintenance.DOCUMENT_ID }, db);
+
+                if (excelTemplateMasters.Count == 0) return new DBResult(false, "Excel template configuration not found for this document type");
+
+                // Field yang HANYA boleh ditulis di COVER sheet (sheetPosition=0) -
+                // sheet lain sudah punya formula =COVER!xxx sehingga otomatis update.
+                var coverOnlyFields = new HashSet<string>
                 {
-    
-                    if (coverOnlyFields.Contains(template.FIELD_NAME) && sheetPosition != 0)
+                    "DOCUMENT_CODE",
+                    "DOCUMENT_TRANSACTION_NAME",
+                    "DOCUMENT_REVISION_0_DATE",
+                    "REVISION",
+                    "DOCUMENT_DATE"
+                };
+
+                using (var workbook = new DevExpress.Spreadsheet.Workbook())
+                {
+                    workbook.LoadDocument(fullPath);
+
+                    int sheetPosition = 0;
+                    int selectedSheetPosition = 0;
+
+                    foreach (DevExpress.Spreadsheet.Worksheet sheet in workbook.Worksheets)
                     {
-                        continue; 
-                    }
+                        DevExpress.Spreadsheet.WorksheetPrintOptions printOptions = sheet.PrintOptions;
+                        int orientation = sheet.ActiveView.Orientation == DevExpress.Spreadsheet.PageOrientation.Landscape ? 1 : 0;
 
-                    if (template.TYPE == 1)
-                    {
-                        PropertyInfo propertyInfo = documentMaintenance.GetType().GetProperty(template.FIELD_NAME);
+                        // Paksa print area selalu pas di 1 halaman - posisi field
+                        // pengesahan (ROW/COL di TB_M_EXCEL_TEMPLATE) mengasumsikan
+                        // layout satu halaman.
+                        printOptions.FitToWidth = 1;
+                        printOptions.FitToHeight = 1;
+                        printOptions.FitToPage = true;
 
-                        if (propertyInfo == null) continue;
+                        IList<ExcelTemplateMaster> excelTemplateMastersBySheet =
+                            excelTemplateMasters.Where(x => x.SHEET_ORIENTATION == orientation).ToList();
 
-                        object propValue = propertyInfo.GetValue(documentMaintenance);
-                        if (propValue == null) continue;
-
-                        IRow oIRow = SafeGetRow(oISheet, (int)template.ROW);
-                        ICell oICell = SafeGetCell(oIRow, (int)template.COL);
-                        SetCellValueBlackFont(workbook, oICell, propValue.ToString());
-
-                    }
-
-                    if (template.TYPE == 2)
-                    {
-                        int targetSheet = template.SHEET_POSITION ?? 0;
-                        if (targetSheet != sheetPosition) continue;
-
-                        if (approvalDetails.Count == 0) continue;
-                        if (!template.FIELD_NAME.Equals("DIGITAL_SIGN")) continue;
-
-                        // Approver dipetakan ke kotak berdasarkan WORKFLOW_SEQ, bukan urutan
-                        // iterasi — supaya langkah yang dilewati saat pembuatan workflow
-                        // (mis. section tanpa Section Head) menyisakan kotaknya kosong
-                        IList<ApprovalDetail> targetApprovers = type2Templates.Count > 1
-                            ? approvalDetails.Where(x => x.WORKFLOW_SEQ == type2Index + 1).ToList()
-                            : approvalDetails.OrderBy(x => x.WORKFLOW_SEQ).ToList();
-
-                        if (type2Templates.Count > 1 && type2Index == 0)
+                        bool hasSheetPositionCheck = excelTemplateMastersBySheet.Any(x => x.CHECK_SHEET_POSITION == 1);
+                        if (hasSheetPositionCheck)
                         {
-                            User creator = UserRepo.Instance.GetByKey(
-                                new User { USERNAME = documentMaintenance.CREATED_BY }, db);
-                            if (creator != null)
-                            {
-                                int creatorCol = (int)template.COL;
-                                int creatorNameRow = (int)template.ROW + (int)template.MERGE_CELL_ROW + 1;
+                            bool sheetPositionMatched = excelTemplateMastersBySheet.Any(x => x.SHEET_POSITION == sheetPosition);
+                            if (sheetPositionMatched)
+                                selectedSheetPosition = sheetPosition;
 
-                                WriteNameCellSafely(oISheet, creatorNameRow, creatorCol, (int)template.MERGE_CELL_COL, creator.FULL_NAME);
-
-                                if (!string.IsNullOrEmpty(creator.FILE_PATH))
-                                {
-                                    string creatorSignPath = webRootPath + creator.FILE_PATH;
-                                    if (System.IO.File.Exists(creatorSignPath))
-                                    {
-                                        byte[] creatorBytes = System.IO.File.ReadAllBytes(creatorSignPath);
-                                        int creatorPicIndex = workbook.AddPicture(creatorBytes, PictureType.PNG);
-                                        int creatorRowStart = (int)template.ROW + 1;
-
-                                        // Sama seperti stempel tanda tangan approver di bawah - harus
-                                        // bercabang xls (HSSF) vs xlsx (XSSF), NPOI tidak bisa cast
-                                        // HSSFPatriarch ke XSSFDrawing (pernah crash 500 nyata saat ada
-                                        // yang upload file .xls, Jul 2026).
-                                        if (extension.Equals("xlsx"))
-                                        {
-                                            XSSFClientAnchor creatorAnchor = new XSSFClientAnchor
-                                            {
-                                                Row1 = creatorRowStart,
-                                                Col1 = creatorCol
-                                            };
-                                            XSSFDrawing creatorPatriarch = (XSSFDrawing)oISheet.CreateDrawingPatriarch();
-                                            XSSFPicture creatorPicture = (XSSFPicture)creatorPatriarch.CreatePicture(creatorAnchor, creatorPicIndex);
-                                            creatorPicture.Resize((double)template.MERGE_CELL_COL, (double)template.MERGE_CELL_ROW);
-                                        }
-                                        else
-                                        {
-                                            HSSFClientAnchor creatorAnchor = new HSSFClientAnchor
-                                            {
-                                                Row1 = creatorRowStart,
-                                                Col1 = creatorCol
-                                            };
-                                            HSSFPatriarch creatorPatriarch = oISheet.CreateDrawingPatriarch() as HSSFPatriarch;
-                                            HSSFPicture creatorPicture = creatorPatriarch?.CreatePicture(creatorAnchor, creatorPicIndex) as HSSFPicture;
-                                            creatorPicture?.Resize((double)template.MERGE_CELL_COL, (double)template.MERGE_CELL_ROW);
-                                        }
-                                    }
-                                }
-                            }
-                            type2Index++;
-                            continue;
+                            excelTemplateMastersBySheet = excelTemplateMastersBySheet
+                                .Where(x => x.SHEET_POSITION == selectedSheetPosition)
+                                .ToList();
                         }
 
-                        if (!targetApprovers.Any())
+                        var type2Templates = excelTemplateMastersBySheet
+                         .Where(x => x.TYPE == 2 && x.FIELD_NAME.Equals("DIGITAL_SIGN"))
+                         .OrderBy(x => x.TEMPLATE_ID)
+                         .ToList();
+
+                        int type2Index = 0;
+
+                        foreach (ExcelTemplateMaster template in excelTemplateMastersBySheet)
                         {
-                            type2Index++;
-                            continue;
-                        }
-
-                        foreach (ApprovalDetail approvalDetail in targetApprovers)
-                        {
-                            int colIndex = (int)template.COL;
-                            if (type2Templates.Count == 1 && approvalDetail.WORKFLOW_SEQ != null)
-                            {
-                                colIndex -= ((int)approvalDetail.WORKFLOW_SEQ - 1) * (int)template.MERGE_CELL_COL;
-                            }
-
-                            User user = UserRepo.Instance.GetByKey(
-                                new User { USERNAME = approvalDetail.APPROVER }, db);
-
-                            if (user == null)
+                            if (coverOnlyFields.Contains(template.FIELD_NAME) && sheetPosition != 0)
                             {
                                 continue;
                             }
 
-                            // ✅ HAPUS label writing — label sudah ada sebagai teks statis di Excel
-                            // labelCell.SetCellValue(approvalDetail.LABEL); ← tidak perlu
-
-                            // Tulis hanya NAMA approver. Pakai WriteNameCellSafely (bukan
-                            // SafeGetCell langsung) supaya kalau baris nama ini ternyata
-                            // masih di dalam merged region gambar tanda tangan (mis. template
-                            // SOP - lihat kotak "Dibuat Oleh"), value-nya dialihkan ke cell
-                            // anchor merge itu - kalau tidak, value akan tertulis ke cell
-                            // non-anchor yang TIDAK dirender Excel sama sekali (nama approver
-                            // jadi tidak tercetak).
-                            int nameRowIndex = (int)template.ROW + (int)template.MERGE_CELL_ROW + 1;
-                            WriteNameCellSafely(oISheet, nameRowIndex, colIndex, (int)template.MERGE_CELL_COL, user.FULL_NAME);
-
-                            if ("1".Equals(approvalDetail.STATUS))
+                            if (template.TYPE == 1)
                             {
-                                string signFullPath = webRootPath + user.FILE_PATH;
-                                if (System.IO.File.Exists(signFullPath))
-                                {
-                                    byte[] bytes = System.IO.File.ReadAllBytes(signFullPath);
-                                    int pictureIndex = workbook.AddPicture(bytes, PictureType.PNG);
-                                    int signRowStart = (int)template.ROW + 1;
+                                PropertyInfo propertyInfo = documentMaintenance.GetType().GetProperty(template.FIELD_NAME);
 
-                                    if (extension.Equals("xlsx"))
+                                if (propertyInfo == null) continue;
+
+                                object propValue = propertyInfo.GetValue(documentMaintenance);
+                                if (propValue == null) continue;
+
+                                DxSetCellValueBlackFont(sheet[(int)template.ROW, (int)template.COL], propValue.ToString());
+                            }
+
+                            if (template.TYPE == 2)
+                            {
+                                int targetSheet = template.SHEET_POSITION ?? 0;
+                                if (targetSheet != sheetPosition) continue;
+
+                                if (approvalDetails.Count == 0) continue;
+                                if (!template.FIELD_NAME.Equals("DIGITAL_SIGN")) continue;
+
+                                // Approver dipetakan ke kotak berdasarkan WORKFLOW_SEQ, bukan
+                                // urutan iterasi — supaya langkah yang dilewati saat pembuatan
+                                // workflow (mis. section tanpa Section Head) menyisakan
+                                // kotaknya kosong.
+                                IList<ApprovalDetail> targetApprovers = type2Templates.Count > 1
+                                    ? approvalDetails.Where(x => x.WORKFLOW_SEQ == type2Index + 1).ToList()
+                                    : approvalDetails.OrderBy(x => x.WORKFLOW_SEQ).ToList();
+
+                                if (type2Templates.Count > 1 && type2Index == 0)
+                                {
+                                    User creator = UserRepo.Instance.GetByKey(
+                                        new User { USERNAME = documentMaintenance.CREATED_BY }, db);
+                                    if (creator != null)
                                     {
-                                        XSSFClientAnchor anchor = new XSSFClientAnchor
+                                        int creatorCol = (int)template.COL;
+                                        // Kotak "Dibuat Oleh" pakai 2 baris: baris tepat di bawah
+                                        // gambar tanda tangan (+1) nampilin NAMA LENGKAP, baris
+                                        // berikutnya (+2) nampilin POSISI - baris +2 ini di
+                                        // template sering sudah ada teks contoh lama yang nempel
+                                        // dari waktu template dibuat (mis. "Jayadi", "Santika"),
+                                        // jadi ditimpa langsung (request user 2026-08-10).
+                                        int creatorNameRow = (int)template.ROW + (int)template.MERGE_CELL_ROW + 1;
+                                        int creatorPositionRow = (int)template.ROW + (int)template.MERGE_CELL_ROW + 2;
+
+                                        DxWriteNameCellSafely(sheet, creatorNameRow, creatorCol, (int)template.MERGE_CELL_COL, creator.FULL_NAME);
+                                        DxWriteNameCellSafely(sheet, creatorPositionRow, creatorCol, (int)template.MERGE_CELL_COL, creator.POSITION_NAME);
+
+                                        if (!string.IsNullOrEmpty(creator.SIGNATURE_PATH))
                                         {
-                                            Row1 = signRowStart,
-                                            Col1 = colIndex
-                                        };
-                                        XSSFDrawing patriarch = (XSSFDrawing)oISheet.CreateDrawingPatriarch();
-                                        XSSFPicture picture = (XSSFPicture)patriarch.CreatePicture(anchor, pictureIndex);
-                                        picture.Resize((double)template.MERGE_CELL_COL, (double)template.MERGE_CELL_ROW);
+                                            string creatorSignPath = webRootPath + creator.SIGNATURE_PATH;
+                                            if (System.IO.File.Exists(creatorSignPath))
+                                            {
+                                                int creatorRowStart = (int)template.ROW + 1;
+                                                DxAddPicture(sheet, creatorSignPath, creatorRowStart, creatorCol, (int)template.MERGE_CELL_COL, (int)template.MERGE_CELL_ROW);
+                                            }
+                                        }
                                     }
-                                    else
+                                    type2Index++;
+                                    continue;
+                                }
+
+                                if (!targetApprovers.Any())
+                                {
+                                    type2Index++;
+                                    continue;
+                                }
+
+                                foreach (ApprovalDetail approvalDetail in targetApprovers)
+                                {
+                                    int colIndex = (int)template.COL;
+                                    if (type2Templates.Count == 1 && approvalDetail.WORKFLOW_SEQ != null)
                                     {
-                                        HSSFClientAnchor anchor = new HSSFClientAnchor
-                                        {
-                                            Row1 = signRowStart,
-                                            Col1 = colIndex
-                                        };
-                                        HSSFPatriarch patriarch = oISheet.CreateDrawingPatriarch() as HSSFPatriarch;
-                                        HSSFPicture picture = patriarch?.CreatePicture(anchor, pictureIndex) as HSSFPicture;
-                                        picture?.Resize((double)template.MERGE_CELL_COL, (double)template.MERGE_CELL_ROW);
+                                        colIndex -= ((int)approvalDetail.WORKFLOW_SEQ - 1) * (int)template.MERGE_CELL_COL;
                                     }
+
+                                    User user = UserRepo.Instance.GetByKey(
+                                        new User { USERNAME = approvalDetail.APPROVER }, db);
+
+                                    if (user == null)
+                                    {
+                                        continue;
+                                    }
+
+                                    // Pakai DxWriteNameCellSafely supaya kalau baris ini ternyata
+                                    // masih di dalam merged region gambar tanda tangan, value-nya
+                                    // dialihkan ke cell anchor merge itu.
+                                    // Baris posisi (+2) di template sering sudah ada teks contoh
+                                    // lama yang nempel dari waktu template dibuat (mis. "Imbrianto
+                                    // K", "Santika"), jadi ditimpa langsung dengan posisi approver
+                                    // yang sebenarnya - sama seperti kotak "Dibuat Oleh".
+                                    int nameRowIndex = (int)template.ROW + (int)template.MERGE_CELL_ROW + 1;
+                                    int positionRowIndex = (int)template.ROW + (int)template.MERGE_CELL_ROW + 2;
+                                    DxWriteNameCellSafely(sheet, nameRowIndex, colIndex, (int)template.MERGE_CELL_COL, user.FULL_NAME);
+                                    DxWriteNameCellSafely(sheet, positionRowIndex, colIndex, (int)template.MERGE_CELL_COL, user.POSITION_NAME);
+
+                                    if ("1".Equals(approvalDetail.STATUS))
+                                    {
+                                        string signFullPath = webRootPath + user.SIGNATURE_PATH;
+                                        if (System.IO.File.Exists(signFullPath))
+                                        {
+                                            int signRowStart = (int)template.ROW + 1;
+                                            DxAddPicture(sheet, signFullPath, signRowStart, colIndex, (int)template.MERGE_CELL_COL, (int)template.MERGE_CELL_ROW);
+                                        }
+                                    }
+                                }
+
+                                type2Index++;
+                            }
+
+                            if (template.TYPE == 3)
+                            {
+                                DxSetCellValueBlackFont(sheet[(int)template.ROW, (int)template.COL], "-"); // default
+
+                                if (template.FIELD_NAME.Equals("DOCUMENT_REVISION_0_DATE"))
+                                {
+                                    PropertyInfo propertyInfo = documentMaintenance.GetType()
+                                        .GetProperty(template.FIELD_NAME);
+                                    if (propertyInfo == null) continue;
+                                    object propValue = propertyInfo.GetValue(documentMaintenance);
+                                    if (propValue == null) continue;
+
+                                    string formattedDate = ParseAndFormatDate(propValue.ToString());
+                                    DxSetCellValueBlackFont(sheet[(int)template.ROW, (int)template.COL], formattedDate);
+                                }
+
+                                if (template.FIELD_NAME.Equals("DOCUMENT_DATE"))
+                                {
+                                    PropertyInfo propertyInfo = documentMaintenance.GetType().GetProperty(template.FIELD_NAME);
+                                    PropertyInfo revisionPropertyInfo = documentMaintenance.GetType().GetProperty("REVISION");
+                                    if (propertyInfo == null || revisionPropertyInfo == null) continue;
+
+                                    object propValue = propertyInfo.GetValue(documentMaintenance);
+                                    object revisionValue = revisionPropertyInfo.GetValue(documentMaintenance);
+                                    if (propValue == null || revisionValue == null || revisionValue.ToString() == "0") continue;
+
+                                    string formattedDate = ParseAndFormatDate(propValue.ToString());
+                                    DxSetCellValueBlackFont(sheet[(int)template.ROW, (int)template.COL], formattedDate);
                                 }
                             }
                         }
 
-                        type2Index++;
+                        sheetPosition++;
                     }
 
+                    // DevExpress menghitung ulang formula (termasuk lintas-sheet, mis.
+                    // "=COVER!H5") sendiri saat export - tidak perlu "flatten to values"
+                    // manual seperti dulu (itu workaround khusus LibreOffice headless
+                    // yang tidak selalu recalculate).
+                    workbook.Calculate();
 
-                    if (template.TYPE == 3)
+                    workbook.ExportToPdf(outputPdfPath);
+                }
+
+                // Safety-net yang sama seperti ConvertToPdf: pastikan hasilnya benar-benar
+                // punya halaman sebelum dianggap sukses.
+                using (PdfDocument checkDoc = PdfReader.Open(outputPdfPath, PdfDocumentOpenMode.InformationOnly))
+                {
+                    if (checkDoc.PageCount == 0)
                     {
-                        IRow oIRow = SafeGetRow(oISheet, (int)template.ROW);
-                        ICell oICell = SafeGetCell(oIRow, (int)template.COL);
-                        SetCellValueBlackFont(workbook, oICell, "-"); // default
-
-                        if (template.FIELD_NAME.Equals("DOCUMENT_REVISION_0_DATE"))
-                        {
-                            PropertyInfo propertyInfo = documentMaintenance.GetType()
-                                .GetProperty(template.FIELD_NAME);
-                            if (propertyInfo == null) continue;
-                            object propValue = propertyInfo.GetValue(documentMaintenance);
-                            if (propValue == null) continue;
-
-                            string formattedDate = ParseAndFormatDate(propValue.ToString());
-                            oIRow = SafeGetRow(oISheet, (int)template.ROW);
-                            oICell = SafeGetCell(oIRow, (int)template.COL);
-                            SetCellValueBlackFont(workbook, oICell, formattedDate); // ← aktifkan ini
-                        }
-
-                        if (template.FIELD_NAME.Equals("DOCUMENT_DATE"))
-                        {
-                            PropertyInfo propertyInfo = documentMaintenance.GetType().GetProperty(template.FIELD_NAME);
-                            PropertyInfo revisionPropertyInfo = documentMaintenance.GetType().GetProperty("REVISION");
-                            if (propertyInfo == null || revisionPropertyInfo == null) continue;
-
-                            object propValue = propertyInfo.GetValue(documentMaintenance);
-                            object revisionValue = revisionPropertyInfo.GetValue(documentMaintenance);
-                            if (propValue == null || revisionValue == null || revisionValue.ToString() == "0") continue;
-
-                            string formattedDate = ParseAndFormatDate(propValue.ToString());
-                            oIRow = SafeGetRow(oISheet, (int)template.ROW);
-                            oICell = SafeGetCell(oIRow, (int)template.COL);
-                            SetCellValueBlackFont(workbook, oICell, formattedDate); // ← aktifkan ini
-                        }
+                        System.IO.File.Delete(outputPdfPath);
+                        return new DBResult(false, "PDF conversion produced no pages.");
                     }
                 }
 
-                sheetPosition++;
+                return new DBResult(true, "File Converted");
             }
-
-            // ── 6. Evaluate formula & simpan file ───────────────────────────────────
-            if (extension.Equals("xlsx"))
-                XSSFFormulaEvaluator.EvaluateAllFormulaCells(workbook);
-            else
-                HSSFFormulaEvaluator.EvaluateAllFormulaCells(workbook);
-
-            // ✅ Bekukan hasil formula (mis. formula lintas-sheet "=COVER!xxx")
-            // jadi nilai statis, supaya LibreOffice tidak perlu recalculate ulang
-            // saat convert ke PDF (headless conversion tidak selalu recalculate).
-            FlattenFormulasToValues(workbook);
-
-            if (extension.Equals("xlsx"))
+            catch (Exception ex)
             {
-                byte[] npoiOutputBytes;
-                using (var msNpoiOut = new System.IO.MemoryStream())
-                {
-                    workbook.Write(msNpoiOut);
-                    npoiOutputBytes = msNpoiOut.ToArray();
-                }
-
-                // Bersihkan Print_Titles dari hasil NPOI
-                byte[] finalBytes = CleanPrintTitlesInMemory(npoiOutputBytes);
-
-                using (FileStream fileStream = new FileStream(outputFullPath, FileMode.Create, FileAccess.Write))
-                {
-                    fileStream.Write(finalBytes, 0, finalBytes.Length);
-                }
+                return new DBResult(false, ex.Message);
             }
-            else
-            {
-                using (FileStream fileStream = new FileStream(outputFullPath, FileMode.Create, FileAccess.Write))
-                {
-                    workbook.Write(fileStream);
-                }
-            }
-
-            return outputFileName;
         }
 
-        // ✅ Helper: bersihkan Print_Titles dari xlsx di memory
-        private byte[] CleanPrintTitlesInMemory(byte[] inputBytes)
+        // Stempel MASTER (cap_master.png) cuma boleh muncul setelah dokumen didaftarkan
+        // ke P4D DAN sudah di-approve/receive oleh QMS (TB_R_CTRL_DOCUMENT.STATUS = '2',
+        // lihat sp_P4DMaintenance_ApproveReject) - BUKAN begitu approval Document
+        // Preparation-nya sendiri (TB_R_DOCUMENT.STATUS = '1') selesai. loginUser
+        // sengaja null - ini cek eksistensi/status murni, tanpa scoping divisi/dept.
+        private bool IsReceivedByQms(int? documentTransactionId)
         {
-            using (var msIn = new System.IO.MemoryStream(inputBytes))
-            using (var msOut = new System.IO.MemoryStream())
-            {
-                using (var zipIn = new System.IO.Compression.ZipArchive(
-                    msIn, System.IO.Compression.ZipArchiveMode.Read))
-                using (var zipOut = new System.IO.Compression.ZipArchive(
-                    msOut, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
-                {
-                    foreach (var entry in zipIn.Entries)
-                    {
-                        if (entry.Length == 0 && entry.FullName.EndsWith("/"))
-                            continue;
-
-                        if (string.Equals(entry.FullName, "xl/workbook.xml",
-                            StringComparison.OrdinalIgnoreCase))
-                        {
-                            string xmlContent;
-                            using (var reader = new System.IO.StreamReader(
-                                entry.Open(), System.Text.Encoding.UTF8))
-                            {
-                                xmlContent = reader.ReadToEnd();
-                            }
-
-                            string cleaned = System.Text.RegularExpressions.Regex.Replace(
-                                xmlContent,
-                                @"<definedName\s[^>]*name=""_xlnm\.Print_Titles""[^>]*/?>(?:.*?</definedName>)?",
-                                string.Empty,
-                                System.Text.RegularExpressions.RegexOptions.Singleline
-                            );
-
-                            var outEntry = zipOut.CreateEntry(entry.FullName);
-                            using (var outStream = outEntry.Open())
-                            using (var writer = new System.IO.StreamWriter(
-                                outStream, System.Text.Encoding.UTF8))
-                            {
-                                writer.Write(cleaned);
-                            }
-                        }
-                        else
-                        {
-                            var outEntry = zipOut.CreateEntry(entry.FullName);
-                            using (var inStream = entry.Open())
-                            using (var outStream = outEntry.Open())
-                            {
-                                inStream.CopyTo(outStream);
-                            }
-                        }
-                    }
-                }
-
-                return msOut.ToArray();
-            }
+            DocumentControlMaintenance ctrlDocument = p4DMaintenanceRepo
+                .Search(new DocumentControlMaintenance { DOCUMENT_TRANSACTION_ID = documentTransactionId }, null, db, 1, 1)
+                .FirstOrDefault();
+            return ctrlDocument != null && ctrlDocument.STATUS == "2";
         }
 
-        // ── Helper Methods ───────────────────────────────────────────────────────────
+        private void DxSetCellValueBlackFont(DevExpress.Spreadsheet.Cell cell, string value)
+        {
+            cell.SetValueFromText(value);
+            cell.Font.Color = System.Drawing.Color.Black;
+        }
+
+        private void DxSetCellValueBlackFontBottomAligned(DevExpress.Spreadsheet.Cell cell, string value)
+        {
+            DxSetCellValueBlackFont(cell, value);
+            cell.Alignment.Vertical = DevExpress.Spreadsheet.SpreadsheetVerticalAlignment.Bottom;
+        }
 
         /// <summary>
-        /// Ganti semua cell berformula (termasuk formula lintas-sheet seperti
-        /// "=COVER!H5") dengan nilai hasil hitungnya. Dipanggil setelah
-        /// EvaluateAllFormulaCells supaya LibreOffice tidak perlu recalculate
-        /// ulang saat convert ke PDF.
+        /// Tulis nama ke cell - kalau cell itu ternyata bagian dari merged region
+        /// (mis. template SOP yang menggabungkan area gambar tanda tangan + baris
+        /// nama jadi satu kotak), value dialihkan ke cell anchor (kiri-atas) merge
+        /// itu supaya benar-benar tampil, bukan ke cell non-anchor yang tidak
+        /// dirender. Kalau belum ada merge, buat baru selebar mergeCellCol.
         /// </summary>
-        private void FlattenFormulasToValues(IWorkbook workbook)
+        private void DxWriteNameCellSafely(DevExpress.Spreadsheet.Worksheet sheet, int row, int col, int mergeCellCol, string value)
         {
-            for (int s = 0; s < workbook.NumberOfSheets; s++)
+            IList<DevExpress.Spreadsheet.CellRange> existingMerges = sheet[row, col].GetMergedRanges();
+            if (existingMerges.Count > 0)
             {
-                ISheet sheet = workbook.GetSheetAt(s);
-                foreach (IRow row in sheet)
-                {
-                    foreach (ICell cell in row)
-                    {
-                        if (cell.CellType != CellType.Formula) continue;
-
-                        switch (cell.CachedFormulaResultType)
-                        {
-                            case CellType.Numeric:
-                                double numVal = cell.NumericCellValue;
-                                cell.SetCellType(CellType.Blank);
-                                cell.SetCellValue(numVal);
-                                break;
-                            case CellType.String:
-                                string strVal = cell.StringCellValue;
-                                cell.SetCellType(CellType.Blank);
-                                cell.SetCellValue(strVal);
-                                break;
-                            case CellType.Boolean:
-                                bool boolVal = cell.BooleanCellValue;
-                                cell.SetCellType(CellType.Blank);
-                                cell.SetCellValue(boolVal);
-                                break;
-                            default:
-                                cell.SetCellType(CellType.Blank);
-                                break;
-                        }
-                    }
-                }
+                DevExpress.Spreadsheet.CellRange existing = existingMerges[0];
+                DxSetCellValueBlackFontBottomAligned(sheet[existing.TopRowIndex, existing.LeftColumnIndex], value);
             }
+            else
+            {
+                DxSetCellValueBlackFontBottomAligned(sheet[row, col], value);
+                sheet.MergeCells(sheet.Range.FromLTRB(col, row, col + mergeCellCol - 1, row));
+            }
+        }
+
+        private void DxAddPicture(DevExpress.Spreadsheet.Worksheet sheet, string imagePath, int rowStart, int colStart, int mergeCellCol, int mergeCellRow)
+        {
+            DevExpress.Spreadsheet.CellRange targetRange = sheet.Range.FromLTRB(colStart, rowStart, colStart + mergeCellCol - 1, rowStart + mergeCellRow - 1);
+            sheet.Pictures.AddPicture(DevExpress.Spreadsheet.SpreadsheetImageSource.FromFile(imagePath), targetRange, false);
         }
 
         /// <summary>
@@ -2137,73 +2021,6 @@ namespace DMS.Controllers
             }
 
             return null;
-        }
-
-        /// <summary>
-        /// Ambil row yang sudah ada, atau buat baru jika null.
-        /// NPOI mengembalikan null untuk row yang sepenuhnya kosong di Excel.
-        /// </summary>
-        private IRow SafeGetRow(ISheet sheet, int rowIndex)
-            => sheet.GetRow(rowIndex) ?? sheet.CreateRow(rowIndex);
-
-        /// <summary>
-        /// Ambil cell yang sudah ada, atau buat baru jika null.
-        /// NPOI mengembalikan null untuk cell yang belum pernah dibuat di Excel.
-        /// </summary>
-        private ICell SafeGetCell(IRow row, int colIndex)
-            => row.GetCell(colIndex) ?? row.CreateCell(colIndex);
-
-        /// <summary>
-        /// Tulis nilai ke cell dan paksa warna font jadi hitam.
-        /// Style di-clone dulu supaya cell lain yang berbagi style/font
-        /// yang sama (mis. teks merah di body dokumen) tidak ikut berubah.
-        /// </summary>
-        private void SetCellValueBlackFont(IWorkbook workbook, ICell cell, string value)
-        {
-            cell.SetCellValue(value);
-
-            IFont currentFont = workbook.GetFontAt(cell.CellStyle.FontIndex);
-
-            // 32767 (0x7FFF) = warna "Automatic" pada HSSF, tampil hitam
-            if (currentFont.Color == IndexedColors.Black.Index || currentFont.Color == 32767)
-                return;
-
-            IFont blackFont = workbook.CreateFont();
-            blackFont.FontName = currentFont.FontName;
-            blackFont.FontHeight = currentFont.FontHeight;
-            blackFont.IsBold = currentFont.IsBold;
-            blackFont.IsItalic = currentFont.IsItalic;
-            blackFont.IsStrikeout = currentFont.IsStrikeout;
-            blackFont.Underline = currentFont.Underline;
-            blackFont.TypeOffset = currentFont.TypeOffset;
-            blackFont.Charset = currentFont.Charset;
-            blackFont.Color = IndexedColors.Black.Index;
-
-            ICellStyle blackStyle = workbook.CreateCellStyle();
-            blackStyle.CloneStyleFrom(cell.CellStyle);
-            blackStyle.SetFont(blackFont);
-            cell.CellStyle = blackStyle;
-        }
-
-        /// <summary>
-        /// Sama seperti SetCellValueBlackFont, tapi juga memaksa perataan vertikal
-        /// cell ke Bottom. Dipakai khusus untuk menulis nama pembuat/approver di
-        /// kotak tanda tangan - beberapa template Excel (mis. kategori SOP)
-        /// menggabungkan area gambar tanda tangan dan baris nama jadi SATU merged
-        /// cell dengan perataan vertikal Center bawaan, sehingga teks nama
-        /// tercetak di tengah kotak (numpuk dengan gambar tanda tangan yang
-        /// ditempel di bagian atas) alih-alih tampil rapi di bawahnya.
-        /// </summary>
-        private void SetCellValueBlackFontBottomAligned(IWorkbook workbook, ICell cell, string value)
-        {
-            SetCellValueBlackFont(workbook, cell, value);
-
-            if (cell.CellStyle.VerticalAlignment == NPOI.SS.UserModel.VerticalAlignment.Bottom) return;
-
-            ICellStyle bottomStyle = workbook.CreateCellStyle();
-            bottomStyle.CloneStyleFrom(cell.CellStyle);
-            bottomStyle.VerticalAlignment = NPOI.SS.UserModel.VerticalAlignment.Bottom;
-            cell.CellStyle = bottomStyle;
         }
 
         /// <summary>
@@ -2822,9 +2639,16 @@ namespace DMS.Controllers
                 cell = row.GetCell(i) ?? row.CreateCell(i);
                 cell.SetCellValue(approvalDetail.APPROVER);
 
-                string anotherFullPath = webRootPath + approvalDetail.FILE_PATH;
+                // Dulu pakai approvalDetail.FILE_PATH (foto profil approver, ikut di-join
+                // dari TB_M_USER.FILE_PATH oleh sp_Approval_GetDetail) - salah, itu bukan
+                // tanda tangan. Ambil SIGNATURE_PATH dari user-nya langsung, sama seperti
+                // pola yang sudah benar di GeneratePengesahanPdf (bug ditemukan 2026-08-12).
+                User approverUser = UserRepo.Instance.GetByKey(new User { USERNAME = approvalDetail.APPROVER }, db);
+                string anotherFullPath = approverUser != null && !string.IsNullOrEmpty(approverUser.SIGNATURE_PATH)
+                    ? webRootPath + approverUser.SIGNATURE_PATH
+                    : null;
 
-                if (System.IO.File.Exists(anotherFullPath))
+                if (anotherFullPath != null && System.IO.File.Exists(anotherFullPath))
                 {
                     byte[] anotherBytes = System.IO.File.ReadAllBytes(anotherFullPath);
                     int anotherPictureIndex = workbook.AddPicture(anotherBytes, NPOI.SS.UserModel.PictureType.PNG);
@@ -2889,6 +2713,19 @@ namespace DMS.Controllers
                 {
                     workbook.LoadDocument(inputPath);
                     workbook.ExportToPdf(outputPdfPath);
+                }
+
+                // DevExpress can silently produce a 0-page PDF for some source files
+                // (seen with a complex multi-sheet SharePoint-synced workbook, Aug 2026)
+                // without throwing - catch it here instead of caching/serving a blank
+                // PDF that just shows as a black screen in the viewer.
+                using (PdfDocument checkDoc = PdfReader.Open(outputPdfPath, PdfDocumentOpenMode.InformationOnly))
+                {
+                    if (checkDoc.PageCount == 0)
+                    {
+                        System.IO.File.Delete(outputPdfPath);
+                        return new DBResult(false, "PDF conversion produced no pages. The source file's print area or sheet setup may not be supported - try re-saving it from Excel and upload again.");
+                    }
                 }
 
                 return new DBResult(true, "File Converted");
@@ -2967,8 +2804,8 @@ namespace DMS.Controllers
 
                 // Stempel gambar berdasarkan status dokumen, bukan siapa yang login - lihat
                 // ViewAttachment untuk penjelasan lengkap aturannya (sama persis di sini).
-                bool isApprovedOrPublished = !isObsolete && (currentDocument.STATUS == "1" || currentDocument.STATUS == "5");
                 bool isFullyAcknowledged = !isObsolete && currentDocument.STATUS == "5";
+                bool isMasterStamped = !isObsolete && (isFullyAcknowledged || IsReceivedByQms(currentDocument.DOCUMENT_TRANSACTION_ID));
 
                 string masterStampPath = null;
                 string controlledCopyStampPath = null;
@@ -2980,7 +2817,7 @@ namespace DMS.Controllers
                 }
                 else
                 {
-                    if (isApprovedOrPublished) masterStampPath = webRootPath + "/images/cap_master.png";
+                    if (isMasterStamped) masterStampPath = webRootPath + "/images/cap_master.png";
                     if (isFullyAcknowledged) controlledCopyStampPath = webRootPath + "/images/cap_controlledcopy.png";
                 }
 
@@ -3030,31 +2867,22 @@ namespace DMS.Controllers
                     }
                     else
                     {
-                        pengesahanModifiedfileNames = pengesahanModifiedfileName(webRootPath, documentMaintenance.FILE_PATH, documentMaintenance);
+                        // Sama seperti ViewAttachment - tulis field/tanda tangan langsung
+                        // lewat DevExpress dan export dari workbook yang sama, tanpa
+                        // round-trip lewat NPOI (lihat GeneratePengesahanPdf).
+                        string pengesahanPdfRelative = "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
+                            + System.IO.Path.GetFileNameWithoutExtension(fileName) + ".pdf";
+                        string pengesahanPdfFullPath = webRootPath + pengesahanPdfRelative;
 
-                        if (pengesahanModifiedfileNames == null)
-                            return Json(new { status = false, message = "Error modifying header" });
-
-                        string modifiedFullPath = webRootPath + pengesahanModifiedfileNames;
-                        split = pengesahanModifiedfileNames.Split("/");
-                        fileName = split[4];
-                        extension = GetFileExtension(fileName);
-
-                        result = ConvertToPdf(modifiedFullPath, modifiedFullPath);
+                        result = GeneratePengesahanPdf(webRootPath, documentMaintenance.FILE_PATH, documentMaintenance, pengesahanPdfFullPath);
                         if (!result.status)
                             return Json(new { status = false, message = result.message });
 
-                        if (System.IO.File.Exists(modifiedFullPath))
-                            System.IO.File.Delete(modifiedFullPath);
-
-                        pengesahanModifiedfileNames = pengesahanModifiedfileNames
-                            .Replace("." + extension, ".pdf");
-
-                        string pdfFullPath = webRootPath + pengesahanModifiedfileNames;
+                        pengesahanModifiedfileNames = pengesahanPdfRelative;
 
                         // File hasil konversi ini baru & sekali-pakai, aman di-watermark/stempel langsung.
                         if (masterStampPath != null || controlledCopyStampPath != null || obsoleteStampPath != null)
-                            AddImageStamps(pdfFullPath, pdfFullPath, masterStampPath, controlledCopyStampPath, obsoleteStampPath);
+                            AddImageStamps(pengesahanPdfFullPath, pengesahanPdfFullPath, masterStampPath, controlledCopyStampPath, obsoleteStampPath);
                     }
                 }
 
@@ -3216,38 +3044,6 @@ namespace DMS.Controllers
             }
         }
 
-        private bool TryGetExistingMergedRegion(ISheet sheet, int row, int col, out NPOI.SS.Util.CellRangeAddress existingRegion)
-        {
-            for (int i = 0; i < sheet.NumMergedRegions; i++)
-            {
-                var region = sheet.GetMergedRegion(i);
-                if (region.IsInRange(row, col))
-                {
-                    existingRegion = region;
-                    return true;
-                }
-            }
-            existingRegion = null;
-            return false;
-        }
-
-        private void WriteNameCellSafely(ISheet sheet, int row, int col, int mergeCellCol, string value)
-        {
-            if (TryGetExistingMergedRegion(sheet, row, col, out var existing))
-            {
-                IRow r = SafeGetRow(sheet, existing.FirstRow);
-                ICell c = SafeGetCell(r, existing.FirstColumn);
-                SetCellValueBlackFontBottomAligned(sheet.Workbook, c, value);
-            }
-            else
-            {
-                IRow r = SafeGetRow(sheet, row);
-                ICell c = SafeGetCell(r, col);
-                SetCellValueBlackFontBottomAligned(sheet.Workbook, c, value);
-                sheet.AddMergedRegion(new NPOI.SS.Util.CellRangeAddress(
-                    row, row, col, col + mergeCellCol - 1));
-            }
-        }
     }
 
 

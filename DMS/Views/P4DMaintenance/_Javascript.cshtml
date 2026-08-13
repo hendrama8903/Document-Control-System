@@ -37,6 +37,10 @@
             onReceivePrepare();
         });
 
+        $("#btn_accept").on("click", function () {
+            onAcceptPrepare();
+        });
+
         $("#btn_unreceive").on("click", function () {
             onUnReceivePrepare();
         });
@@ -210,11 +214,16 @@
                 { "data": "DATE", "name": "DATE" },
                 {
                     render: function (data, type, row) {
-                        if (row["STATUS"] == 1) {
-                            return '<span class="label label-success">' + row["STATUS_DISPLAY"] + '</span>';
-                        } else {
+                        if (row["STATUS"] != 1) {
                             return '<span class="label label-danger">' + row["STATUS_DISPLAY"] + '</span>';
                         }
+
+                        // Sent, but only shows "Accepted" once this department has
+                        // clicked Accepted in UserDashboard (request Hendra 2026-08-13).
+                        if (row["ACCEPTED_FLAG"] == 1) {
+                            return '<span class="label label-success">Accepted</span>';
+                        }
+                        return '<span class="label label-warning">Waiting Acceptance</span>';
                     }
                 },
             ],
@@ -845,12 +854,54 @@
         gIsApproved = 'Y';
         $('#addEditRemarks').val('');
         $("#modalApproveReject").modal();
-        $('#modalApproveReject-title').html("Approve Registration");
-        $('#labelConfirmation').html("Are you sure you want to approve the registration for Document No " + gDocumentNo + "? "
-            + "(This confirms the registration entry itself. The destination department confirms physical receipt separately via Acknowledge in My Documents.)");
+        $('#modalApproveReject-title').html("Receive Registration");
+        $('#labelConfirmation').html("Are you sure you want to receive the registration for Document No " + gDocumentNo + "? "
+            + "(First step - status will become Checking. QMS still needs to Accept it afterwards before it can be distributed.)");
         $('#divRemarks').hide();
         $('#modalApproveReject').on('shown.bs.modal', function () {
 
+        });
+    }
+
+    function onAcceptPrepare() {
+
+        var row = getSelectedRowData();
+        if (row == null) {
+            return;
+        }
+
+        gDocumentCtrlId = row.DOCUMENT_CTRL_ID;
+        gDocumentNo = row.DOCUMENT_CODE;
+
+        showConfirmMesg("Are you sure you want to accept Document No " + gDocumentNo
+            + "? (Second step - status will become Accepted, and the document can then be distributed.)",
+            acceptData, "Confirmation");
+    }
+
+    function acceptData() {
+        popUpProgressHide();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("Accept", "P4DMaintenance")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                DOCUMENT_CTRL_ID: gDocumentCtrlId
+            },
+            success: function (result) {
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    popUpProgressHide();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                    popUpProgressHide();
+                }
+            },
+            error: function (result) {
+                popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
         });
     }
 

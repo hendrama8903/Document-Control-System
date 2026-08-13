@@ -102,6 +102,11 @@
                     gAvatarFile = null;
                     $("#avatarFileInput").val("");
                     $("#imgAvatar").attr("src", data.FILE_PATH ? data.FILE_PATH : "@Url.Content("~/dist/img/user.png")");
+                    // Foto profil di header (_AdminLayout, di luar partial ini) - update
+                    // langsung juga supaya tidak perlu logout/login ulang buat lihat
+                    // foto baru. Session FILE_PATH-nya sendiri sudah di-refresh di
+                    // server (UserController.AddEditAsync) untuk kunjungan berikutnya.
+                    $("#imgHeaderAvatar").attr("src", data.FILE_PATH ? data.FILE_PATH : "@Url.Content("~/dist/img/user.png")");
 
                     updateSignaturePreview(data.SIGNATURE_PATH);
                 } else {

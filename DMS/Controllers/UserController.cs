@@ -44,6 +44,31 @@ namespace DMS.Controllers
         private PositionMasterRepo positionRepo = PositionMasterRepo.Instance;
         private MSystemRepo mSystemRepo = MSystemRepo.Instance;
 
+        // Update FULL_NAME/SIGNATURE_PATH tidak menyentuh dokumen manapun secara
+        // langsung - PDF pengesahan yang sudah kepajang di cache DOCUMENT_TEMP tetap
+        // pakai data lama sampai cache-nya dibuang. Daripada melacak dokumen mana saja
+        // yang melibatkan user ini sebagai pembuat/approver, cukup buang seluruh cache
+        // pengesahan begitu ada perubahan profile; preview berikutnya otomatis generate
+        // ulang dengan data terbaru (biayanya cuma delay sekali di preview pertama).
+        private void ClearPengesahanPdfCache()
+        {
+            try
+            {
+                string cacheDir = Path.Combine(Environment.WebRootPath, "Upload", "ATTACHMENT", "DOCUMENT_TEMP");
+                if (Directory.Exists(cacheDir))
+                {
+                    foreach (string file in Directory.GetFiles(cacheDir, "TEMP_*"))
+                    {
+                        System.IO.File.Delete(file);
+                    }
+                }
+            }
+            catch
+            {
+                // Best-effort - kegagalan hapus cache tidak boleh menggagalkan update profile.
+            }
+        }
+
         public ActionResult Index()
         {
             if (HttpContext.Session.GetString("USERNAME") == null)
@@ -260,6 +285,20 @@ namespace DMS.Controllers
                     if (data.AD_USER == "1" || (data.PASSWORD == null && data.OLD_PASSWORD == null && data.CONFIRM_PASSWORD == null))
                     {
                         result = userRepo.Update(data, GetLoginUsername(), db);
+                        if (result.status)
+                        {
+                            ClearPengesahanPdfCache();
+
+                            // Foto profil di header (_AdminLayout) dibaca dari session
+                            // FILE_PATH yang diisi saat login - kalau user sedang edit
+                            // profilnya sendiri (bukan admin edit user lain), session itu
+                            // harus ikut di-refresh di sini juga, supaya foto baru
+                            // langsung kelihatan di header tanpa perlu logout/login ulang.
+                            if (data.USERNAME == GetLoginUsername())
+                            {
+                                HttpContext.Session.SetString("FILE_PATH", data.FILE_PATH ?? "");
+                            }
+                        }
                     }
                     else if (data.PASSWORD == null || data.CONFIRM_PASSWORD == null)
                     {
@@ -393,6 +432,10 @@ namespace DMS.Controllers
 
                 data.SIGNATURE_PATH = path + fileName;
                 DBResult result = userRepo.UpdateSignature(data, GetLoginUsername(), db);
+                if (result.status)
+                {
+                    ClearPengesahanPdfCache();
+                }
                 return Json(new { status = result.status, message = result.message, filePath = data.SIGNATURE_PATH });
             }
             catch (Exception ex)
@@ -417,6 +460,10 @@ namespace DMS.Controllers
 
                 data.SIGNATURE_PATH = null;
                 DBResult result = userRepo.UpdateSignature(data, GetLoginUsername(), db);
+                if (result.status)
+                {
+                    ClearPengesahanPdfCache();
+                }
                 return Json(result);
             }
             catch (Exception ex)

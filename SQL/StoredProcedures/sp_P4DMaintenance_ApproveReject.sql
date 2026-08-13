@@ -46,14 +46,25 @@ BEGIN TRY
 		END
 	END
 
+	-- Receive (Y) sekarang cuma langkah pertama: Draft -> On Progress.
+	-- Sebelumnya langsung ke Received (2), tapi ditambah langkah Accept
+	-- terpisah (sp_P4DMaintenance_Accept) yang baru benar-benar pindah ke
+	-- Received - request user 2026-08-13.
+	IF @IS_APPROVED = 'Y' AND @cur_STATUS <> '0'
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Document No ' + IIF(ISNULL(@DOCUMENT_CODE, '') = '', @cur_DOCUMENT_NO, @DOCUMENT_CODE) + ' is not in Draft status, receive is not allowed';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+		RETURN 0;
+	END
+
 	UPDATE TB_R_CTRL_DOCUMENT
-	SET [STATUS] = IIF(@IS_APPROVED = 'Y', '2', '3')
+	SET [STATUS] = IIF(@IS_APPROVED = 'Y', '1', '3')
 		, [REMARKS] = IIF(@IS_APPROVED = 'Y', [REMARKS], @REMARKS)
 		, CHANGED_BY = @LOGIN_USER
 		, CHANGED_DT = GETDATE()
 	WHERE DOCUMENT_CTRL_ID = @DOCUMENT_CTRL_ID
 
-	SET @RETURN_MSG = 'Successfully '+ IIF(@IS_APPROVED = 'Y', 'Approve', 'Reject') +' Data'
+	SET @RETURN_MSG = 'Successfully '+ IIF(@IS_APPROVED = 'Y', 'Receive', 'Reject') +' Data'
 	EXEC sp_WriteLog @PROCESS_ID, '2', 'INF', @RETURN_MSG, @LOCATION, @LOGIN_USER
 	RETURN 1;
 END TRY

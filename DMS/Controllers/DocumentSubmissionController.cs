@@ -6,9 +6,6 @@ using DMS.Models.DB.Commons;
 using DMS.Models.Repo;
 using MDC.Models.Repo;
 using Microsoft.AspNetCore.Mvc;
-using NPOI.SS.UserModel;
-using NPOI.SS.Util;
-using NPOI.XSSF.UserModel;
 
 namespace DMS.Controllers
 {
@@ -51,7 +48,7 @@ namespace DMS.Controllers
             ViewData["Print"] = HttpContext.Session.GetString("functionList").Contains("DOCSUBMISSION-PRINT");
             ViewData["Approve"] = HttpContext.Session.GetString("functionList").Contains("DOCSUBMISSION-APPROVE");
 
-            ViewData["Title"] = "Document Submission Form";
+            ViewData["Title"] = "Document Request";
 
             return View();
         }
@@ -435,12 +432,17 @@ namespace DMS.Controllers
             }
         }
 
-        // Cetak form QMS "QCD/FR-QMS-00/003" - dulu digambar manual dari nol pakai
-        // PdfSharp, sekarang diganti (request user 2026-08-09): generate Excel-nya
-        // dulu (BuildSubmissionExcel, isi sheet P4D asli QMS) baru dikonversi ke PDF
-        // pakai DevExpress Spreadsheet Document API (pola sama seperti
-        // DocumentMaintenanceController.ConvertToPdf) - supaya PDF & Excel selalu
-        // identik dan keduanya persis mengikuti format resmi, bukan approksimasi.
+        // Cetak form QMS "QCD/FR-QMS-00/003". Dulu digambar manual dari nol pakai
+        // PdfSharp, lalu diganti NPOI (isi template) + DevExpress (convert PDF).
+        // DIGANTI LAGI 2026-08-11 jadi DevExpress SAJA (NPOI tidak dipakai sama
+        // sekali) - alasan sama persis dengan CopyRequestController: template
+        // punya kotak tanda tangan "Disetujui/Diperiksa/Dibuat Oleh" berupa
+        // gambar "camera" ter-link (legacy VML) yang SELALU hilang begitu file
+        // disentuh NPOI lalu dirender DevExpress (dikonfirmasi 2026-08-11 -
+        // Hendra sempat bilang "bukannya sudah ada di templatenya?" dan benar,
+        // itu bug rendering, bukan fitur yang belum dibuat). DevExpress sendiri
+        // (tanpa NPOI) terbukti tidak merusak gambar itu. Lihat
+        // [[dms-copyrequest-approval-simplified]] untuk detail investigasi bug-nya.
         public IActionResult PrintForm(int submissionId)
         {
             DocumentSubmission header = documentSubmissionRepo.GetByKey(new DocumentSubmission { SUBMISSION_ID = submissionId }, db);
@@ -451,8 +453,11 @@ namespace DMS.Controllers
 
             IList<DocumentSubmissionDetail> details = documentSubmissionRepo.SearchDetail(new DocumentSubmissionDetail { SUBMISSION_ID = submissionId }, db, null, null);
 
-            byte[] excelBytes = BuildSubmissionExcel(header, details);
-            byte[] pdfBytes = ConvertExcelToPdf(excelBytes);
+            using DevExpress.Spreadsheet.Workbook workbook = new DevExpress.Spreadsheet.Workbook();
+            PopulateSubmissionWorkbook(workbook, header, details);
+
+            using MemoryStream stream = new MemoryStream();
+            workbook.ExportToPdf(stream);
 
             // Overload 2-argumen (tanpa fileDownloadName) supaya Content-Disposition
             // TIDAK "attachment" - biar langsung tampil di PDF viewer bawaan browser
@@ -460,31 +465,7 @@ namespace DMS.Controllers
             // 3-argumen dengan filename, browser selalu paksa download alih-alih
             // preview inline, sehingga tab yang dibuka otomatis setelah Save
             // (lihat finishSaveHeader di _Javascript.cshtml) tetap kosong.
-            return File(pdfBytes, "application/pdf");
-        }
-
-        private static byte[] ConvertExcelToPdf(byte[] excelBytes)
-        {
-            string tempXlsxPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".xlsx");
-            string tempPdfPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".pdf");
-
-            try
-            {
-                System.IO.File.WriteAllBytes(tempXlsxPath, excelBytes);
-
-                using (var workbook = new DevExpress.Spreadsheet.Workbook())
-                {
-                    workbook.LoadDocument(tempXlsxPath);
-                    workbook.ExportToPdf(tempPdfPath);
-                }
-
-                return System.IO.File.ReadAllBytes(tempPdfPath);
-            }
-            finally
-            {
-                if (System.IO.File.Exists(tempXlsxPath)) System.IO.File.Delete(tempXlsxPath);
-                if (System.IO.File.Exists(tempPdfPath)) System.IO.File.Delete(tempPdfPath);
-            }
+            return File(stream.ToArray(), "application/pdf");
         }
 
         // Export ke format Excel resmi QCD/FR-QMS-00/003 (sheet "P4D") - bukan
@@ -503,7 +484,9 @@ namespace DMS.Controllers
 
             IList<DocumentSubmissionDetail> details = documentSubmissionRepo.SearchDetail(new DocumentSubmissionDetail { SUBMISSION_ID = submissionId }, db, null, null);
 
-            byte[] excelBytes = BuildSubmissionExcel(header, details);
+            using DevExpress.Spreadsheet.Workbook workbook = new DevExpress.Spreadsheet.Workbook();
+            PopulateSubmissionWorkbook(workbook, header, details);
+            byte[] excelBytes = workbook.SaveDocument(DevExpress.Spreadsheet.DocumentFormat.Xlsx);
 
             string fileSuffix = (header.SUBMISSION_NO ?? submissionId.ToString()).Replace("/", "-");
             return File(excelBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "FORM-P4D-" + fileSuffix + ".xlsx");
@@ -522,44 +505,28 @@ namespace DMS.Controllers
         };
 
         // Baris dokumen di sheet P4D cuma nampung 17 baris per halaman (19-33 =
-        // 15 baris utama, 37-38 = 2 baris tambahan) - kalau dokumennya lebih
-        // banyak, sheet "P4D" di-clone jadi "P4D (2)", "P4D (3)", dst, masing-
-        // masing diberi nomor "Halaman X of Y" sesuai kolom yang sudah disediakan
-        // template (request user 2026-08-09, opsi "duplikasi sheet per 17 baris").
+        // 15 baris utama, 37-38 = 2 baris tambahan, baris 34-36 sengaja dilompati
+        // - itu area kotak tanda tangan "Disetujui/Diperiksa/Dibuat Oleh") - kalau
+        // dokumennya lebih banyak, sheet "P4D" di-clone jadi "P4D (2)", "P4D (3)",
+        // dst, masing-masing diberi nomor "Halaman X of Y" sesuai kolom yang
+        // sudah disediakan template.
         private static readonly int[] ExcelDataRows = { 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 37, 38 };
         private const int ExcelRowsPerPage = 17;
         private static readonly string[] DistributionColumns = { "BT", "BU", "BV", "BW", "BX", "BY", "BZ" };
-        private const string ExcelCheckMark = "\u00FC"; // "ü" - checkmark di template (font checkbox sudah melekat di style sel, bukan di karakternya)
 
-        private byte[] BuildSubmissionExcel(DocumentSubmission header, IList<DocumentSubmissionDetail> details)
+        private void PopulateSubmissionWorkbook(DevExpress.Spreadsheet.Workbook workbook, DocumentSubmission header, IList<DocumentSubmissionDetail> details)
         {
             string templatePath = Path.Combine(Environment.WebRootPath, "Document", "DocumentSubmission", "FORM-P4D-Template.xlsx");
+            workbook.LoadDocument(templatePath);
 
-            IWorkbook workbook;
-            using (FileStream fs = new FileStream(templatePath, FileMode.Open, FileAccess.Read))
-            {
-                workbook = new XSSFWorkbook(fs);
-            }
-
-            // Beberapa sel checkbox di template ASLI ternyata salah font (harusnya
-            // Wingdings/Marlett biar karakter "ü" tampil sebagai centang, tapi
-            // sebagian kepasang Calibri/Arial biasa - kelihatan dari hasil export
-            // yang nampilin huruf "ü" polos dalam kotak, bukan tanda centang).
-            // Jadi font Wingdings dipaksa manual di sini tiap kali nulis centang,
-            // bukan mengandalkan style sel yang sudah ada di template.
-            IFont wingdingsFont = workbook.CreateFont();
-            wingdingsFont.FontName = "Wingdings";
-            wingdingsFont.FontHeightInPoints = 10;
-            wingdingsFont.IsBold = true;
-
-            int p4dIndex = workbook.GetSheetIndex("P4D");
+            DevExpress.Spreadsheet.Worksheet baseSheet = workbook.Worksheets["P4D"];
             int pageCount = Math.Max(1, (int)Math.Ceiling(details.Count / (double)ExcelRowsPerPage));
 
-            var pageSheets = new List<ISheet> { workbook.GetSheetAt(p4dIndex) };
+            var pageSheets = new List<DevExpress.Spreadsheet.Worksheet> { baseSheet };
             for (int p = 2; p <= pageCount; p++)
             {
-                ISheet cloned = workbook.CloneSheet(p4dIndex);
-                workbook.SetSheetName(workbook.GetSheetIndex(cloned), "P4D (" + p + ")");
+                DevExpress.Spreadsheet.Worksheet cloned = workbook.Worksheets.Add("P4D (" + p + ")");
+                cloned.CopyFrom(baseSheet);
                 pageSheets.Add(cloned);
             }
 
@@ -584,29 +551,28 @@ namespace DMS.Controllers
 
             for (int p = 0; p < pageSheets.Count; p++)
             {
+                var sheet = pageSheets[p];
+
+                // Sama seperti bug halaman nyasar di CopyRequest - paksa
+                // FitToHeight=1 per sheet supaya tidak ada sisa nyasar ke
+                // halaman kosong tambahan.
+                sheet.PrintOptions.FitToHeight = 1;
+
                 var pageDetails = details.Skip(p * ExcelRowsPerPage).Take(ExcelRowsPerPage).ToList();
-                PopulateExcelPage(workbook, pageSheets[p], header, pageDetails, p * ExcelRowsPerPage + 1, p + 1, pageCount, distributionDeptIds, deptCodeById, wingdingsFont);
+                PopulateExcelPage(sheet, header, pageDetails, p * ExcelRowsPerPage + 1, p + 1, pageCount, distributionDeptIds, deptCodeById);
             }
 
-            for (int i = 0; i < workbook.NumberOfSheets; i++)
-            {
-                workbook.GetSheetAt(i).IsSelected = i == 0;
-            }
-            workbook.SetActiveSheet(0);
-
-            using MemoryStream stream = new MemoryStream();
-            workbook.Write(stream);
-            return stream.ToArray();
+            workbook.Worksheets.ActiveWorksheet = pageSheets[0];
         }
 
-        private static void RemoveSheetIfExists(IWorkbook workbook, string sheetName)
+        private static void RemoveSheetIfExists(DevExpress.Spreadsheet.Workbook workbook, string sheetName)
         {
-            int idx = workbook.GetSheetIndex(sheetName);
-            if (idx >= 0) workbook.RemoveSheetAt(idx);
+            var sheet = workbook.Worksheets.Cast<DevExpress.Spreadsheet.Worksheet>().FirstOrDefault(s => s.Name == sheetName);
+            if (sheet != null) workbook.Worksheets.Remove(sheet);
         }
 
-        private static void PopulateExcelPage(IWorkbook workbook, ISheet sheet, DocumentSubmission header, IList<DocumentSubmissionDetail> pageDetails,
-            int startLineNo, int pageNumber, int totalPages, List<int> distributionDeptIds, Dictionary<int, string> deptCodeById, IFont wingdingsFont)
+        private static void PopulateExcelPage(DevExpress.Spreadsheet.Worksheet sheet, DocumentSubmission header, IList<DocumentSubmissionDetail> pageDetails,
+            int startLineNo, int pageNumber, int totalPages, List<int> distributionDeptIds, Dictionary<int, string> deptCodeById)
         {
             SetCellValue(sheet, "K8", header.DIVISION_NAME ?? header.DIVISION ?? "");
             SetCellValue(sheet, "K9", header.DEPARTMENT_NAME ?? "");
@@ -619,7 +585,7 @@ namespace DMS.Controllers
             {
                 if (ExcelCategoryCellMap.TryGetValue(cat.Trim(), out var cellRef))
                 {
-                    SetCheckboxChecked(workbook, sheet, cellRef, wingdingsFont);
+                    SetCheckboxChecked(sheet, cellRef);
                 }
             }
 
@@ -646,21 +612,21 @@ namespace DMS.Controllers
                 SetCellValue(sheet, "D" + r, item.DOCUMENT_NO ?? "");
                 SetCellValue(sheet, "M" + r, item.DOCUMENT_NAME ?? "");
 
-                if (item.CLASSIFICATION == 2) SetCheckboxChecked(workbook, sheet, "AB" + r, wingdingsFont);
-                else SetCheckboxChecked(workbook, sheet, "Y" + r, wingdingsFont);
+                if (item.CLASSIFICATION == 2) SetCheckboxChecked(sheet, "AB" + r);
+                else SetCheckboxChecked(sheet, "Y" + r);
 
                 if (item.SUBMISSION_TYPE == "02")
                 {
-                    SetCheckboxChecked(workbook, sheet, "AG" + r, wingdingsFont);
+                    SetCheckboxChecked(sheet, "AG" + r);
                     if (item.REVISION_NO.HasValue) SetCellValue(sheet, "AI" + r, item.REVISION_NO.Value);
                 }
                 else if (item.SUBMISSION_TYPE == "03")
                 {
-                    SetCheckboxChecked(workbook, sheet, "AK" + r, wingdingsFont);
+                    SetCheckboxChecked(sheet, "AK" + r);
                 }
                 else
                 {
-                    SetCheckboxChecked(workbook, sheet, "AE" + r, wingdingsFont);
+                    SetCheckboxChecked(sheet, "AE" + r);
                 }
 
                 SetCellValue(sheet, "AN" + r, item.ITEM_CHANGED ?? "");
@@ -690,41 +656,44 @@ namespace DMS.Controllers
             }
         }
 
-        private static void SetCellValue(ISheet sheet, string cellRef, string value)
+        private static void SetCellValue(DevExpress.Spreadsheet.Worksheet sheet, string cellRef, string value)
         {
-            GetOrCreateCell(sheet, cellRef).SetCellValue(value);
+            var cell = sheet.Cells[cellRef];
+            cell.Value = value;
+            cell.Font.Color = System.Drawing.Color.Black;
+            // Pola sama seperti bug ikon-folder di CopyRequest (cell bawa font
+            // aneh dari template) - dipaksa Arial supaya konsisten, terlepas
+            // dari font bawaan cell-nya.
+            cell.Font.Name = "Arial";
         }
 
-        // Font checkbox-nya dipaksa Wingdings di sini (bukan pakai style sel yang
-        // sudah ada) karena beberapa sel checkbox di template asli salah font -
-        // clone style sel biar border/alignment tetap sama, cuma font-nya diganti.
-        private static void SetCheckboxChecked(IWorkbook workbook, ISheet sheet, string cellRef, IFont wingdingsFont)
+        // Karakter centang "ü" (0x00FC) di font Wingdings - beberapa sel checkbox
+        // di template ASLI ternyata salah font (bukan Wingdings), jadi dipaksa
+        // manual di sini tiap kali nulis centang, bukan mengandalkan style sel
+        // yang sudah ada di template.
+        private static void SetCheckboxChecked(DevExpress.Spreadsheet.Worksheet sheet, string cellRef)
         {
-            ICell cell = GetOrCreateCell(sheet, cellRef);
-
-            ICellStyle checkedStyle = workbook.CreateCellStyle();
-            checkedStyle.CloneStyleFrom(cell.CellStyle);
-            checkedStyle.SetFont(wingdingsFont);
-            cell.CellStyle = checkedStyle;
-
-            cell.SetCellValue(ExcelCheckMark);
+            var cell = sheet.Cells[cellRef];
+            cell.Value = "\u00FC";
+            cell.Font.Name = "Wingdings";
+            cell.Font.Size = 10;
+            cell.Font.Bold = true;
         }
 
-        private static void SetCellValue(ISheet sheet, string cellRef, double value)
+        private static void SetCellValue(DevExpress.Spreadsheet.Worksheet sheet, string cellRef, double value)
         {
-            GetOrCreateCell(sheet, cellRef).SetCellValue(value);
+            var cell = sheet.Cells[cellRef];
+            cell.Value = value;
+            cell.Font.Color = System.Drawing.Color.Black;
+            cell.Font.Name = "Arial";
         }
 
-        private static void SetCellDate(ISheet sheet, string cellRef, DateTime value)
+        private static void SetCellDate(DevExpress.Spreadsheet.Worksheet sheet, string cellRef, DateTime value)
         {
-            GetOrCreateCell(sheet, cellRef).SetCellValue(value);
-        }
-
-        private static ICell GetOrCreateCell(ISheet sheet, string cellRef)
-        {
-            CellReference cr = new CellReference(cellRef);
-            IRow row = sheet.GetRow(cr.Row) ?? sheet.CreateRow(cr.Row);
-            return row.GetCell(cr.Col) ?? row.CreateCell(cr.Col);
+            var cell = sheet.Cells[cellRef];
+            cell.Value = value;
+            cell.Font.Color = System.Drawing.Color.Black;
+            cell.Font.Name = "Arial";
         }
     }
 }

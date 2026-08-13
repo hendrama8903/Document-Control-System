@@ -64,7 +64,9 @@
                         initialMode: false
                     }
                 }).done(function (result) {
-                    d.resolve(result.data == "" ? [] : result.data);
+                    var rows = result.data == "" ? [] : result.data;
+                    updateHeaderStats(rows);
+                    d.resolve(rows);
                 }).fail(function () {
                     d.reject("Data loading error");
                 });
@@ -83,7 +85,7 @@
             sorting: { mode: "none" },
             noDataText: "Data not found.",
             height: computeGridHeight(),
-            filterRow: { visible: true, applyFilter: "auto" },
+            filterRow: { visible: false, applyFilter: "auto" },
             headerFilter: { visible: true },
             toolbar: { visible: false },
             selection: {
@@ -217,12 +219,64 @@
             $("#datagrid").dxDataGrid("instance").refresh();
         });
 
+        // ---------- toolbar: show/hide column filter row ----------
+        $("#btn_toggleFilters").on("click", function () {
+            var grid = $("#datagrid").dxDataGrid("instance");
+            var visible = !grid.option("filterRow.visible");
+            grid.option("filterRow.visible", visible);
+            $(this).toggleClass("active", visible);
+        });
+
+        // ---------- toggle summary/KPI cards, so the grid below can move up ----------
+        $("#btn_toggleStats").on("click", function () {
+            var $btn = $(this);
+            var $icon = $btn.find("i");
+            var $row = $("#dsStatsRow");
+
+            $row.stop(true, true).animate(
+                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
+                {
+                    duration: 220,
+                    easing: "swing",
+                    progress: function () {
+                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+                    },
+                    complete: function () {
+                        var collapsed = !$row.is(":visible");
+                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
+                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
+                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+                    }
+                }
+            );
+        });
+
         $(window).on("resize", function () {
             $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
         });
 
         $('body').tooltip({ selector: '[data-toggle="tooltip"]' });
     });
+
+    // ---------- header stats (Waiting Approval / Approved / Rejected / Approved Today) ----------
+    function updateHeaderStats(rows) {
+        rows = rows || [];
+        var thisMonth = 0, documentsBundled = 0, latest = null;
+        var monthStart = moment().startOf("month");
+
+        rows.forEach(function (r) {
+            documentsBundled += r.DETAIL_COUNT || 0;
+
+            var created = r.CREATED_DT ? moment(r.CREATED_DT) : null;
+            if (created && !created.isBefore(monthStart)) thisMonth++;
+            if (created && (!latest || created.isAfter(latest))) latest = created;
+        });
+
+        $("#dsTotalSubmissions").text(rows.length);
+        $("#dsThisMonth").text(thisMonth);
+        $("#dsDocumentsBundled").text(documentsBundled);
+        $("#dsLatestSubmission").text(latest ? latest.format("DD MMM YYYY") : "-");
+    }
 
     // ---------- per-row "more actions" kebab menu ----------
     var $dsRowMenu = null;

@@ -227,6 +227,26 @@ namespace DMS.Models.Repo
             return result;
         }
 
+        public DBResult Accept(DocumentControlMaintenance data, string loginUser, DBContext db)
+        {
+            SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
+            SqlParameter returnMsg = CreateSqlParameterOutputString("@RETURN_MSG");
+
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                returnVal,
+                new SqlParameter ( "@DOCUMENT_CTRL_ID", CheckNullValue(data.DOCUMENT_CTRL_ID) ),
+                new SqlParameter ( "@LOGIN_USER", loginUser ),
+                returnMsg
+            };
+
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_P4DMaintenance_Accept] @DOCUMENT_CTRL_ID, @LOGIN_USER, @RETURN_MSG OUTPUT";
+            int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
+
+            DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
+            return result;
+        }
+
         public IList<DocumentDistribution> SearchDocumentDistribution(DocumentDistribution data, DBContext db, int? PageNumber, int? PageSize)
         {
             List<SqlParameter> param = new List<SqlParameter>

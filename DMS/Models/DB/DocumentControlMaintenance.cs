@@ -47,6 +47,12 @@ namespace DMS.Models.DB
         public string? OPERATION_TYPE_VAL { get; set; }
         public int? PUBLISH_FLAG { get; set; }
 
+        // ACK_DONE dari ACK_TOTAL department tujuan distribusi sudah klik Accepted
+        // di UserDashboard (TB_R_PUBLISH_HISTORY) - dipakai untuk badge "Waiting
+        // Acceptance"/"Accepted" di grid P4D (request Hendra 2026-08-13).
+        public int? ACK_TOTAL { get; set; }
+        public int? ACK_DONE { get; set; }
+
         // Dihitung di C# (bukan dari sp_P4DMaintenance_Search) supaya SP yang
         // dipakai bersama P4DMaintenanceController tidak perlu diubah - lihat
         // DocumentSubmissionController.SearchP4DPendingDocuments. Merujuk ke

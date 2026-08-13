@@ -32,6 +32,7 @@
         $("#btn_edit").prop("disabled", !selected);
         $("#btn_delete").prop("disabled", !(selected && (row.STATUS == 1 || row.STATUS == 0) && row.DEPARTMENT_ID == SESSION_DEPARTMENT_ID_LOGIN));
         $("#btn_receive").prop("disabled", !(selected && row.STATUS == 0));
+        $("#btn_accept").prop("disabled", !(selected && row.STATUS == 1));
         $("#btn_unreceive").prop("disabled", !(selected && row.STATUS == 2));
         $("#btn_reject").prop("disabled", !(selected && row.STATUS == 0));
         $("#btn_distribution").prop("disabled", !(selected && row.STATUS != 0 && row.STATUS != 3 && row.STATUS != 4));
@@ -50,6 +51,7 @@
         $("#btn_edit").prop("disabled", true);
         $("#btn_delete").prop("disabled", true);
         $("#btn_receive").prop("disabled", true);
+        $("#btn_accept").prop("disabled", true);
         $("#btn_unreceive").prop("disabled", true);
         $("#btn_reject").prop("disabled", true);
         $("#btn_distribution").prop("disabled", true);
@@ -173,19 +175,54 @@
                         $("<span>").addClass(pillClass).html('<i class="fa ' + icon + '"></i> ' + row.STATUS_VAL).appendTo(container);
                     }
                 },
+                {
+                    dataField: "ACK_DONE",
+                    caption: "Acceptance",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+
+                        // Only meaningful once the document has actually been sent
+                        // (STATUS 5 = Sent, 6 = Partially Sent) - before that there is
+                        // nothing to accept yet (request Hendra 2026-08-13: P4D should
+                        // show "Waiting" until every target department clicks Accepted
+                        // in UserDashboard, then "Accepted" once all of them have).
+                        if (row.STATUS != 5 && row.STATUS != 6) {
+                            container.text("-");
+                            return;
+                        }
+
+                        var total = row.ACK_TOTAL || 0;
+                        var done = row.ACK_DONE || 0;
+
+                        if (total === 0) {
+                            container.text("-");
+                            return;
+                        }
+
+                        var accepted = done >= total;
+
+                        $("<span>")
+                            .css({ color: accepted ? "#1E9E63" : "#C62828", fontWeight: 600 })
+                            .html('<i class="fa ' + (accepted ? "fa-check-circle" : "fa-hourglass-half") + '"></i> ' + (accepted ? "Accepted" : "Waiting"))
+                            .appendTo(container);
+                    }
+                },
                 { dataField: "REVISION", caption: "Revision", alignment: "center" },
                 {
+                    dataField: "DIVISION_NAME",
                     caption: "Division",
                     width: 220,
-                    calculateCellValue: function (row) {
-                        return row.DIVISION + " - " + row.DIVISION_NAME;
+                    cellTemplate: function (container, options) {
+                        container.text(options.data.DIVISION + " - " + options.data.DIVISION_NAME);
                     }
                 },
                 {
+                    dataField: "DEPARTMENT_NAME",
                     caption: "Department",
                     width: 260,
-                    calculateCellValue: function (row) {
-                        return row.DEPARTMENT_CODE + " - " + row.DEPARTMENT_NAME;
+                    cellTemplate: function (container, options) {
+                        container.text(options.data.DEPARTMENT_CODE + " - " + options.data.DEPARTMENT_NAME);
                     }
                 },
                 { dataField: "DOCUMENT_TYPE", caption: "Document Type" },
@@ -322,7 +359,7 @@
         var today = moment().format("YYYY-MM-DD");
 
         rows.forEach(function (r) {
-            if (r.STATUS == 0) pending++;
+            if (r.STATUS == 0 || r.STATUS == 1) pending++;
             if (r.STATUS == 2) {
                 registered++;
                 if (r.CHANGED_DT && moment(r.CHANGED_DT).format("YYYY-MM-DD") == today) {
@@ -382,8 +419,14 @@
         }));
 
         if (gCanReceive) {
-            $menu.append(menuItem("dp-menu-approve", "fa-check-circle", "Approve", row.STATUS == 0, function () {
+            $menu.append(menuItem("dp-menu-approve", "fa-check-circle", "Receive", row.STATUS == 0, function () {
                 selectRowThen(row, onReceivePrepare);
+            }));
+        }
+
+        if (gCanReceive) {
+            $menu.append(menuItem("dp-menu-accept", "fa-check-square-o", "Accept", row.STATUS == 1, function () {
+                selectRowThen(row, onAcceptPrepare);
             }));
         }
 

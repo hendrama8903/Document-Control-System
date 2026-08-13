@@ -162,13 +162,13 @@
                         if (value == "DRAFT") {
                             pillClass = "dms-pill dms-pill-info";
                             icon = "fa-clock-o";
-                        } else if (value == "ON PROGRESS" || value == "PARTIALLY SENT") {
+                        } else if (value == "CHECKING" || value == "PARTIALLY SENT") {
                             pillClass = "dms-pill dms-pill-warning";
                             icon = "fa-hourglass-half";
                         } else if (value == "SENT") {
                             pillClass = "dms-pill dms-pill-primary";
                             icon = "fa-paper-plane";
-                        } else if (value == "RECEIVED") {
+                        } else if (value == "ACCEPTED") {
                             pillClass = "dms-pill dms-pill-success";
                             icon = "fa-check-circle";
                         } else if (value == "DELETED") {
@@ -196,6 +196,7 @@
                     dataField: "DIVISION_NAME",
                     caption: "Division",
                     width: 220,
+                    visible: false,
                     calculateDisplayValue: function (row) {
                         return row.DIVISION + " - " + row.DIVISION_NAME;
                     }
@@ -204,6 +205,7 @@
                     dataField: "DEPARTMENT_NAME",
                     caption: "Department",
                     width: 260,
+                    visible: false,
                     calculateDisplayValue: function (row) {
                         return row.DEPARTMENT_CODE + " - " + row.DEPARTMENT_NAME;
                     }
@@ -330,23 +332,22 @@
         });
     });
 
-    // ---------- header stats (Total Documents / Last Updated) ----------
+    // ---------- header stats (Waiting Approval / Approved / Published / Rejected) ----------
     function updateHeaderStats(rows) {
         rows = rows || [];
-        $("#dpTotalDocuments").text(rows.length);
+        var waitingApproval = 0, approved = 0, published = 0, rejected = 0;
 
-        var latest = null;
         rows.forEach(function (r) {
-            var candidates = [r.CHANGED_DT, r.CREATED_DT].filter(Boolean);
-            candidates.forEach(function (dt) {
-                var m = moment(dt);
-                if (!latest || m.isAfter(latest)) {
-                    latest = m;
-                }
-            });
+            if (r.STATUS == 0) waitingApproval++;
+            else if (r.STATUS == 1) approved++;
+            else if (r.STATUS == 5) published++;
+            else if (r.STATUS == 2) rejected++;
         });
 
-        $("#dpLastUpdated").text(latest ? latest.format("DD MMM YYYY") : "-");
+        $("#dpWaitingApproval").text(waitingApproval);
+        $("#dpApproved").text(approved);
+        $("#dpPublished").text(published);
+        $("#dpRejected").text(rejected);
     }
 
     // ---------- per-row "more actions" kebab menu ----------

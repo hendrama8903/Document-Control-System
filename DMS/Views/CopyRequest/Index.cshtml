@@ -1,0 +1,70 @@
+<style>
+    /* site.css forces .fa-chevron-up/-down to white globally (for a dark-background
+       use elsewhere) - override back to the normal dp-icon-btn color for this button. */
+    #btn_toggleStats i {
+        color: #344054;
+    }
+</style>
+<section class="content">
+    <div class="row">
+        <div class="col-xs-12">
+            <div id="divTitle">
+                <div class="dp-header">
+                    <div class="dp-header-left">
+                        <div class="dp-header-icon"><i class="fa fa-files-o"></i></div>
+                        <div>
+                            <h1>@ViewData["Title"]</h1>
+                        </div>
+                    </div>
+                    <button type="button" class="dp-icon-btn" id="btn_toggleStats" title="Hide Summary Cards"><i class="fa fa-chevron-up"></i></button>
+                    <div class="dp-header-stats dp-header-stats-grid" id="crStatsRow">
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon amber"><i class="fa fa-hourglass-half"></i></div>
+                            <div>
+                                <span>Waiting Approval</span>
+                                <b id="crWaitingApproval">-</b>
+                                <small>Requests</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon green"><i class="fa fa-check-circle"></i></div>
+                            <div>
+                                <span>Approved</span>
+                                <b id="crApproved">-</b>
+                                <small>Requests</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon red"><i class="fa fa-times-circle"></i></div>
+                            <div>
+                                <span>Rejected</span>
+                                <b id="crRejected">-</b>
+                                <small>Requests</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon blue"><i class="fa fa-calendar"></i></div>
+                            <div>
+                                <span>Approved Today</span>
+                                <b id="crApprovedToday">-</b>
+                                <small>Requests</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="dp-card">
+                <div id="divSearch">
+                    @Html.Partial("_SearchCriteria")
+                </div>
+                <div id="divGrid">
+                    @Html.Partial("_GridView")
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@Html.Partial("_PopupForm")
+@Html.Partial("_ApprovalForm")
+@Html.Partial("_Javascript")

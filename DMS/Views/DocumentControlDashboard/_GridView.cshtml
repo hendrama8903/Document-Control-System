@@ -304,7 +304,7 @@
                     }
                 },
                 {
-                    caption: "Acknowledgement",
+                    caption: "Acceptance",
                     alignment: "center",
                     calculateCellValue: function (row) {
                         return (row.ACK_DONE != null ? row.ACK_DONE : 0) + "/" + (row.ACK_TOTAL != null ? row.ACK_TOTAL : 0);
@@ -316,10 +316,20 @@
                         var complete = total > 0 && done >= total;
 
                         $("<span>").css({ fontWeight: 700, display: "block" }).text(done + " / " + total).appendTo(container);
-                        $("<span>")
-                            .css({ fontSize: "10.5px", fontWeight: 600, color: complete ? "#1E9E63" : "#B36B00" })
-                            .text(complete ? "Read" : "Pending")
-                            .appendTo(container);
+
+                        if (total === 0) {
+                            // Belum pernah di-"Send Distribution" ke department manapun -
+                            // beda dari "Pending" (sudah dikirim, belum semua acknowledge).
+                            $("<span>")
+                                .css({ fontSize: "10.5px", fontWeight: 600, color: "#8A94A6" })
+                                .text("Not Distributed")
+                                .appendTo(container);
+                        } else {
+                            $("<span>")
+                                .css({ fontSize: "10.5px", fontWeight: 600, color: complete ? "#1E9E63" : "#B36B00" })
+                                .text(complete ? "Accepted" : "Waiting")
+                                .appendTo(container);
+                        }
                     }
                 },
                 {

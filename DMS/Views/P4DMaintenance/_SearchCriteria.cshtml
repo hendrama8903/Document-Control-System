@@ -2,7 +2,7 @@
     <div class="dp-toolbar-left">
         @if ((bool)ViewData["Add"])
         {
-            <button type="button" class="btn dp-btn dp-btn-success" id="btn_add"><i class="fa fa-plus"></i> Register Document</button>
+            <button type="button" class="btn dp-btn dp-btn-success" id="btn_add"><i class="fa fa-plus"></i> Register</button>
         }
         <div class="dropdown" style="display:inline-block;">
             <button type="button" class="btn dp-btn dp-btn-outline dropdown-toggle" data-toggle="dropdown">
@@ -11,11 +11,15 @@
             <ul class="dropdown-menu dp-dropdown-menu">
                 @if ((bool)ViewData["Receive"] && (bool)ViewData["DocumentControlAccess"])
                 {
-                    <li><button type="button" id="btn_receive" title="Approve this registration entry (physical receipt by the destination department is confirmed separately, via Acknowledge in My Documents)"><i class="fa fa-check-circle dp-menu-approve"></i> Approve</button></li>
+                    <li><button type="button" id="btn_receive" title="First step: mark this registration entry as being reviewed (status becomes Checking)"><i class="fa fa-check-circle dp-menu-approve"></i> Receive</button></li>
+                }
+                @if ((bool)ViewData["Receive"] && (bool)ViewData["DocumentControlAccess"])
+                {
+                    <li><button type="button" id="btn_accept" title="Second step: confirm the registration entry (status becomes Accepted) - only possible after Receive"><i class="fa fa-check-square-o dp-menu-accept"></i> Accept</button></li>
                 }
                 @if ((bool)ViewData["UnReceive"] && (bool)ViewData["DocumentControlAccess"])
                 {
-                    <li><button type="button" id="btn_unreceive" title="Undo Approve - only possible before distribution has been assigned"><i class="fa fa-undo dp-menu-unreceive"></i> Un-Receive</button></li>
+                    <li><button type="button" id="btn_unreceive" title="Undo Accept - only possible before distribution has been assigned"><i class="fa fa-undo dp-menu-unreceive"></i> Un-Receive</button></li>
                 }
                 @if ((bool)ViewData["Edit"] && (bool)ViewData["DocumentControlAccess"])
                 {

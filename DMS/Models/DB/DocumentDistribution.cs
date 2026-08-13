@@ -22,5 +22,9 @@ namespace DMS.Models.DB
         public string? STATUS { get; set; }
         public string? STATUS_DISPLAY { get; set; }
 
+        // 1 kalau department ini sudah klik Accepted di UserDashboard untuk
+        // dokumen ini (TB_R_PUBLISH_HISTORY) - dipakai untuk bedakan "Waiting
+        // Acceptance" vs "Accepted" di popup Distribution (request Hendra 2026-08-13).
+        public int? ACCEPTED_FLAG { get; set; }
     }
 }

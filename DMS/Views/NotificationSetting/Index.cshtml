@@ -1,3 +1,10 @@
+<style>
+    /* site.css forces .fa-chevron-up/-down to white globally (for a dark-background
+       use elsewhere) - override back to the normal dp-icon-btn color for this button. */
+    #btn_toggleStats i {
+        color: #344054;
+    }
+</style>
 <section class="content">
     <div class="row">
         <div class="col-xs-12">
@@ -7,16 +14,55 @@
                         <div class="dp-header-icon"><i class="fa fa-envelope-o"></i></div>
                         <div>
                             <h1>@ViewData["Title"]</h1>
-                            <p>Pilih jenis notifikasi mana yang ikut mengirim email, selain notifikasi in-app (Inbox/lonceng) yang selalu aktif.</p>
                         </div>
                     </div>
                     <div class="dp-header-actions">
-                        <button type="button" class="dp-btn dp-btn-outline" id="btn_refresh"><i class="fa fa-refresh"></i> Refresh</button>
+                        <button type="button" class="dp-icon-btn" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
+                        <button type="button" class="dp-icon-btn" id="btn_toggleStats" title="Hide Summary Cards"><i class="fa fa-chevron-up"></i></button>
+                    </div>
+                    <div class="dp-header-stats dp-header-stats-grid" id="nsStatsRow">
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon blue"><i class="fa fa-envelope-o"></i></div>
+                            <div>
+                                <span>Notification Types</span>
+                                <b id="nsStatTotal">-</b>
+                                <small>All types</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon green"><i class="fa fa-check-circle"></i></div>
+                            <div>
+                                <span>Email Enabled</span>
+                                <b id="nsStatEnabled">-</b>
+                                <small>Sending email</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon amber"><i class="fa fa-ban"></i></div>
+                            <div>
+                                <span>Email Disabled</span>
+                                <b id="nsStatDisabled">-</b>
+                                <small>In-app only</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon purple"><i class="fa fa-calendar"></i></div>
+                            <div>
+                                <span>Last Updated</span>
+                                <b id="nsStatLastUpdated" style="font-size:13px;">-</b>
+                                <small>&nbsp;</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="dp-card">
-                @Html.Partial("_GridView")
+                <div id="divSearch">
+                    @Html.Partial("_SearchCriteria")
+                </div>
+                <div id="divGrid">
+                    @Html.Partial("_GridView")
+                </div>
             </div>
         </div>
     </div>

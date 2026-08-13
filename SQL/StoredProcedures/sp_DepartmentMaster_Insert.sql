@@ -6,16 +6,25 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_DepartmentMaster_Insert]
 	@DEPARTMENT_CODE  	VARCHAR(5),
 	@DEPARTMENT_NAME		VARCHAR(255),
 	@DIVISION  					VARCHAR(50),
-	@VALID_FROM				  DATE,
-	@VALID_TO					  DATE,
+	@VALID_FROM				  DATE = NULL,
+	@VALID_TO					  DATE = NULL,
 	@LOGIN_USER 				VARCHAR(255),
 	@RETURN_MSG 				VARCHAR(MAX) OUTPUT
 AS
 BEGIN TRY
 	DECLARE @PROCESS_ID BIGINT,
 					@LOCATION VARCHAR(255) = 'sp_DepartmentMaster_Insert';
-					
+
 	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'Department Master', 'Insert', @LOCATION, @LOGIN_USER
+
+	-- Department Master tidak punya field Valid From/To di UI-nya - kolom ini
+	-- cuma ada di skema, tidak dipakai filter di modul manapun. Sebelumnya
+	-- param ini WAJIB diisi tanpa default, sementara DepartmentMasterRepo.Insert
+	-- tidak pernah mengirimnya - Add selalu gagal SQL error "parameter
+	-- @VALID_FROM tidak disuplai". Kasih default masuk akal supaya Add jalan
+	-- tanpa perlu ubah C#/form (bug ditemukan 2026-08-12).
+	IF @VALID_FROM IS NULL SET @VALID_FROM = CAST(GETDATE() AS DATE);
+	IF @VALID_TO IS NULL SET @VALID_TO = '99991231';
 
 	IF @DEPARTMENT_CODE IS NULL OR LEN(@DEPARTMENT_CODE) < 1
 	BEGIN

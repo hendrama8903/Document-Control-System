@@ -102,12 +102,10 @@ namespace DMS.Controllers
                 }
                 else
                 {
-                    // Deliberately no OPERATION_TYPE filter here (unlike the old
-                    // Distribution Approval behaviour of forcing =2/"Request" only):
-                    // this page now covers the whole Document Control register -
-                    // both user-requested entries (OPERATION_TYPE=2) and normal P4D
-                    // registrations (OPERATION_TYPE=1), across every status, replacing
-                    // the now-removed DocumentArchive module.
+                    // OPERATION_TYPE is forced to 1 (real P4D registrations only)
+                    // inside DocumentControlDashboardRepo.Search - see the comment
+                    // there for why OPERATION_TYPE=2 "Request Document" rows must not
+                    // show up here (request user 2026-08-11).
                     var listData = DocumentControlDashboardRepo.Search(data, db, pageNumber, pageSize);
                     var dataCount = DocumentControlDashboardRepo.Search(data, db, null, null).Count;
                     recordsTotal = dataCount;
@@ -379,7 +377,7 @@ namespace DMS.Controllers
 
             string[] headers = {
                 "No", "Document No", "Document Name", "Category", "Revision", "Status",
-                "Effective Date", "Next Review", "Document Owner", "Acknowledged",
+                "Effective Date", "Next Review", "Document Owner", "Acceptance",
                 "Department", "Classification", "Last Updated"
             };
 

@@ -59,8 +59,8 @@ body.adm-body {
 }
 
 .adm-rail {
-    flex: 0 0 56px;
-    width: 56px;
+    flex: 0 0 48px;
+    width: 48px;
     background: linear-gradient(180deg, #1C3FA6, #0B1F5C);
     display: flex;
     flex-direction: column;
@@ -70,14 +70,14 @@ body.adm-body {
 }
 
 .adm-rail-ic {
-    width: 56px;
-    height: 56px;
+    width: 48px;
+    height: 48px;
     border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #C7E0F4;
-    font-size: 17px;
+    font-size: 16px;
 }
 
 .adm-rail-ic:hover, .adm-rail-ic:focus {
@@ -87,8 +87,8 @@ body.adm-body {
 }
 
 .adm-rail-ic img {
-    width: 50px;
-    height: 50px;
+    width: 42px;
+    height: 42px;
     object-fit: contain;
 }
 
@@ -97,8 +97,8 @@ body.adm-body {
     transform: rotate(180deg);
     margin: auto 0; /* posisikan di tengah rail */
     font-weight: 800;
-    font-size: 20px;
-    letter-spacing: .04em;
+    font-size: 17px;
+    letter-spacing: .03em;
     white-space: nowrap;
     line-height: 1;
     background: linear-gradient(180deg, #ffffff, #71AFE5);
@@ -177,7 +177,7 @@ body.adm-body {
 
 /* collapsed (desktop): sembunyikan panel, sisakan rail */
 @media (min-width: 921px) {
-    .adm-app.collapsed { grid-template-columns: 56px 1fr; }
+    .adm-app.collapsed { grid-template-columns: 48px 1fr; }
 
     .adm-app.collapsed .adm-sidepanel {
         padding-left: 0;
@@ -1302,53 +1302,53 @@ body.adm-body {
 .dp-header {
     background: #fff;
     border: 1px solid #E3E8EE;
-    border-radius: 12px;
-    padding: 16px 20px;
-    margin-bottom: 14px;
+    border-radius: 10px;
+    padding: 11px 16px;
+    margin-bottom: 10px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 14px;
+    gap: 10px;
 }
 
 .dp-header-left {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 10px;
     min-width: 0;
 }
 
 .dp-header-icon {
     flex: none;
-    width: 44px;
-    height: 44px;
-    border-radius: 10px;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
     background: #E7F1FB;
     color: #2450D8;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 19px;
+    font-size: 15px;
 }
 
 .dp-header-left h1 {
     margin: 0;
-    font-size: 19px;
+    font-size: 16px;
     font-weight: 700;
     color: #1D2939;
 }
 
 .dp-header-left p {
-    margin: 2px 0 0;
-    font-size: 12.5px;
+    margin: 1px 0 0;
+    font-size: 11px;
     color: #66788A;
 }
 
 .dp-header-stats {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
 }
 
@@ -1356,22 +1356,22 @@ body.adm-body {
 .dp-stat-card {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     background: #F9FAFB;
     border: 1px solid #E3E8EE;
-    border-radius: 10px;
-    padding: 8px 14px;
+    border-radius: 8px;
+    padding: 6px 11px;
 }
 
 .dp-stat-card-icon {
     flex: none;
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
+    font-size: 12px;
 }
 
 .dp-stat-card-icon.amber { background: #FFF4DC; color: #B36B00; }
@@ -1382,25 +1382,25 @@ body.adm-body {
 
 /* full-width variant: cards share the row evenly instead of packing left */
 .dp-header-stats-grid { width: 100%; }
-.dp-header-stats-grid .dp-stat-card { flex: 1 1 0; min-width: 170px; }
+.dp-header-stats-grid .dp-stat-card { flex: 1 1 0; min-width: 140px; }
 
 .dp-stat-card span {
     display: block;
-    font-size: 11px;
+    font-size: 10px;
     color: #66788A;
     font-weight: 600;
 }
 
 .dp-stat-card b {
     display: block;
-    font-size: 16px;
+    font-size: 14px;
     color: #1D2939;
     font-weight: 800;
 }
 
 .dp-stat-card small {
     display: block;
-    font-size: 10.5px;
+    font-size: 9.5px;
     color: #98A2B3;
     font-weight: 500;
 }
@@ -1702,6 +1702,10 @@ body.adm-body {
 .dp-menu-unreceive i { color: #B36B00; }
 .dp-menu-send i { color: #3949AB; }
 .dp-menu-location i { color: #B36B00; }
+.cr-menu-edit i { color: #2450D8; }
+.cr-menu-submit i,
+.cr-menu-view i { color: #3949AB; }
+.cr-menu-delete i { color: #C62828; }
 
 /* ==========================================================================
    User Profile page (Views/User/Profile.cshtml)

@@ -30,6 +30,7 @@ namespace DMS.Models.DB
         public string? SECTION_NAME { get; set; }
         public string? DOCUMENT_CONTROL_ACCESS { get; set; }
         public string? FILE_PATH { get; set; }
+        public string? SIGNATURE_PATH { get; set; }
         public string? AD_USER { get; set; }
     }
 

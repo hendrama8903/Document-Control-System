@@ -1,0 +1,35 @@
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- Lookup satu baris dokumen Copy Request by REQUEST_DETAIL_ID, dipakai
+-- PrintTrack (desktop) sebelum ambil file dan sebelum lapor hasil cetak -
+-- sekalian bawa STATUS header (HEADER_STATUS) dan lokasi file
+-- (FILE_PATH, dari TB_R_DOCUMENT) supaya desktop bisa validasi
+-- token cetak (Approved + belum PRINT_STATUS='1') dalam satu round-trip.
+CREATE OR ALTER PROCEDURE [dbo].[sp_CopyRequest_GetDetailByKey]
+	@REQUEST_DETAIL_ID INT
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	SELECT
+		D.REQUEST_DETAIL_ID,
+		D.REQUEST_ID,
+		D.DOCUMENT_TRANSACTION_ID,
+		D.DOCUMENT_CODE,
+		D.DOCUMENT_NAME,
+		D.REVISION_NO,
+		D.COPY_TYPE,
+		D.COPY_QTY,
+		D.PRINT_STATUS,
+		D.PRINTED_BY,
+		D.PRINTED_DT,
+		H.STATUS AS HEADER_STATUS,
+		T.FILE_PATH
+	FROM [dbo].[TB_R_COPY_REQUEST_D] D
+	INNER JOIN [dbo].[TB_R_COPY_REQUEST_H] H ON H.REQUEST_ID = D.REQUEST_ID
+	LEFT JOIN [dbo].[TB_R_DOCUMENT] T ON T.DOCUMENT_TRANSACTION_ID = D.DOCUMENT_TRANSACTION_ID
+	WHERE D.REQUEST_DETAIL_ID = @REQUEST_DETAIL_ID AND D.DELETE_FLAG = 0 AND H.DELETE_FLAG = 0;
+END
+GO

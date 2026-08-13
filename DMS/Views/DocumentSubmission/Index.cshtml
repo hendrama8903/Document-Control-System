@@ -1,16 +1,65 @@
+<style>
+    /* site.css forces .fa-chevron-up/-down to white globally (for a dark-background
+       use elsewhere) - override back to the normal dp-icon-btn color for this button. */
+    #btn_toggleStats i {
+        color: #344054;
+    }
+</style>
 <section class="content">
     <div class="row">
         <div class="col-xs-12">
             <div id="divTitle">
-                <div class="content-header">
-                    <h1>@ViewData["Title"]</h1>
+                <div class="dp-header">
+                    <div class="dp-header-left">
+                        <div class="dp-header-icon"><i class="fa fa-upload"></i></div>
+                        <div>
+                            <h1>@ViewData["Title"]</h1>
+                        </div>
+                    </div>
+                    <button type="button" class="dp-icon-btn" id="btn_toggleStats" title="Hide Summary Cards"><i class="fa fa-chevron-up"></i></button>
+                    <div class="dp-header-stats dp-header-stats-grid" id="dsStatsRow">
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon blue"><i class="fa fa-file-text-o"></i></div>
+                            <div>
+                                <span>Total Submissions</span>
+                                <b id="dsTotalSubmissions">-</b>
+                                <small>Forms</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon green"><i class="fa fa-calendar-check-o"></i></div>
+                            <div>
+                                <span>This Month</span>
+                                <b id="dsThisMonth">-</b>
+                                <small>Forms</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon amber"><i class="fa fa-clone"></i></div>
+                            <div>
+                                <span>Documents Bundled</span>
+                                <b id="dsDocumentsBundled">-</b>
+                                <small>Documents</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon purple"><i class="fa fa-clock-o"></i></div>
+                            <div>
+                                <span>Latest Submission</span>
+                                <b id="dsLatestSubmission">-</b>
+                                <small>&nbsp;</small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div id="divSearch">
-                @Html.Partial("_SearchCriteria")
-            </div>
-            <div id="divGrid">
-                @Html.Partial("_GridView")
+            <div class="dp-card">
+                <div id="divSearch">
+                    @Html.Partial("_SearchCriteria")
+                </div>
+                <div id="divGrid">
+                    @Html.Partial("_GridView")
+                </div>
             </div>
         </div>
     </div>

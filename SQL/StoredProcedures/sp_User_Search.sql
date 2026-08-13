@@ -66,6 +66,7 @@ BEGIN
 										S.SECTION_CODE,
 										S.SECTION_NAME,
 										A.FILE_PATH,
+										A.SIGNATURE_PATH,
 										A.AD_USER,
 										ISNULL(A.DELETE_FLAG, ''0'') AS DELETE_FLAG,
 										A.CREATED_DT,

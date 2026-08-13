@@ -97,6 +97,7 @@ namespace DMS.Common.Controllers
             HttpContext.Session.SetString("SECTION_CODE", (user.SECTION_CODE == null) ? "" : user.SECTION_CODE);
             HttpContext.Session.SetString("SECTION_NAME", (user.SECTION_NAME == null) ? "" : user.SECTION_NAME);
             HttpContext.Session.SetString("DOCUMENT_CONTROL_ACCESS", (user.DOCUMENT_CONTROL_ACCESS == null) ? "" : user.DOCUMENT_CONTROL_ACCESS);
+            HttpContext.Session.SetString("FILE_PATH", (user.FILE_PATH == null) ? "" : user.FILE_PATH);
             HttpContext.Session.SetString("menuString", menuString);
             HttpContext.Session.SetString("menuURL", menuURL);
             HttpContext.Session.SetString("functionList", functionList);

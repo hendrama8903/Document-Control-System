@@ -7,16 +7,32 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_DepartmentMaster_Update]
 	@DEPARTMENT_CODE  	VARCHAR(5),
 	@DEPARTMENT_NAME		VARCHAR(255),
 	@DIVISION  					VARCHAR(50),
-	@VALID_FROM				  DATE,
-	@VALID_TO					  DATE,
+	@VALID_FROM				  DATE = NULL,
+	@VALID_TO					  DATE = NULL,
 	@LOGIN_USER 				VARCHAR(255),
 	@RETURN_MSG 				VARCHAR(MAX) OUTPUT
 AS
 BEGIN TRY
 	DECLARE @PROCESS_ID BIGINT,
 					@LOCATION VARCHAR(255) = 'sp_DepartmentMaster_Update';
-					
+
 	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'Department Master', 'Update', @LOCATION, @LOGIN_USER
+
+	-- Sama seperti sp_DepartmentMaster_Insert - param ini tidak pernah
+	-- dikirim DepartmentMasterRepo.Update, dulu wajib diisi jadi Edit selalu
+	-- gagal SQL error. Kalau tidak dikirim, pertahankan nilai yang sudah
+	-- tersimpan (bukan default baru) supaya Edit nama/Division tidak diam-diam
+	-- menimpa Valid From/To yang mungkin pernah di-set manual (bug ditemukan
+	-- 2026-08-12).
+	IF @VALID_FROM IS NULL OR @VALID_TO IS NULL
+	BEGIN
+		DECLARE @CUR_VALID_FROM DATE, @CUR_VALID_TO DATE;
+		SELECT @CUR_VALID_FROM = VALID_FROM, @CUR_VALID_TO = VALID_TO
+		FROM TB_M_DEPARTMENT WHERE DEPARTMENT_ID = @DEPARTMENT_ID;
+
+		IF @VALID_FROM IS NULL SET @VALID_FROM = ISNULL(@CUR_VALID_FROM, CAST(GETDATE() AS DATE));
+		IF @VALID_TO IS NULL SET @VALID_TO = ISNULL(@CUR_VALID_TO, '99991231');
+	END
 
 	IF @DEPARTMENT_CODE IS NULL OR LEN(@DEPARTMENT_CODE) < 1
 	BEGIN

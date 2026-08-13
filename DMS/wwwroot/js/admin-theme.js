@@ -4,13 +4,14 @@
 // =====================================================================
 
 $(function () {
-    // Accordion menu sidebar (pengganti data-widget="tree" AdminLTE).
+    // Menu sidebar (pengganti data-widget="tree" AdminLTE) - tiap grup
+    // di-toggle independen, tidak lagi accordion (dulu buka satu grup
+    // otomatis nutup grup lain - request user 2026-08-12: harus bisa
+    // buka banyak grup sekaligus).
     // Markup menu berasal dari session "menuString" (BaseController.GenerateUL).
     $(document).on('click', '.adm-sidepanel .treeview > a', function (e) {
         e.preventDefault();
-        var li = $(this).parent();
-        li.siblings('.treeview').removeClass('open');
-        li.toggleClass('open');
+        $(this).parent().toggleClass('open');
     });
 
     // Collapse box (pengganti data-widget="collapse" AdminLTE).

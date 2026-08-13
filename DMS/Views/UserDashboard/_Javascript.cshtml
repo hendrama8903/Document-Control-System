@@ -11,27 +11,9 @@
     var gFilePath = null;
 
     $(document).ready(function () {
-        setDataSelect2WithParam("addEditDivision", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "- Choose -", "DIVISION");
-
-        $("#btn_request").on("click", function () {
-            onAddPrepare();
-        });
-
-        $("#btn_save").on("click", function () {
-            confirmAddEditData();
-        });
-
         $("#btn_acknowledge").on("click", function () {
             confirmAcknowledge();
         });
-
-        $("#btn_cancel").on("click", function () {
-            reset();
-        });
-
-        //$("#btn_download").on("click", function () {
-        //    onDownload();
-        //});
     });
 
     function maxLengthCheck(object) {
@@ -44,155 +26,6 @@
         grid.clearSelection();
         grid.refresh();
     }
-
-    function onAddPrepare() {
-        //alert();
-        gScreenMode = 'ADD';
-        $('#modal-title').html("Request Document");
-        //$('#addEditDocumentNo').val("");
-        $('#addEditDocumentId').val("");
-        $('#addEditDivision').val("").trigger("change");
-        $('#addEditDepartment').val("").trigger("change");
-        $('#addEditDocumentName').val("").trigger("change");
-
-        //$('#addEditDocumentNo').prop('disabled', false);
-        $('#addEditDivision').prop('disabled', false);
-        $('#addEditDepartment').prop('disabled', true);
-        $('#addEditDocumentName').prop('disabled', true);
-
-        $("#modalRequestDocument").modal();
-        $('#modalRequestDocument').on('shown.bs.modal', function () {
-            $('#addEditDivision').focus();
-        });
-
-    }
-
-    function setDepartment(val) {
-        var division = val;
-
-        if (division == null || division == "") {
-            $('#addEditDepartment').prop('disabled', true);
-        } else {
-            $('#addEditDepartment').prop('disabled', false);
-        }
-
-        $('#addEditDocumentName').prop('disabled', true);
-        $('#addEditDocumentName').val("").trigger("change");
-        $('#addEditDepartment').val("").trigger("change");
-
-        setDataSelect2WithParam("addEditDepartment", "@Url.Action("GetDepartmentIdAndNameByDivision", "DepartmentMaster")", "- Choose -", division);
-    }
-
-    function setDocumentName(val) {
-        var departmentCode = val;
-
-        if (departmentCode == null || departmentCode == "") {
-            $('#addEditDocumentName').prop('disabled', true);
-        } else {
-            $('#addEditDocumentName').prop('disabled', false);
-        }
-
-        $('#addEditDocumentName').val("").trigger("change");
-
-        setDataSelect2WithParam("addEditDocumentName", "@Url.Action("GetDocumentTransactionSentByDepartment", "P4DMaintenance")", "- Choose -", $('#addEditDepartment').val());
-    }
-
-    function confirmAddEditData() {
-        showConfirmMesg("Are you sure you want to continue process?", addEditData, "Confirmation");
-    }
-
-    function addEditData() {
-        popUpProgressShow();
-        var data = new FormData();
-        data.append("screenMode", gScreenMode);
-
-        if (gScreenMode == "ADD") {
-            //    var documentId = $('#addEditDocumentId').val();
-            //    var documentNo = $('#addEditDocumentNo').val();
-            var documentName = $('#addEditDocumentName').val();
-            var division = $('#addEditDivision').val();
-            var department = $('#addEditDepartment').val();
-
-            //if (gDocumentId == null || gDocumentId == "null") {
-            //    data.append("DOCUMENT_ID", "");
-            //} else {
-            //    data.append("DOCUMENT_ID", gDocumentId);
-            //}
-            //if (documentNo == null || documentNo == "null") {
-            //    data.append("DOCUMENT_NO", "");
-            //} else {
-            //    data.append("DOCUMENT_NO", $('#addEditDocumentNo').val());
-            //}
-            if (documentName == null || documentName == "null") {
-                data.append("DOCUMENT_TRANSACTION_ID", "");
-            } else {
-                data.append("DOCUMENT_TRANSACTION_ID", $('#addEditDocumentName').val());
-            }
-            if (division == null || division == "null") {
-                data.append("DIVISION", "");
-            } else {
-                data.append("DIVISION", $('#addEditDivision').val());
-            }
-            if (department == null || department == "null") {
-                data.append("DEPARTMENT", "");
-            } else {
-                data.append("DEPARTMENT", $('#addEditDepartment').val());
-            }
-        }
-
-        $.ajax({
-            type: "POST",
-            url: "@Url.Action("AddEdit", "UserDashboard")",
-            contentType: false,
-            processData: false,
-            data: data,
-            success: function (result) {
-                //popUpProgressHide();
-                if (result.status == true) {
-                    showSuccessMesgGrowl(result.message);
-                    onSearch();
-                    popUpProgressHide();
-                    $("#modalRequestDocument").modal('hide');
-
-                    //if (gScreenMode == "ADD") {
-                    //    $("#modalAddEdit").modal('hide');
-                    //} else if (gScreenMode == "EDIT") { $("#modalEdit").modal('hide'); }
-                } else {
-                    showErrorMesgGrowl(result.message);
-                    popUpProgressHide();
-                }
-            },
-            error: function (result) {
-                showErrorMesgGrowl(result);
-                popUpProgressHide();
-            }
-        });
-    }
-
-    $(document).on('change', '#addEditDocumentUpload', function (e) {
-        ex = e;
-    });
-
-    function reset() {
-        //$('#addEditDocumentNo').val("");
-        //$('#addEditDocumentId').val("");
-        $('#addEditDocumentName').val("");
-        $('#addEditDivision').val("");
-        $('#addEditDepartment').val("");
-        $('#addEditDocumentName').text("");
-        $('#addEditDivision').text("");
-        $('#addEditDepartment').text("");
-    }
-
-    //function onDeletePrepare() {
-
-    //    $("input[name='chkRow']").each(function () {
-    //        if ($(this).prop('checked')) {
-    //            gDocumentId = $(".grid-checkbox-body:checked").attr('data-id');
-    //        }
-    //    });
-    //    showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
-    //}
 
     function onclickDownload(element) {
         //alert(element.getAttribute('data-doc'));
@@ -248,7 +81,7 @@
     }
 
     function confirmAcknowledge() {
-        showConfirmMesg("Are you sure you want to acknowledge this document?", insertLog, "Confirmation");
+        showConfirmMesg("Are you sure you want to accept this document?", insertLog, "Confirmation");
     }
 
     function insertLog() {

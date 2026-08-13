@@ -61,6 +61,7 @@
     .ud-legend span { display: inline-flex; align-items: center; gap: 5px; }
     .ud-legend i.fa-check-circle { color: #1E9E63; }
     .ud-legend i.fa-times-circle { color: #C62828; }
+    .ud-legend i.fa-hourglass-half { color: #C62828; }
 </style>
 
 <div class="box-body">
@@ -68,8 +69,8 @@
     <div class="ud-info-bar">
         <div class="ud-info-msg"><i class="fa fa-info-circle"></i> Documents with status "Published (Effective)" are the current valid documents. Please ensure you are using the latest revision.</div>
         <div class="ud-legend">
-            <span><i class="fa fa-check-circle"></i> Read</span>
-            <span><i class="fa fa-times-circle"></i> Not Read</span>
+            <span><i class="fa fa-check-circle"></i> Accepted</span>
+            <span><i class="fa fa-hourglass-half"></i> Waiting</span>
             <span><i class="fa fa-times-circle" style="color:#C62828"></i> Obsolete</span>
         </div>
     </div>
@@ -293,7 +294,7 @@
                 },
                 {
                     dataField: "PUBLISH_FLAG",
-                    caption: "Acknowledgement",
+                    caption: "Acceptance",
                     alignment: "center",
                     cellTemplate: function (container, options) {
                         var row = options.data;
@@ -301,7 +302,7 @@
 
                         $("<span>")
                             .css({ color: acknowledged ? "#1E9E63" : "#C62828", fontWeight: 600 })
-                            .html('<i class="fa ' + (acknowledged ? "fa-check-circle" : "fa-times-circle") + '"></i> ' + (acknowledged ? "Read" : "Not Read"))
+                            .html('<i class="fa ' + (acknowledged ? "fa-check-circle" : "fa-hourglass-half") + '"></i> ' + (acknowledged ? "Accepted" : "Waiting"))
                             .appendTo(container);
 
                         if (acknowledged && row.ACKNOWLEDGE_DT) {
@@ -383,26 +384,14 @@
                             .appendTo(container);
 
                         $("<button>")
-                            .attr({ type: "button", title: "Download" })
-                            .addClass("dp-act-eye")
-                            .css("margin-left", "6px")
-                            .html('<i class="fa fa-download"></i>')
-                            .on("click", function () {
-                                onDownloadAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+                            .attr({ type: "button", title: "More actions" })
+                            .addClass("dp-act-kebab")
+                            .html('<i class="fa fa-ellipsis-v"></i>')
+                            .on("click", function (e) {
+                                e.stopPropagation();
+                                openRowMenu($(this), row, options.component);
                             })
                             .appendTo(container);
-
-                        if (@Json.Serialize((bool)ViewData["Acknowledge"])) {
-                            $("<button>")
-                                .attr({ type: "button", title: "More" })
-                                .addClass("dp-act-kebab")
-                                .html('<i class="fa fa-ellipsis-v"></i>')
-                                .on("click", function (e) {
-                                    e.stopPropagation();
-                                    openRowMenu($(this), row, options.component);
-                                })
-                                .appendTo(container);
-                        }
                     }
                 }
             ]
@@ -432,17 +421,31 @@
             $menu.empty();
             $menu.append(
                 $('<li>').append(
-                    $('<button type="button" class="dp-menu-approve">')
-                        .prop("disabled", !eligible)
-                        .html('<i class="fa fa-share-square-o"></i> Acknowledge')
+                    $('<button type="button" class="dp-menu-download">')
+                        .html('<i class="fa fa-download"></i> Download')
                         .on("click", function () {
-                            if (!eligible) return;
-                            gridInstance.selectRows([row.DOCUMENT_CTRL_ID], false);
                             $udRowMenu.hide();
-                            confirmAcknowledge();
+                            onDownloadAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
                         })
                 )
             );
+
+            if (@Json.Serialize((bool)ViewData["Acknowledge"])) {
+                $menu.append('<li class="divider"></li>');
+                $menu.append(
+                    $('<li>').append(
+                        $('<button type="button" class="dp-menu-approve">')
+                            .prop("disabled", !eligible)
+                            .html('<i class="fa fa-share-square-o"></i> Accepted')
+                            .on("click", function () {
+                                if (!eligible) return;
+                                gridInstance.selectRows([row.DOCUMENT_CTRL_ID], false);
+                                $udRowMenu.hide();
+                                confirmAcknowledge();
+                            })
+                    )
+                );
+            }
 
             // use getBoundingClientRect (+ scroll offset) rather than jQuery's .offset() -
             // DevExtreme's fixed/frozen columns are transform-positioned, which throws off

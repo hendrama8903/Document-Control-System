@@ -1,0 +1,437 @@
+@using Microsoft.AspNetCore.Http
+
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+
+<link rel="stylesheet" href="~/css/devextreme/dx.light.css" />
+<script src="~/js/devextreme/dx.web.js"></script>
+
+<style>
+    .dp-count-chip {
+        display: inline-block;
+        min-width: 22px;
+        padding: 2px 8px;
+        border-radius: 20px;
+        background: #E7F1FB;
+        color: #2E75B6;
+        font-size: 12px;
+        font-weight: 700;
+    }
+</style>
+
+<div class="box-body">
+    <div id="datagrid"></div>
+</div>
+
+<script type="text/javascript">
+    var gCanEdit = @(((bool)ViewData["Edit"]) ? "true" : "false");
+    var gCanDelete = @(((bool)ViewData["Delete"]) ? "true" : "false");
+    var gCanSubmit = @(((bool)ViewData["Submit"]) ? "true" : "false");
+    var gCanPrint = @(((bool)ViewData["Print"]) ? "true" : "false");
+    var gCanApprove = @(((bool)ViewData["Approve"]) ? "true" : "false");
+    var gCanAccept = @(((bool)ViewData["Accept"]) ? "true" : "false");
+    var SESSION_DEPARTMENT_ID_LOGIN = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetInt32("DEPARTMENT_ID"))";
+
+    function getSelectedRowData() {
+        var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
+        return rows.length > 0 ? rows[0] : null;
+    }
+
+    function canAccept(row) {
+        return row != null && row.STATUS == "2" && row.ACCEPTED_FLAG != 1
+            && row.DEPARTMENT_ID == SESSION_DEPARTMENT_ID_LOGIN;
+    }
+
+    function updateActionButtons() {
+        var row = getSelectedRowData();
+        var editable = row != null && row.STATUS == "0";
+        var approvable = row != null && row.STATUS == "1";
+
+        $("#btn_edit").prop("disabled", !editable);
+        $("#btn_delete").prop("disabled", !editable);
+        $("#btn_approve_toolbar").prop("disabled", !approvable);
+        $("#btn_accept_toolbar").prop("disabled", !canAccept(row));
+    }
+
+    function computeGridHeight() {
+        var gridTop = $("#datagrid").offset().top;
+        var footerHeight = $("#divFooter").outerHeight(true) || 0;
+
+        return Math.max(300, $(window).height() - gridTop - footerHeight - 40);
+    }
+
+    function statusPillHtml(status, display) {
+        var cls = "dms-pill-default";
+        if (status == "1") cls = "dms-pill-warning";
+        else if (status == "2") cls = "dms-pill-success";
+        else if (status == "3") cls = "dms-pill-danger";
+        else if (status == "4") cls = "dms-pill-default";
+
+        return '<span class="dms-pill ' + cls + '">' + (display || "-") + '</span>';
+    }
+
+    $(document).ready(function () {
+        $("#btn_add").prop("disabled", false);
+        $("#btn_edit").prop("disabled", true);
+        $("#btn_delete").prop("disabled", true);
+        $("#btn_approve_toolbar").prop("disabled", true);
+        $("#btn_accept_toolbar").prop("disabled", true);
+
+        var gridStore = new DevExpress.data.CustomStore({
+            key: "REQUEST_ID",
+            loadMode: "raw",
+            load: function () {
+                var d = $.Deferred();
+
+                $.ajax({
+                    type: "POST",
+                    url: "@Url.Action("Search", "CopyRequest")",
+                    data: {
+                        draw: 1,
+                        start: 0,
+                        length: 100000,
+                        initialMode: false
+                    }
+                }).done(function (result) {
+                    var rows = result.data == "" ? [] : result.data;
+                    updateHeaderStats(rows);
+                    d.resolve(rows);
+                }).fail(function () {
+                    d.reject("Data loading error");
+                });
+
+                return d.promise();
+            }
+        });
+
+        $("#datagrid").dxDataGrid({
+            dataSource: gridStore,
+            showBorders: true,
+            columnAutoWidth: true,
+            allowColumnResizing: true,
+            columnResizingMode: "widget",
+            wordWrapEnabled: false,
+            sorting: { mode: "none" },
+            noDataText: "Data not found.",
+            height: computeGridHeight(),
+            filterRow: { visible: false, applyFilter: "auto" },
+            headerFilter: { visible: true },
+            toolbar: { visible: false },
+            selection: {
+                mode: "multiple",
+                showCheckBoxesMode: "always",
+                allowSelectAll: false
+            },
+            paging: { pageSize: 10 },
+            pager: {
+                visible: true,
+                displayMode: "compact",
+                showPageSizeSelector: true,
+                allowedPageSizes: [10, 25, 50, 100],
+                showInfo: true,
+                showNavigationButtons: true
+            },
+            columnChooser: {
+                enabled: true,
+                mode: "select"
+            },
+            columnFixing: { enabled: true },
+            onSelectionChanged: function (e) {
+                if (e.selectedRowKeys.length > 1) {
+                    e.component.selectRows(e.currentSelectedRowKeys, false);
+                    return;
+                }
+                updateActionButtons();
+            },
+            columns: [
+                { type: "selection", width: 40, fixed: true, fixedPosition: "left" },
+                {
+                    caption: "No",
+                    width: 50,
+                    alignment: "center",
+                    allowHiding: false,
+                    allowFiltering: false,
+                    fixed: true,
+                    fixedPosition: "left",
+                    cellTemplate: function (container, options) {
+                        var pageIndex = options.component.pageIndex();
+                        var pageSize = options.component.pageSize();
+                        container.text(pageIndex * pageSize + options.row.rowIndex + 1);
+                    }
+                },
+                {
+                    dataField: "REQUEST_NO",
+                    caption: "Request No",
+                    fixed: true,
+                    fixedPosition: "left",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+
+                        if (!row.REQUEST_NO) {
+                            container.text("Draft");
+                            return;
+                        }
+
+                        $("<button>")
+                            .attr("type", "button")
+                            .addClass("dp-link")
+                            .text(row.REQUEST_NO)
+                            .on("click", function () {
+                                if (row.STATUS == "0") {
+                                    $("#datagrid").dxDataGrid("instance").selectRows([row.REQUEST_ID], false);
+                                    onEditPrepare();
+                                } else {
+                                    onApprovalPrepare(row);
+                                }
+                            })
+                            .appendTo(container);
+                    }
+                },
+                {
+                    dataField: "STATUS_DISPLAY",
+                    caption: "Status",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        container.html(statusPillHtml(options.data.STATUS, options.data.STATUS_DISPLAY));
+                    }
+                },
+                {
+                    dataField: "ACCEPTED_FLAG",
+                    caption: "Acceptance",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+
+                        // Cuma relevan setelah QMS Approve - komunikasi dua arah:
+                        // requester lihat & konfirmasi sudah terima copy fisiknya
+                        // di sini (request Hendra 2026-08-13, mirror Acceptance
+                        // column di P4D).
+                        if (row.STATUS != "2") {
+                            container.text("-");
+                            return;
+                        }
+
+                        var accepted = row.ACCEPTED_FLAG == 1;
+
+                        $("<span>")
+                            .css({ color: accepted ? "#1E9E63" : "#C62828", fontWeight: 600 })
+                            .html('<i class="fa ' + (accepted ? "fa-check-circle" : "fa-hourglass-half") + '"></i> ' + (accepted ? "Accepted" : "Waiting"))
+                            .appendTo(container);
+                    }
+                },
+                {
+                    dataField: "REQUEST_DATE",
+                    caption: "Request Date",
+                    alignment: "right",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.REQUEST_DATE;
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
+                    }
+                },
+                { dataField: "DIVISION_NAME", caption: "Division" },
+                { dataField: "DEPARTMENT_NAME", caption: "Department" },
+                { dataField: "SECTION_NAME", caption: "Section" },
+                {
+                    dataField: "DETAIL_COUNT",
+                    caption: "Documents",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        $("<span>").addClass("dp-count-chip").text(options.data.DETAIL_COUNT || 0).appendTo(container);
+                    }
+                },
+                { dataField: "REQUESTED_BY", caption: "Requested By" },
+                {
+                    dataField: "CREATED_DT",
+                    caption: "Created Date",
+                    alignment: "right",
+                    visible: false,
+                    cellTemplate: function (container, options) {
+                        var value = options.data.CREATED_DT;
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY hh:mm:ss") : "");
+                    }
+                },
+                {
+                    caption: "Action",
+                    alignment: "center",
+                    width: 70,
+                    allowHiding: false,
+                    allowFiltering: false,
+                    fixed: true,
+                    fixedPosition: "right",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+
+                        $("<button>")
+                            .attr({ type: "button", title: "More actions" })
+                            .addClass("dp-act-kebab")
+                            .html('<i class="fa fa-ellipsis-v"></i>')
+                            .on("click", function (e) {
+                                e.stopPropagation();
+                                openRowActionMenu($(this), row);
+                            })
+                            .appendTo(container);
+                    }
+                }
+            ]
+        });
+
+        $("#btn_columns").on("click", function () {
+            $("#datagrid").dxDataGrid("instance").showColumnChooser();
+        });
+
+        $("#btn_refresh").on("click", function () {
+            $("#datagrid").dxDataGrid("instance").clearSelection();
+            $("#datagrid").dxDataGrid("instance").refresh();
+        });
+
+        // ---------- toolbar: show/hide column filter row ----------
+        $("#btn_toggleFilters").on("click", function () {
+            var grid = $("#datagrid").dxDataGrid("instance");
+            var visible = !grid.option("filterRow.visible");
+            grid.option("filterRow.visible", visible);
+            $(this).toggleClass("active", visible);
+        });
+
+        $("#btn_approve_toolbar").on("click", function () {
+            var row = getSelectedRowData();
+            if (row) onApprovalPrepare(row);
+        });
+
+        $("#btn_accept_toolbar").on("click", function () {
+            var row = getSelectedRowData();
+            if (row && canAccept(row)) onAcceptPrepare(row.REQUEST_ID);
+        });
+
+        // ---------- toggle summary/KPI cards, so the grid below can move up ----------
+        $("#btn_toggleStats").on("click", function () {
+            var $btn = $(this);
+            var $icon = $btn.find("i");
+            var $row = $("#crStatsRow");
+
+            $row.stop(true, true).animate(
+                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
+                {
+                    duration: 220,
+                    easing: "swing",
+                    progress: function () {
+                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+                    },
+                    complete: function () {
+                        var collapsed = !$row.is(":visible");
+                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
+                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
+                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+                    }
+                }
+            );
+        });
+
+        $(window).on("resize", function () {
+            $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+        });
+
+        $('body').tooltip({ selector: '[data-toggle="tooltip"]' });
+    });
+
+    // ---------- header stats (Waiting Approval / Approved / Rejected / Approved Today) ----------
+    function updateHeaderStats(rows) {
+        rows = rows || [];
+        var waitingApproval = 0, approved = 0, rejected = 0, approvedToday = 0;
+        var today = moment().format("YYYY-MM-DD");
+
+        rows.forEach(function (r) {
+            if (r.STATUS == 1) waitingApproval++;
+            if (r.STATUS == 2) {
+                approved++;
+                if (r.APPROVED_DT && moment(r.APPROVED_DT).format("YYYY-MM-DD") == today) {
+                    approvedToday++;
+                }
+            }
+            if (r.STATUS == 3) rejected++;
+        });
+
+        $("#crWaitingApproval").text(waitingApproval);
+        $("#crApproved").text(approved);
+        $("#crRejected").text(rejected);
+        $("#crApprovedToday").text(approvedToday);
+    }
+
+    // ---------- per-row "more actions" kebab menu ----------
+    var $crRowMenu = null;
+
+    function buildRowActionMenu() {
+        if ($crRowMenu) return $crRowMenu;
+
+        $crRowMenu = $('<ul class="dropdown-menu dp-dropdown-menu" role="menu"></ul>')
+            .css({ position: "absolute", display: "none", "z-index": 2000, "min-width": "180px" })
+            .appendTo("body");
+
+        $(document).on("click", function () {
+            $crRowMenu.hide();
+        });
+
+        return $crRowMenu;
+    }
+
+    function menuItem(cssClass, icon, label, onClick) {
+        var $li = $('<li><a href="#" class="' + cssClass + '"><i class="fa ' + icon + '"></i> ' + label + '</a></li>');
+        $li.find("a").on("click", function (e) {
+            e.preventDefault();
+            $crRowMenu.hide();
+            onClick();
+        });
+        return $li;
+    }
+
+    function openRowActionMenu($btn, row) {
+        var $menu = buildRowActionMenu();
+        var grid = $("#datagrid").dxDataGrid("instance");
+        $menu.empty();
+
+        if (row.STATUS == "0") {
+            if (gCanEdit) {
+                $menu.append(menuItem("cr-menu-edit", "fa-pencil-square-o", "Edit", function () {
+                    grid.selectRows([row.REQUEST_ID], false);
+                    onEditPrepare();
+                }));
+            }
+
+            if (gCanSubmit) {
+                $menu.append(menuItem("cr-menu-submit", "fa-paper-plane", "Submit for Approval", function () {
+                    onSubmitPrepare(row.REQUEST_ID);
+                }));
+            }
+
+            if (gCanDelete) {
+                $menu.append('<li class="divider"></li>');
+                $menu.append(menuItem("cr-menu-delete", "fa-trash-o", "Delete", function () {
+                    grid.selectRows([row.REQUEST_ID], false);
+                    onDeletePrepare();
+                }));
+            }
+        } else {
+            $menu.append(menuItem("cr-menu-view", "fa-eye", "View Approval", function () {
+                onApprovalPrepare(row);
+            }));
+
+            if (gCanAccept && canAccept(row)) {
+                $menu.append(menuItem("cr-menu-accept", "fa-check-square-o", "Accepted", function () {
+                    onAcceptPrepare(row.REQUEST_ID);
+                }));
+            }
+        }
+
+        if (gCanPrint) {
+            $menu.append('<li class="divider"></li>');
+            $menu.append(menuItem("cr-menu-print", "fa-print", "Print Form", function () {
+                window.open("@Url.Action("PrintForm", "CopyRequest")?requestId=" + row.REQUEST_ID, "_blank");
+            }));
+            $menu.append(menuItem("cr-menu-export-excel", "fa-file-excel-o", "Export Excel", function () {
+                window.open("@Url.Action("ExportExcel", "CopyRequest")?requestId=" + row.REQUEST_ID, "_blank");
+            }));
+        }
+
+        var offset = $btn.offset();
+        $menu.css({ top: offset.top + $btn.outerHeight() + 4, left: offset.left - $menu.outerWidth() + $btn.outerWidth() })
+            .show();
+    }
+</script>

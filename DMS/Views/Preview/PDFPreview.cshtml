@@ -1,9 +1,212 @@
-﻿@{
+@{
     Layout = "~/Views/Shared/_EmptyLayout.cshtml";
+    string pdfUrl = Url.Content("~") + @ViewData["FilePath"];
 }
 
-<html lang="en">
-<body>
-    <embed src="@Url.Content("~") @ViewData["FilePath"]#toolbar=0&navpanes=0&scrollbar=0" style="height: 98vh;" width="100%" download="preview" />
-</body>
-</html>
+<style>
+    html, body { height: 100%; margin: 0; background: #525659; overflow: hidden; }
+    * { box-sizing: border-box; }
+
+    #pv-toolbar {
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        height: 46px;
+        background: #323639;
+        color: #E8EAED;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        font-size: 13px;
+        z-index: 10;
+        user-select: none;
+        -webkit-user-select: none;
+    }
+
+    #pv-toolbar button {
+        background: #4A4E52;
+        border: none;
+        color: #E8EAED;
+        width: 30px;
+        height: 30px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 15px;
+        line-height: 1;
+    }
+
+    #pv-toolbar button:hover:not(:disabled) { background: #5A5E62; }
+    #pv-toolbar button:disabled { opacity: .4; cursor: default; }
+
+    #pv-page-info { min-width: 90px; text-align: center; }
+
+    #pv-scroll {
+        position: absolute;
+        top: 46px; left: 0; right: 0; bottom: 0;
+        overflow: auto;
+        display: flex;
+        justify-content: center;
+        padding: 18px 0 40px;
+    }
+
+    #pv-canvas {
+        box-shadow: 0 2px 12px rgba(0,0,0,.5);
+        background: #fff;
+    }
+
+    #pv-loading, #pv-blocked {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #E8EAED;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        font-size: 14px;
+        background: #525659;
+        z-index: 20;
+    }
+
+    #pv-blocked { display: none; text-align: center; padding: 0 24px; }
+</style>
+
+<div id="pv-toolbar">
+    <button type="button" id="pv-prev" title="Previous page">&#8249;</button>
+    <span id="pv-page-info">-</span>
+    <button type="button" id="pv-next" title="Next page">&#8250;</button>
+    <span style="width:1px;height:20px;background:#5A5E62;margin:0 6px;"></span>
+    <button type="button" id="pv-zoom-out" title="Zoom out">&#8722;</button>
+    <span id="pv-zoom-info">100%</span>
+    <button type="button" id="pv-zoom-in" title="Zoom in">&#43;</button>
+</div>
+
+<div id="pv-scroll">
+    <canvas id="pv-canvas"></canvas>
+</div>
+
+<div id="pv-loading">Loading document&hellip;</div>
+<div id="pv-blocked">Printing is not permitted for this document.<br />Please close this tab and continue in the application.</div>
+
+<script src="~/lib/pdfjs/pdf.min.js"></script>
+<script>
+    // Locked-down document preview: renders each page to a <canvas> via
+    // PDF.js instead of handing the file to the browser's native PDF
+    // plugin, so there is no built-in Print/Download/Open toolbar for
+    // users to reach for. This is a deterrent, not a hard guarantee - a
+    // technically inclined user can still find the raw file URL via
+    // devtools - but it removes the one-click path for everyone else
+    // (request Hendra 2026-08-13: block casual printing, DMS staff excepted
+    // by keeping direct downloads available through their own admin actions).
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '@Url.Content("~/lib/pdfjs/pdf.worker.min.js")';
+
+    var pdfDoc = null;
+    var currentPage = 1;
+    var currentScale = 1.0;
+    var rendering = false;
+    var pendingPage = null;
+
+    var canvas = document.getElementById('pv-canvas');
+    var ctx = canvas.getContext('2d');
+
+    function renderPage(num) {
+        if (rendering) {
+            pendingPage = num;
+            return;
+        }
+        rendering = true;
+
+        pdfDoc.getPage(num).then(function (page) {
+            var viewport = page.getViewport({ scale: currentScale });
+
+            // Render the canvas backing store at the screen's actual pixel
+            // density, then size it back down with CSS - otherwise a 1:1
+            // canvas looks soft/pixelated on any HiDPI or OS-scaled display
+            // (Hendra reported blurry text 2026-08-13).
+            var outputScale = window.devicePixelRatio || 1;
+            canvas.width = Math.floor(viewport.width * outputScale);
+            canvas.height = Math.floor(viewport.height * outputScale);
+            canvas.style.width = Math.floor(viewport.width) + 'px';
+            canvas.style.height = Math.floor(viewport.height) + 'px';
+
+            var transform = outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null;
+            var renderContext = { canvasContext: ctx, viewport: viewport, transform: transform };
+            page.render(renderContext).promise.then(function () {
+                rendering = false;
+                if (pendingPage !== null) {
+                    var next = pendingPage;
+                    pendingPage = null;
+                    renderPage(next);
+                }
+            });
+        });
+
+        document.getElementById('pv-page-info').textContent = num + ' / ' + pdfDoc.numPages;
+        document.getElementById('pv-prev').disabled = (num <= 1);
+        document.getElementById('pv-next').disabled = (num >= pdfDoc.numPages);
+    }
+
+    document.getElementById('pv-prev').addEventListener('click', function () {
+        if (currentPage <= 1) return;
+        currentPage--;
+        renderPage(currentPage);
+    });
+
+    document.getElementById('pv-next').addEventListener('click', function () {
+        if (currentPage >= pdfDoc.numPages) return;
+        currentPage++;
+        renderPage(currentPage);
+    });
+
+    document.getElementById('pv-zoom-in').addEventListener('click', function () {
+        currentScale = Math.min(currentScale + 0.2, 3.0);
+        document.getElementById('pv-zoom-info').textContent = Math.round(currentScale * 100) + '%';
+        renderPage(currentPage);
+    });
+
+    document.getElementById('pv-zoom-out').addEventListener('click', function () {
+        currentScale = Math.max(currentScale - 0.2, 0.4);
+        document.getElementById('pv-zoom-info').textContent = Math.round(currentScale * 100) + '%';
+        renderPage(currentPage);
+    });
+
+    fetch('@Html.Raw(pdfUrl)')
+        .then(function (resp) { return resp.arrayBuffer(); })
+        .then(function (buf) {
+            return pdfjsLib.getDocument({ data: buf }).promise;
+        })
+        .then(function (doc) {
+            pdfDoc = doc;
+            document.getElementById('pv-loading').style.display = 'none';
+            renderPage(currentPage);
+        })
+        .catch(function (err) {
+            document.getElementById('pv-loading').textContent = 'Failed to load document.';
+        });
+
+    // ---------- casual-print/download deterrents (not a hard guarantee) ----------
+    document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    document.addEventListener('selectstart', function (e) { e.preventDefault(); });
+    document.addEventListener('dragstart', function (e) { e.preventDefault(); });
+
+    document.addEventListener('keydown', function (e) {
+        var k = e.key ? e.key.toLowerCase() : '';
+        var blockCombo = (e.ctrlKey || e.metaKey) && (k === 'p' || k === 's');
+        if (blockCombo) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    });
+
+    window.addEventListener('beforeprint', function () {
+        document.getElementById('pv-toolbar').style.display = 'none';
+        document.getElementById('pv-scroll').style.display = 'none';
+        document.getElementById('pv-blocked').style.display = 'flex';
+    });
+
+    window.addEventListener('afterprint', function () {
+        document.getElementById('pv-blocked').style.display = 'none';
+        document.getElementById('pv-toolbar').style.display = 'flex';
+        document.getElementById('pv-scroll').style.display = 'flex';
+    });
+</script>

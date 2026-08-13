@@ -42,7 +42,7 @@ namespace DMS.Controllers
                 }
             }
 
-            ViewData["Title"] = "Document Distribution Register";
+            ViewData["Title"] = "Document Distribution";
 
             return View();
         }

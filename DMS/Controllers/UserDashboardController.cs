@@ -64,7 +64,6 @@ namespace DMS.Controllers
             }
 
             // add authorization function
-            ViewData["Request"] = HttpContext.Session.GetString("functionList").Contains("USERDASHBOARD-REQUEST");
             ViewData["Acknowledge"] = HttpContext.Session.GetString("functionList").Contains("USERDASHBOARD-PUBLISH");
 
 
@@ -207,148 +206,6 @@ namespace DMS.Controllers
             catch (Exception ex)
             {
                 return Json(new { status = false, message = ex.Message });
-            }
-        }
-
-        public async Task<JsonResult> AddEditAsync(string screenMode, DocumentControlMaintenance data)
-        {
-            DBResult result = null;
-            //string folderName = "/Upload/";
-            //string webRootPath = Environment.WebRootPath;
-
-            try
-            {
-                //if (Request.Form.Files.Count > 0)
-                //{
-                //    IFormFile file = Request.Form.Files[0];
-                //    MSystem mSystem = mSystemRepo.GetByKey(new MSystem { SYSTEM_TYPE = "UPLOAD_FOLDER", SYSTEM_CODE = "DOCUMENT_MASTER" }, db);
-
-                //    string extension = Path.GetExtension(file.FileName);
-                //    string path = folderName + mSystem.SYSTEM_VALUE.Trim();
-                //    string pathSave = webRootPath + folderName + mSystem.SYSTEM_VALUE.Trim();
-                //    string documentname = data.DOCUMENT_NAME;
-                //    documentname = documentname.Replace(" ", "_");
-                //    string fileName = documentname + extension;
-                //    string finalPath = pathSave + fileName;
-
-
-                //    if (!Directory.Exists(pathSave))
-                //    {
-                //        Directory.CreateDirectory(pathSave);
-                //    }
-
-                //    if (data.FILE_PATH != null)
-                //    {
-                //        string pathCheck = webRootPath + data.FILE_PATH.Trim();
-                //        //Delete File
-                //        if (System.IO.File.Exists(pathCheck))
-                //        {
-                //            System.IO.File.Delete(pathCheck);
-                //        }
-                //    }
-
-                //    data.FILE_PATH = path + fileName;
-                //    //Save File to Local Storage
-                //    using (var stream = new FileStream(finalPath, FileMode.Create))
-                //    {
-                //        file.CopyTo(stream);
-                //    }
-                //}
-
-                if (screenMode == "ADD")
-                {
-                    result = UserDashboardRepo.Insert(data, GetLoginUsername(), db);
-                    if (result.returnId != 0)
-                    {
-                        backgroundJobClient.Enqueue(() => SendRequestEmailAsync(result.returnId, GetLoginUsername(),
-                            this.Request.Scheme, this.Request.Host.ToString(), this.Request.PathBase.ToString()));
-                    }
-                }
-                else
-                {
-                    result = UserDashboardRepo.Update(data, GetLoginUsername(), db);
-                }
-                return Json(result);
-            }
-            catch (Exception ex)
-            {
-                return Json(new { status = false, message = ex.Message });
-            }
-        }
-
-        public void SendRequestEmailAsync(int documentCtrlId, string loginUsername, string scheme, string hostString, string pathBase)
-        {
-            DocumentControlMaintenance documentControlMaintenance = P4DMaintenanceRepo.Search(new DocumentControlMaintenance { DOCUMENT_CTRL_ID = documentCtrlId }, null, db, 1, 1).FirstOrDefault();
-
-            if (documentControlMaintenance != null)
-            {
-                IList<UserPosition> userPositions = UserRepo.Instance.SearchPosition(new UserPosition { DOCUMENT_CONTROL_ACCESS = "1" }, db, null, null);
-                if (userPositions.Count > 0)
-                {
-                    CultureInfo cultureInfo = new CultureInfo("id-ID"); // Budaya Indonesia
-                    DateTime date = (DateTime)documentControlMaintenance.DOCUMENT_DATE;
-                    string dateString = date.ToString("dddd, d MMMM yyyy", cultureInfo);
-
-                    List<string> toAddresses = new List<string>();
-                    List<string> toUsernames = new List<string>();
-
-                    foreach (UserPosition userPosition in userPositions)
-                    {
-                        User user = UserRepo.Instance.GetByKey(new User { USERNAME = userPosition.USERNAME }, db);
-                        if (user != null)
-                        {
-                            toAddresses.Add(user.EMAIL);
-                            toUsernames.Add(user.USERNAME);
-                        }
-                    }
-
-                    toAddresses.Distinct().ToList();
-                    toUsernames.Distinct().ToList();
-
-                    User requester = UserRepo.Instance.GetByKey(new User { USERNAME = documentControlMaintenance.CREATED_BY }, db);
-
-                    IList<MSystem> emailTemplate = MSystemRepo.Instance.Search(new MSystem { SYSTEM_TYPE = "DOCUMENTCONTROL_APPROVAL_REQUEST_EMAIL_TEMPLATE" }, db, null, null);
-                    string subject = emailTemplate.Where(x => x.SYSTEM_CODE == "SUBJECT").First().SYSTEM_VALUE
-                         .Replace("{DOCUMENT_CODE}", documentControlMaintenance.DOCUMENT_CODE);
-                    string title = emailTemplate.Where(x => x.SYSTEM_CODE == "TITLE").First().SYSTEM_VALUE;
-                    string body = emailTemplate.Where(x => x.SYSTEM_CODE == "BODY").First().SYSTEM_VALUE
-                        .Replace("{DOCUMENT_CODE}", documentControlMaintenance.DOCUMENT_CODE)
-                        .Replace("{DOCUMENT_NAME}", documentControlMaintenance.DOCUMENT_NAME)
-                        .Replace("{DOCUMENT_DATE}", dateString)
-                        .Replace("{REVISION}", documentControlMaintenance.REVISION.ToString())
-                        .Replace("{REQUESTER}", requester.FULL_NAME)
-                        .Replace("{DIVISION}", documentControlMaintenance.DIVISION + " - " + documentControlMaintenance.DIVISION_NAME)
-                        .Replace("{DEPARTMENT}", documentControlMaintenance.DEPARTMENT_CODE + " - " + documentControlMaintenance.DEPARTMENT_NAME);
-                    string buttonLink = $"{scheme}://{hostString}{pathBase}" + emailTemplate.Where(x => x.SYSTEM_CODE == "BUTTON_LINK").First().SYSTEM_VALUE
-                    .Replace("{DOCUMENT_CODE}", documentControlMaintenance.DOCUMENT_CODE);
-
-                    if (NotificationSettingRepo.Instance.IsEmailEnabled("DOCUMENTCONTROL_APPROVAL_REQUEST", db))
-                        backgroundJobClient.Enqueue(() => EmailService.SendEmailAsync(toAddresses, subject, title, body, buttonLink));
-
-                    IList<MSystem> notificationTemplate = MSystemRepo.Instance.Search(new MSystem { SYSTEM_TYPE = "DOCUMENTCONTROL_APPROVAL_REQUEST_NOTIFICATION" }, db, null, null);
-
-                    foreach (string toUsername in toUsernames)
-                    {
-                        Notification notification = new Notification
-                        {
-                            NOTIFICATION_TEXT = notificationTemplate.Where(x => x.SYSTEM_CODE == "TEXT").First().SYSTEM_VALUE
-                            .Replace("{REQUESTER}", documentControlMaintenance.CREATED_BY)
-                            .Replace("{DOCUMENT_CODE}", documentControlMaintenance.DOCUMENT_CODE),
-                            NOTIFICATION_TITLE = notificationTemplate.Where(x => x.SYSTEM_CODE == "TITLE").First().SYSTEM_VALUE
-                            .Replace("{REQUESTER}", requester.FULL_NAME)
-                            .Replace("{DOCUMENT_CODE}", documentControlMaintenance.DOCUMENT_CODE),
-                            NOTIFICATION_URL = notificationTemplate.Where(x => x.SYSTEM_CODE == "URL").First().SYSTEM_VALUE
-                            .Replace("{DOCUMENT_CODE}", documentControlMaintenance.DOCUMENT_CODE),
-                            USERNAME = toUsername,
-                        };
-
-                        DBResult result = NotificationRepo.Instance.Insert(notification, loginUsername, db);
-                        if (result.status)
-                        {
-                            _hubContext.Clients.Group(toUsername).SendAsync("ReceiveMessage", "New document approval request, check notification!");
-                        }
-                    }
-                }
             }
         }
 
@@ -512,7 +369,7 @@ namespace DMS.Controllers
             ISheet sheet = workbook.CreateSheet("Document Request");
 
             string[] headers = {
-                "No", "Document No", "Document Name", "Category", "Status", "Acknowledged", "Revision",
+                "No", "Document No", "Document Name", "Category", "Status", "Accepted", "Revision",
                 "Division", "Department", "Classified", "Date", "Next Review", "Item Changed", "Reason",
                 "Created By", "Created Date", "Changed By", "Changed Date"
             };

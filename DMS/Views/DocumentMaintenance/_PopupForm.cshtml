@@ -338,14 +338,18 @@
                         <div class="adf-section-title"><span class="adf-section-num">1</span> Basic Information</div>
 
                         <div class="row">
-                            <div class="col-md-6 form-group">
+                            <div class="col-md-4 form-group">
                                 <label class="control-label">Document Type <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditDocumentType" onchange="onChangeDocumentType()" required></select>
                                 <input class="form-control" id="addEditDocumentId" type="hidden" />
                             </div>
-                            <div class="col-md-6 form-group">
+                            <div class="col-md-4 form-group">
                                 <label class="control-label">Document Level <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditDocumentLevel" onchange="onChangeDocumentLevel()" required></select>
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label class="control-label">Date <span class="text-red">*</span></label>
+                                <input class="form-control" id="addEditDate" type="date" required />
                             </div>
                         </div>
 
@@ -375,13 +379,6 @@
                                 <input class="form-control" id="addEditDocumentName" type="text" oninput="removeWhiteSpace(this)" maxlength="255" required />
                             </div>
                         </div>
-
-                        <div class="row">
-                            <div class="col-md-6 form-group">
-                                <label class="control-label">Date <span class="text-red">*</span></label>
-                                <input class="form-control" id="addEditDate" type="date" required />
-                            </div>
-                        </div>
                     </div>
 
                     <!-- 2. Organization -->
@@ -389,28 +386,25 @@
                         <div class="adf-section-title"><span class="adf-section-num">2</span> Organization</div>
 
                         <div class="row">
-                            <div class="col-md-6 form-group">
+                            <div class="col-md-4 form-group">
                                 <label class="control-label">Division <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditDivision" onchange="setDepartment(this.value)" required></select>
                             </div>
-                            <div class="col-md-6 form-group">
+                            <div class="col-md-4 form-group">
                                 <label class="control-label">Department <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditDepartment" onchange="setSection(this.value);" required></select>
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label class="control-label">Section <span id="mandatoryMarkSection" class="text-red">*</span></label>
+                                <select class="form-control" id="addEditSection" required></select>
                             </div>
                         </div>
 
                         <div class="row">
-                            <div class="col-md-6 form-group">
-                                <label class="control-label">Section <span id="mandatoryMarkSection" class="text-red">*</span></label>
-                                <select class="form-control" id="addEditSection" required></select>
-                            </div>
                             <div class="col-md-6 form-group">
                                 <label class="control-label">Company Code <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditCompanyCode" required></select>
                             </div>
-                        </div>
-
-                        <div class="row">
                             <div class="col-md-6 form-group">
                                 <label class="control-label">Creator <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditDocumentCreator" required></select>
@@ -423,18 +417,15 @@
                         <div class="adf-section-title"><span class="adf-section-num">3</span> Classification</div>
 
                         <div class="row">
-                            <div class="col-md-6 form-group">
+                            <div class="col-md-4 form-group">
                                 <label class="control-label">Document Code <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditDocumentCode" required></select>
                             </div>
-                            <div class="col-md-6 form-group">
+                            <div class="col-md-4 form-group">
                                 <label class="control-label">Process Code <span id="mandatoryMarkProcessCode" class="text-red">*</span></label>
                                 <select class="form-control" id="addEditProcessCode" required></select>
                             </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 form-group">
+                            <div class="col-md-4 form-group">
                                 <label class="control-label">Classified <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditClassified" required></select>
                             </div>
@@ -478,16 +469,19 @@
                                 </div>
                                 <input type="file" id="addEditDocumentUpload" accept=".xlsx,.xls" style="position:absolute; width:1px; height:1px; opacity:0; overflow:hidden;" required>
                             </div>
-                            <div class="col-md-6 form-group">
-                                <label class="control-label">Item Changed</label>
-                                <input class="form-control" id="addEditItemChanged" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 form-group">
-                                <label class="control-label">Reason</label>
-                                <input class="form-control" id="addEditReason" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
+                            <div class="col-md-6">
+                                <div class="row">
+                                    <div class="col-md-12 form-group">
+                                        <label class="control-label">Item Changed</label>
+                                        <input class="form-control" id="addEditItemChanged" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12 form-group">
+                                        <label class="control-label">Reason</label>
+                                        <input class="form-control" id="addEditReason" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

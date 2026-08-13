@@ -3,6 +3,15 @@
 -- TB_R_PUBLISH_HISTORY entry. If so, the document is fully distributed - flip
 -- TB_R_DOCUMENT.STATUS from '1' (Approved) to '5' (Published/Effective). Only Approved
 -- documents are promoted; a document that somehow isn't STATUS='1' is left alone.
+--
+-- Fix (Aug 2026): "fully distributed" now means every DEPARTMENT actually targeted by
+-- TB_R_DOCUMENT_DISTRIBUTION (STATUS=1/sent) has a publish-history entry - NOT every
+-- TB_R_CTRL_DOCUMENT row. CTRL_DOCUMENT rows can multiply beyond real distribution
+-- targets (e.g. a user self-requesting via UserDashboard creates an OPERATION_TYPE=2
+-- row), which used to let a single unrelated acknowledgment flip an under-distributed
+-- document straight to Published, or block a fully-acknowledged one on a stray request
+-- row. Also requires at least one distribution row to exist (a document that was never
+-- actually sent anywhere must not auto-publish just because someone requested it).
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -45,13 +54,21 @@ BEGIN TRY
 
 	IF @DOC_TRANSACTION_ID IS NOT NULL
 	BEGIN
-		IF NOT EXISTS (
+		IF EXISTS (
+			SELECT 1 FROM [dbo].[TB_R_DOCUMENT_DISTRIBUTION]
+			WHERE DOCUMENT_TRANSACTION_ID = @DOC_TRANSACTION_ID AND STATUS = 1
+		)
+		AND NOT EXISTS (
 			SELECT 1
-			FROM [dbo].[TB_R_CTRL_DOCUMENT] C
-			WHERE C.DOCUMENT_TRANSACTION_ID = @DOC_TRANSACTION_ID
-			AND ISNULL(C.DELETE_FLAG, 0) = 0
+			FROM [dbo].[TB_R_DOCUMENT_DISTRIBUTION] DD
+			WHERE DD.DOCUMENT_TRANSACTION_ID = @DOC_TRANSACTION_ID
+			AND DD.STATUS = 1
 			AND NOT EXISTS (
-				SELECT 1 FROM [dbo].[TB_R_PUBLISH_HISTORY] PH WHERE PH.DOCUMENT_CTRL_ID = C.DOCUMENT_CTRL_ID
+				SELECT 1
+				FROM [dbo].[TB_R_PUBLISH_HISTORY] PH
+				JOIN [dbo].[TB_R_CTRL_DOCUMENT] CT ON CT.DOCUMENT_CTRL_ID = PH.DOCUMENT_CTRL_ID
+				WHERE CT.DOCUMENT_TRANSACTION_ID = @DOC_TRANSACTION_ID
+				AND PH.DEPARTMENT_ID = DD.DEPARTMENT_ID
 			)
 		)
 		BEGIN

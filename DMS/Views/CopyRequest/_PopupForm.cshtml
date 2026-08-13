@@ -1,0 +1,154 @@
+<style>
+    #modalAddEdit .modal-dialog { width: 900px; max-width: 96vw; }
+    #modalAddEdit .modal-content { border: none; border-radius: 14px; overflow: hidden; }
+
+    #modalAddEdit .adf-header {
+        background: linear-gradient(135deg, #2450D8, #1C3FA6);
+        color: #fff;
+        padding: 16px 22px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    #modalAddEdit .adf-header-icon {
+        flex: none;
+        width: 38px;
+        height: 38px;
+        border-radius: 9px;
+        background: rgba(255,255,255,.18);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+    #modalAddEdit .adf-header-title { font-size: 15.5px; font-weight: 700; }
+    #modalAddEdit .adf-close {
+        margin-left: auto;
+        background: transparent;
+        border: none;
+        color: rgba(255,255,255,.9);
+        font-size: 18px;
+        line-height: 1;
+        padding: 6px;
+        cursor: pointer;
+    }
+    #modalAddEdit .adf-close:hover { color: #fff; }
+
+    #modalAddEdit .modal-body { padding: 20px 22px; background: #F4F6F8; }
+
+    #modalAddEdit .adf-section {
+        background: #fff;
+        border: 1px solid #E3E8EE;
+        border-radius: 10px;
+        padding: 16px 18px;
+        margin-bottom: 16px;
+    }
+    #modalAddEdit .adf-section-title {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-size: 13.5px;
+        font-weight: 700;
+        color: #1D2939;
+        margin-bottom: 14px;
+    }
+    #modalAddEdit .adf-section-icon {
+        flex: none;
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        background: #E7F1FB;
+        color: #2450D8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+    }
+    #modalAddEdit .adf-section-sub { font-size: 12px; color: #98A2B3; margin: -8px 0 12px; }
+
+    #modalAddEdit .category-checks { display: flex; flex-wrap: wrap; gap: 10px 28px; }
+    #modalAddEdit .category-checks label { font-weight: normal; margin: 0; display: flex; align-items: center; gap: 6px; }
+
+    #modalAddEdit .row-sections { display: flex; gap: 16px; }
+    #modalAddEdit .row-sections > div { flex: 1; min-width: 0; }
+    #modalAddEdit .row-sections .adf-section { height: 100%; margin-bottom: 0; }
+
+    #modalAddEdit #detailGridWrap.adf-section { margin-bottom: 0; }
+
+    #modalAddEdit .modal-footer {
+        background: #fff;
+        border-top: 1px solid #E3E8EE;
+        padding: 14px 22px;
+        margin: 0;
+    }
+</style>
+
+<div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <!-- Header -->
+            <div class="adf-header">
+                <div class="adf-header-icon"><i class="fa fa-plus"></i></div>
+                <div class="adf-header-title" id="modal-title">Add Controlled Copy Request</div>
+                <button type="button" class="adf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <input type="hidden" id="addEditRequestId" />
+                <input type="hidden" id="addEditSection" />
+
+                <div class="adf-section">
+                    <div class="adf-section-title"><span class="adf-section-icon"><i class="fa fa-folder-o"></i></span> Jenis Dokumen</div>
+                    <div class="category-checks" id="docCategoryContainer"></div>
+                </div>
+
+                <div class="row-sections">
+                    <div>
+                        <div class="adf-section">
+                            <div class="adf-section-title"><span class="adf-section-icon"><i class="fa fa-calendar-o"></i></span> Tanggal Permohonan <span class="text-red">*</span></div>
+                            <input class="form-control" id="addEditRequestDate" type="date" />
+                        </div>
+                    </div>
+                    <div>
+                        <div class="adf-section">
+                            <div class="adf-section-title"><span class="adf-section-icon"><i class="fa fa-comment-o"></i></span> Remark <span class="text-muted" style="font-weight:normal;">(optional)</span></div>
+                            <textarea class="form-control" rows="2" id="addEditRemark" placeholder="Enter remark (optional)"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="adf-section" id="detailGridWrap">
+                    <div style="display:flex; align-items:center; justify-content:space-between;">
+                        <div>
+                            <div class="adf-section-title" style="margin-bottom:2px;"><span class="adf-section-icon"><i class="fa fa-file-text-o"></i></span> Dokumen yang Diminta</div>
+                            <div class="adf-section-sub">Pilih dokumen yang sudah terdaftar &amp; approved untuk diminta salinannya.</div>
+                        </div>
+                        <button type="button" class="btn dp-btn dp-btn-outline-primary" id="btn_addDetailRow"><i class="fa fa-plus"></i> Add Document</button>
+                    </div>
+                    <table id="detailGrid" class="table table-bordered table-condensed" width="100%" style="margin-top: 8px;">
+                        <thead>
+                            <tr>
+                                <th width="35px">No</th>
+                                <th>No. Dokumen</th>
+                                <th>Nama Dokumen</th>
+                                <th width="60px">Qty</th>
+                                <th width="90px">HP / Warna</th>
+                                <th width="70px">Action</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn dp-btn dp-btn-outline" id="btn_cancel" data-dismiss="modal"><i class="fa fa-times"></i> Close</button>
+                <button type="button" class="btn dp-btn dp-btn-primary" id="btn_save"><i class="fa fa-save"></i> Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@Html.Partial("_DetailRowPopupForm")
+@Html.Partial("_DocumentPickerPopupForm")

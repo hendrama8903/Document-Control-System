@@ -32,6 +32,14 @@ namespace DMS.Models.Repo
         // correct, extended with category/lifecycle-status/owner/acknowledge-ratio
         // columns), returning the richer DocumentControlDashboardDocument type instead
         // of the shared DocumentControlMaintenance.
+        //
+        // OPERATION_TYPE forced to 1 (real P4D registration) regardless of what the
+        // caller passes - request user 2026-08-11. This is the master document
+        // register: one row per registered/approved document. OPERATION_TYPE=2 rows
+        // are per-user "Request Document" bookmarks from UserDashboard (just enable
+        // that user's own Acknowledge button) - not separate documents, so letting
+        // them through here made the same DOCUMENT_CODE appear once per user who
+        // happened to request it, looking like duplicate rows to QMS.
         public IList<DocumentControlDashboardDocument> Search(DocumentControlMaintenance data, DBContext db, int? PageNumber, int? PageSize)
         {
             List<SqlParameter> param = new List<SqlParameter>
@@ -44,7 +52,7 @@ namespace DMS.Models.Repo
                 new SqlParameter ( "@DEPARTMENT_ID", CheckNullValue(data.DEPARTMENT_ID) ),
                 new SqlParameter ( "@DEPARTMENT_CODE", CheckNullValue(data.DEPARTMENT_CODE) ),
                 new SqlParameter ( "@YEAR", CheckNullValue(data.DOCUMENT_YEAR) ),
-                new SqlParameter ( "@OPERATION_TYPE", CheckNullValue(data.OPERATION_TYPE) ),
+                new SqlParameter ( "@OPERATION_TYPE", 1 ),
                 new SqlParameter ( "@STATUS", CheckNullValue(data.STATUS) ),
                 new SqlParameter ( "@USERNAME", CheckNullValue((string)null) ),
                 new SqlParameter ( "@PageNumber", CheckNullValue(PageNumber) ),

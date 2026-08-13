@@ -1,0 +1,75 @@
+<div class="modal fade" id="modalDetailRow" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="modalDetailRow-title">Document</h4>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body">
+                <input type="hidden" id="detailRequestId" />
+                <input type="hidden" id="detailRequestDetailId" />
+                <input type="hidden" id="detailDocumentTransactionId" />
+
+                <div class="row">
+                    <div class="col-md-6 form-group">
+                        <label class="control-label">No. Dokumen</label>
+                        <input class="form-control" id="detailDocumentCode" type="text" readonly />
+                    </div>
+                    <div class="col-md-6 form-group">
+                        <label class="control-label">Revisi Ke-</label>
+                        <input class="form-control" id="detailRevisionNo" type="text" readonly />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 form-group">
+                        <label class="control-label">Nama Dokumen</label>
+                        <input class="form-control" id="detailDocumentName" type="text" readonly />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 form-group">
+                        <label class="control-label">Hitam Putih (HP) / Warna (W)</label><br />
+                        <label class="radio-inline"><input type="radio" name="detailCopyType" value="1" checked /> Hitam Putih (HP)</label>
+                        <label class="radio-inline"><input type="radio" name="detailCopyType" value="2" /> Warna (W)</label>
+                    </div>
+                    <div class="col-md-6 form-group">
+                        <label class="control-label">Qty</label>
+                        <input class="form-control" id="detailCopyQty" type="number" min="1" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 form-group">
+                        <label class="control-label">Alasan</label>
+                        <textarea class="form-control" id="detailReason" rows="2" maxlength="500"></textarea>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 form-group">
+                        <label class="control-label">Countermeasure</label>
+                        <textarea class="form-control" id="detailCountermeasure" rows="2" maxlength="500"></textarea>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 form-group">
+                        <label class="control-label">Remarks</label>
+                        <textarea class="form-control" id="detailRemarks" rows="2" maxlength="500"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-dismiss="modal" style="width: 80px;">Cancel</button>
+                <button type="button" class="btn btn-primary" id="btn_saveDetailRow" style="width: 80px;">Save</button>
+            </div>
+        </div>
+    </div>
+</div>

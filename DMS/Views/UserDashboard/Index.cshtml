@@ -15,14 +15,9 @@
                         <div class="dp-header-icon"><i class="fa fa-folder-open"></i></div>
                         <div>
                             <h1>@ViewData["Title"]</h1>
-                            <p>All documents that have been approved and are effective. You can view, download, and acknowledge the documents.</p>
                         </div>
                     </div>
                     <div style="display:flex; align-items:center; gap:8px;">
-                        @if ((bool)ViewData["Request"])
-                        {
-                            <button type="button" class="dp-btn dp-btn-success" id="btn_request"><i class="fa fa-plus"></i> Request Document</button>
-                        }
                         <button type="button" class="dp-btn dp-btn-primary" id="btn_export"><i class="fa fa-file-excel-o"></i> Export</button>
                         <button type="button" class="dp-icon-btn" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
                         <button type="button" class="dp-icon-btn" id="btn_toggleStats" title="Hide Summary Cards"><i class="fa fa-chevron-up"></i></button>
@@ -39,7 +34,7 @@
                         <div class="dp-stat-card">
                             <div class="dp-stat-card-icon green"><i class="fa fa-check-circle"></i></div>
                             <div>
-                                <span>Acknowledged</span>
+                                <span>Accepted</span>
                                 <b id="udAcknowledged">-</b>
                                 <small id="udAcknowledgedPct">&nbsp;</small>
                             </div>
@@ -47,7 +42,7 @@
                         <div class="dp-stat-card">
                             <div class="dp-stat-card-icon amber"><i class="fa fa-hourglass-half"></i></div>
                             <div>
-                                <span>Not Acknowledged</span>
+                                <span>Waiting Acceptance</span>
                                 <b id="udNotAcknowledged">-</b>
                                 <small id="udNotAcknowledgedPct">&nbsp;</small>
                             </div>
@@ -82,5 +77,4 @@
         </div>
     </div>
 </section>
-@Html.Partial("_PopupForm")
 @Html.Partial("_Javascript")
