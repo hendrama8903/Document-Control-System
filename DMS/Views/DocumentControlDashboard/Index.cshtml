@@ -29,7 +29,6 @@
                             <div>
                                 <span>Total Documents</span>
                                 <b id="dcdTotal">-</b>
-                                <small>All registered documents</small>
                             </div>
                         </div>
                         <div class="dp-stat-card">
@@ -37,7 +36,6 @@
                             <div>
                                 <span>Effective Documents</span>
                                 <b id="dcdEffective">-</b>
-                                <small id="dcdEffectivePct">&nbsp;</small>
                             </div>
                         </div>
                         <div class="dp-stat-card">
@@ -45,15 +43,6 @@
                             <div>
                                 <span>Need Review</span>
                                 <b id="dcdNeedReview">-</b>
-                                <small>Within 30 days</small>
-                            </div>
-                        </div>
-                        <div class="dp-stat-card">
-                            <div class="dp-stat-card-icon red"><i class="fa fa-times-circle"></i></div>
-                            <div>
-                                <span>Obsolete Documents</span>
-                                <b id="dcdObsolete">-</b>
-                                <small>No longer in use</small>
                             </div>
                         </div>
                         <div class="dp-stat-card">
@@ -61,7 +50,6 @@
                             <div>
                                 <span>Waiting Acceptance</span>
                                 <b id="dcdPendingAck">-</b>
-                                <small>Documents need action</small>
                             </div>
                         </div>
                     </div>
@@ -78,6 +66,6 @@
         </div>
     </div>
 </section>
-@Html.Partial("_PopupForm")
-@Html.Partial("_SendPopupForm")
+@Html.Partial("_AcceptanceDetailPopup")
+@Html.Partial("~/Views/DocumentMaintenance/_DocumentHistoryPopup.cshtml")
 @Html.Partial("_Javascript")

@@ -1,0 +1,36 @@
+-- =====================================================================
+-- DocumentControlDashboard resmi ditetapkan sebagai overview read-only
+-- (master register semua dokumen teregister P4D + status + history),
+-- bukan modul CRUD. DocumentControlDashboardRepo.Search() sejak
+-- 2026-08-11 sudah dialihkan memanggil sp_P4DMaintenance_Search
+-- langsung (proven correct, dipakai juga oleh P4D Maintenance) -
+-- sp_DocumentControlDashboard_Search sudah tidak pernah dipanggil dari
+-- kode C# manapun.
+--
+-- sp_DocumentControlDashboard_SendDocument juga yatim - fitur "Send"
+-- (approval kirim dokumen dari dashboard ini) sudah lama tidak punya
+-- tombol di UI, sudah tergantikan oleh alur approval berjenjang di
+-- Document Maintenance.
+--
+-- Sudah dihapus dari kode (commit yang sama): action GetByKey,
+-- AddEditAsync, GetDepartmentCode, GetDocumentCode, GetDataByDocumentNo,
+-- GetDepartmentByDivision, GetDocumentByDepartment, SendDocument,
+-- SendApproveRejectEmail di DocumentControlDashboardController.cs;
+-- method GetByKey, GenerateDocumentNo, GetDataByDocumentNo, GetByKey,
+-- GetLevelByDocumentCode, Insert, Update, Delete, SendDocument di
+-- DocumentControlDashboardRepo.cs (semuanya sudah dead code - beberapa
+-- bahkan menunjuk SP yang sudah tidak ada sama sekali di database:
+-- sp_DocumentControlDashboard_GenerateDocumentNo,
+-- _GetLevelByDocumentCode, _Request, _Update, _Delete - dicek ke
+-- sys.procedures, memang tidak ada, tidak perlu di-DROP di sini).
+--
+-- Definisi lengkap sp_DocumentControlDashboard_Search dan
+-- _SendDocument diarsipkan di SQL/StoredProcedures/_dropped/ untuk
+-- referensi historis.
+--
+-- Idempotent - aman dijalankan ulang.
+-- Jalankan di database DMS_NEW
+-- =====================================================================
+
+DROP PROCEDURE IF EXISTS [dbo].[sp_DocumentControlDashboard_Search];
+DROP PROCEDURE IF EXISTS [dbo].[sp_DocumentControlDashboard_SendDocument];

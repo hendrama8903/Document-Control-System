@@ -45,6 +45,12 @@
         margin-top: 1px;
     }
 
+    .dcd-acc-chevron {
+        flex: none;
+        font-size: 11px;
+        color: #B0B8C4;
+    }
+
     .dcd-info-bar {
         display: flex;
         align-items: center;
@@ -70,17 +76,14 @@
 
 <div class="box-body">
     <div id="datagrid"></div>
-    <div class="dcd-info-bar">
-        <div class="dcd-info-msg"><i class="fa fa-info-circle"></i> Click on document number or eye icon to view document details.</div>
-        <div class="dcd-legend">
-            <span><i class="fa fa-check-circle"></i> Effective</span>
-            <span><i class="fa fa-clock-o"></i> Review Soon &mdash; due for review within 30 days</span>
-            <span><i class="fa fa-times-circle"></i> Obsolete &mdash; no longer in use</span>
-        </div>
-    </div>
 </div>
 
 <script type="text/javascript">
+    // Rincian teknis kolom Acceptance (rasio, jumlah department/divisi, hint
+    // belum di-Send, klik untuk detail popup) cuma untuk QMS/document-control
+    // staff - sama seperti P4DMaintenance/Index (request Hendra 2026-08-15).
+    var gIsQms = @(((bool)ViewData["DocumentControlAccess"]) ? "true" : "false");
+
     function getSelectedRowData() {
         var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
         return rows.length > 0 ? rows[0] : null;
@@ -93,17 +96,16 @@
         return Math.max(300, $(window).height() - gridTop - footerHeight - 70);
     }
 
-    // ---------- KPI cards (Total / Effective / Need Review / Obsolete / Pending Acknowledgement) ----------
+    // ---------- KPI cards (Total / Effective / Need Review / Pending Acknowledgement) ----------
     function updateHeaderStats(rows) {
         rows = rows || [];
         var total = rows.length;
-        var effective = 0, needReview = 0, obsolete = 0, pendingAck = 0;
+        var effective = 0, needReview = 0, pendingAck = 0;
         var today = moment().startOf("day");
         var in30Days = moment().startOf("day").add(30, "days");
 
         rows.forEach(function (r) {
             if (r.DOC_STATUS == "5") effective++;
-            if (r.DOC_STATUS == "4") obsolete++;
 
             if (r.NEXT_REVIEW_DATE) {
                 var reviewDate = moment(r.NEXT_REVIEW_DATE).startOf("day");
@@ -116,10 +118,7 @@
         $("#dcdTotal").text(total);
         $("#dcdEffective").text(effective);
         $("#dcdNeedReview").text(needReview);
-        $("#dcdObsolete").text(obsolete);
         $("#dcdPendingAck").text(pendingAck);
-
-        $("#dcdEffectivePct").text(total > 0 ? (Math.round((effective / total) * 1000) / 10) + "% of total" : "");
     }
 
     var dcdCategoryPillClasses = ["dms-pill-info", "dms-pill-success", "dms-pill-warning", "dms-pill-primary", "dms-pill-default"];
@@ -131,6 +130,60 @@
 
     function dcdOpenDocument(row) {
         onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+    }
+
+    // ---------- per-row "more actions" kebab menu (request Hendra 2026-08-15:
+    // gabungkan View + Download jadi satu kebab, bukan 2 tombol terpisah) ----------
+    var $dcdRowMenu = null;
+
+    function dcdBuildRowActionMenu() {
+        if ($dcdRowMenu) return $dcdRowMenu;
+
+        $dcdRowMenu = $('<ul class="dropdown-menu dp-dropdown-menu" role="menu"></ul>')
+            .css({ position: "absolute", display: "none", "z-index": 2000, "min-width": "160px" })
+            .appendTo("body");
+
+        $(document).on("click", function () {
+            $dcdRowMenu.hide();
+        });
+
+        return $dcdRowMenu;
+    }
+
+    function dcdMenuItem(cssClass, icon, label, onClick) {
+        var $li = $('<li><a href="#" class="' + cssClass + '"><i class="fa ' + icon + '"></i> ' + label + '</a></li>');
+        $li.find("a").on("click", function (e) {
+            e.preventDefault();
+            $dcdRowMenu.hide();
+            onClick();
+        });
+        return $li;
+    }
+
+    function dcdOpenRowActionMenu($btn, row) {
+        var $menu = dcdBuildRowActionMenu();
+        $menu.empty();
+
+        $menu.append(dcdMenuItem("dp-menu-preview", "fa-eye", "View", function () {
+            dcdOpenDocument(row);
+        }));
+
+        $menu.append(dcdMenuItem("dp-menu-download", "fa-download", "Download", function () {
+            onDownloadAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+        }));
+
+        // Reuse total popup History yang sudah ada & teruji di Document
+        // Preparation (_DocumentHistoryPopup.cshtml, dirender dari Index.cshtml
+        // dashboard ini) - onHistoryPrepare() otomatis baca row.DOCUMENT_CODE
+        // dari getSelectedRowData() (request Hendra 2026-08-16).
+        $menu.append(dcdMenuItem("dp-menu-history", "fa-history", "History", function () {
+            $("#datagrid").dxDataGrid("instance").selectRows([row.DOCUMENT_CTRL_ID], false);
+            onHistoryPrepare();
+        }));
+
+        var offset = $btn.offset();
+        $menu.css({ top: offset.top + $btn.outerHeight() + 4, left: offset.left - $menu.outerWidth() + $btn.outerWidth() })
+            .show();
     }
 
     $(document).ready(function () {
@@ -263,44 +316,11 @@
                             case "5": pillClass = "dms-pill-success"; icon = "fa-check-circle"; break;
                         }
 
-                        $("<span>").addClass("dms-pill " + pillClass).html('<i class="fa ' + icon + '"></i> ' + (row.DOC_STATUS_VAL || "-")).appendTo(container);
-                    }
-                },
-                {
-                    dataField: "DOCUMENT_DATE",
-                    caption: "Effective Date",
-                    alignment: "center",
-                    cellTemplate: function (container, options) {
-                        var value = options.data.DOCUMENT_DATE;
-                        container.text(value != null ? moment(value).format("DD MMM YYYY") : "");
-                    }
-                },
-                {
-                    dataField: "NEXT_REVIEW_DATE",
-                    caption: "Next Review",
-                    alignment: "center",
-                    cellTemplate: function (container, options) {
-                        var value = options.data.NEXT_REVIEW_DATE;
-                        if (value == null) { container.text(""); return; }
-
-                        var reviewDate = moment(value).startOf("day");
-                        var overdue = reviewDate.isBefore(moment().startOf("day"));
-
-                        $("<span>")
-                            .css({ color: overdue ? "#C62828" : "#B36B00", fontWeight: 600 })
-                            .text(reviewDate.format("DD MMM YYYY"))
-                            .appendTo(container);
-                    }
-                },
-                {
-                    dataField: "OWNER_FULL_NAME",
-                    caption: "Document Owner",
-                    cellTemplate: function (container, options) {
-                        var row = options.data;
-                        $("<span>").text(row.OWNER_FULL_NAME || "-").appendTo(container);
-                        if (row.DEPARTMENT_NAME) {
-                            $("<span>").addClass("dcd-owner-dept").text(row.DEPARTMENT_NAME).appendTo(container);
-                        }
+                        // Tampilan khusus grid ini saja - "Published" tanpa "(Effective)",
+                        // master data TB_M_SYSTEM tidak diubah supaya tempat lain (mis.
+                        // UserDashboard) tetap seperti biasa (request Hendra 2026-08-15).
+                        var statusText = (row.DOC_STATUS_VAL || "-").replace(" (Effective)", "");
+                        $("<span>").addClass("dms-pill " + pillClass).html('<i class="fa ' + icon + '"></i> ' + statusText).appendTo(container);
                     }
                 },
                 {
@@ -313,22 +333,88 @@
                         var row = options.data;
                         var total = row.ACK_TOTAL != null ? row.ACK_TOTAL : 0;
                         var done = row.ACK_DONE != null ? row.ACK_DONE : 0;
+                        var pending = row.PENDING_DISTRIBUTION_COUNT || 0;
+                        var divCount = row.DIVISION_COUNT || 0;
                         var complete = total > 0 && done >= total;
 
-                        $("<span>").css({ fontWeight: 700, display: "block" }).text(done + " / " + total).appendTo(container);
+                        // User biasa (bukan QMS) cuma lihat label polos, sama seperti
+                        // P4DMaintenance/Index - rincian teknis di bawah ini QMS-only.
+                        if (!gIsQms) {
+                            $("<span>")
+                                .css({ fontWeight: 600, color: total === 0 ? "#8A94A6" : (complete ? "#1E9E63" : "#B36B00") })
+                                .text(total === 0 ? "Not Distributed" : (complete ? "Accepted" : "Waiting"))
+                                .appendTo(container);
+                            return;
+                        }
+
+                        // Ikon panah kecil di kanan sel menandakan sel ini bisa diklik
+                        // untuk membuka panel detail Acceptance (sidebar), biar tidak
+                        // cuma mengandalkan cursor:pointer yang gampang tidak disadari
+                        // user (request Hendra 2026-08-15).
+                        container.css({ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", cursor: "pointer" });
+
+                        var $wrap = $("<div>").css({ lineHeight: 1.3 });
 
                         if (total === 0) {
                             // Belum pernah di-"Send Distribution" ke department manapun -
-                            // beda dari "Pending" (sudah dikirim, belum semua acknowledge).
-                            $("<span>")
-                                .css({ fontSize: "10.5px", fontWeight: 600, color: "#8A94A6" })
-                                .text("Not Distributed")
-                                .appendTo(container);
+                            // beda dari "Pending" (sudah dikirim, belum semua acknowledge),
+                            // dan beda lagi dari "sudah dicentang tapi belum di-Send".
+                            if (pending > 0) {
+                                $("<span>")
+                                    .css({ fontWeight: 600, color: "#B36B00" })
+                                    .html('<i class="fa fa-exclamation-circle"></i> ' + pending + ' Not Sent Yet')
+                                    .appendTo($wrap);
+                            } else {
+                                $("<span>").css({ fontWeight: 600, color: "#8A94A6" }).text("Not Distributed").appendTo($wrap);
+                            }
                         } else {
+                            var waitingLabel = "Waiting (" + done + "/" + total + ")";
                             $("<span>")
-                                .css({ fontSize: "10.5px", fontWeight: 600, color: complete ? "#1E9E63" : "#B36B00" })
-                                .text(complete ? "Accepted" : "Waiting")
-                                .appendTo(container);
+                                .css({ fontWeight: 700, color: complete ? "#1E9E63" : "#B36B00" })
+                                .text(complete ? "Accepted" : waitingLabel)
+                                .appendTo($wrap);
+
+                            $("<span>")
+                                .css({ display: "block", fontSize: "10.5px", color: "#8A94A6", marginTop: "2px" })
+                                .text(total + " Department" + (total !== 1 ? "s" : "") + " / " + divCount + " Division" + (divCount !== 1 ? "s" : ""))
+                                .appendTo($wrap);
+
+                            if (pending > 0) {
+                                $("<span>")
+                                    .css({ display: "block", fontSize: "10.5px", color: "#B36B00", fontWeight: 600, marginTop: "2px" })
+                                    .html('<i class="fa fa-exclamation-circle"></i> ' + pending + ' Not Sent Yet')
+                                    .appendTo($wrap);
+                            }
+                        }
+
+                        // Klik untuk lihat rincian per department (QMS-only) - lihat
+                        // _AcceptanceDetailPopup.cshtml (request Hendra 2026-08-15).
+                        container.on("click", function (e) {
+                            e.stopPropagation();
+                            dcdOpenAcceptanceDetail(row);
+                        });
+
+                        $wrap.appendTo(container);
+                        $("<i>").addClass("fa fa-chevron-right dcd-acc-chevron").attr("title", "Click for detail").appendTo(container);
+                    }
+                },
+                {
+                    dataField: "DOCUMENT_DATE",
+                    caption: "Effective Date",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.DOCUMENT_DATE;
+                        container.text(value != null ? moment(value).format("DD MMM YYYY") : "");
+                    }
+                },
+                {
+                    dataField: "OWNER_FULL_NAME",
+                    caption: "Document Owner",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+                        $("<span>").text(row.OWNER_FULL_NAME || "-").appendTo(container);
+                        if (row.DEPARTMENT_NAME) {
+                            $("<span>").addClass("dcd-owner-dept").text(row.DEPARTMENT_NAME).appendTo(container);
                         }
                     }
                 },
@@ -389,7 +475,7 @@
                 {
                     caption: "Action",
                     alignment: "center",
-                    width: 90,
+                    width: 70,
                     allowHiding: false,
                     allowFiltering: false,
                     fixed: true,
@@ -400,19 +486,12 @@
                         container.css("white-space", "nowrap");
 
                         $("<button>")
-                            .attr({ type: "button", title: "View" })
-                            .addClass("dp-act-eye")
-                            .html('<i class="fa fa-eye"></i>')
-                            .on("click", function () { dcdOpenDocument(row); })
-                            .appendTo(container);
-
-                        $("<button>")
-                            .attr({ type: "button", title: "Download" })
-                            .addClass("dp-act-eye")
-                            .css("margin-left", "6px")
-                            .html('<i class="fa fa-download"></i>')
-                            .on("click", function () {
-                                onDownloadAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+                            .attr({ type: "button", title: "More actions" })
+                            .addClass("dp-act-kebab")
+                            .html('<i class="fa fa-ellipsis-v"></i>')
+                            .on("click", function (e) {
+                                e.stopPropagation();
+                                dcdOpenRowActionMenu($(this), row);
                             })
                             .appendTo(container);
                     }
