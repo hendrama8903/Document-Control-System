@@ -1,0 +1,409 @@
+            <!-- Side panel ringkas untuk kolom Status - HANYA state approval (badge +
+                 stepper), bukan modal "Approval List" lengkap (Document Information/
+                 Approval Route/History table) yang sudah ada lewat menu Actions >
+                 Approval. Reuse endpoint GetApprovalHeader/GetApprovalDetail yang sama
+                 (request Hendra 2026-08-15). -->
+<style>
+    #approvalStatePanel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 420px;
+        max-width: 92vw;
+        height: 100vh;
+        background: #fff;
+        box-shadow: -8px 0 24px rgba(20,35,50,.18);
+        z-index: 1050;
+        display: flex;
+        flex-direction: column;
+        transform: translateX(100%);
+        transition: transform .22s cubic-bezier(.4,0,.2,1);
+    }
+
+    #approvalStatePanel.open { transform: translateX(0); }
+
+    #approvalStatePanel .adf-header {
+        background: #fff;
+        color: #101828;
+        padding: 16px 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid #EEF1F5;
+        position: relative;
+        flex: none;
+    }
+
+    #approvalStatePanel .adf-header-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        background: #E7F1FB;
+        color: #2450D8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        font-size: 15px;
+    }
+
+    #approvalStatePanel .adf-header-title { font-size: 14px; font-weight: 700; color: #101828; }
+    #approvalStatePanel .adf-header-sub { font-size: 12px; color: #8A94A3; margin-top: 2px; }
+
+    #approvalStatePanel .adf-close {
+        background: none;
+        border: none;
+        color: #98A2B3;
+        font-size: 13px;
+        cursor: pointer;
+        padding: 2px;
+        margin-left: auto;
+    }
+
+    #approvalStatePanel .adf-close:hover { color: #475467; }
+
+    #approvalStatePanel .panel-body { padding: 18px 20px; flex: 1 1 auto; overflow-y: auto; }
+
+    /* Status summary card - pola sama seperti .dp-stat-card (Document Status
+       panel) supaya kedua side panel konsisten (request Hendra 2026-08-18). */
+    #approvalStatePanel .asp-status-panel {
+        background: #F9FAFB;
+        border: 1px solid #E3E8EE;
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin-bottom: 22px;
+    }
+    #approvalStatePanel .asp-status-label { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; color: #8A94A3; margin-bottom: 10px; }
+    #approvalStatePanel .asp-status-row { display: flex; align-items: center; gap: 10px; }
+    #approvalStatePanel .asp-status-icon {
+        flex: none; width: 32px; height: 32px; border-radius: 8px;
+        display: flex; align-items: center; justify-content: center; font-size: 13px;
+    }
+    #approvalStatePanel .asp-status-pre { font-size: 10.5px; font-weight: 700; color: #8A94A3; }
+    #approvalStatePanel .asp-status-text { font-weight: 800; font-size: 14.5px; line-height: 1.25; word-break: break-word; color: #1D2939; }
+    #approvalStatePanel .asp-status-position { font-size: 11.5px; color: #66788A; margin-top: 1px; }
+    #approvalStatePanel .asp-status-hint { font-size: 11px; color: #66788A; margin-top: 8px; line-height: 1.4; }
+
+    #approvalStatePanel .asp-status-info .asp-status-icon { background: #E7F1FB; color: #2450D8; }
+    #approvalStatePanel .asp-status-success .asp-status-icon { background: #E4F7EC; color: #1E9E63; }
+    #approvalStatePanel .asp-status-warning .asp-status-icon { background: #FFF4DC; color: #B36B00; }
+    #approvalStatePanel .asp-status-danger .asp-status-icon { background: #FDECEC; color: #C62828; }
+
+    /* Vertical stepper - lebih pas untuk panel sempit dibanding horizontal */
+    #approvalStatePanel .asp-section-title {
+        font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+        color: #8A94A3; margin-bottom: 14px;
+    }
+
+    #approvalStatePanel .stepper-step { display: flex; gap: 12px; }
+    #approvalStatePanel .stepper-connector-v { width: 2px; flex: none; background: #D5DAE1; margin: 2px 0 2px 19px; }
+    #approvalStatePanel .stepper-connector-v.done, #approvalStatePanel .stepper-connector-v.rejected { background: currentColor; }
+
+    #approvalStatePanel .stepper-icon {
+        width: 40px; height: 40px; border-radius: 50%; font-size: 15px; flex: none;
+        display: flex; align-items: center; justify-content: center;
+    }
+    #approvalStatePanel .stepper-done .stepper-icon { background: #1E9E5A; color: #fff; }
+    #approvalStatePanel .stepper-current .stepper-icon { background: #F2A93B; color: #fff; box-shadow: 0 0 0 5px rgba(242,169,59,.22); }
+    #approvalStatePanel .stepper-rejected .stepper-icon { background: #D64545; color: #fff; }
+    #approvalStatePanel .stepper-upcoming .stepper-icon { background: #fff; border: 2px solid #D5DAE1; }
+
+    #approvalStatePanel .stepper-body { padding-bottom: 22px; min-width: 0; }
+    #approvalStatePanel .stepper-title { font-weight: 700; font-size: 13px; }
+    #approvalStatePanel .stepper-done .stepper-title { color: #1E9E5A; }
+    #approvalStatePanel .stepper-current .stepper-title { color: #B36B00; }
+    #approvalStatePanel .stepper-rejected .stepper-title { color: #D64545; }
+    #approvalStatePanel .stepper-upcoming .stepper-title { color: #9AA4B2; }
+    #approvalStatePanel .stepper-sub { font-size: 12px; color: #475467; margin-top: 2px; word-break: break-word; }
+    #approvalStatePanel .stepper-position { font-size: 10.5px; color: #8A94A3; margin-top: 1px; }
+    #approvalStatePanel .stepper-date { font-size: 10.5px; color: #98A2B3; margin-top: 2px; }
+    #approvalStatePanel .stepper-current-badge {
+        display: inline-block; margin-top: 6px; font-size: 9.5px; font-weight: 700; letter-spacing: .03em;
+        color: #B36B00; background: #FFF3E0; border: 1px solid #F2D9A6; border-radius: 20px; padding: 2px 8px;
+    }
+
+    /* Related Division Acknowledgment (SPR/SIPOCOR Level 2, request Hendra
+       2026-08-21) - section BARU, informasional saja (aksi Acknowledge tetap
+       lewat modal "Approval List" lengkap, bukan di sini). Tanpa ini, panel
+       ringkas ini bisa salah bilang dokumen "completed" padahal
+       TB_R_DOCUMENT.STATUS masih 6 (Waiting Acknowledgment) menunggu Related
+       Division - lihat aspStepState/renderAspStatusPanel. */
+    #approvalStatePanel .asp-ack-section { margin-top: 24px; }
+    #approvalStatePanel .asp-ack-item {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        padding: 10px 0; border-bottom: 1px solid #EEF1F5;
+    }
+    #approvalStatePanel .asp-ack-item:last-child { border-bottom: none; }
+    #approvalStatePanel .asp-ack-division { font-weight: 700; font-size: 12.5px; color: #1D2939; }
+    #approvalStatePanel .asp-ack-head { font-size: 11px; color: #8A94A3; margin-top: 1px; }
+    #approvalStatePanel .asp-ack-pill {
+        flex: none; font-size: 9.5px; font-weight: 700; letter-spacing: .02em;
+        padding: 3px 8px; border-radius: 20px; white-space: nowrap;
+    }
+    #approvalStatePanel .asp-ack-pill.done { background: #E4F7EC; color: #1E9E63; }
+    #approvalStatePanel .asp-ack-pill.pending { background: #FFF3E0; color: #B36B00; }
+</style>
+
+<div id="approvalStatePanel">
+    <div class="adf-header">
+        <div class="adf-header-icon"><i class="fa fa-sitemap"></i></div>
+        <div>
+            <div class="adf-header-title">Approval Status</div>
+            <div class="adf-header-sub" id="aspDocumentCode">-</div>
+        </div>
+        <button type="button" class="adf-close" id="btn_closeApprovalStatePanel"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="panel-body">
+        <div class="asp-status-panel" id="aspStatusPanel">
+            <div class="asp-status-label">APPROVAL STATUS</div>
+            <div class="asp-status-row">
+                <div class="asp-status-icon"><i class="fa fa-clock-o" id="aspStatusIcon"></i></div>
+                <div>
+                    <div class="asp-status-pre" id="aspStatusPre">WAITING FOR</div>
+                    <div class="asp-status-text" id="aspStatusText">-</div>
+                    <div class="asp-status-position" id="aspStatusPosition"></div>
+                </div>
+            </div>
+            <div class="asp-status-hint" id="aspStatusHint"></div>
+        </div>
+
+        <div class="asp-section-title">Approval Progress</div>
+        <div id="aspStepper"></div>
+
+        <div class="asp-ack-section" id="aspAckSection" style="display:none;">
+            <div class="asp-section-title">Related Division Acknowledgment</div>
+            <div id="aspAckList"></div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    var aspHeaderData = null;
+    var aspDetailData = null;
+    var aspAckData = null;
+    var aspRow = null;
+
+    function dmOpenApprovalState(row) {
+        aspRow = row;
+        $("#aspDocumentCode").text(row.DOCUMENT_CODE || "-");
+        $("#approvalStatePanel").addClass("open");
+
+        aspAckData = null;
+        $("#aspAckSection").hide();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetRelatedDivisionAckStatus", "DocumentMaintenance")",
+            data: { documentTransactionId: row.DOCUMENT_TRANSACTION_ID },
+            success: function (result) {
+                if (result.status && result.data && result.data.length > 0) {
+                    aspAckData = result.data;
+                    renderAspAckList();
+                    renderAspStatusPanel();
+                }
+            }
+        });
+
+        if (!row.APPROVAL_ID) {
+            $("#aspStepper").html('<div style="color:#98A2B3; font-size:12.5px;">No approval workflow has been started for this document yet.</div>');
+            $("#aspStatusPanel").attr("class", "asp-status-panel asp-status-info");
+            $("#aspStatusIcon").attr("class", "fa fa-info-circle");
+            $("#aspStatusPre").text("STATUS");
+            $("#aspStatusText").text("NOT STARTED");
+            $("#aspStatusHint").text("");
+            return;
+        }
+
+        aspHeaderData = null;
+        aspDetailData = null;
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetApprovalHeader", "DocumentMaintenance")",
+            data: { approvalId: row.APPROVAL_ID },
+            success: function (result) {
+                if (result.status) {
+                    aspHeaderData = result.data;
+                    renderAspStatusPanel();
+                    renderAspStepper(row);
+                }
+            }
+        });
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetApprovalDetail", "DocumentMaintenance")",
+            data: { approvalId: row.APPROVAL_ID },
+            success: function (result) {
+                if (result.status) {
+                    aspDetailData = result.data;
+                    renderAspStatusPanel();
+                    renderAspStepper(row);
+                }
+            }
+        });
+    }
+
+    // Sama persis logikanya dengan getApprovalStepState() di modal "Approval List"
+    // (_Javascript.cshtml) supaya warna/state konsisten di kedua tempat.
+    function aspStepState(row) {
+        if (row["STATUS"] == 1) return "done";
+
+        if (row["STATUS"] == 0) {
+            if (aspHeaderData != null &&
+                aspHeaderData["CURRENT_SEQ"] == row["WORKFLOW_SEQ"] &&
+                aspHeaderData["APPROVAL_STATUS"] == 0) {
+                return "current";
+            }
+            return "upcoming";
+        }
+
+        return "rejected";
+    }
+
+    function renderAspStatusPanel() {
+        if (aspHeaderData == null) return;
+
+        var $panel = $("#aspStatusPanel");
+        $panel.removeClass("asp-status-info asp-status-success asp-status-warning asp-status-danger");
+
+        var status = aspHeaderData["APPROVAL_STATUS"];
+
+        // Related Division "Mengetahui" (SPR/SIPOCOR Level 2, request Hendra
+        // 2026-08-21) - approval berjenjang biasa (TB_R_APPROVAL_H) bisa saja
+        // sudah APPROVAL_STATUS=1 (selesai), tapi dokumennya sendiri
+        // (TB_R_DOCUMENT.STATUS) masih 6 "Waiting Acknowledgment" selama ada
+        // Related Division ber-role RELATED yang belum klik Acknowledge. Tanpa
+        // cabang ini, panel salah bilang "APPROVED"/"completed" padahal masih
+        // menggantung menunggu Div Head divisi terkait.
+        var waitingAck = aspRow && aspRow["STATUS"] == 6;
+
+        if (status == 1 && waitingAck) {
+            $panel.addClass("asp-status-warning");
+            $("#aspStatusIcon").attr("class", "fa fa-users");
+            $("#aspStatusPre").text("STATUS");
+            $("#aspStatusText").text("WAITING ACKNOWLEDGMENT");
+            $("#aspStatusPosition").text("");
+            $("#aspStatusHint").text("Approval is complete - waiting for related division(s) to acknowledge (\"Mengetahui\") before this document is fully approved. See Related Division Acknowledgment below.");
+        } else if (status == 1) {
+            $panel.addClass("asp-status-success");
+            $("#aspStatusIcon").attr("class", "fa fa-check");
+            $("#aspStatusPre").text("STATUS");
+            $("#aspStatusText").text("APPROVED");
+            $("#aspStatusPosition").text("");
+            $("#aspStatusHint").text("This document has completed the approval process.");
+        } else if (status == 0) {
+            var currentRow = (aspDetailData || []).filter(function (r) {
+                return r["WORKFLOW_SEQ"] == aspHeaderData["CURRENT_SEQ"];
+            })[0];
+
+            $panel.addClass("asp-status-warning");
+            $("#aspStatusIcon").attr("class", "fa fa-clock-o");
+            $("#aspStatusPre").text("WAITING FOR");
+            $("#aspStatusText").text(currentRow ? (currentRow["APPROVER_NAME"] || "").toUpperCase() : "-");
+            $("#aspStatusPosition").text(currentRow ? (currentRow["APPROVER_POSITION"] || "") : "");
+            $("#aspStatusHint").text("Please review and take action.");
+        } else {
+            $panel.addClass("asp-status-danger");
+            $("#aspStatusIcon").attr("class", "fa fa-times");
+            $("#aspStatusPre").text("STATUS");
+            $("#aspStatusText").text("REJECTED");
+            $("#aspStatusPosition").text("");
+            $("#aspStatusHint").text("This document was rejected.");
+        }
+    }
+
+    // Informasional saja - tombol Acknowledge SENGAJA tidak ada di sini
+    // (panel ini "ringkas", aksinya tetap lewat modal "Approval List" lengkap
+    // via menu Actions > Approval, sama seperti sebelumnya).
+    function renderAspAckList() {
+        if (!aspAckData || aspAckData.length === 0) {
+            $("#aspAckSection").hide();
+            return;
+        }
+
+        var html = "";
+        aspAckData.forEach(function (d) {
+            var done = d["ACKNOWLEDGED_FLAG"] == 1;
+            var headName = d["HEAD_FULL_NAME"] || "(Div. Head not assigned)";
+
+            html += '<div class="asp-ack-item">' +
+                        '<div>' +
+                            '<div class="asp-ack-division">' + d["DIVISION_CODE"] + (d["DIVISION_NAME"] ? " - " + d["DIVISION_NAME"] : "") + '</div>' +
+                            '<div class="asp-ack-head">' + headName + '</div>' +
+                        '</div>' +
+                        '<span class="asp-ack-pill ' + (done ? "done" : "pending") + '">' +
+                            (done ? '<i class="fa fa-check"></i> ACKNOWLEDGED' : '<i class="fa fa-clock-o"></i> PENDING') +
+                        '</span>' +
+                    '</div>';
+        });
+
+        $("#aspAckList").html(html);
+        $("#aspAckSection").show();
+    }
+
+    function renderAspStepper(row) {
+        if (aspHeaderData == null || aspDetailData == null) return;
+
+        var steps = [];
+        steps.push({
+            title: "Created",
+            sub: aspHeaderData["CREATOR_NAME"] || "",
+            position: aspHeaderData["CREATOR_POSITION"] || "",
+            date: row.CREATED_DT,
+            state: "done"
+        });
+
+        var sortedDetail = aspDetailData.slice().sort(function (a, b) {
+            return a["WORKFLOW_SEQ"] - b["WORKFLOW_SEQ"];
+        });
+
+        sortedDetail.forEach(function (d) {
+            var state = aspStepState(d);
+            var title = state === "done" ? "Approved"
+                : state === "current" ? "Waiting"
+                : state === "rejected" ? "Rejected"
+                : "Pending";
+
+            steps.push({ title: title, sub: d["APPROVER_NAME"], position: d["APPROVER_POSITION"] || "", date: d["CHANGED_DT"], state: state });
+        });
+
+        var iconByState = { done: "fa-check", current: "fa-clock-o", rejected: "fa-times", upcoming: "" };
+
+        var html = "";
+        steps.forEach(function (step, idx) {
+            var dateHtml = step.date ? '<div class="stepper-date">' + moment(step.date).format("DD-MM-YYYY HH:mm") + "</div>" : "";
+            var positionHtml = step.position ? '<div class="stepper-position">' + step.position + "</div>" : "";
+            var iconHtml = iconByState[step.state] ? '<i class="fa ' + iconByState[step.state] + '"></i>' : "";
+            var badgeHtml = step.state === "current" ? '<div class="stepper-current-badge">CURRENT STEP</div>' : "";
+            var connectorState = (step.state == "done" || step.state == "rejected") ? step.state : "upcoming";
+
+            html += '<div class="stepper-step stepper-' + step.state + '">' +
+                        '<div>' +
+                            '<div class="stepper-icon">' + iconHtml + '</div>' +
+                            (idx < steps.length - 1 ? '<div class="stepper-connector-v ' + connectorState + '"></div>' : '') +
+                        '</div>' +
+                        '<div class="stepper-body">' +
+                            '<div class="stepper-title">' + (idx + 1) + ". " + step.title + "</div>" +
+                            '<div class="stepper-sub">' + (step.sub || "") + "</div>" +
+                            positionHtml +
+                            dateHtml +
+                            badgeHtml +
+                        "</div>" +
+                    "</div>";
+        });
+
+        $("#aspStepper").html(html);
+    }
+
+    $(document).ready(function () {
+        $("#btn_closeApprovalStatePanel").on("click", function () {
+            $("#approvalStatePanel").removeClass("open");
+        });
+
+        $(document).on("click", function (e) {
+            if ($("#approvalStatePanel").hasClass("open") && !$(e.target).closest("#approvalStatePanel").length) {
+                $("#approvalStatePanel").removeClass("open");
+            }
+        });
+    });
+</script>

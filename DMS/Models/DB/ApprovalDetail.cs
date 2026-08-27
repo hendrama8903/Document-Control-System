@@ -13,6 +13,7 @@ namespace DMS.Models.DB
         public int? WORKFLOW_SEQ { get; set; }
         public string? APPROVER { get; set; }
         public string? APPROVER_NAME { get; set; }
+        public string? APPROVER_POSITION { get; set; }
         public string? STATUS { get; set; }
         public string? STATUS_DESC { get; set; }
         public string? REMARK { get; set; }

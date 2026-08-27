@@ -33,6 +33,12 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentMaintenance_Insert]
 		@MENU_ID varchar(50),
 		@DOCUMENT_CREATOR VARCHAR(50),
 		@MANUAL_SEQ_NO INT = NULL,
+		-- Fitur "Divisi Terkait" (SPR/SIPOCOR Level 2, request Hendra 2026-08-20) -
+		-- daftar "KODE:ROLE" dipisah koma (mis. 'CED:MAIN_PIC,FAD:RELATED,
+		-- ITD:NOTE_RELATED'), NULL/kosong kalau dokumen ini tidak pakai fitur
+		-- Divisi Terkait. ROLE kosong/tanpa ':' dianggap 'RELATED' (default lama,
+		-- backward compatible).
+		@RELATED_DIVISIONS VARCHAR(MAX) = NULL,
 		@RETURN_MSG VARCHAR(MAX) OUTPUT,
 		@RETURN_ID	 		VARCHAR(MAX) OUTPUT
 AS
@@ -179,12 +185,22 @@ BEGIN TRY
 			RETURN 0;
 		END
 
-		-- P4D-gated revision (Jul 2026): a revision may only be started once the CURRENT
-		-- revision of this document has been registered in P4D Maintenance (an active,
-		-- non-deleted TB_R_CTRL_DOCUMENT row with OPERATION_TYPE = 1 - same definition of
-		-- "registered" used by GetDocumentCodeLoginBased's NOT_EXIST_FLAG filter). This row
-		-- gets soft-deleted below once this new revision is created, so the NEXT revision
-		-- will require registering THIS revision in P4D first, and so on down the chain.
+		-- P4D-gated revision (Jul 2026, guard tetap - side effect pindah Aug 2026):
+		-- a revision may only be started once the CURRENT revision of this document
+		-- has been registered in P4D Maintenance (an active, non-deleted
+		-- TB_R_CTRL_DOCUMENT row with OPERATION_TYPE = 1 - same definition of
+		-- "registered" used by GetDocumentCodeLoginBased's NOT_EXIST_FLAG filter).
+		-- CUMA DICEK di sini, TIDAK DIHAPUS - dokumen lama (rev sebelumnya) masih
+		-- STATUS Approved/Published dan masih beredar resmi selama revisi ini masih
+		-- Draft/pending approval, jadi registrasi P4D-nya harus tetap terlihat di
+		-- grid P4D Maintenance selama itu (dulu baris ini langsung soft-delete di
+		-- sini, bikin dokumen yang masih sah hilang dari P4D selama revisi pending -
+		-- request Hendra 2026-08-16, ditemukan lewat pengujian). Retire registrasi
+		-- P4D yang lama sekarang dipindah ke sp_DocumentMaintenance_SupersedeRevision,
+		-- bareng saat dokumen lama benar-benar digantikan (revisi ini disetujui
+		-- penuh) - bukan saat revisi BARU DIBUAT. Double-revision (2 draft revisi
+		-- berjalan bersamaan) sudah dicegah terpisah oleh guard @rev_STATUS = '0'
+		-- di atas, jadi tidak perlu soft-delete P4D untuk itu.
 		IF NOT EXISTS (
 			SELECT 1 FROM TB_R_CTRL_DOCUMENT ctrl
 			WHERE ctrl.DOCUMENT_CODE = @DOCUMENT_CODE
@@ -244,6 +260,60 @@ BEGIN TRY
 		RETURN 0;
 	END
 
+	-- Divisi Terkait (SPR/SIPOCOR Level 2) - validasi tiap divisi terkait
+	-- punya Div Head terdaftar (POSITION_ID=4), gagal cepat kalau tidak,
+	-- SEBELUM dokumen jadi dibuat. TIDAK LAGI menambah langkah ke approval
+	-- chain (TB_R_APPROVAL_D) - acknowledgment "Mengetahui" sekarang
+	-- sepenuhnya terpisah, dilacak lewat kolom ACKNOWLEDGED_* di
+	-- TB_R_DOCUMENT_RELATED_DIVISION sendiri (lihat
+	-- sp_DocumentMaintenance_AcknowledgeRelatedDivision) - bukan bagian dari
+	-- approval berjenjang biasa lagi (request Hendra 2026-08-20, koreksi
+	-- desain sebelumnya yang menumpangkannya ke TB_R_APPROVAL_D).
+	IF @RELATED_DIVISIONS IS NOT NULL AND LEN(@RELATED_DIVISIONS) > 0
+	BEGIN
+		DECLARE @missingDivision VARCHAR(10);
+
+		-- "KODE:ROLE" -> ambil KODE saja (bagian sebelum ':') buat validasi Div
+		-- Head - ROLE-nya tidak relevan di sini, semua role tetap perlu Div Head
+		-- terdaftar.
+		SELECT TOP 1 @missingDivision = LEFT(v, pos - 1)
+		FROM (
+			SELECT LTRIM(RTRIM(value)) AS v
+			FROM STRING_SPLIT(@RELATED_DIVISIONS, ',')
+			WHERE LEN(LTRIM(RTRIM(value))) > 0
+		) trimmed
+		CROSS APPLY (SELECT CHARINDEX(':', v + ':') AS pos) p
+		WHERE NOT EXISTS (
+				SELECT 1 FROM [dbo].[TB_M_USER_POS]
+				WHERE POSITION_ID = 4 AND DIVISION = LEFT(v, pos - 1)
+			);
+
+		IF @missingDivision IS NOT NULL
+		BEGIN
+			SET @RETURN_MSG = 'ERROR: Div. Head belum terdaftar untuk divisi ' + @missingDivision + ' - tidak bisa menambahkan Divisi Terkait.';
+			SET @RETURN_ID = 0;
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @CREATED_BY
+			RETURN 0;
+		END
+	END
+
+	-- Snapshot nama Division/Department/Section (request Hendra 2026-08-22) -
+	-- dibekukan SEKALI di sini saat record dibuat, supaya rename nama di
+	-- Master Data tidak ikut mengubah tampilan dokumen yang sudah ada (lihat
+	-- SQL/OrgMasterData_NameSnapshot_Migration.sql). Kode/ID tetap sumber
+	-- kebenaran untuk relasi - kolom ini murni untuk display/print histori.
+	DECLARE @snap_DIVISION_NAME VARCHAR(255), @snap_DEPARTMENT_CODE VARCHAR(5),
+					@snap_DEPARTMENT_NAME VARCHAR(255), @snap_SECTION_NAME VARCHAR(255);
+
+	SELECT @snap_DIVISION_NAME = DIV.DIVISION_NAME
+	FROM [dbo].[TB_M_DIVISION] DIV WHERE DIV.DIVISION_CODE = @DIVISION;
+
+	SELECT @snap_DEPARTMENT_CODE = DEP.DEPARTMENT_CODE, @snap_DEPARTMENT_NAME = DEP.DEPARTMENT_NAME
+	FROM [dbo].[TB_M_DEPARTMENT] DEP WHERE DEP.DEPARTMENT_ID = @DEPARTMENT_ID;
+
+	SELECT @snap_SECTION_NAME = SEC.SECTION_NAME
+	FROM [dbo].[TB_M_SECTION] SEC WHERE SEC.SECTION_CODE = @SECTION_CODE AND SEC.DEPARTMENT_CODE = @snap_DEPARTMENT_CODE;
+
 	INSERT INTO [dbo].[TB_R_DOCUMENT]
            ([DOCUMENT_CODE]
            ,[DOCUMENT_TRANSACTION_NAME]
@@ -251,6 +321,7 @@ BEGIN TRY
            ,[PROCESS_CODE]
            ,[COMPANY_CODE]
            ,[SECTION_CODE]
+           ,[SECTION_NAME]
            ,[ITEM_CHANGED]
            ,[REASON]
            ,[EXTERNAL_FLAG]
@@ -269,8 +340,11 @@ BEGIN TRY
            ,[CHANGED_BY]
            ,[CHANGED_DT]
 		   ,DIVISION
+		   ,DIVISION_NAME
 		   ,CLASSIFIED
 		   ,DEPARTMENT
+		   ,DEPARTMENT_CODE
+		   ,DEPARTMENT_NAME
 			 ,IMPACT_OTHER_FLAG
 			 ,DOCUMENT_CREATOR)
      VALUES
@@ -280,6 +354,7 @@ BEGIN TRY
            ,@PROCESS_CODE
            ,@COMPANY_CODE
            ,@SECTION_CODE
+           ,@snap_SECTION_NAME
            ,@ITEM_CHANGED
            ,@REASON
            ,@EXTERNAL_FLAG
@@ -298,13 +373,33 @@ BEGIN TRY
            ,@CHANGED_BY
            ,GETDATE()
 		   ,@DIVISION
+		   ,@snap_DIVISION_NAME
 		   ,@CLASSIFIED
 		   ,@DEPARTMENT_ID
+		   ,@snap_DEPARTMENT_CODE
+		   ,@snap_DEPARTMENT_NAME
 			 ,@IMPACT_OTHER_FLAG
 			 ,@DOCUMENT_CREATOR)
 
 	DECLARE @curr_DOCUMENT_TRANSACTION_ID int
 	SET @curr_DOCUMENT_TRANSACTION_ID = SCOPE_IDENTITY();
+
+	IF @RELATED_DIVISIONS IS NOT NULL AND LEN(@RELATED_DIVISIONS) > 0
+	BEGIN
+		INSERT INTO [dbo].[TB_R_DOCUMENT_RELATED_DIVISION] (DOCUMENT_TRANSACTION_ID, DIVISION_CODE, DIVISION_NAME, DIVISION_ROLE, CREATED_BY, CREATED_DT)
+		SELECT @curr_DOCUMENT_TRANSACTION_ID,
+			   LEFT(v, pos - 1),
+			   DIV.DIVISION_NAME,
+			   ISNULL(NULLIF(LTRIM(RTRIM(SUBSTRING(v, pos + 1, 20))), ''), 'RELATED'),
+			   @CREATED_BY, GETDATE()
+		FROM (
+			SELECT LTRIM(RTRIM(value)) AS v
+			FROM STRING_SPLIT(@RELATED_DIVISIONS, ',')
+			WHERE LEN(LTRIM(RTRIM(value))) > 0
+		) trimmed
+		CROSS APPLY (SELECT CHARINDEX(':', v + ':') AS pos) p
+		LEFT JOIN [dbo].[TB_M_DIVISION] DIV ON DIV.DIVISION_CODE = LEFT(v, pos - 1);
+	END
 
 	IF @DOCUMENT_TYPE = '02' --REVISION
 	BEGIN
@@ -316,7 +411,11 @@ BEGIN TRY
            ,[CREATED_BY]
            ,[CREATED_DT]
            ,[CHANGED_BY]
-           ,[CHANGED_DT])
+           ,[CHANGED_DT]
+           ,[DIVISION]
+           ,[DIVISION_NAME]
+           ,[DEPARTMENT_CODE]
+           ,[DEPARTMENT_NAME])
      SELECT
             @curr_DOCUMENT_TRANSACTION_ID
            ,DEPARTMENT_ID
@@ -326,12 +425,16 @@ BEGIN TRY
            ,GETDATE()
            ,@CHANGED_BY
            ,GETDATE()
+           ,DIVISION
+           ,DIVISION_NAME
+           ,DEPARTMENT_CODE
+           ,DEPARTMENT_NAME
 		FROM TB_R_DOCUMENT_DISTRIBUTION
 		WHERE DOCUMENT_TRANSACTION_ID = @rev_DOCUMENT_TRANSACTION_ID
 
-		UPDATE TB_R_CTRL_DOCUMENT
-		SET DELETE_FLAG = '1'
-		WHERE DOCUMENT_TRANSACTION_ID = @rev_DOCUMENT_TRANSACTION_ID
+		-- Registrasi P4D dokumen lama SENGAJA TIDAK di-soft-delete di sini lagi -
+		-- lihat komentar di guard P4D-gated revision di atas. Pindah ke
+		-- sp_DocumentMaintenance_SupersedeRevision (request Hendra 2026-08-16).
 	END
 
 	-- Obsolete-control fix (Jul 2026): baris lama TIDAK dihapus di sini lagi.

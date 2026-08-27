@@ -52,6 +52,8 @@ namespace DMS.Models.DB
         // Acceptance"/"Accepted" di grid P4D (request Hendra 2026-08-13).
         public int? ACK_TOTAL { get; set; }
         public int? ACK_DONE { get; set; }
+        public int? DIVISION_COUNT { get; set; }
+        public int? PENDING_DISTRIBUTION_COUNT { get; set; }
 
         // Dihitung di C# (bukan dari sp_P4DMaintenance_Search) supaya SP yang
         // dipakai bersama P4DMaintenanceController tidak perlu diubah - lihat

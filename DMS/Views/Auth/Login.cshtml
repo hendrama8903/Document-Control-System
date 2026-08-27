@@ -12,333 +12,164 @@
   :root{
     --primary-blue:#1455D9;
     --dark-blue:#0E3FA5;
+    --accent-cyan:#2EC5E6;
     --light-blue:#EAF2FF;
     --text-dark:#0B1B3A;
     --text-secondary:#64748B;
     --line:#E3E8EF;
-    --page-bg:#F4F8FF;
+    --field-bg:#F5F8FE;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
-  html, body{
-    height:100%;
-    width:100%;
-    overflow:hidden;
-  }
+  html, body{height:100%; width:100%;}
   body{
     font-family:'Inter', sans-serif;
-    background:var(--page-bg);
     color:var(--text-dark);
-  }
-  .wrap{
-    width:100vw;
-    height:100vh;
-    background:#fbfdff;
-    display:flex;
-    flex-direction:column;
-    position:relative;
-    overflow:hidden;
-  }
-  .main-row{
-    position:relative;
-    flex:1;
-    min-height:0;
-    display:flex;
-    align-items:stretch;
+    min-height:100vh;
+    background-color:#EAF2FE;
+    background-image:url('@Url.Content("~/images/logo_bg.png")');
+    background-repeat:no-repeat;
+    background-position:center center;
+    background-size:cover;
+    background-attachment:fixed;
+    overflow-x:hidden;
   }
 
-  /* ---------- LEFT ---------- */
-  .left{
+  .page-wrap{
     position:relative;
-    z-index:2;
-    flex:1.35;
-    min-width:0;
-    height:100%;
+    min-height:100vh;
     display:flex;
     flex-direction:column;
-    justify-content:center;
-    padding:clamp(20px,3.6vh,44px) clamp(10px,2vw,16px) clamp(10px,2vh,18px) clamp(32px,4.8vw,64px);
-    overflow:hidden;
-  }
-  .dots{
-    position:absolute;
-    top:14%;
-    right:8%;
-    width:130px;
-    height:100px;
-    background-image:radial-gradient(circle, #c7d9f7 1.6px, transparent 1.6px);
-    background-size:13px 13px;
-    opacity:.9;
-    z-index:1;
-  }
-  .brand{
-    display:flex;
     align-items:center;
-    gap:14px;
-    margin-bottom:clamp(14px, 2.6vh, 30px);
+    padding:clamp(24px,4.4vh,48px) 20px 32px;
   }
-  .brand-icon{
-    width:clamp(40px,5.6vh,52px);
-    height:clamp(40px,5.6vh,52px);
-    flex-shrink:0;
+
+  /* ---------- brand header ---------- */
+  .brand-header{
+    position:relative;
+    z-index:2;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    margin-bottom:clamp(18px,3.4vh,30px);
+    animation:fadeUp .5s cubic-bezier(.2,.7,.3,1) both;
   }
-  .brand-icon svg{width:100%;height:100%;}
-  .brand-text h1{
+  .brand-header img{
+    height:clamp(84px,12vh,120px);
+    width:auto;
+    object-fit:contain;
+    margin-bottom:clamp(12px,2.2vh,18px);
+  }
+  .brand-header h1{
     font-family:'Poppins',sans-serif;
-    font-size:clamp(18px,2.8vh,25px);
-    font-weight:800;
+    font-weight:700;
+    font-size:clamp(17px,2.4vh,23px);
     color:var(--text-dark);
     letter-spacing:.2px;
-    line-height:1.1;
   }
-  .brand-text p{
-    font-size:clamp(10.5px,1.4vh,12.5px);
+  .brand-header h1 .accent{color:var(--primary-blue);}
+  .brand-header p{
+    margin-top:6px;
+    font-size:clamp(12px,1.5vh,13.5px);
     color:var(--text-secondary);
-    margin-top:3px;
-    font-weight:500;
   }
 
-  .headline{
-    font-family:'Poppins',sans-serif;
-    font-size:clamp(22px,3.6vh,34px);
-    font-weight:700;
-    color:var(--text-dark);
-    line-height:1.22;
-    max-width:520px;
+  @@keyframes fadeUp{
+    from{opacity:0; transform:translateY(10px);}
+    to{opacity:1; transform:translateY(0);}
   }
-  .headline .accent{ color:var(--primary-blue); display:block; }
-  .rule{
-    width:52px;
-    height:4px;
-    background:var(--primary-blue);
-    border-radius:2px;
-    margin:clamp(10px,1.8vh,18px) 0;
-  }
-  .desc{
-    font-size:clamp(11.5px,1.6vh,14px);
-    color:var(--text-secondary);
-    line-height:1.6;
-    max-width:430px;
-    margin-bottom:clamp(8px,1.6vh,18px);
+  @@keyframes cardIn{
+    from{opacity:0; transform:translateY(14px);}
+    to{opacity:1; transform:translateY(0);}
   }
 
-  .illustration{
-    position:relative;
-    width:100%;
-    max-width:480px;
-    margin:0 0 clamp(8px,1.6vh,18px);
-    flex:1;
-    min-height:0;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-  }
-  .illustration img{width:100%; height:auto; max-height:100%; object-fit:contain; display:block; border-radius:18px;}
-
-  .features{
-    display:flex;
-    gap:clamp(12px,2vw,28px);
-    flex-wrap:nowrap;
-    margin-bottom:clamp(10px,2vh,20px);
-  }
-  .feature{
-    display:flex;
-    gap:9px;
-    align-items:flex-start;
-    max-width:170px;
-  }
-  .feature-icon{
-    width:clamp(26px,3.4vh,32px);
-    height:clamp(26px,3.4vh,32px);
-    border-radius:9px;
-    background:var(--light-blue);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    flex-shrink:0;
-  }
-  .feature-icon svg{width:16px;height:16px;color:var(--primary-blue);}
-  .feature h4{
-    font-size:clamp(11.5px,1.5vh,13px);
-    font-weight:700;
-    color:var(--text-dark);
-    margin-bottom:2px;
-  }
-  .feature p{
-    font-size:clamp(9.5px,1.25vh,11px);
-    color:var(--text-secondary);
-    line-height:1.4;
-  }
-
-  .footer-bar{
-    border-top:1px solid var(--line);
-    padding:clamp(10px,1.8vh,16px) clamp(32px,4.8vw,64px);
-    display:flex;
-    align-items:center;
-    gap:10px;
-    font-size:10.5px;
-    color:var(--text-secondary);
-    flex-wrap:wrap;
-  }
-  .footer-bar svg{width:13px;height:13px;color:var(--primary-blue); flex-shrink:0;}
-  .footer-bar .sep{color:var(--line);}
-  .footer-bar a{color:var(--text-secondary); text-decoration:none;}
-  .footer-bar a:hover{color:var(--primary-blue); text-decoration:underline;}
-
-  /* ---------- RIGHT ---------- */
-  .right{
-    position:relative;
-    z-index:2;
-    flex:0 0 44%;
-    height:100%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    overflow:hidden;
-  }
-  /* Anchored to the right edge with a fixed px overflow into the left column
-     (not a plain 100%/inset:0) - so the curve's swing always stays a fixed
-     distance from the card's own left edge, regardless of viewport width.
-     A pure percentage-based curve looks fine on wide screens but drifts into
-     the card on narrower ones, since the card has a fixed max-width while the
-     curve position would otherwise scale with the whole viewport. */
-  .curve-bg{
-    position:absolute;
-    top:0;
-    bottom:0;
-    right:0;
-    width:calc(44% + 160px);
-    height:100%;
-    z-index:0;
-    display:block;
-  }
-  .right-dots{
-    position:absolute;
-    top:12%;
-    right:14%;
-    width:110px;
-    height:90px;
-    background-image:radial-gradient(circle, rgba(255,255,255,.35) 1.6px, transparent 1.6px);
-    background-size:13px 13px;
-    z-index:1;
-  }
-  .right-content{
+  /* ---------- middle: login card, centered ---------- */
+  .content-row{
     position:relative;
     z-index:2;
     width:100%;
-    max-width:390px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    padding:0 20px;
+    max-width:360px;
   }
 
+  /* ---------- the sign-in card itself ---------- */
   .card{
     width:100%;
     background:#ffffff;
-    border-radius:22px;
-    padding:clamp(26px,4vh,40px) clamp(24px,2.8vw,38px) clamp(30px,4.2vh,40px);
-    box-shadow:0 30px 60px -15px rgba(11,27,58,.35);
+    border-radius:10px;
+    padding:clamp(32px,4.4vh,42px) clamp(20px,2.6vw,26px) clamp(64px,8.6vh,80px);
+    box-shadow:0 30px 70px -20px rgba(11,27,58,.22), 0 2px 8px rgba(11,27,58,.06);
+    border:1px solid rgba(20,85,217,.06);
+    position:relative;
+    z-index:3;
+    animation:cardIn .5s cubic-bezier(.2,.7,.3,1) both .1s;
   }
-  .card-logo{
-    width:clamp(56px,7.6vh,76px);
-    height:clamp(56px,7.6vh,76px);
+  .card .brand-icon{display:flex; justify-content:center; margin-bottom:10px;}
+  .card .brand-icon span{
+    width:46px; height:46px;
     border-radius:50%;
-    background:var(--light-blue);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    margin:0 auto clamp(10px,1.6vh,16px);
+    background:linear-gradient(135deg, var(--light-blue), #DCE7FB);
+    display:flex; align-items:center; justify-content:center;
   }
-  .card-logo svg{width:52%;height:52%;}
+  .card .brand-icon img{width:27px; height:27px; object-fit:contain;}
+
   .card h2{
     font-family:'Poppins',sans-serif;
-    text-align:center;
-    font-size:clamp(19px,2.8vh,24px);
+    font-size:clamp(18px,2.4vh,21px);
     font-weight:700;
     color:var(--text-dark);
+    text-align:center;
     margin-bottom:4px;
   }
   .card > p.sub{
-    text-align:center;
-    font-size:clamp(12px,1.6vh,13.5px);
+    font-size:clamp(11.5px,1.5vh,12.5px);
     color:var(--text-secondary);
-    margin-bottom:clamp(16px,2.4vh,26px);
+    text-align:center;
+    margin-bottom:clamp(14px,2.2vh,18px);
   }
   label{
     display:block;
-    font-size:clamp(12px,1.6vh,13px);
+    font-size:12.5px;
     font-weight:600;
     color:var(--text-dark);
     margin-bottom:6px;
   }
-  .field{margin-bottom:clamp(11px,1.7vh,16px);}
-  .input-group{
-    position:relative;
-    display:flex;
-    align-items:center;
-  }
-  .input-group svg.leading{
-    position:absolute;
-    left:13px;
-    width:16px;
-    height:16px;
-    color:#A7AEC0;
-  }
-  .input-group svg.trailing{
-    position:absolute;
-    right:13px;
-    width:17px;
-    height:17px;
-    color:#A7AEC0;
-    cursor:pointer;
-  }
+  .field{margin-bottom:clamp(10px,1.6vh,14px);}
+  .input-group{position:relative; display:flex; align-items:center;}
+  .input-group svg.leading{position:absolute; left:13px; width:16px; height:16px; color:#A7AEC0; transition:color .15s ease;}
+  .input-group svg.trailing{position:absolute; right:13px; width:17px; height:17px; color:#A7AEC0; cursor:pointer;}
+  .input-group:focus-within svg.leading{color:var(--primary-blue);}
   input[type=text], input[type=email], input[type=password]{
     width:100%;
-    padding:clamp(11px,2vh,14px) 14px clamp(11px,2vh,14px) 42px;
-    border:1.5px solid var(--line);
-    border-radius:10px;
-    font-size:clamp(13px,1.7vh,14px);
+    padding:clamp(10px,1.9vh,12px) 14px clamp(10px,1.9vh,12px) 42px;
+    border:1.5px solid transparent;
+    background:var(--field-bg);
+    border-radius:12px;
+    font-size:13.5px;
     font-family:'Inter',sans-serif;
     color:var(--text-dark);
     outline:none;
-    transition:border-color .15s ease, box-shadow .15s ease;
+    transition:border-color .15s ease, box-shadow .15s ease, background .15s ease;
   }
   input::placeholder{color:#A7AEC0;}
+  input:hover{background:#EFF4FE;}
   input:focus{
+    background:#ffffff;
     border-color:var(--primary-blue);
-    box-shadow:0 0 0 3px rgba(20,85,217,.14);
+    box-shadow:0 0 0 4px rgba(20,85,217,.12);
   }
   input#password{padding-right:40px;}
 
-  .row-between{
-    display:flex;
-    align-items:center;
-    margin-bottom:clamp(14px,2.2vh,22px);
-  }
-  .remember{
-    display:flex;
-    align-items:center;
-    gap:7px;
-    font-size:clamp(11.5px,1.5vh,12.5px);
-    font-weight:500;
-    color:var(--text-dark);
-    margin-bottom:0;
-    cursor:pointer;
-  }
-  .remember input{
-    width:15px;height:15px;
-    accent-color:var(--primary-blue);
-    cursor:pointer;
-  }
-
   .btn-login{
+    margin-top:clamp(4px,1vh,8px);
     width:100%;
-    padding:clamp(12px,2.1vh,15px);
+    padding:clamp(11px,1.9vh,13px);
     border:none;
-    border-radius:10px;
-    background:linear-gradient(180deg, var(--primary-blue), var(--dark-blue));
+    border-radius:12px;
+    background:linear-gradient(135deg, var(--primary-blue), var(--dark-blue) 75%);
+    background-size:160% 160%;
+    background-position:0% 50%;
     color:#fff;
-    font-size:clamp(13.5px,1.8vh,15px);
+    font-size:14px;
     font-weight:600;
     font-family:'Inter',sans-serif;
     display:flex;
@@ -347,10 +178,11 @@
     gap:8px;
     cursor:pointer;
     box-shadow:0 12px 20px -8px rgba(14,63,165,.55);
-    transition:transform .12s ease, box-shadow .12s ease;
+    transition:transform .15s ease, box-shadow .15s ease, background-position .3s ease;
   }
-  .btn-login:hover{transform:translateY(-1px); box-shadow:0 16px 26px -8px rgba(14,63,165,.6);}
-  .btn-login svg{width:15px;height:15px;}
+  .btn-login:hover{transform:translateY(-2px); box-shadow:0 18px 30px -10px rgba(14,63,165,.6); background-position:100% 50%;}
+  .btn-login:active{transform:translateY(0); box-shadow:0 10px 16px -8px rgba(14,63,165,.55);}
+  .btn-login svg{width:15px; height:15px;}
 
   /* growl notification (login failed/success/info) */
   .bootstrap-growl{
@@ -363,226 +195,85 @@
     border:1px solid transparent;
     box-shadow:0 14px 30px -10px rgba(14,63,165,.35);
   }
-  .bootstrap-growl.alert-danger{
-    background:#fdecec;
-    border-color:#f5c2c2;
-    color:#a12b2b;
-  }
-  .bootstrap-growl.alert-success{
-    background:#e8f8f0;
-    border-color:#b7e6cc;
-    color:#1a7a4c;
-  }
-  .bootstrap-growl.alert-info{
-    background:var(--light-blue);
-    border-color:#c7d9f7;
-    color:var(--dark-blue);
-  }
+  .bootstrap-growl.alert-danger{background:#fdecec; border-color:#f5c2c2; color:#a12b2b;}
+  .bootstrap-growl.alert-success{background:#e8f8f0; border-color:#b7e6cc; color:#1a7a4c;}
+  .bootstrap-growl.alert-info{background:var(--light-blue); border-color:#c7d9f7; color:var(--dark-blue);}
   .bootstrap-growl .close{
-    position:absolute;
-    top:8px;
-    right:10px;
-    font-size:16px;
-    line-height:1;
-    color:inherit;
-    opacity:.55;
-    cursor:pointer;
-    background:none;
-    border:none;
+    position:absolute; top:8px; right:10px;
+    font-size:16px; line-height:1; color:inherit; opacity:.55;
+    cursor:pointer; background:none; border:none;
   }
   .bootstrap-growl .close:hover{opacity:1;}
 
-  /* ===== TABLET / MOBILE — show login card only ===== */
-  @@media (max-width: 900px){
-    html, body{height:auto; min-height:100%; overflow-y:auto;}
-    body{
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      min-height:100vh;
-      padding:24px 16px;
-    }
-    .wrap{
-      background:transparent;
-      width:100%;
-      max-width:440px;
-      height:auto;
-      margin:0 auto;
-    }
-    .main-row{flex-direction:column;}
-    .left, .footer-bar{display:none;}
-    .right{
-      flex:none; width:100%; height:auto; min-height:520px; padding:32px 0;
-      background:linear-gradient(160deg, var(--primary-blue), var(--dark-blue));
-      border-radius:24px;
-    }
-    .curve-bg{display:none;}
-    .right-content{max-width:390px;}
+  /* ===== responsive: tablet & phone ===== */
+  @@media (max-width: 768px){
+    /* background-attachment:fixed is buggy/janky on mobile browsers (esp. iOS Safari) */
+    body{background-attachment:scroll;}
   }
-
-  @@media (max-width: 420px){
-    .card{padding:28px 20px 32px;}
+  @@media (max-width: 600px){
+    .page-wrap{padding:20px 16px 24px;}
+    .brand-header{margin-bottom:16px;}
+    .brand-header img{height:56px; margin-bottom:10px;}
+    .brand-header h1{font-size:16px;}
+    .brand-header p{font-size:11.5px;}
+    .content-row{max-width:100%;}
+    .card{padding:26px 18px 30px; border-radius:10px;}
+    .card .brand-icon span{width:42px; height:42px;}
+    .card .brand-icon img{width:24px; height:24px;}
+    .card h2{font-size:18px;}
+  }
+  /* short viewport (landscape phones) - trim vertical spacing so form stays reachable */
+  @@media (max-height: 500px){
+    .page-wrap{padding-top:14px; padding-bottom:14px;}
+    .brand-header{margin-bottom:10px;}
+    .brand-header img{height:44px; margin-bottom:6px;}
+    .brand-header p{display:none;}
+    .card{padding:18px 18px 20px;}
+    .card .brand-icon{margin-bottom:4px;}
+    .card > p.sub{margin-bottom:10px;}
+    .field{margin-bottom:8px;}
   }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="main-row">
-    <svg class="curve-bg" viewBox="0 0 400 900" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="curveGrad" x1="10%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#3E76F0"/>
-          <stop offset="45%" stop-color="var(--primary-blue)"/>
-          <stop offset="100%" stop-color="var(--dark-blue)"/>
-        </linearGradient>
-      </defs>
-      <!-- outer light halo, creates the thin layered edge seen in the mockup -->
-      <path d="M 20 -60
-               C -30 297, 55 603, 20 960
-               L 400 960
-               L 400 -60
-               Z" fill="#DCE7FB"/>
-      <!-- inner saturated curve - S-shaped: bulges deep left in the upper third,
-           swings back right (but still well clear of the card) in the lower
-           third. Coordinates are local to this element's own box, which is
-           anchored to the viewport's right edge with a fixed 160px overflow
-           into the left column (see .curve-bg) - so the curve's rightmost
-           reach stays a constant distance from the card regardless of how
-           wide the browser window is. -->
-      <path d="M 60 -60
-               C 10 297, 95 603, 60 960
-               L 400 960
-               L 400 -60
-               Z" fill="url(#curveGrad)"/>
-    </svg>
-
-    <!-- LEFT -->
-    <div class="left">
-      <div class="dots"></div>
-      <div class="brand">
-        <div class="brand-icon">
-          <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M6 14a4 4 0 0 1 4-4h9l4 4h15a4 4 0 0 1 4 4v18a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4V14Z" fill="var(--primary-blue)"/>
-            <path d="M14 20h13" stroke="#EAF2FF" stroke-width="2.2" stroke-linecap="round"/>
-            <path d="M14 25h13" stroke="#EAF2FF" stroke-width="2.2" stroke-linecap="round"/>
-            <path d="M14 30h8" stroke="#EAF2FF" stroke-width="2.2" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <div class="brand-text">
-          <h1>Document Control System</h1>
-          <p>Manage Documents. Ensure Control. Drive Excellence.</p>
-        </div>
-      </div>
-
-      <h2 class="headline">Control Your Documents,<span class="accent">Ensure Compliance.</span></h2>
-      <div class="rule"></div>
-      <p class="desc">Document Control System helps you manage, track, and secure your important documents in one centralized platform.</p>
-
-      <div class="illustration">
-        <img src="~/images/img_login1.png" alt="Document Control System illustration">
-      </div>
-
-      <div class="features">
-        <div class="feature">
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 3v6c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V5l7-3z"/></svg>
-          </div>
-          <div>
-            <h4>Secure &amp; Reliable</h4>
-            <p>Your documents are protected with role-based access and advanced security.</p>
-          </div>
-        </div>
-        <div class="feature">
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
-          </div>
-          <div>
-            <h4>Organized &amp; Structured</h4>
-            <p>Store documents in a systematic way for easy retrieval and better control.</p>
-          </div>
-        </div>
-        <div class="feature">
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          </div>
-          <div>
-            <h4>Workflow &amp; Approval</h4>
-            <p>Streamline review and approval processes to improve efficiency.</p>
-          </div>
-        </div>
-        <div class="feature">
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          </div>
-          <div>
-            <h4>Find Documents Easily</h4>
-            <p>Powerful search and filter help you find documents quickly.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- RIGHT -->
-    <div class="right">
-      <div class="right-dots"></div>
-
-      <div class="right-content">
-        <div class="card">
-          <div class="card-logo">
-            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M6 14a4 4 0 0 1 4-4h9l4 4h15a4 4 0 0 1 4 4v18a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4V14Z" fill="var(--primary-blue)"/>
-              <path d="M14 20h13" stroke="#EAF2FF" stroke-width="2.2" stroke-linecap="round"/>
-              <path d="M14 25h13" stroke="#EAF2FF" stroke-width="2.2" stroke-linecap="round"/>
-              <path d="M14 30h8" stroke="#EAF2FF" stroke-width="2.2" stroke-linecap="round"/>
-            </svg>
-          </div>
-          <h2>Welcome Back!</h2>
-          <p class="sub">Sign in to access Document Control System</p>
-
-          <form id="loginForm">
-            <div class="field">
-              <label for="username">Username</label>
-              <div class="input-group">
-                <svg class="leading" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
-                <input type="text" id="username" name="username" placeholder="Enter your username" autocomplete="username" required>
-              </div>
-            </div>
-
-            <div class="field">
-              <label for="password">Password</label>
-              <div class="input-group">
-                <svg class="leading" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-                <input type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
-                <svg class="trailing" id="togglePw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
-              </div>
-            </div>
-
-            <!-- kept in the DOM (invisible, non-interactive) purely so the card
-                 keeps the exact same height as before Remember Me was removed -->
-            <div class="row-between" style="visibility:hidden;" aria-hidden="true">
-              <label class="remember">
-                <input type="checkbox" tabindex="-1">
-                Remember me
-              </label>
-            </div>
-
-            <button type="submit" class="btn-login" id="btn_login" data-loading-text="Signing in...">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-              Sign In
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
+<div class="page-wrap">
+  <div class="brand-header">
+    <img src="~/images/logo_dcs.png" alt="Document Control System">
   </div>
 
-  <div class="footer-bar">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l7 3v6c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V5l7-3z"/></svg>
-    <span>Secure Document Management for a Smarter Workflow</span>
-    <span class="sep">|</span>
-    <span>&copy; @DateTime.Now.Year Document Control System. All rights reserved.</span>
-    <span class="sep">|</span>
-    <a href="#" onclick="return false;">Privacy Policy</a>
+  <div class="content-row">
+    <div class="login-col">
+      <div class="card">
+        <div class="brand-icon"><span><img src="~/images/logo.png" alt="DCS icon"></span></div>
+
+        <h2>Welcome Back!</h2>
+        <p class="sub">Sign in to access your account</p>
+
+        <form id="loginForm">
+          <div class="field">
+            <label for="username">Username</label>
+            <div class="input-group">
+              <svg class="leading" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+              <input type="text" id="username" name="username" placeholder="Enter your username" autocomplete="username" required>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="password">Password</label>
+            <div class="input-group">
+              <svg class="leading" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+              <input type="password" id="password" name="password" placeholder="Enter your password" autocomplete="current-password" required>
+              <svg class="trailing" id="togglePw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-login" id="btn_login" data-loading-text="Signing in...">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+            Sign In
+          </button>
+        </form>
+      </div>
+    </div>
   </div>
 </div>
 

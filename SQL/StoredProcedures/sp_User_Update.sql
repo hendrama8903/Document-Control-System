@@ -104,7 +104,16 @@ BEGIN TRY
 			EMAIL = @EMAIL,
 			PHONE = @PHONE,
 			ROLE_ID = @ROLE_ID,
-			FILE_PATH = @FILE_PATH,
+			-- ISNULL, bukan @FILE_PATH langsung - form Add/Edit User (termasuk
+			-- self-service Profile) cuma kirim @FILE_PATH kalau ADA foto baru
+			-- dipilih (lihat UserController.AddEditAsync - Request.Form.Files).
+			-- Kalau Save dijalankan tanpa ganti foto (mis. cuma ganti
+			-- signature/password), @FILE_PATH datang NULL - tanpa ISNULL ini
+			-- foto yang sudah tersimpan malah ketimpa kosong (bug ditemukan
+			-- Hendra 2026-08-18: foto hilang tiap Save kedua tanpa pilih foto
+			-- ulang). Tidak ada fitur "hapus foto" terpisah di form ini, jadi
+			-- NULL di sini selalu berarti "tidak diubah", bukan "kosongkan".
+			FILE_PATH = ISNULL(@FILE_PATH, FILE_PATH),
 -- 			DEPARTMENT_ID = @DEPARTMENT_ID,
 			AD_USER = ISNULL(@AD_USER, '0'),
 			PASSWORD = CASE WHEN ISNULL(@AD_USER, '0') = '1' THEN NULL ELSE PASSWORD END,

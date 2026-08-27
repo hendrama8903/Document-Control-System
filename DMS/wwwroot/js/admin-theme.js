@@ -24,6 +24,48 @@ $(function () {
             }
         }, 100);
     });
+
+    // Search menu (kolom yang menggantikan slot logo/brand di sidepanel -
+    // request Hendra 2026-08-16). Cocokkan teks tiap item terhadap query;
+    // grup (treeview) ikut tampil kalau salah satu anaknya cocok, dan
+    // otomatis dibuka lewat class .search-open (terpisah dari .open manual
+    // supaya mengosongkan pencarian tidak ikut menutup grup yang memang
+    // sedang dibuka user).
+    $(document).on('input', '#admMenuSearch', function () {
+        var query = $(this).val().trim().toLowerCase();
+        var $topLevel = $('.adm-sidepanel .sidebar-menu > li');
+
+        if (query === '') {
+            $topLevel.add($topLevel.find('li')).removeClass('search-hide search-open');
+            return;
+        }
+
+        $topLevel.each(function () {
+            var $li = $(this);
+            var $submenuItems = $li.find('.treeview-menu > li');
+
+            if ($submenuItems.length === 0) {
+                var text = $li.children('a').find('span').first().text().toLowerCase();
+                $li.toggleClass('search-hide', text.indexOf(query) === -1);
+                return;
+            }
+
+            var ownText = $li.children('a').find('span').first().text().toLowerCase();
+            var ownMatch = ownText.indexOf(query) !== -1;
+            var anyChildMatch = false;
+
+            $submenuItems.each(function () {
+                var $child = $(this);
+                var childText = $child.children('a').find('span').first().text().toLowerCase();
+                var childMatch = ownMatch || childText.indexOf(query) !== -1;
+                $child.toggleClass('search-hide', !childMatch);
+                anyChildMatch = anyChildMatch || childMatch;
+            });
+
+            $li.toggleClass('search-hide', !anyChildMatch);
+            $li.toggleClass('search-open', anyChildMatch);
+        });
+    });
 });
 
 // Drawer sidebar di layar kecil

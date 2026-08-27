@@ -21,6 +21,7 @@
     <PackageReference Include="System.DirectoryServices.AccountManagement" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="wwwroot\Document\CopyRequest\" />
     <Folder Include="wwwroot\lib\BlockUI\" />
     <Folder Include="wwwroot\Upload\ATTACHMENT\DOCUMENT_TEMP\" />
     <Folder Include="wwwroot\Upload\ATTACHMENT\DOCUMENT_TRANSACTION\" />

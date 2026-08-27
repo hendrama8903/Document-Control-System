@@ -44,7 +44,13 @@ BEGIN
 										'''' DOCUMENT_NO,
 										CAST(YEAR(GETDATE()) as varchar(4)) DOCUMENT_YEAR,
 										A.DIVISION DIVISION,
-										'''' P4D_STATUS_VAL
+										'''' CATEGORY_CODE,
+										'''' P4D_STATUS_VAL,
+										NULL CURRENT_APPROVAL_SEQ,
+										NULL TOTAL_APPROVAL_SEQ,
+										'''' CURRENT_APPROVAL_LABEL,
+										'''' CURRENT_APPROVER,
+										'''' CURRENT_APPROVER_NAME
 			FROM [dbo].[TB_M_DEPARTMENT] A
 			WHERE 1 = 1
 				AND ISNULL(DELETE_FLAG, 0) = 0 '

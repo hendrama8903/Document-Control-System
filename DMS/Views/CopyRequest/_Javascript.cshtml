@@ -82,7 +82,7 @@
         gRequestId = null;
         gDetailRows = [];
         gDeletedDetailIds = [];
-        $('#modal-title').text('Add Controlled Copy Request');
+        $('#modal-title').text('Add Print Request');
         resetHeaderForm();
         renderDetailGrid([]);
         $("#modalAddEdit").modal();
@@ -112,7 +112,7 @@
         gScreenMode = 'EDIT';
         gRequestId = row.REQUEST_ID;
         gDeletedDetailIds = [];
-        $('#modal-title').text('Edit Controlled Copy Request');
+        $('#modal-title').text('Edit Print Request');
 
         $('#addEditRequestId').val(row.REQUEST_ID);
         $('#addEditSection').val(row.SECTION_CODE || '');
@@ -311,32 +311,6 @@
         });
     }
 
-    function onAcceptPrepare(requestId) {
-        showConfirmMesg("Confirm you have received the physical copy of this document?", function () { acceptRequest(requestId); }, "Confirmation");
-    }
-
-    function acceptRequest(requestId) {
-        popUpProgressShow();
-        $.ajax({
-            type: "POST",
-            url: "@Url.Action("Accept", "CopyRequest")",
-            data: { requestId: requestId },
-            success: function (result) {
-                popUpProgressHide();
-                if (result.status == true) {
-                    showSuccessMesgGrowl(result.message);
-                    onSearch();
-                } else {
-                    showErrorMesgGrowl(result.message);
-                }
-            },
-            error: function (result) {
-                popUpProgressHide();
-                showErrorMesgGrowl(result);
-            }
-        });
-    }
-
     // ---------- detail rows (documents) ----------
     // Baris dokumen di-stage di gDetailRows selama modal terbuka (tidak langsung
     // ke server) - baru benar-benar disimpan saat user klik Save di header,
@@ -382,7 +356,17 @@
                 { render: function (data, type, row, meta) { return meta.row + 1; } },
                 { render: function (data, type, row) { return row.DOCUMENT_CODE || "-"; } },
                 { data: "DOCUMENT_NAME" },
-                { render: function (data, type, row) { return row.COPY_QTY || "-"; } },
+                {
+                    // Qty langsung bisa diketik di tabel (bukan cuma lewat
+                    // popup edit ikon pensil) - ini yang jadi jumlah cetak
+                    // sungguhan di PrintTrack (PrintLogPayload.CopyCount),
+                    // jadi harus gampang diubah tanpa buka popup dulu
+                    // (request Hendra 2026-08-15).
+                    render: function (data, type, row, meta) {
+                        if (type !== "display") return row.COPY_QTY || 1;
+                        return '<input type="number" class="form-control input-sm detail-qty-input" data-index="' + meta.row + '" min="1" step="1" style="width:70px;" value="' + (row.COPY_QTY || 1) + '">';
+                    }
+                },
                 { render: function (data, type, row) { return copyTypeDisplay(row.COPY_TYPE); } },
                 {
                     render: function (data, type, row, meta) {
@@ -397,6 +381,27 @@
             var index = $(this).data('index');
             var row = gDetailRows[index];
             if (row) onEditDetailRowPrepare(row, index);
+        });
+
+        // Update gDetailRows langsung di tempat (TANPA renderDetailGrid ulang)
+        // supaya fokus/kursor input tidak hilang saat user mengetik.
+        $('#detailGrid').off('input', '.detail-qty-input').on('input', '.detail-qty-input', function () {
+            var index = $(this).data('index');
+            var value = parseInt($(this).val(), 10);
+            if (gDetailRows[index] && value >= 1) {
+                gDetailRows[index].COPY_QTY = value;
+            }
+        });
+
+        // Rapikan nilai kosong/tidak valid begitu user pindah dari field-nya.
+        $('#detailGrid').off('blur', '.detail-qty-input').on('blur', '.detail-qty-input', function () {
+            var index = $(this).data('index');
+            var value = parseInt($(this).val(), 10);
+            if (!value || value < 1) value = 1;
+            $(this).val(value);
+            if (gDetailRows[index]) {
+                gDetailRows[index].COPY_QTY = value;
+            }
         });
 
         $('#detailGrid').off('click', '.detail-delete-btn').on('click', '.detail-delete-btn', function () {
@@ -612,7 +617,7 @@
         }
 
         loadApprovalDocumentList();
-        $("#modalApproval").modal();
+        $("#approvalPanel").addClass("open");
     }
 
     // Kartu daftar dokumen yang diminta di popup review, supaya QMS bisa
@@ -655,7 +660,7 @@
                 if (result.status == true) {
                     showSuccessMesgGrowl(result.message);
                     onSearch();
-                    $("#modalApproval").modal('hide');
+                    $("#approvalPanel").removeClass("open");
                 } else {
                     showErrorMesgGrowl(result.message);
                 }

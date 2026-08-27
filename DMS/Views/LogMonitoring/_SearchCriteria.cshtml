@@ -1,31 +1,39 @@
-<div class="dp-filter-row">
-    <div>
-        <label>Date Range</label>
-        <div class="has-feedback" style="display:inline-block; width: 230px;">
-            <input class="form-control input-sm" id="searchDate" type="text" placeholder="Select date range" />
+<div class="box-header dp-toolbar">
+    <div class="dp-toolbar-left" style="flex-wrap:wrap;">
+        <div>
+            <label>Date Range</label>
+            <div class="has-feedback" style="display:inline-block; width: 230px;">
+                <input class="form-control input-sm" id="searchDate" type="text" placeholder="Select date range" />
+            </div>
         </div>
+        <div>
+            <label>Module</label>
+            <select id="filterModule">
+                <option value="">All Module</option>
+            </select>
+        </div>
+        <div>
+            <label>User</label>
+            <select id="filterUser">
+                <option value="">All User</option>
+            </select>
+        </div>
+        <div>
+            <label>Status</label>
+            <select id="filterStatus">
+                <option value="">All Status</option>
+                <option value="SUCCESS">Success</option>
+                <option value="FAILED">Failed</option>
+                <option value="RUNNING">Running</option>
+            </select>
+        </div>
+        <button type="button" class="dp-icon-btn" id="btn_refresh" title="Refresh"><i class="fa fa-refresh"></i></button>
+        <button type="button" class="dp-icon-btn" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
     </div>
-    <div>
-        <label>Module</label>
-        <select id="filterModule">
-            <option value="">All Module</option>
-        </select>
+    <div class="dp-toolbar-right">
+        <button type="button" class="dp-btn dp-btn-outline" id="btn_export"><i class="fa fa-download"></i> Export</button>
+        <button type="button" class="dp-icon-btn dp-stats-toggle" id="btn_toggleStats" title="Show Log Summary">
+            <i class="fa fa-angle-double-left"></i>
+        </button>
     </div>
-    <div>
-        <label>User</label>
-        <select id="filterUser">
-            <option value="">All User</option>
-        </select>
-    </div>
-    <div>
-        <label>Status</label>
-        <select id="filterStatus">
-            <option value="">All Status</option>
-            <option value="SUCCESS">Success</option>
-            <option value="FAILED">Failed</option>
-            <option value="RUNNING">Running</option>
-        </select>
-    </div>
-    <button type="button" class="dp-icon-btn" id="btn_refresh" title="Refresh"><i class="fa fa-refresh"></i></button>
-    <button type="button" class="dp-icon-btn" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
 </div>

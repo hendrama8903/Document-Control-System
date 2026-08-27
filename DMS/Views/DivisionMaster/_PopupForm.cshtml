@@ -1,60 +1,117 @@
-﻿<div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+<style>
+    #modalAddEdit .modal-content { border: none; border-radius: 14px; overflow: hidden; padding: 0; }
+    #modalAddEdit .modal-header, #modalAddEdit .modal-footer { display: none; }
+
+    .dvf-header {
+        background: linear-gradient(135deg, #2450D8, #1C3FA6);
+        color: #fff;
+        padding: 16px 22px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .dvf-header-icon {
+        width: 38px; height: 38px; border-radius: 10px;
+        background: rgba(255,255,255,.18);
+        display: flex; align-items: center; justify-content: center;
+        flex: none; font-size: 16px;
+    }
+    .dvf-header-title { font-size: 16px; font-weight: 700; }
+    .dvf-header-sub { font-size: 12px; color: rgba(255,255,255,.85); margin-top: 1px; }
+    .dvf-close {
+        margin-left: auto; background: none; border: none;
+        color: rgba(255,255,255,.85); font-size: 16px; cursor: pointer; padding: 4px;
+    }
+    .dvf-close:hover { color: #fff; }
+
+    .dvf-body { padding: 4px 22px; }
+
+    .dvf-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 0;
+        border-bottom: 1px solid #EEF1F5;
+    }
+    .dvf-row:last-child { border-bottom: none; }
+    .dvf-row-left {
+        display: flex; align-items: flex-start; gap: 11px;
+        flex: 0 0 190px;
+    }
+    .dvf-icon {
+        width: 36px; height: 36px; border-radius: 10px;
+        background: #E7F1FB; color: #2450D8;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 14px; flex: none;
+    }
+    .dvf-label { font-size: 13px; font-weight: 700; color: #1D2939; }
+    .dvf-sub { font-size: 11px; color: #98A2B3; margin-top: 1px; line-height: 1.3; }
+    .dvf-row-right { flex: 1 1 0; min-width: 0; }
+
+    @@media (max-width: 640px) {
+        .dvf-row { flex-direction: column; align-items: stretch; }
+        .dvf-row-left { flex: none; }
+    }
+
+    .dvf-footer {
+        display: flex; justify-content: flex-end; gap: 10px;
+        padding: 14px 22px; border-top: 1px solid #EEF1F5;
+    }
+    .dvf-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 8px 16px; border-radius: 7px; font-size: 12.5px; font-weight: 700;
+        border: 1px solid transparent; cursor: pointer; white-space: nowrap;
+    }
+    .dvf-btn-cancel { background: #fff; border-color: #D5DDE8; color: #475467; }
+    .dvf-btn-cancel:hover { background: #F4F6F8; }
+    .dvf-btn-primary { background: #2450D8; color: #fff; }
+    .dvf-btn-primary:hover { background: #1C3FA6; }
+</style>
+
+<div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
     <div class="modal-dialog modal-md">
         <div class="modal-content">
-            <!-- Modal Header -->
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-                <h4 class="modal-title" id="modal-title">Add / Edit @ViewData["Title"]</h4>
+            <div class="dvf-header">
+                <div class="dvf-header-icon"><i class="fa fa-building"></i></div>
+                <div>
+                    <div class="dvf-header-title" id="modal-title">Add Division Master</div>
+                    <div class="dvf-header-sub" id="modal-subtitle">Add new division data</div>
+                </div>
+                <button type="button" class="dvf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
             </div>
 
-            <!-- Modal Body -->
-            <div class="modal-body">
-                <div class="row">
-                    <div class="col-lg-12 form-horizontal" style="margin-top:15px; margin-left:15px">
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Division Code <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditDivisionCd" type="text" maxlength="5" oninput="removeWhiteSpace(this)" />
-                                        <input class="form-control" id="addEditId" type="hidden" />
-                                    </div>
-                                </div>
-                            </div>
+            <div class="dvf-body">
+                <div class="dvf-row">
+                    <div class="dvf-row-left">
+                        <div class="dvf-icon"><i class="fa fa-tag"></i></div>
+                        <div>
+                            <div class="dvf-label">Division Code <span class="text-red">*</span></div>
+                            <div class="dvf-sub">Unique division code</div>
                         </div>
+                    </div>
+                    <div class="dvf-row-right">
+                        <input class="form-control" id="addEditDivisionCd" type="text" maxlength="5" oninput="removeWhiteSpace(this)" placeholder="Enter division code" />
+                        <input id="addEditId" type="hidden" />
+                    </div>
+                </div>
 
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Division Name <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditDivisionNm" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
-                                    </div>
-                                </div>
-                            </div>
+                <div class="dvf-row">
+                    <div class="dvf-row-left">
+                        <div class="dvf-icon"><i class="fa fa-file-o"></i></div>
+                        <div>
+                            <div class="dvf-label">Division Name <span class="text-red">*</span></div>
+                            <div class="dvf-sub">Division name</div>
                         </div>
-
-                      @*  <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Division <span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <select class="form-control" id="addEditDivision"></select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>*@
-
+                    </div>
+                    <div class="dvf-row-right">
+                        <input class="form-control" id="addEditDivisionNm" type="text" oninput="removeWhiteSpace(this)" maxlength="255" placeholder="Enter division name" />
                     </div>
                 </div>
             </div>
 
-            <!-- Modal Footer -->
-            <div class="modal-footer">
-                <div class="col-xs-12 text-right">
-                    <button type="button" class="btn btn-primary" id="btn_save" style="width: 80px;">Save</button>
-                    <button type="button" class="btn btn-danger" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>
-                </div>
+            <div class="dvf-footer">
+                <button type="button" class="dvf-btn dvf-btn-cancel" id="btn_cancel" data-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
+                <button type="button" class="dvf-btn dvf-btn-primary" id="btn_save"><i class="fa fa-save"></i> Save</button>
             </div>
         </div>
     </div>

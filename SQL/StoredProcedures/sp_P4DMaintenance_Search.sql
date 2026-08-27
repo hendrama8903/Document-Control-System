@@ -30,7 +30,17 @@ BEGIN
 		LEFT JOIN TB_M_DEPARTMENT D ON D.DIVISION = P.DIVISION
 		WHERE P.USERNAME = @USERNAME
 		AND D.DOCUMENT_CONTROL_ACCESS = 1;
-	
+
+		-- Role Admin (DMS-ADMIN) selalu punya akses lintas department/division
+		-- penuh di sini, terlepas dari department/division akun itu sendiri -
+		-- sebelumnya seorang Admin yang kebetulan bukan anggota division QMS
+		-- (mis. dms.admin di QCV) tidak bisa memproses P4D department lain sama
+		-- sekali (request Hendra 2026-08-17).
+		IF EXISTS (SELECT 1 FROM TB_M_USER WHERE USERNAME = @USERNAME AND ROLE_ID = 'DMS-ADMIN')
+		BEGIN
+			SET @DIVISION_IAD_COUNT = 1;
+		END
+
 	SET @QUERY = 'WITH data AS 
 								(
 									SELECT 
@@ -38,7 +48,7 @@ BEGIN
 										S.DOCUMENT_CTRL_ID,
 										S.DOCUMENT_CODE,
 										S.DOCUMENT_NAME,
-										D.DEPARTMENT_NAME,
+										ISNULL(S.DEPARTMENT_NAME, D.DEPARTMENT_NAME) AS DEPARTMENT_NAME,
 -- 										UD.DEPARTMENT_NAME AS CREATOR_DEPARTMENT_NAME,
 										DOC.CLASSIFIED,
 										CLSYS.SYSTEM_VALUE AS CLASSIFIED_VAL,
@@ -66,13 +76,13 @@ BEGIN
 										ISNULL(S.DELETE_FLAG, 0) DELETE_FLAG,
 										S.DEPARTMENT_ID,
 -- 										P.DEPARTMENT_ID AS CREATOR_DEPARTMENT_ID,
-										D.DEPARTMENT_CODE,
+										ISNULL(S.DEPARTMENT_CODE, D.DEPARTMENT_CODE) AS DEPARTMENT_CODE,
 -- 										UD.DEPARTMENT_CODE AS CREATOR_DEPARTMENT_CODE,
 										S.DOCUMENT_CODE DOCUMENT_NO,
 										CAST(YEAR(S.DOCUMENT_DATE) as varchar(4)) DOCUMENT_YEAR,
 										S.DIVISION DIVISION,
 -- 										UD.DIVISION CREATOR_DIVISION,
-										DSYS.DIVISION_NAME,
+										ISNULL(S.DIVISION_NAME, DSYS.DIVISION_NAME) AS DIVISION_NAME,
 -- 										UDSYS.SYSTEM_VALUE AS CREATOR_DIVISION_NAME,
 										S.LOCATION LOCATION,
 										'''' IS_APPROVED,
@@ -100,7 +110,21 @@ BEGIN
 												WHERE CT.DOCUMENT_TRANSACTION_ID = DD.DOCUMENT_TRANSACTION_ID
 												AND PH.DEPARTMENT_ID = DD.DEPARTMENT_ID
 											)
-										) AS ACK_DONE
+										) AS ACK_DONE,
+										-- Jumlah divisi unik di antara department tujuan distribusi (ACK_TOTAL
+										-- sudah = jumlah department) - request Hendra 2026-08-14: user perlu
+										-- lihat berapa divisi/department yang dipilih untuk dokumen ini.
+										(SELECT COUNT(DISTINCT DEP.DIVISION) FROM TB_R_DOCUMENT_DISTRIBUTION DD
+											JOIN TB_M_DEPARTMENT DEP ON DEP.DEPARTMENT_ID = DD.DEPARTMENT_ID
+											WHERE DD.DOCUMENT_TRANSACTION_ID = S.DOCUMENT_TRANSACTION_ID AND DD.STATUS = 1
+										) AS DIVISION_COUNT,
+										-- Target distribusi yang SUDAH ditambahkan di popup Distribution tapi
+										-- BELUM di-Send (STATUS=0) - beda dari "belum ada target sama sekali".
+										-- Tanpa ini user harus buka popup satu-satu untuk tahu department mana
+										-- yang sudah di-cek tapi kelupaan di-Send (request Hendra 2026-08-14).
+										(SELECT COUNT(*) FROM TB_R_DOCUMENT_DISTRIBUTION DD
+											WHERE DD.DOCUMENT_TRANSACTION_ID = S.DOCUMENT_TRANSACTION_ID AND DD.STATUS = 0
+										) AS PENDING_DISTRIBUTION_COUNT
 									FROM [dbo].[TB_R_CTRL_DOCUMENT] S
 									JOIN TB_M_SYSTEM A
 										ON A.SYSTEM_TYPE = ''DOC_CTRL_STATUS''
@@ -110,8 +134,15 @@ BEGIN
 											AND B.SYSTEM_CODE = S.DOCUMENT_TYPE
 									JOIN TB_M_DEPARTMENT D
 										ON D.DEPARTMENT_ID = S.DEPARTMENT_ID
+									-- Join by DOCUMENT_TRANSACTION_ID (bukan DOCUMENT_CODE) - satu baris
+									-- P4D (S) terikat ke SATU revisi/transaction_id spesifik. Join by
+									-- DOCUMENT_CODE saja fan-out kalau ada >1 baris TB_R_DOCUMENT dengan
+									-- kode yang sama (kondisi normal sekarang: dokumen current + revisi
+									-- draft yang sedang berjalan bisa hidup bersamaan sejak
+									-- "Obsolete-control fix" Jul 2026) - tiap baris P4D jadi kelihatan
+									-- dobel di grid (bug ditemukan & diperbaiki 2026-08-16).
 									JOIN TB_R_DOCUMENT DOC
-										ON DOC.DOCUMENT_CODE = S.DOCUMENT_CODE
+										ON DOC.DOCUMENT_TRANSACTION_ID = S.DOCUMENT_TRANSACTION_ID
 									LEFT JOIN TB_M_DOCUMENT MDOC
 										ON MDOC.DOCUMENT_ID = DOC.DOCUMENT_ID
 									LEFT JOIN TB_M_SYSTEM DOCSTAT

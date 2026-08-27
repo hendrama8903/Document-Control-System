@@ -6,6 +6,27 @@
     var seq = 1;
     var detailData = [];
     var detailTable = null;
+    // Tombol "Add" di section "Add New Level & Position" dobel fungsi jadi
+    // "Update" begitu satu baris dipilih (lewat klik baris atau ikon pensil) -
+    // tidak ada tombol Edit terpisah lagi seperti desain lama (request Hendra
+    // 2026-08-18, redesign UI popup ini).
+    var gDetailEditMode = false;
+
+    // Kolom "Action" (ikon edit/delete per baris) - dipakai di DUA konfigurasi
+    // DataTable (onAddPrepare & onEditPrepare) supaya tidak duplikasi definisi.
+    // Delete cuma boleh untuk baris LEVEL PALING TINGGI (aturan sama seperti
+    // tombol Delete lama - urutan level harus tetap rapat, tidak boleh bolong
+    // di tengah).
+    var detailActionColumnDef = {
+        "targets": [3],
+        "className": "text-center",
+        "orderable": false,
+        "render": function (data, type, row) {
+            var canDelete = (parseInt(row.WORKFLOW_SEQ) + 1 == seq);
+            return '<button type="button" class="wfd-row-btn wfd-row-edit" title="Edit"><i class="fa fa-pencil"></i></button>' +
+                '<button type="button" class="wfd-row-btn wfd-row-delete" title="Delete"' + (canDelete ? '' : ' disabled') + '><i class="fa fa-trash"></i></button>';
+        }
+    };
 
     $(document).ready(function() {
 
@@ -31,16 +52,14 @@
             confirmAddEditData();
         });
 
+        // Tombol tunggal "Add"/"Update" - lihat gDetailEditMode (di-toggle oleh
+        // onSelectDetail waktu baris dipilih, dan onClearDetail waktu direset).
         $("#btn_add_detail").on("click", function () {
-            onAddDetail();
-        });
-
-        $("#btn_edit_detail").on("click", function () {
-            onEditDetail();
-        });
-
-        $("#btn_delete_detail").on("click", function () {
-            onDeleteDetail();
+            if (gDetailEditMode) {
+                onEditDetail();
+            } else {
+                onAddDetail();
+            }
         });
 
         $("#btn_clear_detail").on("click", function () {
@@ -51,24 +70,41 @@
             onSelectDetail($(this));
         });
 
+        // Ikon pensil/tempat sampah per baris (kolom Action) - pensil pilih
+        // baris untuk diedit (form di atas ikut dipetakan lewat onSelectDetail,
+        // tombol Add berubah jadi Update), tempat sampah langsung hapus baris
+        // itu (kalau memang boleh - lihat detailActionColumnDef).
+        $("#detailgrid").on("click", ".wfd-row-edit", function (e) {
+            e.stopPropagation();
+            onSelectDetail($(this).closest("tr"));
+        });
+
+        $("#detailgrid").on("click", ".wfd-row-delete", function (e) {
+            e.stopPropagation();
+            if ($(this).prop("disabled")) return;
+            onSelectDetail($(this).closest("tr"));
+            onDeleteDetail();
+        });
+
+        function setStatsPanelCollapsed(collapsed) {
+            var $row = $("#dpLayoutRow");
+            var $icon = $("#btn_toggleStats i");
+
+            $row.toggleClass("stats-collapsed", collapsed);
+            $icon.toggleClass("fa-angle-double-right", !collapsed).toggleClass("fa-angle-double-left", collapsed);
+            $("#btn_toggleStats").attr("title", collapsed ? "Show Summary" : "Hide Summary");
+
+            setTimeout(function () {
+                $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+            }, 230);
+        }
+
         $("#btn_toggleStats").on("click", function () {
-            var $btn = $(this);
-            var $icon = $btn.find("i");
-            var $row = $("#wfStatsRow");
-            $row.stop(true, true).animate(
-                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
-                {
-                    duration: 220,
-                    easing: "swing",
-                    progress: function () { $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight()); },
-                    complete: function () {
-                        var collapsed = !$row.is(":visible");
-                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
-                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
-                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-                    }
-                }
-            );
+            setStatsPanelCollapsed(!$("#dpLayoutRow").hasClass("stats-collapsed"));
+        });
+
+        $("#btn_closeStatsPanel").on("click", function () {
+            setStatsPanelCollapsed(true);
         });
 
     });
@@ -98,7 +134,7 @@
         detailTable = $('#detailgrid').DataTable({
             "ordering"      : false,
             "oLanguage"     : { "sEmptyTable": "Data not found." },
-            "scrollY"       : '150px',
+            "scrollY"       : '110px',
             "scrollCollapse": false,
             "paging"        : false,
             "info"          : false,
@@ -107,18 +143,21 @@
             "columnDefs"    : [
                 {
                     "targets"   : [0],
-                    "width"     : "25%",
+                    "width"     : "18%",
                     "className" : "seq text-center",
+                    "render"    : function (data) { return '<span class="wfd-level-badge">' + data + '</span>'; }
                 },
                 {
                     "targets": [2],
                     "className": "hide"
-                }
+                },
+                detailActionColumnDef
             ],
             "columns": [
                 { "data": "WORKFLOW_SEQ", "name": "WORKFLOW_SEQ" },
                 { "data": "POSITION_NAME", "name": "POSITION_NAME" },
-                { "data": "POSITION_ID", "name": "POSITION_ID" }
+                { "data": "POSITION_ID", "name": "POSITION_ID" },
+                { "data": null, "name": "ACTION", "defaultContent": "" }
             ]
         });
         
@@ -177,7 +216,7 @@
                     detailTable = $('#detailgrid').DataTable({
                         "ordering"      : false,
                         "oLanguage"     : { "sEmptyTable": "Data not found." },
-                        "scrollY"       : '150px',
+                        "scrollY"       : '110px',
                         "scrollCollapse": false,
                         "paging"        : false,
                         "info"          : false,
@@ -186,18 +225,21 @@
                         "columnDefs"    : [
                             {
                                 "targets": [0],
-                                "width": "25%",
+                                "width": "18%",
                                 "className": "seq text-center",
+                                "render": function (data) { return '<span class="wfd-level-badge">' + data + '</span>'; }
                             },
                             {
                                 "targets": [2],
                                 "className": "hide"
-                            }
+                            },
+                            detailActionColumnDef
                         ],
                         "columns": [
                             { "data": "WORKFLOW_SEQ", "name": "WORKFLOW_SEQ" },
                             { "data": "POSITION_NAME", "name": "POSITION_NAME" },
-                            { "data": "POSITION_ID", "name": "POSITION_ID" }
+                            { "data": "POSITION_ID", "name": "POSITION_ID" },
+                            { "data": null, "name": "ACTION", "defaultContent": "" }
                         ]
                     });
         
@@ -244,14 +286,25 @@
         showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
     }
     
+    // Ganti tampilan tombol Add/Update sesuai gDetailEditMode.
+    function refreshDetailActionButton() {
+        var $btn = $("#btn_add_detail");
+        if (gDetailEditMode) {
+            $btn.addClass("wfd-btn-update").html('<i class="fa fa-check"></i> Update');
+        } else {
+            $btn.removeClass("wfd-btn-update").html('<i class="fa fa-plus"></i> Add');
+        }
+    }
+
     function onClearDetail() {
         $('#addEditWorkflowSeq').val(seq).trigger("change");
         $('#addEditPositionName2').val("").trigger("change");
-        
+
         $("#addEditWorkflowSeq").prop("disabled", false);
         $("#btn_add_detail").prop("disabled", false);
-        $("#btn_edit_detail").prop("disabled", true);
-        $("#btn_delete_detail").prop("disabled", true);
+
+        gDetailEditMode = false;
+        refreshDetailActionButton();
 
         $('#detailgrid tr').removeClass("selected");
     }
@@ -264,17 +317,12 @@
 
             $('#addEditWorkflowSeq').val(workflowSeq).trigger("change");
             $('#addEditPositionName2').select2("trigger", "select", { data: { id: approver, text: fullname } });
-        
-            $("#addEditWorkflowSeq").prop("disabled", true);
-            $("#btn_add_detail").prop("disabled", true);
-            $("#btn_edit_detail").prop("disabled", false);
 
-            if (parseInt(workflowSeq) + 1 == seq){
-                $("#btn_delete_detail").prop("disabled", false);
-            }else{
-                $("#btn_delete_detail").prop("disabled", true);
-            }
-            
+            $("#addEditWorkflowSeq").prop("disabled", true);
+
+            gDetailEditMode = true;
+            refreshDetailActionButton();
+
             $('#detailgrid tr').removeClass("selected");
             $row.addClass('selected');
         }

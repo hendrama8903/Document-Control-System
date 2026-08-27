@@ -19,6 +19,11 @@
     var gCanDistribution = @(((bool)ViewData["Distribution"]) ? "true" : "false");
     var gCanReject = @((((bool)ViewData["Reject"]) && ((bool)ViewData["DocumentControlAccess"])) ? "true" : "false");
     var gCanDelete = @(((bool)ViewData["Delete"]) ? "true" : "false");
+    // QMS/document-control staff vs regular user, terlepas dari izin aksi spesifik
+    // (Receive/Send/dst) - dipakai untuk sembunyikan rincian teknis distribusi
+    // (rasio accept, jumlah department/divisi) dari user biasa yang cuma lihat
+    // dokumen departemennya sendiri (request Hendra 2026-08-14).
+    var gIsQms = @(((bool)ViewData["DocumentControlAccess"]) ? "true" : "false");
 
     function getSelectedRowData() {
         var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
@@ -30,7 +35,12 @@
         var selected = row != null;
 
         $("#btn_edit").prop("disabled", !selected);
-        $("#btn_delete").prop("disabled", !(selected && (row.STATUS == 1 || row.STATUS == 0) && row.DEPARTMENT_ID == SESSION_DEPARTMENT_ID_LOGIN));
+        // Delete cuma untuk Draft/Rejected - Checking (1) SENGAJA tidak boleh,
+        // sebab QMS sudah mulai Receive/review; department harus Un-Receive dulu
+        // (balik ke Draft) baru bisa Delete, supaya log aktivitas & distribusi
+        // tidak hilang permanen tanpa jejak di tengah proses QMS (request Hendra
+        // 2026-08-14).
+        $("#btn_delete").prop("disabled", !(selected && (row.STATUS == 0 || row.STATUS == 3) && row.DEPARTMENT_ID == SESSION_DEPARTMENT_ID_LOGIN));
         $("#btn_receive").prop("disabled", !(selected && row.STATUS == 0));
         $("#btn_accept").prop("disabled", !(selected && row.STATUS == 1));
         $("#btn_unreceive").prop("disabled", !(selected && row.STATUS == 2));
@@ -44,6 +54,29 @@
         var footerHeight = $("#divFooter").outerHeight(true) || 0;
 
         return Math.max(300, $(window).height() - gridTop - footerHeight - 40);
+    }
+
+    // ---------- docked "Document Status" panel toggle - top-level (not inside
+    // $(document).ready) so updateHeaderStats() below can reach dpLastPending too ----------
+    var dpLastPending = 0;
+
+    function refreshToggleBadge() {
+        var collapsed = $("#dpLayoutRow").hasClass("stats-collapsed");
+        $("#dpToggleBadge").text(dpLastPending).toggle(collapsed && dpLastPending > 0);
+    }
+
+    function setStatsPanelCollapsed(collapsed) {
+        var $row = $("#dpLayoutRow");
+        var $icon = $("#btn_toggleStats i");
+
+        $row.toggleClass("stats-collapsed", collapsed);
+        $icon.toggleClass("fa-angle-double-right", !collapsed).toggleClass("fa-angle-double-left", collapsed);
+        $("#btn_toggleStats").attr("title", collapsed ? "Show Document Status" : "Hide Document Status");
+        refreshToggleBadge();
+
+        setTimeout(function () {
+            $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+        }, 230);
     }
 
     $(document).ready(function () {
@@ -149,6 +182,7 @@
                     }
                 },
                 { dataField: "DOCUMENT_NAME", caption: "Document Name" },
+                { dataField: "REVISION", caption: "Revision", alignment: "center" },
                 {
                     dataField: "STATUS_VAL",
                     caption: "Status",
@@ -161,9 +195,16 @@
                         if (row.STATUS == 0) {
                             pillClass = "dms-pill dms-pill-info";
                             icon = "fa-clock-o";
-                        } else if (row.STATUS == 1 || row.STATUS == 6) {
+                        } else if (row.STATUS == 1) {
                             pillClass = "dms-pill dms-pill-warning";
                             icon = "fa-hourglass-half";
+                        } else if (row.STATUS == 6) {
+                            // Partially Sent - beda visual dari Checking (1) meski dulu
+                            // sama-sama amber, supaya jelas ini soal distribusi bukan
+                            // registrasi (request Hendra 2026-08-14: user tidak bisa
+                            // bedakan status "sudah didistribusi" dari tampilan grid).
+                            pillClass = "dms-pill dms-pill-primary";
+                            icon = "fa-share-alt";
                         } else if (row.STATUS == 5) {
                             pillClass = "dms-pill dms-pill-primary";
                             icon = "fa-paper-plane";
@@ -187,28 +228,100 @@
                         // nothing to accept yet (request Hendra 2026-08-13: P4D should
                         // show "Waiting" until every target department clicks Accepted
                         // in UserDashboard, then "Accepted" once all of them have).
-                        if (row.STATUS != 5 && row.STATUS != 6) {
-                            container.text("-");
-                            return;
-                        }
-
+                        // Shown as "Not Distributed" (not just "-") so it directly
+                        // answers "has this document been sent out yet or not" at a
+                        // glance (request Hendra 2026-08-14).
                         var total = row.ACK_TOTAL || 0;
                         var done = row.ACK_DONE || 0;
+                        var pending = row.PENDING_DISTRIBUTION_COUNT || 0;
 
-                        if (total === 0) {
-                            container.text("-");
+                        if ((row.STATUS != 5 && row.STATUS != 6) || total === 0) {
+                            // Beda antara "belum ada target sama sekali" vs "sudah ada
+                            // department yang dicentang di popup Distribution tapi belum
+                            // di-Send" - supaya QMS tidak perlu buka popup satu-satu untuk
+                            // tahu mana yang kelupaan di-Send (request Hendra 2026-08-14).
+                            // Badge "Not Sent Yet" cuma untuk yang punya akses Send (gCanSend)
+                            // - user tanpa akses itu tidak bisa menindaklanjuti, jadi cuma bikin
+                            // bingung/kesan sistem nyangkut kalau ditampilkan ke mereka.
+                            if (pending > 0 && gCanSend) {
+                                $("<span>")
+                                    .css({ color: "#B36B00", fontWeight: 600 })
+                                    .html('<i class="fa fa-exclamation-circle"></i> ' + pending + ' Not Sent Yet')
+                                    .appendTo(container);
+                            } else {
+                                $("<span>").css({ color: "#98A2B3", fontWeight: 600 }).text("Not Distributed").appendTo(container);
+                            }
                             return;
                         }
 
                         var accepted = done >= total;
+                        var divCount = row.DIVISION_COUNT || 0;
 
+                        // User biasa (bukan QMS/document-control staff) cuma lihat label polos
+                        // Accepted/Waiting, sama seperti UserDashboard - rincian teknis (rasio,
+                        // jumlah department/divisi, hint "belum di-Send") disembunyikan karena
+                        // itu urusan operasional QMS, bukan info yang relevan/bisa ditindak
+                        // lanjuti oleh user biasa (request Hendra 2026-08-15).
+                        if (!gIsQms) {
+                            $("<span>")
+                                .css({ color: accepted ? "#1E9E63" : "#C62828", fontWeight: 600 })
+                                .html('<i class="fa ' + (accepted ? "fa-check-circle" : "fa-hourglass-half") + '"></i> ' + (accepted ? "Accepted" : "Waiting"))
+                                .appendTo(container);
+                            return;
+                        }
+
+                        // Ikon panah kecil di kanan sel menandakan sel ini bisa diklik
+                        // untuk membuka panel detail Acceptance (sidebar) - samakan
+                        // dengan DocumentControlDashboard (request Hendra 2026-08-15).
+                        container.css({ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", cursor: "pointer" });
+
+                        var $wrap = $("<div>").css({ lineHeight: 1.3 });
+
+                        // Label "Waiting" polos menyesatkan kalau SEBAGIAN department sudah
+                        // Accepted (mis. 1 dari 2) - kelihatan seolah belum ada satupun yang
+                        // accept. Tambahkan rasio done/total di sini khusus saat belum lengkap,
+                        // supaya progres separuh jalan tetap kelihatan (request Hendra
+                        // 2026-08-14). "Accepted" sendiri dibiarkan polos (sudah jelas 100%).
+                        var waitingLabel = "Waiting" + (total > 0 ? " (" + done + "/" + total + ")" : "");
                         $("<span>")
                             .css({ color: accepted ? "#1E9E63" : "#C62828", fontWeight: 600 })
-                            .html('<i class="fa ' + (accepted ? "fa-check-circle" : "fa-hourglass-half") + '"></i> ' + (accepted ? "Accepted" : "Waiting"))
+                            .html('<i class="fa ' + (accepted ? "fa-check-circle" : "fa-hourglass-half") + '"></i> ' + (accepted ? "Accepted" : waitingLabel))
+                            .appendTo($wrap);
+
+                        // Target distribusi: berapa department (dan divisi) yang dipilih
+                        // saat Send Distribution (request Hendra 2026-08-14).
+                        $("<span>")
+                            .css({ display: "block", fontSize: "10.5px", color: "#98A2B3", marginTop: "2px" })
+                            .text(total + " Department" + (total !== 1 ? "s" : "") + " / " + divCount + " Division" + (divCount !== 1 ? "s" : ""))
+                            .appendTo($wrap);
+
+                        // Ada department yang ditambahkan BELAKANGAN (setelah Send pertama,
+                        // makanya status sudah Partially Sent) tapi belum di-Send lagi - jangan
+                        // sampai hilang dari pandangan cuma karena statusnya sudah "ada yang
+                        // terkirim" (request Hendra 2026-08-14, kasus "nambah 1 department lagi
+                        // lalu lupa Send").
+                        if (pending > 0 && gCanSend) {
+                            $("<span>")
+                                .css({ display: "block", fontSize: "10.5px", color: "#B36B00", fontWeight: 600, marginTop: "2px" })
+                                .html('<i class="fa fa-exclamation-circle"></i> ' + pending + ' Not Sent Yet')
+                                .appendTo($wrap);
+                        }
+
+                        // Klik untuk lihat rincian per department (QMS-only) - samakan
+                        // format dengan DocumentControlDashboard, lihat
+                        // _AcceptanceDetailPopup.cshtml (request Hendra 2026-08-15).
+                        container.on("click", function (e) {
+                            e.stopPropagation();
+                            dcdOpenAcceptanceDetail(row);
+                        });
+
+                        $wrap.appendTo(container);
+                        $("<i>").addClass("fa fa-chevron-circle-right")
+                            .css({ flex: "none", fontSize: "11px", color: "#B0B8C4" })
+                            .attr("title", "Click for detail")
                             .appendTo(container);
                     }
                 },
-                { dataField: "REVISION", caption: "Revision", alignment: "center" },
                 {
                     dataField: "DIVISION_NAME",
                     caption: "Division",
@@ -236,8 +349,8 @@
                     }
                 },
                 { dataField: "LOCATION", caption: "Location" },
-                { dataField: "ITEM_CHANGED", caption: "Item Changed" },
-                { dataField: "REASON", caption: "Reason" },
+                { dataField: "ITEM_CHANGED", caption: "Item Changed", visible: false },
+                { dataField: "REASON", caption: "Reason", visible: false },
                 { dataField: "CREATED_BY", caption: "Created By", visible: false },
                 {
                     dataField: "CREATED_DT",
@@ -273,15 +386,9 @@
 
                         container.css("white-space", "nowrap");
 
-                        $("<button>")
-                            .attr({ type: "button", title: "Preview" })
-                            .addClass("dp-act-eye")
-                            .html('<i class="fa fa-eye"></i>')
-                            .on("click", function () {
-                                onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
-                            })
-                            .appendTo(container);
-
+                        // Tombol mata (Preview) dihapus - fungsinya sudah ada di dalam
+                        // kebab menu ("Preview"), jadi ini duplikat (request Hendra
+                        // 2026-08-15).
                         $("<button>")
                             .attr({ type: "button", title: "More actions" })
                             .addClass("dp-act-kebab")
@@ -300,28 +407,15 @@
             $("#datagrid").dxDataGrid("instance").showColumnChooser();
         });
 
-        // ---------- toggle summary/KPI cards, so the grid below can move up ----------
+        // ---------- toggle the docked "Document Status" panel (collapses to the
+        // right, grid reflows into the freed width via flex - no manual height
+        // animation needed since the panel sits beside the grid, not above it) ----------
         $("#btn_toggleStats").on("click", function () {
-            var $btn = $(this);
-            var $icon = $btn.find("i");
-            var $row = $("#dpStatsRow");
+            setStatsPanelCollapsed(!$("#dpLayoutRow").hasClass("stats-collapsed"));
+        });
 
-            $row.stop(true, true).animate(
-                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
-                {
-                    duration: 220,
-                    easing: "swing",
-                    progress: function () {
-                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-                    },
-                    complete: function () {
-                        var collapsed = !$row.is(":visible");
-                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
-                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
-                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-                    }
-                }
-            );
+        $("#btn_closeStatsPanel").on("click", function () {
+            setStatsPanelCollapsed(true);
         });
 
         $(window).on("resize", function () {
@@ -373,6 +467,11 @@
         $("#dpRegistered").text(registered);
         $("#dpRejected").text(rejected);
         $("#dpTodayRegistered").text(todayRegistered);
+
+        // surfaces the pending count on the collapsed toggle too, so it
+        // stays useful (not just a bare arrow) even when the panel is closed
+        dpLastPending = pending;
+        refreshToggleBadge();
     }
 
     // ---------- per-row "more actions" kebab menu ----------
@@ -469,7 +568,7 @@
         }));
 
         if (gCanDelete) {
-            var deletable = (row.STATUS == 1 || row.STATUS == 0) && row.DEPARTMENT_ID == SESSION_DEPARTMENT_ID_LOGIN;
+            var deletable = (row.STATUS == 0 || row.STATUS == 3) && row.DEPARTMENT_ID == SESSION_DEPARTMENT_ID_LOGIN;
             $menu.append('<li class="divider"></li>');
             $menu.append(menuItem("dp-menu-delete", "fa-trash-o", "Delete", deletable, function () {
                 selectRowThen(row, onDeletePrepare);

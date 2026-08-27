@@ -15,6 +15,18 @@
     var gFunctionPageSize = 10;
     var gFunctionScreenMode = null;
 
+    // MENU_ICON tersimpan cuma sebagai satu class spesifik (mis. "fa-folder-o",
+    // TANPA prefix "fa " di depannya - dicek langsung ke data TB_M_MENU) - jadi
+    // cukup ditempel "fa " di depan buat class lengkap <i> preview-nya. Dibuat
+    // fungsi terpisah (bukan regex strip) supaya tidak salah motong bagian
+    // "fa" yang memang jadi awalan nama classnya sendiri (mis. "fa-folder-o"
+    // sempat kepotong jadi "-folder-o" - bug ditemukan 2026-08-19).
+    function menuIconPreviewClass(iconClass) {
+        iconClass = (iconClass || "").trim();
+        if (!iconClass) return "fa fa-folder";
+        return iconClass.indexOf("fa ") === 0 || iconClass.indexOf("fa-") !== 0 ? iconClass : "fa " + iconClass;
+    }
+
     $(document).ready(function () {
         setDataSelect2("addEditParentID", "@Url.Action("GetMenuParent", "Menu")", "- Parent -");
 
@@ -33,22 +45,21 @@
             window.location.href = "@Url.Action("DownloadExcel", "Menu")";
         });
 
+        function setStatsPanelCollapsed(collapsed) {
+            var $row = $("#dpLayoutRow");
+            var $icon = $("#btn_toggleStats i");
+
+            $row.toggleClass("stats-collapsed", collapsed);
+            $icon.toggleClass("fa-angle-double-right", !collapsed).toggleClass("fa-angle-double-left", collapsed);
+            $("#btn_toggleStats").attr("title", collapsed ? "Show Summary" : "Hide Summary");
+        }
+
         $("#btn_toggleStats").on("click", function () {
-            var $btn = $(this);
-            var $icon = $btn.find("i");
-            var $row = $("#mfStatsRow");
-            $row.stop(true, true).animate(
-                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
-                {
-                    duration: 220,
-                    easing: "swing",
-                    complete: function () {
-                        var collapsed = !$row.is(":visible");
-                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
-                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
-                    }
-                }
-            );
+            setStatsPanelCollapsed(!$("#dpLayoutRow").hasClass("stats-collapsed"));
+        });
+
+        $("#btn_closeStatsPanel").on("click", function () {
+            setStatsPanelCollapsed(true);
         });
 
         $("#mfSearchMenu").on("input", function () {
@@ -82,6 +93,7 @@
             $("#addEditMenuID").attr("disabled", true);
             $("#addEditParentID").attr("disabled", true);
             $('#addEditParentID').val(null).trigger('change');
+            $("#parentMenuRow").hide();
 
             gParentID = null;
             GetMenuLastSeq();
@@ -91,9 +103,22 @@
         $("#chkMenuChild").click(function (e) {
             $("#addEditMenuID").attr("disabled", true);
             $("#addEditParentID").attr("disabled", false);
+            $("#parentMenuRow").show();
 
             $("#addEditMenuID").val("");
             $("#addEditMenuSeq").val("");
+        });
+
+        // Preview "ikon + nama" langsung di bawah Menu Icon (request Hendra
+        // 2026-08-19, redesign popup Add Menu) - update tiap kali user ganti
+        // ikon (event bawaan plugin fontawesome-iconpicker) atau ngetik ulang
+        // Menu Name.
+        $("#addEditMenuIcon").on("change iconpickerSelected", function () {
+            $("#menuIconPreviewGlyph").attr("class", menuIconPreviewClass($(this).val()));
+        });
+
+        $("#addEditMenuName").on("input", function () {
+            $("#menuNamePreviewText").text($(this).val() || "Menu Name");
         });
 
         $('#addEditParentID').on('select2:select', function (e) {
@@ -538,10 +563,12 @@
                         $("#chkMenuChild").prop('checked', true);
                         $('#addEditParentID').prop('disabled', false);
                         $('#addEditParentID').select2("trigger", "select", { data: { id: data.PARENT_ID, text: data.PARENT_NAME } });
+                        $("#parentMenuRow").show();
                     } else {
                         $("#chkMenuParent").prop('checked', true);
                         $('#addEditParentID').prop('disabled', true);
                         $('#addEditParentID').val(null).trigger('change');
+                        $("#parentMenuRow").hide();
                     }
 
                     $('#addEditMenuID').val(data.MENU_ID);
@@ -549,6 +576,10 @@
                     $('#addEditMenuIcon').val(data.MENU_ICON);
                     $('#addEditMenuURL').val(data.MENU_URL);
                     $('#addEditMenuSeq').val(data.MENU_SEQ);
+
+                    // Sinkronkan preview ikon/nama ke data yang barusan dimuat.
+                    $("#menuIconPreviewGlyph").attr("class", menuIconPreviewClass(data.MENU_ICON));
+                    $("#menuNamePreviewText").text(data.MENU_NAME || "Menu Name");
 
                     $('#addEditMenuID').prop('disabled', true);
                     $('#addEditMenuName').prop('disabled', false);

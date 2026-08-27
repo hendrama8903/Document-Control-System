@@ -15,6 +15,7 @@ namespace DMS.Models.DB
         public int? CURRENT_SEQ { get; set; }
         public string? CREATOR { get; set; }
         public string? CREATOR_NAME { get; set; }
+        public string? CREATOR_POSITION { get; set; }
         public string? MENU_ID { get; set; }
         public int? TRANSACTION_ID { get; set; }
     }

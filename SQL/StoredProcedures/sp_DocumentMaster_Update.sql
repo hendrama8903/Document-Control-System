@@ -39,18 +39,16 @@ BEGIN TRY
 		RETURN 0;
 	END
 
-	IF @FILE_PATH IS NULL OR LEN(@FILE_PATH) < 1
-	BEGIN
-		SET @RETURN_MSG = 'ERROR: Template should not be null';
-		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
-		RETURN 0;
-	END
+	-- FILE_PATH (attachment generik lama) sudah tidak wajib diisi lewat form ini -
+	-- file master template pengesahan sekarang disimpan langsung ke
+	-- wwwroot/document/Template/{CODE}.xls(x) oleh DocumentMasterController,
+	-- terpisah dari kolom ini (request Hendra 2026-08-19).
 
 	UPDATE [dbo].[TB_M_DOCUMENT]
 	SET DOCUMENT_CODE = @DOCUMENT_CODE,
 			DOCUMENT_NAME = @DOCUMENT_NAME,
 			[LEVEL]= @LEVEL,
-			FILE_PATH = @FILE_PATH,
+			FILE_PATH = ISNULL(@FILE_PATH, FILE_PATH),
 			REVIEW_CYCLE_MONTHS = @REVIEW_CYCLE_MONTHS,
 			CHANGED_DT = GETDATE(),
 			CHANGED_BY = @LOGIN_USER

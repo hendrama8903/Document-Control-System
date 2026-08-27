@@ -41,6 +41,26 @@
 
     #pv-page-info { min-width: 90px; text-align: center; }
 
+    #pv-zoom-input {
+        width: 40px;
+        height: 30px;
+        background: #4A4E52;
+        border: none;
+        border-radius: 4px;
+        color: #E8EAED;
+        font-size: 13px;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        text-align: center;
+        padding: 0;
+    }
+
+    #pv-zoom-input:focus { outline: 2px solid #7A7E82; }
+
+    /* hide native number spinner arrows - custom +/- buttons cover that */
+    #pv-zoom-input::-webkit-outer-spin-button,
+    #pv-zoom-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    #pv-zoom-input[type=number] { -moz-appearance: textfield; }
+
     #pv-scroll {
         position: absolute;
         top: 46px; left: 0; right: 0; bottom: 0;
@@ -77,7 +97,8 @@
     <button type="button" id="pv-next" title="Next page">&#8250;</button>
     <span style="width:1px;height:20px;background:#5A5E62;margin:0 6px;"></span>
     <button type="button" id="pv-zoom-out" title="Zoom out">&#8722;</button>
-    <span id="pv-zoom-info">100%</span>
+    <input type="number" id="pv-zoom-input" value="100" min="40" max="300" step="1" title="Custom zoom percentage (40-300)" />
+    <span>%</span>
     <button type="button" id="pv-zoom-in" title="Zoom in">&#43;</button>
 </div>
 
@@ -106,6 +127,28 @@
     var rendering = false;
     var pendingPage = null;
 
+    var MIN_ZOOM = 0.4;
+    var MAX_ZOOM = 3.0;
+    var zoomInput = document.getElementById('pv-zoom-input');
+
+    // Angka di kotak zoom cuma dipakai untuk ditampilkan sampai user menekan
+    // Enter/klik keluar - biar boleh menghapus digit dulu sambil ngetik tanpa
+    // langsung dipaksa clamp per keystroke.
+    function setZoom(scale) {
+        currentScale = Math.max(MIN_ZOOM, Math.min(scale, MAX_ZOOM));
+        zoomInput.value = Math.round(currentScale * 100);
+        renderPage(currentPage);
+    }
+
+    function applyZoomInput() {
+        var pct = parseFloat(zoomInput.value);
+        if (isNaN(pct)) {
+            zoomInput.value = Math.round(currentScale * 100);
+            return;
+        }
+        setZoom(pct / 100);
+    }
+
     var canvas = document.getElementById('pv-canvas');
     var ctx = canvas.getContext('2d');
 
@@ -124,6 +167,22 @@
             // canvas looks soft/pixelated on any HiDPI or OS-scaled display
             // (Hendra reported blurry text 2026-08-13).
             var outputScale = window.devicePixelRatio || 1;
+
+            // Batasi ukuran backing-store canvas - halaman besar (A3 landscape,
+            // mis. template SPR/SIPOCOR) dikombinasi zoom-in + layar HiDPI bisa
+            // gampang lewat batas ukuran canvas 2D yang didukung browser/GPU,
+            // hasilnya render jadi rusak/kosong sebagian ("pecah", dilaporkan
+            // Hendra 2026-08-19). Turunkan outputScale dulu kalau perlu supaya
+            // tetap di bawah batas aman, baru CSS yang membesarkan tampilannya -
+            // sedikit kurang tajam di zoom ekstrem, tapi tidak pernah rusak.
+            var MAX_CANVAS_DIMENSION = 4096;
+            var neededScale = outputScale;
+            var maxNaturalDimension = Math.max(viewport.width, viewport.height);
+            if (maxNaturalDimension * neededScale > MAX_CANVAS_DIMENSION) {
+                neededScale = MAX_CANVAS_DIMENSION / maxNaturalDimension;
+            }
+            outputScale = neededScale;
+
             canvas.width = Math.floor(viewport.width * outputScale);
             canvas.height = Math.floor(viewport.height * outputScale);
             canvas.style.width = Math.floor(viewport.width) + 'px';
@@ -159,16 +218,22 @@
     });
 
     document.getElementById('pv-zoom-in').addEventListener('click', function () {
-        currentScale = Math.min(currentScale + 0.2, 3.0);
-        document.getElementById('pv-zoom-info').textContent = Math.round(currentScale * 100) + '%';
-        renderPage(currentPage);
+        setZoom(currentScale + 0.2);
     });
 
     document.getElementById('pv-zoom-out').addEventListener('click', function () {
-        currentScale = Math.max(currentScale - 0.2, 0.4);
-        document.getElementById('pv-zoom-info').textContent = Math.round(currentScale * 100) + '%';
-        renderPage(currentPage);
+        setZoom(currentScale - 0.2);
     });
+
+    zoomInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            applyZoomInput();
+            zoomInput.blur();
+        }
+    });
+    zoomInput.addEventListener('change', applyZoomInput);
+    zoomInput.addEventListener('focus', function () { zoomInput.select(); });
 
     fetch('@Html.Raw(pdfUrl)')
         .then(function (resp) { return resp.arrayBuffer(); })
@@ -178,7 +243,21 @@
         .then(function (doc) {
             pdfDoc = doc;
             document.getElementById('pv-loading').style.display = 'none';
-            renderPage(currentPage);
+
+            // Skala awal disesuaikan ke ukuran layar yang tersedia ("fit page"),
+            // bukan 100% literal - halaman besar (mis. A3 landscape) tampil jauh
+            // lebih kecil dari A4 kalau dipaksa skala 1:1, padahal itu bukan soal
+            // isi dokumennya (request Hendra 2026-08-19, kasus template SPR/
+            // SIPOCOR yang pakai kertas A3).
+            pdfDoc.getPage(1).then(function (page) {
+                var naturalViewport = page.getViewport({ scale: 1.0 });
+                var scrollEl = document.getElementById('pv-scroll');
+                var availWidth = scrollEl.clientWidth - 40;
+                var availHeight = scrollEl.clientHeight - 40;
+                var fitScale = Math.min(availWidth / naturalViewport.width, availHeight / naturalViewport.height);
+
+                setZoom(fitScale);
+            });
         })
         .catch(function (err) {
             document.getElementById('pv-loading').textContent = 'Failed to load document.';

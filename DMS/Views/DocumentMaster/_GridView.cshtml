@@ -32,6 +32,8 @@
     var gCanEdit = @(((bool)ViewData["Edit"]) ? "true" : "false");
     var gCanDelete = @(((bool)ViewData["Delete"]) ? "true" : "false");
     var gCanDownload = "@ViewData["Download-FilePath"]" == "True";
+    var gTemplateCodes = @Html.Raw(ViewData["TemplateCodes"]);
+    var gTemplateInfo = @Html.Raw(ViewData["TemplateInfo"]);
 
     function getSelectedRowData() {
         var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
@@ -56,7 +58,7 @@
     function dmRenderStats(data) {
         var total = data.length;
         var levels = new Set(data.map(function (r) { return r.LEVEL_VAL; }).filter(function (v) { return v != null; })).size;
-        var withTemplate = data.filter(function (r) { return r.FILE_PATH != null; }).length;
+        var withTemplate = data.filter(function (r) { return gTemplateCodes.indexOf(r.DOCUMENT_CODE) !== -1; }).length;
 
         var lastUpdated = null;
         data.forEach(function (r) {
@@ -174,7 +176,27 @@
                         container.text(value ? value + " months" : "-");
                     }
                 },
-                { dataField: "FILE_PATH", caption: "File Path" },
+                {
+                    dataField: "DOCUMENT_CODE",
+                    caption: "Signing Template",
+                    calculateCellValue: function (row) {
+                        var info = gTemplateInfo[row.DOCUMENT_CODE];
+                        return info ? info.fileName : "";
+                    },
+                    cellTemplate: function (container, options) {
+                        var info = gTemplateInfo[options.data.DOCUMENT_CODE];
+                        if (!info) {
+                            $("<span>").css({ color: "#98A2B3" }).html('<i class="fa fa-minus-circle"></i> No template').appendTo(container);
+                            return;
+                        }
+                        $("<span>").css({ color: "#1E9E63", fontWeight: 600 })
+                            .html('<i class="fa fa-file-excel-o"></i> ' + info.fileName)
+                            .appendTo(container);
+                        $("<span>").css({ color: "#98A2B3", marginLeft: "6px", fontSize: "11px" })
+                            .text("(" + info.sizeKb + " KB)")
+                            .appendTo(container);
+                    }
+                },
                 { dataField: "CREATED_BY", caption: "Created By", visible: false },
                 {
                     dataField: "CREATED_DT",
@@ -296,6 +318,12 @@
         if (gCanDownload && row.FILE_PATH != null) {
             $menu.append(menuItem("dp-menu-download", "fa-download", "Download", function () {
                 onDownload(row.FILE_PATH);
+            }));
+        }
+
+        if (gTemplateCodes.indexOf(row.DOCUMENT_CODE) !== -1) {
+            $menu.append(menuItem("dp-menu-download-template", "fa-file-excel-o", "Download Template", function () {
+                onDownloadTemplate(row.DOCUMENT_CODE);
             }));
         }
 

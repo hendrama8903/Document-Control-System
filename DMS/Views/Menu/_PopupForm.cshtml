@@ -8,25 +8,26 @@
     .adf-header {
         background: linear-gradient(135deg, #2450D8, #1C3FA6);
         color: #fff;
-        padding: 16px 22px;
+        padding: 12px 20px;
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
     }
 
     .adf-header-icon {
         flex: none;
-        width: 38px;
-        height: 38px;
+        width: 32px;
+        height: 32px;
         border-radius: 9px;
         background: rgba(255,255,255,.18);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 16px;
+        font-size: 14px;
     }
 
-    .adf-header-title { font-size: 15.5px; font-weight: 700; }
+    .adf-header-title { font-size: 14.5px; font-weight: 700; }
+    .adf-header-sub { font-size: 11px; color: rgba(255,255,255,.85); margin-top: 1px; }
 
     .adf-close {
         margin-left: auto;
@@ -41,20 +42,20 @@
 
     .adf-close:hover { color: #fff; }
 
-    .adf-modal-content .modal-body { background: #fff; padding: 20px 24px; }
+    .adf-modal-content .modal-body { background: #fff; padding: 14px 22px; max-height: 82vh; overflow-y: auto; }
 
-    .adf-modal-content .form-group { margin-bottom: 14px; }
+    .adf-modal-content .form-group { margin-bottom: 9px; }
 
     .adf-modal-content .form-group > .control-label {
         display: block;
-        margin-bottom: 4px;
-        font-size: 12.5px;
+        margin-bottom: 3px;
+        font-size: 12px;
     }
 
     .adf-modal-content .modal-footer {
         background: #fff;
         border-top: 1px solid #E3E8EE;
-        padding: 14px 22px;
+        padding: 10px 20px;
         margin: 0;
         display: flex;
         align-items: center;
@@ -78,8 +79,47 @@
     #modalAddEdit .modal-dialog { width: 520px; max-width: 94vw; }
     #modalFunction .modal-dialog { width: 520px; max-width: 94vw; }
 
-    #modalAddEdit .radio-inline-group { display: flex; gap: 18px; align-items: center; padding-top: 6px; }
-    #modalAddEdit .radio-inline-group label { font-weight: 400; margin: 0; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+    /* ---------- helper text under a field ---------- */
+    .adf-help { font-size: 10.5px; color: #98A2B3; margin-top: 2px; }
+    .adf-label-hint { color: #98A2B3; font-size: 11px; margin-left: 3px; }
+
+    /* ---------- 2-column row (Sequence | Menu Type) ---------- */
+    .adf-row-2col { display: flex; gap: 16px; }
+    .adf-row-2col > .form-group { flex: 1 1 0; min-width: 0; margin-bottom: 9px; }
+
+    /* ---------- input with a leading icon chip ---------- */
+    .adf-input-icon { position: relative; }
+    .adf-input-icon > i.adf-input-icon-glyph {
+        position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+        color: #2450D8; font-size: 12.5px; pointer-events: none;
+    }
+    .adf-input-icon > .form-control { padding-left: 30px; }
+
+    /* ---------- Menu Type: card-style radios with icon ---------- */
+    #modalAddEdit .radio-inline-group { display: flex; gap: 14px; align-items: center; height: 30px; }
+    #modalAddEdit .adf-radio-card {
+        display: inline-flex; align-items: center; gap: 7px;
+        font-weight: 400; font-size: 12.5px; color: #344054; cursor: pointer; margin: 0;
+    }
+    #modalAddEdit .adf-radio-card input[type="radio"] { accent-color: #2450D8; width: 15px; height: 15px; margin: 0; cursor: pointer; }
+    #modalAddEdit .adf-radio-card i { color: #98A2B3; font-size: 12px; }
+    #modalAddEdit .adf-radio-card input[type="radio"]:checked ~ i,
+    #modalAddEdit .adf-radio-card:has(input[type="radio"]:checked) i { color: #2450D8; }
+
+    /* ---------- Menu Icon picker: bordered wrapper + live preview line ---------- */
+    .adf-icon-picker-wrap { border: 1px solid #D0D5DD; border-radius: 6px; overflow: hidden; }
+    .adf-icon-picker-wrap .iconpicker-input-group { margin: 0; }
+    .adf-icon-picker-wrap .form-control { border: none; box-shadow: none; }
+    .adf-icon-preview {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 12px; color: #667085; margin-top: 5px;
+    }
+    .adf-icon-preview b { font-weight: 600; }
+    .adf-icon-preview .adf-icon-preview-swatch {
+        width: 22px; height: 22px; border-radius: 6px;
+        background: #FFF4DC; color: #B36B00;
+        display: flex; align-items: center; justify-content: center; font-size: 12px;
+    }
 </style>
 
 <div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
@@ -87,46 +127,67 @@
         <div class="modal-content adf-modal-content">
             <div class="adf-header">
                 <div class="adf-header-icon"><i class="fa fa-sitemap"></i></div>
-                <div class="adf-header-title" id="modal-title">Add / Edit Menu</div>
+                <div>
+                    <div class="adf-header-title" id="modal-title">Add Menu</div>
+                    <div class="adf-header-sub">Create a new menu for the application navigation</div>
+                </div>
                 <button type="button" class="adf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
             </div>
 
             <div class="modal-body">
-                <div class="form-group">
-                    <label class="control-label">Menu ID <span class="text-red">*</span></label>
-                    <input class="form-control" id="addEditMenuID" type="text" />
-                </div>
-                <div class="form-group">
-                    <label class="control-label">Sequence <span class="text-red">*</span></label>
-                    <input class="form-control" id="addEditMenuSeq" type="text" style="width:120px;" />
-                </div>
-                <div class="form-group" id="radioMenuType">
-                    <label class="control-label">Menu Type <span class="text-red">*</span></label>
-                    <div class="radio-inline-group">
-                        <label><input type="radio" name="addEditMenuName" id="chkMenuParent" value="Parent" checked> Parent Menu</label>
-                        <label><input type="radio" name="addEditMenuName" id="chkMenuChild" value="Child"> Sub Menu</label>
+                <div class="adf-row-2col">
+                    <div class="form-group">
+                        <label class="control-label">Menu ID <i class="fa fa-info-circle adf-label-hint" title="Menu ID is generated automatically"></i></label>
+                        <input class="form-control" id="addEditMenuID" type="text" readonly />
+                        <div class="adf-help">Menu ID is generated automatically</div>
                     </div>
                 </div>
-                <div class="form-group">
+
+                <div class="adf-row-2col">
+                    <div class="form-group">
+                        <label class="control-label">Sequence <span class="text-red">*</span></label>
+                        <div class="adf-input-icon"><i class="fa fa-hashtag adf-input-icon-glyph"></i><input class="form-control" id="addEditMenuSeq" type="number" min="1" /></div>
+                    </div>
+                    <div class="form-group" id="radioMenuType">
+                        <label class="control-label">Menu Type <span class="text-red">*</span></label>
+                        <div class="radio-inline-group">
+                            <label class="adf-radio-card"><input type="radio" name="addEditMenuType" id="chkMenuParent" value="Parent" checked><i class="fa fa-clone"></i> Parent Menu</label>
+                            <label class="adf-radio-card"><input type="radio" name="addEditMenuType" id="chkMenuChild" value="Child"><i class="fa fa-level-up fa-rotate-90"></i> Sub Menu</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" id="parentMenuRow" style="display:none;">
+                    <label class="control-label">Parent Menu <span class="text-red">*</span></label>
                     <select name="parent_id" id="addEditParentID" class="form-control" disabled></select>
                 </div>
+
                 <div class="form-group">
                     <label class="control-label">Menu Name <span class="text-red">*</span></label>
-                    <input class="form-control" id="addEditMenuName" type="text" />
+                    <div class="adf-input-icon"><i class="fa fa-file-text-o adf-input-icon-glyph"></i><input class="form-control" id="addEditMenuName" type="text" /></div>
+                    <div class="adf-help">This name will be displayed in the menu</div>
                 </div>
+
                 <div class="form-group">
                     <label class="control-label">Menu Icon <span class="text-red">*</span></label>
-                    <input class="form-control icon-picker" id="addEditMenuIcon" type="text" autocomplete="off" />
+                    <div class="adf-icon-picker-wrap">
+                        <input class="form-control icon-picker" id="addEditMenuIcon" type="text" autocomplete="off" />
+                    </div>
+                    <div class="adf-icon-preview">
+                        Preview: <span class="adf-icon-preview-swatch"><i id="menuIconPreviewGlyph" class="fa fa-folder"></i></span> <b id="menuNamePreviewText">Menu Name</b>
+                    </div>
                 </div>
+
                 <div class="form-group">
                     <label class="control-label">Menu URL <span class="text-red">*</span></label>
-                    <input class="form-control" id="addEditMenuURL" type="text" />
+                    <div class="adf-input-icon"><i class="fa fa-link adf-input-icon-glyph"></i><input class="form-control" id="addEditMenuURL" type="text" placeholder="/Document/Index" /></div>
+                    <div class="adf-help">Example: /Document/Index</div>
                 </div>
             </div>
 
             <div class="modal-footer">
                 <button type="button" class="btn btn-adf-cancel" id="btn_cancel" data-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
-                <button type="button" class="btn btn-primary" id="btn_save"><i class="fa fa-save"></i> Save</button>
+                <button type="button" class="btn btn-primary" id="btn_save"><i class="fa fa-save"></i> Save Menu</button>
             </div>
         </div>
     </div>

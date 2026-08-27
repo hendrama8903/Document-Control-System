@@ -168,6 +168,22 @@
         background: #F9FAFB;
         color: #344054;
     }
+
+    /* mobile/tablet: fill the screen instead of leaving awkward side gaps
+       from the fixed 700px/94vw width above (request Hendra 2026-08-14) */
+    @@media (max-width: 767px) {
+        #modalAddEdit .modal-dialog {
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+        }
+
+        #modalAddEdit .modal-content {
+            max-height: 100vh;
+            height: 100vh;
+            border-radius: 0;
+        }
+    }
 </style>
 
 <div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
@@ -191,23 +207,20 @@
                 </div>
 
                 <div class="row">
-                    <div class="col-md-6 form-group">
+                    <div class="col-md-5 form-group">
                         <label class="control-label">Document No <span class="text-red">*</span></label>
                         @*<input class="form-control" id="addEditDocumentNo" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />*@
                         <select class="form-control" id="addEditDocumentNo"></select>
                         <input class="form-control" id="addEditDocumentId" type="hidden" />
                     </div>
-                    <div class="col-md-6 form-group" id="divRevision">
+                    <div class="col-md-2 form-group" id="divRevision">
                         <label class="control-label">Revision</label>
                         <div class="adf-locked-wrap">
                             <input class="form-control" id="addEditRevision" type="text" disabled="disabled" />
                             <i class="fa fa-lock"></i>
                         </div>
                     </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-12 form-group">
+                    <div class="col-md-5 form-group">
                         <label class="control-label">Document Name <span class="text-red">*</span></label>
                         <div class="adf-locked-wrap">
                             <input class="form-control" id="addEditDocumentName" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />

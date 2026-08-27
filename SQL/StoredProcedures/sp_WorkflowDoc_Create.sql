@@ -80,7 +80,16 @@ BEGIN TRY
 						@LABEL VARCHAR(255),
 						@APPROVER VARCHAR(50),
 						@STATUS INT,
-						@UPDATE_FLAG INT = 0;
+						@UPDATE_FLAG INT = 0,
+						-- Nomor urut SESUNGGUHNYA yang dipakai di TB_R_APPROVAL_D, terpisah
+						-- dari @WORKFLOW_SEQ master (TB_M_WORKFLOW_DOC_D) - cuma naik untuk
+						-- langkah yang BENAR-BENAR di-insert (lihat blok skip-jika-kosong di
+						-- bawah). Supaya WORKFLOW_SEQ hasil insert selalu rapat 1,2,3,... tanpa
+						-- lubang, walau ada langkah yang dilewati - kode lain yang berasumsi
+						-- nomor urut berurutan (mis. pemetaan kotak tanda tangan approver di
+						-- GeneratePengesahanPdf) tetap benar tanpa perlu tahu ada langkah yang
+						-- dilewati (request Hendra 2026-08-18, generalisasi skip-logic).
+						@ACTUAL_SEQ INT = 0;
 
 		SET @APPROVAL_ID = SCOPE_IDENTITY();
 
@@ -155,22 +164,26 @@ BEGIN TRY
 
 			IF @APPROVER IS NULL
 			BEGIN
-				-- Section Head kosong di section creator: lewati langkah ini,
-				-- workflow lanjut ke approver berikutnya (mis. Department Head)
-				IF @POSITION_ID = 2
-				BEGIN
-					FETCH NEXT FROM @DETAIL_CURSOR INTO @WORKFLOW_SEQ, @POSITION_ID, @LABEL
-					CONTINUE
-				END
-
-				SET @RETURN_MSG = 'ERROR: User '+(SELECT POSITION_NAME FROM TB_M_POSITION WHERE POSITION_ID = @POSITION_ID)+' from division '+@DIVISION+' not found.';
-				RETURN 0;
+				-- Posisi kosong di division/department/section terkait: lewati
+				-- langkah ini, workflow lanjut ke approver berikutnya - berlaku untuk
+				-- SEMUA posisi (dulu cuma Section Head/POSITION_ID=2 yang di-skip,
+				-- posisi lain malah error kalau usernya tidak ketemu; digeneralisasi
+				-- request Hendra 2026-08-18 supaya org yang belum lengkap posisinya
+				-- - mis. department tanpa Dept Head - tidak memblokir seluruh
+				-- pembuatan dokumen).
+				FETCH NEXT FROM @DETAIL_CURSOR INTO @WORKFLOW_SEQ, @POSITION_ID, @LABEL
+				CONTINUE
 			END
 
 			DECLARE @CHANGED_BY VARCHAR(255), @CHANGED_DT DATETIME = NULL;
 
-			-- Check if Creator = Level 1 then auto approve
-			IF @WORKFLOW_SEQ = 1 AND @DOCUMENT_CREATOR = @APPROVER
+			SET @ACTUAL_SEQ = @ACTUAL_SEQ + 1;
+
+			-- Check if Creator = Level 1 then auto approve - pakai @ACTUAL_SEQ (posisi
+			-- SESUNGGUHNYA setelah langkah yang di-skip dirapatkan), bukan @WORKFLOW_SEQ
+			-- master, supaya tetap benar walau langkah pertama di master (mis. Section
+			-- Head) ternyata yang dilewati.
+			IF @ACTUAL_SEQ = 1 AND @DOCUMENT_CREATOR = @APPROVER
 			BEGIN
 				SET @STATUS = 1;
 				SET @UPDATE_FLAG = 1;
@@ -196,7 +209,7 @@ BEGIN TRY
 			)
 			VALUES (
 				@APPROVAL_ID,
-				@WORKFLOW_SEQ,
+				@ACTUAL_SEQ,
 				@APPROVER,
 				@STATUS,
 				@REMARK,
@@ -212,6 +225,16 @@ BEGIN TRY
 
 		CLOSE @DETAIL_CURSOR
 		DEALLOCATE @DETAIL_CURSOR
+
+		-- Jaring pengaman: kalau SEMUA posisi di chain ternyata kosong (org belum
+		-- lengkap sama sekali), jangan buat approval header tanpa satupun approver -
+		-- dokumen akan macet permanen di "Waiting Approval" tanpa ada yang bisa
+		-- memprosesnya.
+		IF @ACTUAL_SEQ = 0
+		BEGIN
+			SET @RETURN_MSG = 'ERROR: No approver found for any step in this workflow (Document level ' + CAST(@DOCUMENT_LEVEL AS VARCHAR) + ', creator level ' + @POSITION_NAME + ') - all positions in the chain are unfilled.';
+			RETURN 0;
+		END
 
 		-- Update Approval Header
 		IF @UPDATE_FLAG = 1

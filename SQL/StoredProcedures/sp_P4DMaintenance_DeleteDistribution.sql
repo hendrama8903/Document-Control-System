@@ -28,17 +28,24 @@ BEGIN TRY
 		RETURN 0;
 	END
 
--- 	IF(
--- 		SELECT STATUS 
--- 		FROM TB_R_DOCUMENT_DISTRIBUTION
--- 		WHERE DISTRIBUTION_ID = @DISTRIBUTION_ID
--- 			--AND [STATUS] NOT IN ('0', '1', '3')
--- 	) <> '0'
--- 	BEGIN
--- 		SET @RETURN_MSG = 'ERROR: Delete is not allowed for Document with status Send';
--- 		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
--- 		RETURN 0;
--- 	END
+	-- Validasi ini SEMPAT dinonaktifkan (comment-out) - diaktifkan lagi
+	-- (request Hendra 2026-08-15) karena tanpanya distribusi yang sudah
+	-- Sent (STATUS=1), termasuk yang department-nya sudah Accept
+	-- (TB_R_PUBLISH_HISTORY), bisa dihapus begitu saja: dokumen langsung
+	-- hilang dari UserDashboard department itu tanpa jejak, riwayat Accept
+	-- jadi yatim, dan kalau itu satu-satunya distribusi maka Un-Receive
+	-- (yang cuma cek "ada baris distribusi atau tidak") jadi bisa dipaksa
+	-- lagi walau dokumen sudah pernah beredar.
+	IF(
+		SELECT STATUS
+		FROM TB_R_DOCUMENT_DISTRIBUTION
+		WHERE DISTRIBUTION_ID = @DISTRIBUTION_ID
+	) <> '0'
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: This distribution has already been Sent and cannot be deleted.';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+		RETURN 0;
+	END
 
 	delete from TB_R_DOCUMENT_DISTRIBUTION where DISTRIBUTION_ID = @DISTRIBUTION_ID
 

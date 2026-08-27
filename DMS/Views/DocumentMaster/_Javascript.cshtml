@@ -26,24 +26,25 @@
             confirmDeleteAttachment()
         });
 
+        function setStatsPanelCollapsed(collapsed) {
+            var $row = $("#dpLayoutRow");
+            var $icon = $("#btn_toggleStats i");
+
+            $row.toggleClass("stats-collapsed", collapsed);
+            $icon.toggleClass("fa-angle-double-right", !collapsed).toggleClass("fa-angle-double-left", collapsed);
+            $("#btn_toggleStats").attr("title", collapsed ? "Show Summary" : "Hide Summary");
+
+            setTimeout(function () {
+                $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+            }, 230);
+        }
+
         $("#btn_toggleStats").on("click", function () {
-            var $btn = $(this);
-            var $icon = $btn.find("i");
-            var $row = $("#dmStatsRow");
-            $row.stop(true, true).animate(
-                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
-                {
-                    duration: 220,
-                    easing: "swing",
-                    progress: function () { $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight()); },
-                    complete: function () {
-                        var collapsed = !$row.is(":visible");
-                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
-                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
-                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-                    }
-                }
-            );
+            setStatsPanelCollapsed(!$("#dpLayoutRow").hasClass("stats-collapsed"));
+        });
+
+        $("#btn_closeStatsPanel").on("click", function () {
+            setStatsPanelCollapsed(true);
         });
     });
 
@@ -60,17 +61,12 @@
         $('#addEditDocumentName').val("");
         $('#addEditLevel').val("").trigger("change");
         $('#addEditReviewCycleMonths').val("");
-        $('#fileNameContainer :input[type="text"]').val("");
 
         $('#addEditDocumentCode').prop('disabled', false);
         $('#addEditDocumentName').prop('disabled', false);
         $('#addEditLevel').prop('disabled', false);
 
-        $('#fileNameContainer').removeClass();
-        $('#fileNameContainer').addClass('col-sm-8');
-        $('#btn_delete_filepath').hide();
-
-        gFilePath = null;
+        resetUploadBox();
 
         $("#modalAddEdit").modal();
         $('#modalAddEdit').on('shown.bs.modal', function() {
@@ -105,20 +101,11 @@
                     $('#addEditLevel').select2("trigger", "select", { data: { id: data.LEVEL, text: data.LEVEL_VAL } });
                     $('#addEditReviewCycleMonths').val(data.REVIEW_CYCLE_MONTHS);
 
-                    gFilePath = data.FILE_PATH;
-                    $('#inputContainer :input[type="text"]').val(data.FILE_PATH);
-                    if (data.FILE_PATH == null) {
-                        $('#fileNameContainer').removeClass();
-                        $('#fileNameContainer').addClass('col-sm-8');
-                        $('#btn_delete_filepath').hide();
-                    } else {
-                        if ("@ViewData["Delete-FilePath"]" == "False") {
-                            $('#fileNameContainer').removeClass();
-                            $('#fileNameContainer').addClass('col-sm-8');
-                            $('#btn_delete_filepath').hide();
-                        } else {
-                            $('#fileNameContainer').removeClass();
-                            $('#fileNameContainer').addClass('col-sm-7');
+                    resetUploadBox();
+                    var existingTemplate = gTemplateInfo[data.DOCUMENT_CODE];
+                    if (existingTemplate) {
+                        showUploadBoxFile(existingTemplate.fileName, "(" + existingTemplate.sizeKb + " KB) - existing template");
+                        if ("@ViewData["Delete-FilePath"]" != "False") {
                             $('#btn_delete_filepath').show();
                         }
                     }
@@ -159,8 +146,41 @@
         showConfirmMesg("Are you sure you want to continue process?", addEditData, "Confirmation");
     }
 
-    $(document).on('change', '#attachmentPath', function(e) {
-        ex = e;
+    // ---------- Template upload box (replaces the old bootstrap-filestyle input -
+    // custom-styled to match the mockup: icon + filename/hint + Choose file + trash) ----------
+    var DMF_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+    function resetUploadBox() {
+        $('#attachmentPath').val("");
+        $('#dmfUploadBox').removeClass("has-file");
+        $('#dmfUploadIcon').html('<i class="fa fa-file-excel-o"></i>');
+        $('#dmfUploadFilename').text("No file selected");
+        $('#dmfUploadHint').text("Choose a template file to upload");
+        $('#btn_delete_filepath').hide();
+    }
+
+    function showUploadBoxFile(fileName, hint) {
+        $('#dmfUploadBox').addClass("has-file");
+        $('#dmfUploadFilename').text(fileName);
+        $('#dmfUploadHint').text(hint);
+    }
+
+    $(document).on('click', '#btn_chooseFile', function () {
+        $('#attachmentPath').trigger('click');
+    });
+
+    $(document).on('change', '#attachmentPath', function (e) {
+        var files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        var file = files[0];
+        if (file.size > DMF_MAX_FILE_SIZE) {
+            showErrorMesgGrowl("File size exceeds the 10MB limit.");
+            $('#attachmentPath').val("");
+            return;
+        }
+
+        showUploadBoxFile(file.name, "(" + Math.ceil(file.size / 1024) + " KB) - will be uploaded on Save");
     });
 
     function addEditData() {
@@ -185,19 +205,9 @@
         var reviewCycleMonths = $('#addEditReviewCycleMonths').val();
         data.append("REVIEW_CYCLE_MONTHS", reviewCycleMonths == "" ? "" : reviewCycleMonths);
 
-        if (gFilePath !== null) {
-            data.append("FILE_PATH", gFilePath);
-        }
-
-        if ($('#attachmentPath').val() != '') {
-            e = ex;
-            var files = e.target.files;
-            if (files.length > 0) {
-                if (window.FormData !== undefined)
-                    for (var x = 0; x < files.length; x++) {
-                        data.append("file" + x, files[x]);
-                    }
-            }
+        var files = $('#attachmentPath')[0].files;
+        if (files.length > 0) {
+            data.append("file0", files[0]);
         }
 
         $.ajax({
@@ -209,6 +219,19 @@
             success: function(result) {
                 //popUpProgressHide();
                 if (result.status == true) {
+                    // gTemplateInfo/gTemplateCodes cuma di-scan sekali saat page load
+                    // (Index action) - update manual di sini supaya kolom "Signing
+                    // Template" & KPI "With Template" langsung sinkron tanpa perlu
+                    // reload halaman.
+                    if (files.length > 0) {
+                        var code = $('#addEditDocumentCode').val();
+                        var ext = files[0].name.substring(files[0].name.lastIndexOf('.'));
+                        gTemplateInfo[code] = { fileName: code + ext, sizeKb: Math.ceil(files[0].size / 1024) };
+                        if (gTemplateCodes.indexOf(code) === -1) {
+                            gTemplateCodes.push(code);
+                        }
+                    }
+
                     showSuccessMesgGrowl(result.message);
                     onSearch();
                     popUpProgressHide();
@@ -260,6 +283,11 @@
         downloadAttachment();
     }
 
+    function onDownloadTemplate(code) {
+        var link = '@Html.Raw(Url.Action("DownloadTemplate", "DocumentMaster", new { code = "-1" }))';
+        window.location.href = link.replace("-1", code);
+    }
+
     function downloadAttachment() {
         if (gFilePath !== "null" && gFilePath !== null) {
             var link = '@Html.Raw(Url.Action("downloadAttachment", "DocumentMaster", new { path = "-1" }))';
@@ -278,21 +306,20 @@
         popUpProgressShow();
         $.ajax({
             type: "POST",
-            url: "@Url.Action("RemoveAttachment", "DocumentMaster")",
+            url: "@Url.Action("RemoveSigningTemplate", "DocumentMaster")",
             dataType: 'json',
             data: {
-                DOCUMENT_ID: gDocumentId,
-                FILE_PATH: gFilePath
+                code: $('#addEditDocumentCode').val()
             },
             success: function(result) {
                 if (result.status != false) {
-                    $('#inputContainer :input[type="text"]').val("");
-                    $('#fileNameContainer').removeClass();
-                    $('#fileNameContainer').addClass('col-sm-8');
-                    $('#btn_delete_filepath').hide();
-
-                    gFilePath = null;
-                    $(":file").filestyle('clear');
+                    resetUploadBox();
+                    var code = $('#addEditDocumentCode').val();
+                    delete gTemplateInfo[code];
+                    var idx = gTemplateCodes.indexOf(code);
+                    if (idx !== -1) {
+                        gTemplateCodes.splice(idx, 1);
+                    }
 
                     onSearch();
                     showSuccessMesgGrowl(result.message);

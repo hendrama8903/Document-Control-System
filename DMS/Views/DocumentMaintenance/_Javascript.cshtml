@@ -26,6 +26,7 @@
     var documentLevel = null;
     var gAttachmentPath = null;
     var approvalDetailData = null;
+    var gTemplateCodes = @Html.Raw(ViewData["TemplateCodes"]);
     var SESSION_POSITION_ID = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetInt32("POSITION_ID"))";
     var SESSION_DIVISION = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("DIVISION"))";
     var SESSION_DIVISION_NAME = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("DIVISION_NAME"))";
@@ -55,6 +56,16 @@
 
         $("#btn_add").on("click", function () {
             onAddPrepare();
+        });
+
+        initDownloadTemplateDropdown();
+
+        $("#btn_templateCenter").on("click", function () {
+            openTemplateCenter();
+        });
+
+        $("#tplSearchInput").on("keyup", function () {
+            renderTemplateList(gTemplateListCache);
         });
 
         $("#btn_edit").on("click", function () {
@@ -113,6 +124,26 @@
         $('#addEditDocumentLevel, #addEditDocumentCode, #addEditDivision, #addEditDepartment, #addEditSection, #addEditProcessCode, #addEditCompanyCode').on('change', function () {
             refreshManualNoPrefix();
         });
+
+        // Fitur "Divisi Terkait" (awalnya SPR/SIPOCOR Level 2 only, request Hendra
+        // 2026-08-20; diperluas ke SEMUA Document Code di Level 2, request Hendra
+        // 2026-08-22) - muncul kalau Document Level = 2, apapun Document Code-nya.
+        // CATATAN: print/export PDF (WriteRelatedDivisionSection) MASIH khusus
+        // DOCUMENT_ID==15/SPR (koordinat sel di-hardcode ke template SPR2.xlsx) -
+        // tipe dokumen lain bisa isi Divisi Terkait & tersimpan, tapi belum
+        // tercetak di PDF sampai template lain disesuaikan.
+        $('#addEditDocumentLevel, #addEditDocumentCode').on('change', function () {
+            updateRelatedDivisionVisibility();
+        });
+        $('#addEditDivision').on('change', function () {
+            lockCreatorDivisionRole();
+        });
+
+        // Tutup dropdown peran Related Division kalau klik di luar tombolnya
+        // (request Hendra 2026-08-20 revisi ke dropdown) - dibind sekali di
+        // sini, bukan di dalam renderRelatedDivisionCheckboxes(), supaya tidak
+        // dobel-bind tiap kali tile di-render ulang.
+        $(document).on('click', function () { closeRelatedDivisionMenus(); });
         $('#addEditDate').on('change blur', function () {
             refreshManualNoPrefix();
         });
@@ -159,6 +190,7 @@
         getApprovalHeader();
         getApprovalDetail();
         getApprovalHistoryDetail();
+        getRelatedDivisionAckStatus();
         $("#modalApproval").modal();
     }
 
@@ -431,6 +463,121 @@
         });
     }
 
+    // Related Division Acknowledgment (SPR/SIPOCOR Level 2 only, request Hendra
+    // 2026-08-20) - TERPISAH dari Approval Route/History di atas: Div Head cuma
+    // konfirmasi "Mengetahui", bukan approval berjenjang (tidak ada opsi reject,
+    // tidak menyentuh TB_R_APPROVAL_D/H sama sekali). Section disembunyikan
+    // kalau dokumen ini tidak punya Related Division (data kosong).
+    var gCurrentUsername = '@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("USERNAME"))';
+
+    function getRelatedDivisionAckStatus() {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetRelatedDivisionAckStatus", "DocumentMaintenance")",
+            data: { documentTransactionId: gId },
+            success: function (result) {
+                if (result.status == true && result.data && result.data.length > 0) {
+                    $("#relatedDivisionAckSection").show();
+                    renderRelatedDivisionAckGrid(result.data);
+                } else {
+                    $("#relatedDivisionAckSection").hide();
+                }
+            }
+        });
+    }
+
+    function renderRelatedDivisionAckGrid(data) {
+        $("#relatedDivisionAckGrid").dataTable().fnDestroy();
+        $("#relatedDivisionAckGrid").DataTable({
+            "ordering": false,
+            "oLanguage": { "sEmptyTable": "Data not found." },
+            "scrollCollapse": false,
+            "paging": false,
+            "info": false,
+            "searching": false,
+            "data": data,
+            "columns": [
+                {
+                    render: function (data, type, row) {
+                        return '<span class="approver-name">' + row["DIVISION_CODE"] + (row["DIVISION_NAME"] ? " - " + row["DIVISION_NAME"] : "") + '</span>';
+                    }
+                },
+                {
+                    render: function (data, type, row) {
+                        return row["HEAD_FULL_NAME"] || '<span class="cell-muted">(Div. Head not assigned)</span>';
+                    }
+                },
+                {
+                    render: function (data, type, row) {
+                        return row["ACKNOWLEDGED_FLAG"] == 1
+                            ? '<span class="dms-pill dms-pill-success"><i class="fa fa-check"></i> ACKNOWLEDGED</span>'
+                            : '<span class="dms-pill dms-pill-warning"><i class="fa fa-clock-o"></i> PENDING</span>';
+                    }
+                },
+                {
+                    render: function (data, type, row) {
+                        return row["ACKNOWLEDGED_DT"]
+                            ? moment(row["ACKNOWLEDGED_DT"]).format("DD-MM-YYYY HH:mm:ss")
+                            : '<span class="cell-muted">&ndash;</span>';
+                    }
+                },
+                {
+                    render: function (data, type, row) {
+                        if (row["ACKNOWLEDGED_FLAG"] != 1 && row["HEAD_USERNAME"] === gCurrentUsername) {
+                            return '<button class="btn-review" onClick="onAcknowledgeRelatedDivisionPrepare(\'' + row["DIVISION_CODE"] + '\')"><i class="fa fa-check"></i> Acknowledge</button>';
+                        }
+                        return '<span class="cell-muted">&ndash;</span>';
+                    }
+                }
+            ],
+            "columnDefs": [
+                { "targets": [2], "className": "text-center" },
+                { "width": "150px", "targets": 3 },
+                { "width": "130px", "targets": 4, "className": "text-center" }
+            ]
+        });
+
+        $('#modalApproval').on('shown.bs.modal', function () {
+            $("#relatedDivisionAckGrid").DataTable().columns.adjust().draw();
+        });
+    }
+
+    function onAcknowledgeRelatedDivisionPrepare(divisionCode) {
+        showConfirmMesg("Are you sure you want to acknowledge this document on behalf of your division?", function () {
+            onAcknowledgeRelatedDivision(divisionCode);
+        }, "Confirmation");
+    }
+
+    function onAcknowledgeRelatedDivision(divisionCode) {
+        popUpProgressShow();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("AcknowledgeRelatedDivision", "DocumentMaintenance")",
+            data: {
+                documentTransactionId: gId,
+                divisionCode: divisionCode,
+                remark: ""
+            },
+            success: function (result) {
+                popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    getRelatedDivisionAckStatus();
+                    getApprovalHeader();
+                    getApprovalDetail();
+                    getApprovalHistoryDetail();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
     // Visual progression Created -> Approved/Waiting per approver, dibangun dari
     // approvalHeaderData (langkah "Created") + approvalDetailData (satu langkah
     // per approver). Dipanggil setelah getApprovalDetail() selesai, karena
@@ -522,6 +669,78 @@
         window.location.href = link + param;
     }
 
+    var gTemplateListCache = null;
+
+    function initDownloadTemplateDropdown() {
+        if (!gTemplateCodes || gTemplateCodes.length === 0) return;
+        $('#btn_templateCenter').css('display', 'inline-block');
+    }
+
+    function openTemplateCenter() {
+        $('#tplSearchInput').val('');
+        $('#modalTemplateCenter').modal('show');
+
+        if (gTemplateListCache) {
+            renderTemplateList(gTemplateListCache);
+            return;
+        }
+
+        $.ajax({
+            url: '@Url.Action("GetTemplateList", "DocumentMaintenance")',
+            type: 'GET',
+            success: function (result) {
+                if (result.status) {
+                    gTemplateListCache = result.data;
+                    renderTemplateList(gTemplateListCache);
+                }
+            }
+        });
+    }
+
+    function renderTemplateList(data) {
+        var $tbody = $('#tplTableBody');
+        $tbody.empty();
+
+        if (!data || data.length === 0) {
+            $('#tplEmptyState').show();
+            return;
+        }
+
+        var keyword = ($('#tplSearchInput').val() || '').toLowerCase();
+        var filtered = data.filter(function (row) {
+            return row.code.toLowerCase().indexOf(keyword) !== -1 || (row.name || '').toLowerCase().indexOf(keyword) !== -1;
+        });
+
+        if (filtered.length === 0) {
+            $('#tplEmptyState').show();
+            return;
+        }
+        $('#tplEmptyState').hide();
+
+        filtered.forEach(function (row) {
+            var $tr = $('<tr></tr>');
+            $tr.append($('<td></td>').append(
+                $('<span class="tpl-doc-code"></span>')
+                    .append('<i class="fa fa-file-excel-o"></i>')
+                    .append($('<span></span>').text(row.code))
+            ));
+            $tr.append($('<td></td>').text(row.name));
+            $tr.append($('<td class="tpl-format"></td>').text(row.format));
+            $tr.append($('<td class="tpl-size"></td>').text(row.sizeKb + ' KB'));
+
+            var $btn = $('<button type="button" class="tpl-btn-download"><i class="fa fa-download"></i> Download</button>');
+            $btn.on('click', function () { onDownloadTemplate(row.code); });
+            $tr.append($('<td></td>').append($btn));
+
+            $tbody.append($tr);
+        });
+    }
+
+    function onDownloadTemplate(code) {
+        var link = '@Html.Raw(Url.Action("DownloadTemplate", "DocumentMaster", new { code = "-1" }))';
+        window.location.href = link.replace("-1", code);
+    }
+
 
     function onSearch() {
         var grid = $("#datagrid").dxDataGrid("instance");
@@ -566,6 +785,267 @@
             $('#addEditManualNoGroup').addClass('hide');
             $('#addEditManualSeqNo').val('');
         }
+    }
+
+    // ---------- "Related Division" (awalnya SPR/SIPOCOR Level 2 only, request
+    // Hendra 2026-08-20; diperluas ke semua Document Code di Level 2, request
+    // Hendra 2026-08-22) - creator pilih divisi lain yang harus "Mengetahui"
+    // dokumen ini. Daftar divisinya diambil dari Division Master (bukan dropdown
+    // Division biasa di form ini - dua sumber itu tidak sinkron), divisi milik
+    // dokumen sendiri (Main PIC) ditandai & tidak bisa dipilih. ----------
+    var gRelatedDivisionOptions = null;
+    var gRelatedDivisionExpanded = false;
+    // Tile sekarang cuma kode (tanpa nama), jadi 1 baris muat 6 - limit
+    // dinaikkan ke 18 supaya 17 divisi saat ini muat semua tanpa "Show more"
+    // (request Hendra 2026-08-20); mekanismenya tetap ada utk jaga-jaga kalau
+    // daftar divisi bertambah banyak nanti.
+    var RELATED_DIVISION_VISIBLE_LIMIT = 18;
+
+    function updateRelatedDivisionVisibility() {
+        var level = $('#addEditDocumentLevel').val();
+
+        var isLevel2 = (level == '2');
+
+        if (isLevel2) {
+            $('#adfSectionRelatedDivision').show();
+            loadRelatedDivisionCheckboxes();
+        } else {
+            $('#adfSectionRelatedDivision').hide();
+            $('#relatedDivisionCheckboxes').empty();
+        }
+    }
+
+    function loadRelatedDivisionCheckboxes() {
+        if (gRelatedDivisionOptions !== null) {
+            renderRelatedDivisionCheckboxes();
+            return;
+        }
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetRelatedDivisionOptions", "DocumentMaintenance")",
+            success: function (result) {
+                if (result.status) {
+                    gRelatedDivisionOptions = result.data;
+                    renderRelatedDivisionCheckboxes();
+                }
+            }
+        });
+    }
+
+    // Label & ikon peran per tile (request Hendra 2026-08-20, revisi jadi
+    // dropdown) - MAIN_PIC boleh lebih dari satu divisi, RELATED wajib
+    // Acknowledge ("Mengetahui"). NOTE_RELATED (peran ke-3, cuma informasi)
+    // SENGAJA DIHAPUS lagi (request Hendra 2026-08-20 revisi ke-3) - karena
+    // sudah ada peran default "Not Related (-)" sendiri, NOTE_RELATED jadi
+    // ganda/membingungkan (ejaannya terlalu mirip). Ikon (◎/○/-) SENGAJA
+    // disamakan dengan marker di export Excel (DocumentMaintenanceController.
+    // WriteRelatedDivisionSection) supaya konsisten antar tampilan. Satu tile
+    // cuma bisa punya SATU peran (atau tidak sama sekali, direpresentasikan
+    // sebagai peran semu "Not Related" - BUKAN nilai yang dikirim ke server,
+    // cuma dipetakan ke roleCode kosong lewat RD_NOT_RELATED_ICON di bawah).
+    var RD_ROLES = [
+        { code: 'MAIN_PIC', label: 'Main PIC', icon: '◎' },
+        { code: 'RELATED', label: 'Related', icon: '○' }
+    ];
+    var RD_NOT_RELATED_ICON = '-';
+
+    function renderRelatedDivisionCheckboxes() {
+        var $container = $('#relatedDivisionCheckboxes');
+        $container.empty();
+        gRelatedDivisionExpanded = false;
+        $('#relatedDivisionSearch').val('');
+
+        if (!gRelatedDivisionOptions) return;
+
+        gRelatedDivisionOptions.forEach(function (div, idx) {
+            // Cuma tampilkan kode (bukan nama lengkap divisi) - request Hendra
+            // 2026-08-20 supaya lebih hemat ruang; nama lengkap tetap ada di
+            // atribut title (tooltip hover) & tetap ikut dicocokkan saat search.
+            var $col = $('<div class="col-md-2 rd-col"></div>')
+                .attr('data-search', (div.code + ' ' + div.name).toLowerCase())
+                .attr('data-index', idx);
+            var $tile = $('<div class="rd-tile"></div>')
+                .attr('title', div.name)
+                .attr('data-name', div.name)
+                .attr('data-code', div.code)
+                .attr('data-role', '');
+
+            // Satu tombol bulat, ICON SAJA (tanpa label teks) yang menampilkan
+            // peran terpilih - diklik untuk membuka dropdown pilihan peran
+            // (request Hendra 2026-08-20 revisi ke-2, supaya lebih hemat ruang).
+            var $btn = $('<button type="button" class="rd-role-btn"></button>')
+                .append($('<span class="rd-role-icon"></span>').text(RD_NOT_RELATED_ICON));
+
+            var $menu = $('<div class="rd-role-menu"></div>');
+            RD_ROLES.forEach(function (role) {
+                $menu.append(
+                    $('<div class="rd-role-menu-item"></div>')
+                        .attr('data-role', role.code)
+                        .append($('<span class="rd-role-icon"></span>').text(role.icon))
+                        .append($('<span></span>').text(role.label))
+                        .on('click', function (e) {
+                            e.stopPropagation();
+                            setRelatedDivisionRole($tile, role.code);
+                            closeRelatedDivisionMenus();
+                        })
+                );
+            });
+            // "Not Related" - peran semu (roleCode kosong), diberi ikon yang
+            // sama seperti marker "-" di export Excel supaya keempat pilihan
+            // konsisten (bukan lagi "Clear selection" polos tanpa ikon).
+            $menu.append(
+                $('<div class="rd-role-menu-item rd-role-menu-clear"></div>')
+                    .attr('data-role', '')
+                    .append($('<span class="rd-role-icon"></span>').text(RD_NOT_RELATED_ICON))
+                    .append($('<span></span>').text('Not Related'))
+                    .on('click', function (e) {
+                        e.stopPropagation();
+                        setRelatedDivisionRole($tile, '');
+                        closeRelatedDivisionMenus();
+                    })
+            );
+
+            $btn.on('click', function (e) {
+                e.stopPropagation();
+                var wasOpen = $menu.hasClass('open');
+                closeRelatedDivisionMenus();
+                if (!wasOpen) $menu.addClass('open');
+            });
+
+            var $select = $('<div class="rd-role-select"></div>').append($btn).append($menu);
+            var $info = $('<div class="rd-tile-info"></div>')
+                .append($('<b></b>').text(div.code))
+                .append($('<span class="rd-lock-label"></span>'));
+            $tile.append($info).append($select);
+            $col.append($tile);
+            $container.append($col);
+        });
+
+        applyRelatedDivisionVisibility();
+        gLockedCreatorTileCode = null;
+        lockCreatorDivisionRole();
+    }
+
+    function closeRelatedDivisionMenus() {
+        $('#relatedDivisionCheckboxes .rd-role-menu').removeClass('open');
+    }
+
+    // Set/ubah peran satu tile - dipanggil dari klik item dropdown ("Not
+    // Related" mengirim roleCode kosong untuk membatalkan pilihan/kembali ke
+    // default).
+    function setRelatedDivisionRole($tile, roleCode) {
+        $tile.attr('data-role', roleCode || '');
+        $tile.removeClass('role-main_pic role-related');
+        $tile.find('.rd-role-menu-item').removeClass('active');
+
+        var $btn = $tile.find('.rd-role-btn');
+        var role = roleCode ? RD_ROLES.find(function (r) { return r.code === roleCode; }) : null;
+
+        $btn.toggleClass('set', !!role).attr('data-role', roleCode || '');
+        $btn.find('.rd-role-icon').text(role ? role.icon : RD_NOT_RELATED_ICON);
+
+        // Item "Not Related" (data-role="") ikut di-highlight saat memang
+        // sedang jadi peran aktif tile ini, sama seperti 3 peran lainnya.
+        $tile.find('.rd-role-menu-item[data-role="' + (roleCode || '') + '"]').addClass('active');
+
+        if (role) {
+            $tile.addClass('role-' + roleCode.toLowerCase());
+        }
+    }
+
+    // Tile divisi PEMBUAT dokumen sendiri dikunci selalu Main PIC & read-only
+    // (request Hendra 2026-08-20 revisi ke-2) - beda dari revisi sebelumnya
+    // yang cuma menyarankan Main PIC tapi tetap bisa diubah bebas. Divisi lain
+    // tetap bebas dipilih manual (termasuk boleh ikut jadi Main PIC juga) &
+    // default-nya tetap kosong/Not Related (-). gLockedCreatorTileCode
+    // melacak tile mana yang sedang terkunci supaya bisa dibuka lagi (reset ke
+    // kosong) begitu Division di step Organization diganti ke divisi lain.
+    var gLockedCreatorTileCode = null;
+
+    function lockCreatorDivisionRole() {
+        if (gLockedCreatorTileCode) {
+            var $prevTile = $('#relatedDivisionCheckboxes .rd-tile[data-code="' + gLockedCreatorTileCode + '"]');
+            if ($prevTile.length) {
+                $prevTile.removeClass('rd-locked');
+                $prevTile.find('.rd-role-btn').prop('disabled', false);
+                $prevTile.find('.rd-lock-label').text('');
+                setRelatedDivisionRole($prevTile, '');
+            }
+        }
+
+        var division = $('#addEditDivision').val();
+        gLockedCreatorTileCode = division || null;
+        if (!division) return;
+
+        var $tile = $('#relatedDivisionCheckboxes .rd-tile[data-code="' + division + '"]');
+        if (!$tile.length) return;
+
+        setRelatedDivisionRole($tile, 'MAIN_PIC');
+        $tile.addClass('rd-locked');
+        $tile.find('.rd-role-btn').prop('disabled', true);
+        $tile.find('.rd-lock-label').text('Creator');
+        $tile.attr('title', $tile.attr('data-name') + ' - document creator, locked as Main PIC');
+    }
+
+    // Search box & "Show more" (mockup 2026-08-20) - daftar 17 divisi
+    // ditampilkan max RELATED_DIVISION_VISIBLE_LIMIT dulu; saat user mengetik
+    // pencarian, batasan itu diabaikan & semua yang cocok ditampilkan.
+    function applyRelatedDivisionVisibility() {
+        var query = $.trim($('#relatedDivisionSearch').val() || '').toLowerCase();
+        var $cols = $('#relatedDivisionCheckboxes .rd-col');
+        var $showMoreWrap = $('#relatedDivisionShowMore');
+
+        if (query) {
+            $cols.each(function () {
+                var $c = $(this);
+                $c.toggle($c.data('search').indexOf(query) !== -1);
+            });
+            $showMoreWrap.hide();
+            return;
+        }
+
+        $cols.each(function () {
+            var idx = $(this).data('index');
+            $(this).toggle(gRelatedDivisionExpanded || idx < RELATED_DIVISION_VISIBLE_LIMIT);
+        });
+
+        if ($cols.length > RELATED_DIVISION_VISIBLE_LIMIT) {
+            $showMoreWrap.show();
+            $('#relatedDivisionShowMoreText').text(gRelatedDivisionExpanded ? 'Show less' : 'Show more');
+            $showMoreWrap.find('i').attr('class', gRelatedDivisionExpanded ? 'fa fa-chevron-up' : 'fa fa-chevron-down');
+        } else {
+            $showMoreWrap.hide();
+        }
+    }
+
+    function filterRelatedDivisionCheckboxes() {
+        applyRelatedDivisionVisibility();
+    }
+
+    function toggleRelatedDivisionShowMore() {
+        gRelatedDivisionExpanded = !gRelatedDivisionExpanded;
+        applyRelatedDivisionVisibility();
+    }
+
+    function getSelectedRelatedDivisions() {
+        if (!$('#adfSectionRelatedDivision').is(':visible')) return '';
+
+        var pairs = [];
+        $('#relatedDivisionCheckboxes .rd-tile').each(function () {
+            var $tile = $(this);
+            var role = $tile.attr('data-role');
+            if (role) pairs.push($tile.attr('data-code') + ':' + role);
+        });
+        return pairs.join(',');
+    }
+
+    function resetRelatedDivision() {
+        $('#adfSectionRelatedDivision').hide();
+        $('#relatedDivisionCheckboxes').empty();
+        $('#relatedDivisionSearch').val('');
+        gRelatedDivisionExpanded = false;
+        gLockedCreatorTileCode = null;
     }
 
     var gManualNoPrefixRequestSeq = 0;
@@ -616,7 +1096,11 @@
             $('#addEditClassified').prop('disabled', true);
             $('#addEditProcessCode').prop('disabled', true);
             $('#addEditCompanyCode').prop('disabled', true);
-            $('#addEditDate').prop('disabled', true);
+            // Date sekarang aktif begitu Document Type dipilih (bukan menunggu
+            // Document Level) - satu baris dengan Document Type & Document No
+            // di step Basic Information, jadi wajar semuanya aktif bersamaan
+            // (request Hendra 2026-08-20).
+            $('#addEditDate').prop('disabled', false);
             $('#addEditItemChanged').prop('disabled', true);
             $('#addEditExternal').prop('disabled', false);
 
@@ -1044,6 +1528,8 @@
             if (division != null && division != "null" && division != "") {
                 data.append("DIVISION", $('#addEditDivision').val());
             }
+
+            data.append("RELATED_DIVISIONS", getSelectedRelatedDivisions());
 
             if (department != null && department != "null" && department != "") {
                 data.append("DEPARTMENT_ID", $('#addEditDepartment').val());

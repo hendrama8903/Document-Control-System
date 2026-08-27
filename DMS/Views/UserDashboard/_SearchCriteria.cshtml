@@ -1,14 +1,27 @@
             <!-- RECOMMIT DINA -->
-@if ((bool)ViewData["Acknowledge"])
-{
-    <div class="dp-toolbar">
-        <div class="dp-toolbar-left">
-            <button type="button" class="dp-btn dp-btn-success" id="btn_acknowledge"><i class="fa fa-share-square-o"></i> Accepted</button>
-        </div>
+<div class="box-header dp-toolbar">
+    <div class="dp-toolbar-left">
+        @if ((bool)ViewData["Acknowledge"])
+        {
+            <div class="dropdown" style="display:inline-block;">
+                <button type="button" class="btn dp-btn dp-btn-outline dropdown-toggle" data-toggle="dropdown">
+                    <i class="fa fa-list"></i> Actions <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu dp-dropdown-menu">
+                    <li><button type="button" id="btn_acknowledge"><i class="fa fa-share-square-o dp-menu-approve"></i> Accepted</button></li>
+                </ul>
+            </div>
+        }
+        <button type="button" class="dp-btn dp-btn-outline" id="btn_toggleFilters"><i class="fa fa-filter"></i> More Filters</button>
+        <button type="button" class="dp-btn dp-btn-outline" id="btn_resetFilters"><i class="fa fa-refresh"></i> Reset</button>
+        <button type="button" class="dp-btn dp-btn-outline" id="btn_refresh"><i class="fa fa-refresh"></i> Refresh</button>
     </div>
-}
-<div class="dp-filter-row">
-    <button type="button" class="dp-btn dp-btn-outline" id="btn_toggleFilters"><i class="fa fa-filter"></i> More Filters</button>
-    <button type="button" class="dp-btn dp-btn-outline" id="btn_resetFilters"><i class="fa fa-refresh"></i> Reset</button>
-    <button type="button" class="dp-btn dp-btn-outline" id="btn_refresh"><i class="fa fa-refresh"></i> Refresh</button>
+    <div class="dp-toolbar-right">
+        <button type="button" class="dp-icon-btn" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
+        <button type="button" class="btn dp-btn dp-btn-primary" id="btn_export"><i class="fa fa-file-excel-o"></i> Export</button>
+        <button type="button" class="dp-icon-btn dp-stats-toggle" id="btn_toggleStats" title="Show Document Status">
+            <i class="fa fa-angle-double-left"></i>
+            <span class="dp-stats-toggle-badge" id="dpToggleBadge">0</span>
+        </button>
+    </div>
 </div>

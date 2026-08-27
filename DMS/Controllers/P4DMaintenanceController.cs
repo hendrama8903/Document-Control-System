@@ -95,6 +95,24 @@ namespace DMS.Controllers
             }
         }
 
+        // Rincian per-department untuk side panel "Acceptance Detail" (klik kolom
+        // Acceptance) - sama persis dengan DocumentControlDashboardController versi
+        // (request Hendra 2026-08-15, samakan format popup-nya).
+        public JsonResult SearchDistributionDetail(int documentTransactionId)
+        {
+            try
+            {
+                IList<DocumentDistribution> dataList = P4DMaintenanceRepo.SearchDocumentDistribution(
+                    new DocumentDistribution { DOCUMENT_TRANSACTION_ID = documentTransactionId }, db, null, null);
+
+                return Json(new { status = true, data = dataList });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
         public ActionResult Search(DocumentControlMaintenance data, bool initialMode)
         {
             try
@@ -672,25 +690,25 @@ namespace DMS.Controllers
         public JsonResult Delete(DocumentControlMaintenance data, string path)
         {
             DBResult result = null;
-            string webRootPath = Environment.WebRootPath;
 
             try
             {
                 result = P4DMaintenanceRepo.Delete(data, GetLoginUsername(), db);
 
-                if (result.status)
-                {
-                    if (data.FILE_PATH != null)
-                    {
-                        string pathCheck = webRootPath + data.FILE_PATH.Trim();
-                        //Delete File
-                        if (System.IO.File.Exists(pathCheck))
-                        {
-                            System.IO.File.Delete(pathCheck);
-                        }
-                    }
-                }
-
+                // SENGAJA TIDAK menghapus file fisik di sini (dulu ada, dihapus
+                // 2026-08-16). TB_R_CTRL_DOCUMENT.FILE_PATH BUKAN file milik P4D
+                // sendiri - sp_P4DMaintenance_Insert menyalin FILE_PATH apa
+                // adanya dari TB_R_DOCUMENT saat registrasi P4D dibuat, jadi
+                // path-nya menunjuk ke file SUMBER yang sama dengan yang dipakai
+                // DocumentMaintenance/CopyRequest/PrintTrack dkk. Delete P4D di
+                // sini cuma soft-delete baris registrasi (Draft/Rejected saja,
+                // lihat sp_P4DMaintenance_Delete) - dokumen sumbernya sendiri
+                // bisa saja masih Approved/Published dan aktif dipakai di tempat
+                // lain, jadi menghapus file fisiknya di sini akan merusak modul
+                // lain yang sama sekali tidak terlibat dengan aksi delete P4D
+                // ini. Penghapusan file fisik dokumen HANYA boleh terjadi lewat
+                // modul yang benar-benar memilikinya (DocumentMaintenance), yang
+                // sudah punya guard status sendiri.
                 return Json(result);
             }
             catch (Exception ex)

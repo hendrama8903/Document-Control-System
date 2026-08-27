@@ -119,6 +119,36 @@
         $("#dcdEffective").text(effective);
         $("#dcdNeedReview").text(needReview);
         $("#dcdPendingAck").text(pendingAck);
+
+        // surfaces the pending-acknowledgement count on the collapsed toggle
+        // too, so it stays useful (not just a bare arrow) even when the
+        // panel is closed
+        dcdLastPendingAck = pendingAck;
+        refreshToggleBadge();
+    }
+
+    // ---------- docked "Register Overview" panel toggle - top-level (not
+    // inside $(document).ready) so updateHeaderStats() above can reach
+    // dcdLastPendingAck too ----------
+    var dcdLastPendingAck = 0;
+
+    function refreshToggleBadge() {
+        var collapsed = $("#dpLayoutRow").hasClass("stats-collapsed");
+        $("#dpToggleBadge").text(dcdLastPendingAck).toggle(collapsed && dcdLastPendingAck > 0);
+    }
+
+    function setStatsPanelCollapsed(collapsed) {
+        var $row = $("#dpLayoutRow");
+        var $icon = $("#btn_toggleStats i");
+
+        $row.toggleClass("stats-collapsed", collapsed);
+        $icon.toggleClass("fa-angle-double-right", !collapsed).toggleClass("fa-angle-double-left", collapsed);
+        $("#btn_toggleStats").attr("title", collapsed ? "Show Register Overview" : "Hide Register Overview");
+        refreshToggleBadge();
+
+        setTimeout(function () {
+            $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+        }, 230);
     }
 
     var dcdCategoryPillClasses = ["dms-pill-info", "dms-pill-success", "dms-pill-warning", "dms-pill-primary", "dms-pill-default"];
@@ -395,7 +425,7 @@
                         });
 
                         $wrap.appendTo(container);
-                        $("<i>").addClass("fa fa-chevron-right dcd-acc-chevron").attr("title", "Click for detail").appendTo(container);
+                        $("<i>").addClass("fa fa-chevron-circle-right dcd-acc-chevron").attr("title", "Click for detail").appendTo(container);
                     }
                 },
                 {
@@ -512,28 +542,14 @@
             $("#datagrid").dxDataGrid("instance").showColumnChooser();
         });
 
-        // ---------- toggle summary/KPI cards, so the grid below can move up ----------
+        // ---------- toggle the docked "Register Overview" panel (collapses to
+        // the right, grid reflows into the freed width via flex) ----------
         $("#btn_toggleStats").on("click", function () {
-            var $btn = $(this);
-            var $icon = $btn.find("i");
-            var $row = $("#dcdStatsRow");
+            setStatsPanelCollapsed(!$("#dpLayoutRow").hasClass("stats-collapsed"));
+        });
 
-            $row.stop(true, true).animate(
-                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
-                {
-                    duration: 220,
-                    easing: "swing",
-                    progress: function () {
-                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-                    },
-                    complete: function () {
-                        var collapsed = !$row.is(":visible");
-                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
-                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
-                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-                    }
-                }
-            );
+        $("#btn_closeStatsPanel").on("click", function () {
+            setStatsPanelCollapsed(true);
         });
 
         $("#btn_export").on("click", function () {

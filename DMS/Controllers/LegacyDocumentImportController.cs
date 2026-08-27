@@ -214,6 +214,24 @@ namespace DMS.Controllers
                         });
                     }
 
+                    // All-or-nothing (request Hendra 2026-08-27): kalau ADA SATU SAJA
+                    // baris tidak valid, seluruh batch ditolak sebelum menyentuh
+                    // database/disk sama sekali - tidak ada dokumen yang tersimpan
+                    // sebagian. Mencegah kondisi tidak sinkron (mis. revisi aktif
+                    // tersimpan tapi histori lamanya gagal, atau sebagian Document
+                    // Code masuk sementara yang lain ketinggalan karena typo di baris
+                    // lain). User harus perbaiki semua error dulu (lihat hasil Preview)
+                    // baru bisa Import.
+                    if (rows.Any(x => !x.Valid))
+                    {
+                        int invalidCount = rows.Count(x => !x.Valid);
+                        return Json(new
+                        {
+                            status = false,
+                            message = "Import dibatalkan - masih ada " + invalidCount + " baris yang tidak valid. Perbaiki dulu semua error (lihat hasil Preview) sebelum bisa Import."
+                        });
+                    }
+
                     string username = GetLoginUsername();
                     MSystem uploadFolder = mSystemRepo.GetByKey(new MSystem { SYSTEM_TYPE = "UPLOAD_FOLDER", SYSTEM_CODE = "DOCUMENT_TRANSACTION" }, db);
                     string webRootPath = Environment.WebRootPath;

@@ -49,6 +49,38 @@ namespace DMS.Controllers
 
             ViewData["Title"] = "Document Category";
 
+            // Kode dokumen yang punya master template pengesahan (wwwroot/document/Template/{CODE}.xls
+            // atau .xlsx - PDM & PRO ditambahkan sebagai .xlsx 2026-08-18) - dipakai grid untuk
+            // menampilkan menu "Download Template" hanya di baris yang memang punya filenya, tanpa
+            // perlu hardcode daftar kode di JS. Scan .xls & .xlsx terpisah (bukan cuma "*.xls") -
+            // Directory.GetFiles di Windows kadang salah ikut match "*.xlsx" lewat pattern "*.xls"
+            // (bug lama 8.3 short-filename di FindFirstFile), tapi DownloadTemplate tetap butuh tahu
+            // ekstensi sebenarnya per file, jadi tidak bisa diandalkan.
+            string templateFolder = Path.Combine(Environment.WebRootPath, "document", "Template");
+            var templateFiles = Directory.Exists(templateFolder)
+                ? Directory.GetFiles(templateFolder, "*.xls")
+                    .Concat(Directory.GetFiles(templateFolder, "*.xlsx"))
+                    .GroupBy(f => Path.GetFileNameWithoutExtension(f))
+                    .Select(g => g.First())
+                    .ToList()
+                : new List<string>();
+            var templateCodes = templateFiles.Select(f => Path.GetFileNameWithoutExtension(f)).ToList();
+            ViewData["TemplateCodes"] = System.Text.Json.JsonSerializer.Serialize(templateCodes);
+
+            // Info per kategori (nama file + ukuran) utk kolom "File Path" di grid - diganti dari
+            // field FILE_PATH generik (attachment upload lewat form Add/Edit, sering basi/nunjuk ke
+            // file yang sudah tidak ada) supaya kolom ini benar-benar mencerminkan file master
+            // template pengesahan yang dipakai GeneratePengesahanPdf, bukan attachment lepas (request
+            // Hendra 2026-08-19).
+            var templateInfo = templateFiles.ToDictionary(
+                f => Path.GetFileNameWithoutExtension(f),
+                f => new
+                {
+                    fileName = Path.GetFileName(f),
+                    sizeKb = Math.Ceiling(new FileInfo(f).Length / 1024.0)
+                });
+            ViewData["TemplateInfo"] = System.Text.Json.JsonSerializer.Serialize(templateInfo);
+
             return View();
         }
 
@@ -99,42 +131,53 @@ namespace DMS.Controllers
         public async Task<JsonResult> AddEditAsync(string screenMode, DocumentMaster data)
         {
             DBResult result = null;
-            string folderName = "/Upload/";
             string webRootPath = Environment.WebRootPath;
 
             try
             {
                 if (Request.Form.Files.Count > 0)
                 {
+                    // Upload di form ini sekarang langsung jadi file master template
+                    // pengesahan (wwwroot/document/Template/{CODE}.xls atau .xlsx) yang
+                    // dipakai GeneratePengesahanPdf/DownloadTemplate - dulu ditulis ke
+                    // attachment generik (Upload/ATTACHMENT/DOCUMENT_MASTER) yang lepas
+                    // sama sekali dari mekanisme template pengesahan, bikin bingung
+                    // (request Hendra 2026-08-19).
                     IFormFile file = Request.Form.Files[0];
-                    MSystem mSystem = mSystemRepo.GetByKey(new MSystem { SYSTEM_TYPE = "UPLOAD_FOLDER", SYSTEM_CODE = "DOCUMENT_MASTER" }, db);
+                    string extension = Path.GetExtension(file.FileName).ToLower();
 
-                    string extension = Path.GetExtension(file.FileName);
-                    string path = folderName + mSystem.SYSTEM_VALUE.Trim();
-                    string pathSave = webRootPath + folderName + mSystem.SYSTEM_VALUE.Trim();
-                    string documentname = data.DOCUMENT_NAME;
-                    documentname = documentname.Replace(" ", "_").Replace("/", "_");
-                    string fileName = documentname + extension;
-                    string finalPath = pathSave + fileName;
-
-
-                    if (!Directory.Exists(pathSave))
+                    if (extension != ".xls" && extension != ".xlsx")
                     {
-                        Directory.CreateDirectory(pathSave);
+                        return Json(new { status = false, message = "Only .xls or .xlsx files are allowed for the signing template." });
                     }
 
-                    if (data.FILE_PATH != null)
+                    string code = (data.DOCUMENT_CODE ?? "").Trim();
+                    if (string.IsNullOrEmpty(code) || !System.Text.RegularExpressions.Regex.IsMatch(code, "^[A-Za-z0-9]+$"))
                     {
-                        string pathCheck = webRootPath + data.FILE_PATH.Trim();
-                        //Delete File
-                        if (System.IO.File.Exists(pathCheck))
+                        return Json(new { status = false, message = "Invalid document code." });
+                    }
+
+                    string templateFolder = Path.Combine(webRootPath, "document", "Template");
+                    if (!Directory.Exists(templateFolder))
+                    {
+                        Directory.CreateDirectory(templateFolder);
+                    }
+
+                    // Hapus varian ekstensi lain punya kode yang sama supaya tidak ambigu -
+                    // DownloadTemplate/GeneratePengesahanPdf cek .xls dulu baru .xlsx, jadi
+                    // kalau dua-duanya ada, file lama yang tidak dipakai lagi bisa
+                    // ketimpa/terlihat seolah upload baru tidak berlaku.
+                    foreach (string otherExt in new[] { ".xls", ".xlsx" })
+                    {
+                        if (otherExt == extension) continue;
+                        string otherPath = Path.Combine(templateFolder, code + otherExt);
+                        if (System.IO.File.Exists(otherPath))
                         {
-                            System.IO.File.Delete(pathCheck);
+                            System.IO.File.Delete(otherPath);
                         }
                     }
 
-                    data.FILE_PATH = path + fileName;
-                    //Save File to Local Storage
+                    string finalPath = Path.Combine(templateFolder, code + extension);
                     using (var stream = new FileStream(finalPath, FileMode.Create))
                     {
                         file.CopyTo(stream);
@@ -149,7 +192,40 @@ namespace DMS.Controllers
                 {
                     result = documentMasterRepo.Update(data, GetLoginUsername(), db);
                 }
+
                 return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        // Hapus file master template pengesahan (wwwroot/document/Template/{CODE}.xls atau
+        // .xlsx) - dipakai tombol trash di kolom "Template" pada form Add/Edit, pasangan dari
+        // upload di AddEditAsync (request Hendra 2026-08-19).
+        public JsonResult RemoveSigningTemplate(string code)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(code) || !System.Text.RegularExpressions.Regex.IsMatch(code, "^[A-Za-z0-9]+$"))
+                {
+                    return Json(new { status = false, message = "Invalid document code." });
+                }
+
+                string webRootPath = Environment.WebRootPath;
+                bool deleted = false;
+                foreach (string ext in new[] { ".xls", ".xlsx" })
+                {
+                    string path = Path.Combine(webRootPath, "document", "Template", code + ext);
+                    if (System.IO.File.Exists(path))
+                    {
+                        System.IO.File.Delete(path);
+                        deleted = true;
+                    }
+                }
+
+                return Json(new { status = true, message = deleted ? "Template removed successfully." : "No template file found." });
             }
             catch (Exception ex)
             {
@@ -196,14 +272,19 @@ namespace DMS.Controllers
             {
                 if (data.FILE_PATH != null)
                 {
-                    string pathCheck = webRootPath + data.FILE_PATH.Trim();
-                    //Delete File
-                    if (System.IO.File.Exists(pathCheck))
-                    {
-                        System.IO.File.Delete(pathCheck);
-                    }
-
+                    // DB dulu, file fisik belakangan - kalau dibalik dan
+                    // RemoveAttachment gagal, file sudah hilang padahal baris
+                    // DB masih menunjuk ke situ (request Hendra 2026-08-16).
                     result = documentMasterRepo.RemoveAttachment(data, GetLoginUsername(), db);
+
+                    if (result.status)
+                    {
+                        string pathCheck = webRootPath + data.FILE_PATH.Trim();
+                        if (System.IO.File.Exists(pathCheck))
+                        {
+                            System.IO.File.Delete(pathCheck);
+                        }
+                    }
                 }
 
                 return Json(result);
@@ -224,6 +305,45 @@ namespace DMS.Controllers
             byte[] bytes = System.IO.File.ReadAllBytes(fullPath);
 
             return File(bytes, "application/force-download", fileName);
+        }
+
+        // Download file master template pengesahan (wwwroot/document/Template/{CODE}.xls atau
+        // .xlsx) - ini file yang benar-benar dipakai GeneratePengesahanPdf & ValidateTemplateConfiguration
+        // di DocumentMaintenanceController, berbeda dari FILE_PATH attachment generik di atas.
+        // Cek .xls dulu baru .xlsx (PDM & PRO ditambahkan sebagai .xlsx 2026-08-18).
+        public IActionResult DownloadTemplate(string code)
+        {
+            if (string.IsNullOrWhiteSpace(code) || !System.Text.RegularExpressions.Regex.IsMatch(code, "^[A-Za-z0-9]+$"))
+            {
+                return NotFound();
+            }
+
+            string webRootPath = Environment.WebRootPath;
+            string xlsPath = Path.Combine(webRootPath, "document", "Template", code + ".xls");
+            string xlsxPath = Path.Combine(webRootPath, "document", "Template", code + ".xlsx");
+
+            string fullPath;
+            string fileName;
+            string contentType;
+            if (System.IO.File.Exists(xlsPath))
+            {
+                fullPath = xlsPath;
+                fileName = code + ".xls";
+                contentType = "application/vnd.ms-excel";
+            }
+            else if (System.IO.File.Exists(xlsxPath))
+            {
+                fullPath = xlsxPath;
+                fileName = code + ".xlsx";
+                contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            }
+            else
+            {
+                return NotFound();
+            }
+
+            byte[] bytes = System.IO.File.ReadAllBytes(fullPath);
+            return File(bytes, contentType, fileName);
         }
 
         public JsonResult GetDocumentCode(string q, string pageLimit, string page)

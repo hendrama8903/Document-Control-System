@@ -79,7 +79,7 @@ namespace DMS.Models.Repo
                 returnMsg
             };
 
-            string query = "EXEC @RETURN_VAL = [dbo].[sp_DepartmentMaster_Insert] @DEPARTMENT_CODE, @DEPARTMENT_NAME, @DIVISION, @LOGIN_USER, @RETURN_MSG OUTPUT";
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_DepartmentMaster_Insert] @DEPARTMENT_CODE=@DEPARTMENT_CODE, @DEPARTMENT_NAME=@DEPARTMENT_NAME, @DIVISION=@DIVISION, @LOGIN_USER=@LOGIN_USER, @RETURN_MSG=@RETURN_MSG OUTPUT";
             int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
@@ -103,7 +103,7 @@ namespace DMS.Models.Repo
                 returnMsg
             };
 
-            string query = "EXEC @RETURN_VAL = [dbo].[sp_DepartmentMaster_Update] @DEPARTMENT_ID, @DEPARTMENT_CODE, @DEPARTMENT_NAME, @DIVISION, @LOGIN_USER, @RETURN_MSG OUTPUT";
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_DepartmentMaster_Update] @DEPARTMENT_ID=@DEPARTMENT_ID, @DEPARTMENT_CODE=@DEPARTMENT_CODE, @DEPARTMENT_NAME=@DEPARTMENT_NAME, @DIVISION=@DIVISION, @LOGIN_USER=@LOGIN_USER, @RETURN_MSG=@RETURN_MSG OUTPUT";
             int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());

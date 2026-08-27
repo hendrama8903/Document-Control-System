@@ -4,7 +4,7 @@
     var selectedIds = [];
     
     $(document).ready(function() {
-        setDataSelect2WithParam("addEditDivision", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "- Choose -", "DIVISION");
+        setDataSelect2WithParam("addEditDivision", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "Select division", "DIVISION");
 
         $("#btn_add").on("click", function() {
             onAddPrepare();
@@ -26,24 +26,25 @@
             window.location.href = "@Url.Action("DownloadExcel", "DepartmentMaster")";
         });
 
+        function setStatsPanelCollapsed(collapsed) {
+            var $row = $("#dpLayoutRow");
+            var $icon = $("#btn_toggleStats i");
+
+            $row.toggleClass("stats-collapsed", collapsed);
+            $icon.toggleClass("fa-angle-double-right", !collapsed).toggleClass("fa-angle-double-left", collapsed);
+            $("#btn_toggleStats").attr("title", collapsed ? "Show Summary" : "Hide Summary");
+
+            setTimeout(function () {
+                $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+            }, 230);
+        }
+
         $("#btn_toggleStats").on("click", function () {
-            var $btn = $(this);
-            var $icon = $btn.find("i");
-            var $row = $("#dpStatsRow");
-            $row.stop(true, true).animate(
-                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
-                {
-                    duration: 220,
-                    easing: "swing",
-                    progress: function () { $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight()); },
-                    complete: function () {
-                        var collapsed = !$row.is(":visible");
-                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
-                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
-                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-                    }
-                }
-            );
+            setStatsPanelCollapsed(!$("#dpLayoutRow").hasClass("stats-collapsed"));
+        });
+
+        $("#btn_closeStatsPanel").on("click", function () {
+            setStatsPanelCollapsed(true);
         });
     });
 
@@ -56,6 +57,7 @@
     function onAddPrepare() {
         gScreenMode = 'ADD';
         $('#modal-title').html("Add Department Master");
+        $('#modal-subtitle').html("Add a new department to the system");
         $('#addEditDepartment').val("");
         $('#addEditName').val("");
         $('#addEditDivision').val("").trigger("change");
@@ -91,6 +93,7 @@
                     var data = result.data;
                     gScreenMode = 'EDIT';
                     $('#modal-title').html("Edit Department Master");
+                    $('#modal-subtitle').html("Update department data");
                     $('#addEditId').val(data.DEPARTMENT_ID);
                     $('#addEditDepartment').val(data.DEPARTMENT_CODE);
                     $('#addEditName').val(data.DEPARTMENT_NAME);

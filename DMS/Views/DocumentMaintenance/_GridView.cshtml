@@ -31,6 +31,48 @@
         return Math.max(300, $(window).height() - gridTop - footerHeight - 40);
     }
 
+    // computeGridHeight() cuma bisa MENDUGA tinggi yang pas (padding/border di
+    // bawah grid - box-body, .adm-content, dst - bervariasi tergantung tema/
+    // halaman) - kalau dugaannya sedikit kelebihan, browser jadi selalu muncul
+    // scrollbar walau datanya cuma dikit (dilaporkan Hendra 2026-08-18). Jadi
+    // dikoreksi ulang di sini SETELAH grid benar-benar dirender: kalau halaman
+    // ternyata masih overflow dari viewport, kurangi tinggi grid persis sebesar
+    // overflow itu. Aman dipanggil berkali-kali (tiap onContentReady) - begitu
+    // overflow-nya 0 dia otomatis berhenti menyesuaikan.
+    function correctGridHeightOverflow() {
+        var overflow = document.documentElement.scrollHeight - window.innerHeight;
+        if (overflow <= 2) return;
+
+        var grid = $("#datagrid").dxDataGrid("instance");
+        var currentHeight = grid.option("height");
+        if (typeof currentHeight === "number") {
+            grid.option("height", Math.max(300, currentHeight - overflow - 2));
+        }
+    }
+
+    // ---------- docked "Document Status" panel toggle - top-level (not inside
+    // $(document).ready) so updateHeaderStats() below can reach dpLastWaitingApproval too ----------
+    var dpLastWaitingApproval = 0;
+
+    function refreshToggleBadge() {
+        var collapsed = $("#dpLayoutRow").hasClass("stats-collapsed");
+        $("#dpToggleBadge").text(dpLastWaitingApproval).toggle(collapsed && dpLastWaitingApproval > 0);
+    }
+
+    function setStatsPanelCollapsed(collapsed) {
+        var $row = $("#dpLayoutRow");
+        var $icon = $("#btn_toggleStats i");
+
+        $row.toggleClass("stats-collapsed", collapsed);
+        $icon.toggleClass("fa-angle-double-right", !collapsed).toggleClass("fa-angle-double-left", collapsed);
+        $("#btn_toggleStats").attr("title", collapsed ? "Show Document Status" : "Hide Document Status");
+        refreshToggleBadge();
+
+        setTimeout(function () {
+            $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+        }, 230);
+    }
+
     $(document).ready(function () {
         $("#btn_add").prop("disabled", false);
         $("#btn_edit").prop("disabled", true);
@@ -76,6 +118,13 @@
             sorting: { mode: "none" },
             noDataText: "Data not found.",
             height: computeGridHeight(),
+            onContentReady: function () {
+                // Delay kecil - onContentReady DevExtreme sendiri kadang nembak
+                // sebelum browser selesai reflow parent container (padding
+                // .adm-content dkk), jadi scrollHeight yang diukur langsung di
+                // sini masih nilai lama/belum settle.
+                setTimeout(correctGridHeightOverflow, 50);
+            },
             filterRow: { visible: false, applyFilter: "auto" },
             headerFilter: { visible: true },
             toolbar: { visible: false },
@@ -130,18 +179,53 @@
                     cellTemplate: function (container, options) {
                         var row = options.data;
                         var pillClass = "dms-pill dms-pill-danger";
+                        // Ikon per status (bukan dot generik - kurang terlihat, request
+                        // Hendra 2026-08-18) - pola sama seperti kolom Registration Status
+                        // di grid ini juga, supaya konsisten.
+                        var icon = "fa-times-circle"; // Rejected/Deleted (default)
 
                         if (row.STATUS == 0) {
                             pillClass = "dms-pill dms-pill-info";
+                            icon = "fa-clock-o";
                         } else if (row.STATUS == 1) {
                             pillClass = "dms-pill dms-pill-success";
+                            icon = "fa-check-circle";
+                        } else if (row.STATUS == 3) {
+                            icon = "fa-trash-o";
                         } else if (row.STATUS == 4) {
                             pillClass = "dms-pill dms-pill-default";
+                            icon = "fa-archive";
                         } else if (row.STATUS == 5) {
                             pillClass = "dms-pill dms-pill-primary";
+                            icon = "fa-bullhorn";
+                        } else if (row.STATUS == 6) {
+                            // Waiting Acknowledgment (Related Division "Mengetahui" -
+                            // SPR Level 2, request Hendra 2026-08-20): approval asli
+                            // sudah selesai, masih menunggu Div Head terkait.
+                            pillClass = "dms-pill dms-pill-warning";
+                            icon = "fa-users";
                         }
 
-                        $("<span>").addClass(pillClass).html('<span class="dms-dot"></span> ' + row.STATUS_DISPLAY).appendTo(container);
+                        // Tampilan khusus grid ini saja - "Published" tanpa "(Effective)",
+                        // master data TB_M_SYSTEM tidak diubah (request Hendra 2026-08-15).
+                        var statusText = (row.STATUS_DISPLAY || "").replace(" (Effective)", "");
+                        var $pill = $("<span>").addClass(pillClass).css("cursor", "pointer");
+                        $("<i>").addClass("fa " + icon).css("fontSize", "11px").appendTo($pill);
+                        $pill.append(" " + statusText);
+
+                        // Ikon panah kecil menandakan pill ini bisa diklik untuk buka
+                        // side panel (request Hendra 2026-08-15).
+                        $("<i>").addClass("fa fa-chevron-circle-right").css({ fontSize: "10px", opacity: .6 }).appendTo($pill);
+
+                        // Klik untuk lihat state approval-nya saja (badge + stepper) lewat
+                        // side panel - beda dari modal "Approval List" lengkap yang dibuka
+                        // lewat menu Actions > Approval (request Hendra 2026-08-15).
+                        $pill.on("click", function (e) {
+                            e.stopPropagation();
+                            dmOpenApprovalState(row);
+                        });
+
+                        $pill.appendTo(container);
                     }
                 },
                 {
@@ -149,7 +233,8 @@
                     caption: "Registration Status",
                     alignment: "center",
                     cellTemplate: function (container, options) {
-                        var value = options.data.P4D_STATUS_VAL;
+                        var row = options.data;
+                        var value = row.P4D_STATUS_VAL;
 
                         if (value == null || value == "") {
                             container.text("-");
@@ -176,7 +261,56 @@
                             icon = "fa-archive";
                         }
 
-                        $("<span>").addClass(pillClass).html('<i class="fa ' + icon + '"></i> ' + value).appendTo(container);
+                        // Klik untuk lihat posisi lengkap di pipeline P4D (+ rincian
+                        // penerimaan per department kalau sudah Sent) lewat side panel -
+                        // lihat _RegistrationStatusPanel.cshtml (request Hendra 2026-08-15).
+                        var $regPill = $("<span>")
+                            .addClass(pillClass)
+                            .css("cursor", "pointer")
+                            .html('<i class="fa ' + icon + '"></i> ' + value);
+
+                        // Ikon panah kecil menandakan pill ini bisa diklik untuk buka
+                        // side panel (request Hendra 2026-08-15).
+                        $("<i>").addClass("fa fa-chevron-circle-right").css({ fontSize: "10px", opacity: .6 }).appendTo($regPill);
+
+                        $regPill
+                            .on("click", function (e) {
+                                e.stopPropagation();
+                                dmOpenRegistrationStatus(row);
+                            })
+                            .appendTo(container);
+                    }
+                },
+                {
+                    // Kategori dokumen QMS (Pedoman/Prosedur/SOP/Instruksi Kerja/dst,
+                    // dari TB_M_DOCUMENT via DCAT join di sp_DocumentMaintenance_Search)
+                    // - beda dari kolom "Document Type" (New/Revision) di bawah, yang
+                    // soal status pengajuan bukan jenis dokumennya (request Hendra
+                    // 2026-08-14).
+                    dataField: "CATEGORY_CODE",
+                    caption: "Category",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.CATEGORY_CODE;
+                        if (!value) { container.text("-"); return; }
+                        $("<span>")
+                            .addClass("dms-pill dms-pill-warning")
+                            .attr("title", options.data.DOCUMENT_NAME || "")
+                            .text(value)
+                            .appendTo(container);
+                    }
+                },
+                {
+                    dataField: "LEVEL_CODE",
+                    caption: "Document Level",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var value = options.data.LEVEL_CODE;
+                        if (value === null || value === undefined || value === "") {
+                            container.text("-");
+                            return;
+                        }
+                        container.text("Level " + value);
                     }
                 },
                 {
@@ -212,7 +346,7 @@
                 },
                 {
                     dataField: "DOCUMENT_TYPE",
-                    caption: "Document Type",
+                    caption: "Submission Type",
                     alignment: "center",
                     visible: false,
                     calculateCellValue: function (row) {
@@ -221,7 +355,6 @@
                         return row.DOCUMENT_TYPE;
                     }
                 },
-                { dataField: "LEVEL_CODE", caption: "Document Level", alignment: "center", visible: false },
                 { dataField: "CLASSIFIED_VAL", caption: "Classified", visible: false },
                 { dataField: "ITEM_CHANGED", caption: "Item Changed", visible: false },
                 { dataField: "REASON", caption: "Reason", visible: false },
@@ -280,28 +413,15 @@
             $("#datagrid").dxDataGrid("instance").showColumnChooser();
         });
 
-        // ---------- toggle summary/KPI cards, so the grid below can move up ----------
+        // ---------- toggle the docked "Document Status" panel (collapses to the
+        // right, grid reflows into the freed width via flex - no manual height
+        // animation needed since the panel sits beside the grid, not above it) ----------
         $("#btn_toggleStats").on("click", function () {
-            var $btn = $(this);
-            var $icon = $btn.find("i");
-            var $row = $("#dpStatsRow");
+            setStatsPanelCollapsed(!$("#dpLayoutRow").hasClass("stats-collapsed"));
+        });
 
-            $row.stop(true, true).animate(
-                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
-                {
-                    duration: 220,
-                    easing: "swing",
-                    progress: function () {
-                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-                    },
-                    complete: function () {
-                        var collapsed = !$row.is(":visible");
-                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
-                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
-                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-                    }
-                }
-            );
+        $("#btn_closeStatsPanel").on("click", function () {
+            setStatsPanelCollapsed(true);
         });
 
         $(window).on("resize", function () {
@@ -338,7 +458,7 @@
         var waitingApproval = 0, approved = 0, published = 0, rejected = 0;
 
         rows.forEach(function (r) {
-            if (r.STATUS == 0) waitingApproval++;
+            if (r.STATUS == 0 || r.STATUS == 6) waitingApproval++;
             else if (r.STATUS == 1) approved++;
             else if (r.STATUS == 5) published++;
             else if (r.STATUS == 2) rejected++;
@@ -348,6 +468,11 @@
         $("#dpApproved").text(approved);
         $("#dpPublished").text(published);
         $("#dpRejected").text(rejected);
+
+        // surfaces the pending count on the collapsed toggle too, so it
+        // stays useful (not just a bare arrow) even when the panel is closed
+        dpLastWaitingApproval = waitingApproval;
+        refreshToggleBadge();
     }
 
     // ---------- per-row "more actions" kebab menu ----------

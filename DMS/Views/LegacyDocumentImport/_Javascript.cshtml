@@ -1,33 +1,119 @@
 <script type="text/javascript">
-    var gLastPreviewHadValidRows = false;
+    var gLastRows = [];       // last rendered rows (preview or report), each tagged with _category
+    var gLastMode = "preview"; // "preview" | "report"
+    var gActiveTab = "all";
 
     $(document).ready(function () {
-        $("#btn_preview").on("click", function () {
-            runImport(false);
-        });
+        setupDropzone("dzExcel", "excelFile");
+        setupDropzone("dzZip", "zipFile");
+
+        $("#btn_preview").on("click", function () { runImport(false); });
 
         $("#btn_import").on("click", function () {
-            if (!gLastPreviewHadValidRows) {
-                return;
-            }
-            showConfirmMesg("Are you sure you want to import the valid rows into the system?", function () {
+            var errorCount = gLastRows.filter(function (r) { return r._category === "error"; }).length;
+            var readyCount = gLastRows.filter(function (r) { return r._category !== "error"; }).length;
+            if (readyCount === 0 || errorCount > 0) return;
+            showConfirmMesg("Are you sure you want to import all " + readyCount + " document(s) into the system?", function () {
                 runImport(true);
             }, "Confirmation");
         });
+
+        $("#btn_cancel").on("click", function () {
+            resetUploadForm();
+        });
+
+        $("#btn_viewErrors").on("click", function () {
+            setActiveTab("error");
+        });
+
+        $("#btn_export").on("click", function () {
+            exportResultCsv();
+        });
+
+        $("#diTabs").on("click", ".di-tab", function () {
+            setActiveTab($(this).data("filter"));
+        });
     });
 
+    // ---------- Dropzones ----------
+    function setupDropzone(zoneId, inputId) {
+        var zone = document.getElementById(zoneId);
+        var input = document.getElementById(inputId);
+
+        zone.addEventListener("click", function (e) {
+            if (e.target.closest(".di-dz-file")) return;
+            input.click();
+        });
+
+        input.addEventListener("change", function () {
+            if (input.files.length > 0) {
+                showSelectedFile(zone, input.files[0]);
+            }
+        });
+
+        ["dragenter", "dragover"].forEach(function (evt) {
+            zone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                zone.classList.add("dragover");
+            });
+        });
+
+        ["dragleave", "drop"].forEach(function (evt) {
+            zone.addEventListener(evt, function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                zone.classList.remove("dragover");
+            });
+        });
+
+        zone.addEventListener("drop", function (e) {
+            var files = e.dataTransfer.files;
+            if (files.length > 0) {
+                input.files = files;
+                showSelectedFile(zone, files[0]);
+            }
+        });
+    }
+
+    // The drag&drop box stays visible even after a file is picked (matches
+    // mockup) - so the user can drop/browse again to replace it. Only the
+    // colored "selected file" row below toggles.
+    function showSelectedFile(zone, file) {
+        zone.classList.add("filled");
+        var fileBox = $(zone).find(".di-dz-file");
+        fileBox.find(".di-dz-filename").text(file.name).attr("title", file.name);
+        fileBox.find(".di-dz-filesize").text(formatFileSize(file.size));
+        fileBox.show();
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+        if (bytes >= 1024) return (bytes / 1024).toFixed(0) + " KB";
+        return bytes + " B";
+    }
+
+    function resetDropzone(zoneId) {
+        var zone = document.getElementById(zoneId);
+        zone.classList.remove("filled");
+        $(zone).find(".di-dz-dropline").show();
+        $(zone).find(".di-dz-file").hide();
+    }
+
+    // ---------- Reset ----------
     function resetUploadForm() {
         document.getElementById("excelFile").value = "";
         document.getElementById("zipFile").value = "";
+        resetDropzone("dzExcel");
+        resetDropzone("dzZip");
 
-        $("#resultSummary").hide();
-        $("#tblImportResult").hide();
-        $("#tblImportResultBody").empty();
-
-        gLastPreviewHadValidRows = false;
+        $("#modalReview").modal("hide");
+        gLastRows = [];
+        gActiveTab = "all";
         $("#btn_import").prop("disabled", true);
     }
 
+    // ---------- Run preview / import ----------
     function runImport(commitMode) {
         var excelInput = document.getElementById("excelFile");
         var zipInput = document.getElementById("zipFile");
@@ -66,21 +152,16 @@
                 }
 
                 if (commitMode) {
+                    renderReview(result.data, "report");
+
                     if (result.failCount > 0) {
-                        // Keep the grid so the user can see which rows failed and fix them.
-                        renderImportReport(result.data, result.successCount, result.failCount);
                         showErrorMesgGrowl(result.successCount + " imported, " + result.failCount + " failed - see details below.");
-                        gLastPreviewHadValidRows = false;
-                        $("#btn_import").prop("disabled", true);
                     } else {
-                        // Everything imported cleanly - reset the form for the next batch.
                         showSuccessMesgGrowl(result.successCount + " document(s) imported successfully.");
                         resetUploadForm();
                     }
                 } else {
-                    renderPreview(result.data, result.validCount, result.invalidCount);
-                    gLastPreviewHadValidRows = result.validCount > 0;
-                    $("#btn_import").prop("disabled", !gLastPreviewHadValidRows);
+                    renderReview(result.data, "preview");
                 }
             },
             error: function (result) {
@@ -91,56 +172,146 @@
         });
     }
 
-    function renderPreview(rows, validCount, invalidCount) {
-        $("#resultSummary").show();
-        $("#badgeValid").text(validCount + " valid");
-        $("#badgeInvalid").text(invalidCount + " need attention");
-
-        var tbody = $("#tblImportResultBody");
-        tbody.empty();
-
-        rows.forEach(function (row) {
-            var tr = $("<tr>");
-            tr.append($("<td>").text(row.rowNumber));
-            tr.append($("<td>").text(row.documentCode || "-"));
-            tr.append($("<td>").text(row.documentName || "-"));
-            tr.append($("<td>").addClass(row.valid ? "li-status-ok" : "li-status-bad").text(row.valid ? "Valid" : "Invalid"));
-
-            var detail = (row.errors || []).join("; ");
-            if (!detail) {
-                if (row.isCurrentRevision) {
-                    detail = "Current revision (rev " + row.revision + ") - will become the active document";
-                } else if (row.isHistoryOnlyAppend) {
-                    detail = "Historical revision (rev " + row.revision + ") - will be appended to the already-active document";
-                } else {
-                    detail = "Historical revision (rev " + row.revision + ")";
-                }
-            }
-            tr.append($("<td>").text(detail));
-            tbody.append(tr);
-        });
-
-        $("#tblImportResult").show();
+    // ---------- Review rendering ----------
+    // Category rules (uses only fields the backend already returns - no fabricated data):
+    //  preview rows: "error" if !valid, "warning" if valid but isHistoryOnlyAppend (this
+    //  Document Code already has an active document elsewhere - backfilling history into
+    //  something that already exists, worth a second look), otherwise "ready".
+    //  report rows (after commit): "ready" if status true, "error" if false - no warning
+    //  tier once it's already been committed one way or the other.
+    function categorize(row, mode) {
+        if (mode === "report") {
+            return row.status ? "ready" : "error";
+        }
+        if (!row.valid) return "error";
+        if (row.isHistoryOnlyAppend) return "warning";
+        return "ready";
     }
 
-    function renderImportReport(rows, successCount, failCount) {
-        $("#resultSummary").show();
-        $("#badgeValid").text(successCount + " imported");
-        $("#badgeInvalid").text(failCount + " failed");
+    function renderReview(rows, mode) {
+        gLastMode = mode;
+        gActiveTab = "all";
 
+        gLastRows = rows.map(function (row) {
+            row._category = categorize(row, mode);
+            return row;
+        });
+
+        var readyCount = gLastRows.filter(function (r) { return r._category === "ready"; }).length;
+        var warningCount = gLastRows.filter(function (r) { return r._category === "warning"; }).length;
+        var errorCount = gLastRows.filter(function (r) { return r._category === "error"; }).length;
+        var total = gLastRows.length;
+
+        $("#tabAllCount").text(total);
+        $("#tabReadyCount").text(readyCount);
+        $("#tabWarningCount").text(warningCount);
+        $("#tabErrorCount").text(errorCount);
+
+        // All-or-nothing (request Hendra 2026-08-27): server menolak commit kalau
+        // ADA SATU SAJA baris tidak valid, jadi Import di-disable total begitu
+        // errorCount > 0 - bukan cuma kalau tidak ada baris ready sama sekali.
+        // Semua error harus diperbaiki dulu (lihat pesan di kolom Message) baru
+        // tombol ini aktif lagi.
+        var importCount = mode === "preview" ? (readyCount + warningCount) : 0;
+        $("#btnImportCount").text(importCount);
+        $("#btn_import").prop("disabled", mode !== "preview" || importCount === 0 || errorCount > 0);
+
+        if (mode === "preview") {
+            if (errorCount > 0) {
+                $("#importNote").text("Fix all " + errorCount + " error(s) below before you can import");
+            } else {
+                $("#importNote").text("All rows are error-free - ready to import");
+            }
+        }
+
+        $("#modalReview").modal("show");
+        setActiveTab("all");
+    }
+
+    function setActiveTab(filter) {
+        gActiveTab = filter;
+        $(".di-tab").removeClass("active");
+        $(".di-tab[data-filter='" + filter + "']").addClass("active");
+        renderTableBody();
+    }
+
+    function renderTableBody() {
         var tbody = $("#tblImportResultBody");
         tbody.empty();
 
+        var rows = gActiveTab === "all" ? gLastRows : gLastRows.filter(function (r) { return r._category === gActiveTab; });
+
+        if (rows.length === 0) {
+            tbody.append('<tr class="di-empty-row"><td colspan="7">No documents in this view.</td></tr>');
+            return;
+        }
+
         rows.forEach(function (row) {
             var tr = $("<tr>");
-            tr.append($("<td>").text(row.rowNumber));
+
+            var iconClass = row._category === "ready" ? "fa-check-circle" : (row._category === "warning" ? "fa-exclamation-triangle" : "fa-times-circle");
+            tr.append($("<td>").append($("<i>").addClass("fa " + iconClass + " di-status-icon " + row._category)));
+
             tr.append($("<td>").text(row.documentCode || "-"));
-            tr.append($("<td>").text("-"));
-            tr.append($("<td>").addClass(row.status ? "li-status-ok" : "li-status-bad").text(row.status ? "Imported" : "Failed"));
-            tr.append($("<td>").text(row.message || ""));
+            tr.append($("<td>").text(row.revision != null ? row.revision : "-"));
+            tr.append($("<td>").text(row.documentName || "-"));
+            tr.append($("<td>").text(row.fileName || "-"));
+            tr.append($("<td>").text("-")); // File Size: not available without parsing the ZIP client-side
+
+            var message = buildMessage(row);
+            tr.append($("<td>").addClass("di-msg-" + row._category).text(message));
+
             tbody.append(tr);
         });
+    }
 
-        $("#tblImportResult").show();
+    function buildMessage(row) {
+        if (gLastMode === "report") {
+            return row.message || (row.status ? "Imported" : "Failed");
+        }
+
+        if (row._category === "error") {
+            return (row.errors || []).join("; ");
+        }
+        if (row._category === "warning") {
+            return "Revision " + row.revision + " will be appended as history to the Document Code's already-active document.";
+        }
+        if (row.isCurrentRevision) {
+            return "Ready - revision " + row.revision + " will become the active document.";
+        }
+        return "Ready - historical revision " + row.revision + ".";
+    }
+
+    // ---------- Export ----------
+    function exportResultCsv() {
+        if (gLastRows.length === 0) return;
+
+        var headers = ["Status", "Document No.", "Revision", "Document Title", "File Name", "Message"];
+        var lines = [headers.join(",")];
+
+        gLastRows.forEach(function (row) {
+            var cells = [
+                row._category,
+                row.documentCode || "",
+                row.revision != null ? row.revision : "",
+                row.documentName || "",
+                row.fileName || "",
+                buildMessage(row)
+            ].map(function (v) {
+                var s = String(v).replace(/"/g, '""');
+                return /[",\n]/.test(s) ? '"' + s + '"' : s;
+            });
+            lines.push(cells.join(","));
+        });
+
+        var blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement("a");
+        link.href = url;
+        link.download = "Document_Import_Result.csv";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     }
 </script>

@@ -1,39 +1,131 @@
 <style>
-    /* site.css forces .fa-chevron-up/-down to white globally (for a dark-background
-       use elsewhere) - override back to the normal dp-icon-btn color for this button. */
-    #btn_toggleStats i {
-        color: #344054;
+    /* ---------- KPI cards moved from horizontal collapsible header row into a
+       docked right-side panel (request Hendra 2026-08-17: same treatment as
+       the Transactions pages). ---------- */
+    .dp-layout-row {
+        display: flex;
+        align-items: stretch;
+    }
+    .dp-layout-main {
+        flex: 1 1 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    .dp-layout-main .dp-card {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+    }
+    .dp-layout-main .dp-card #divGrid {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .dp-stats-toggle {
+        position: relative;
+        color: #2450D8;
+        border-color: #C7D9F7;
+        background: #F4F8FF;
+    }
+    .dp-stats-toggle:hover {
+        background: #E7F1FB;
+        border-color: #2450D8;
+    }
+
+    .dp-stats-panel {
+        flex: 0 0 272px;
+        width: 272px;
+        margin-left: 16px;
+        background: #fff;
+        border: 1px solid #E3E8EF;
+        border-radius: 16px;
+        box-shadow: 0 4px 14px rgba(16,24,40,.04);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: flex-basis .22s cubic-bezier(.4,0,.2,1), width .22s cubic-bezier(.4,0,.2,1),
+                    margin-left .22s cubic-bezier(.4,0,.2,1), opacity .18s ease, border-color .22s ease, box-shadow .22s ease;
+    }
+    .dp-layout-row.stats-collapsed .dp-stats-panel {
+        flex-basis: 0;
+        width: 0;
+        margin-left: 0;
+        opacity: 0;
+        border-color: transparent;
+        box-shadow: none;
+        pointer-events: none;
+    }
+
+    .dp-stats-panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 18px;
+        border-bottom: 1px solid #EEF1F5;
+        white-space: nowrap;
+    }
+    .dp-stats-panel-head span {
+        font-size: 14px;
+        font-weight: 700;
+        color: #101828;
+    }
+    .dp-stats-panel-close {
+        background: none;
+        border: none;
+        color: #98A2B3;
+        font-size: 13px;
+        cursor: pointer;
+        padding: 2px;
+    }
+    .dp-stats-panel-close:hover { color: #475467; }
+
+    .dp-stats-panel-body {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px 18px;
+        white-space: nowrap;
+    }
+    .dp-stats-panel-body .dp-stat-card {
+        width: 100%;
+        border: 1px solid #EEF1F5;
+        border-radius: 12px;
+    }
+    .dp-stats-panel-body .dp-stat-card:hover {
+        border-color: #D5DDE8;
+    }
+
+    @@media (max-width: 900px) {
+        .dp-layout-row { flex-direction: column; }
+        .dp-stats-toggle { display: none; }
+        .dp-stats-panel, .dp-layout-row.stats-collapsed .dp-stats-panel {
+            flex-basis: auto; width: 100%; margin-left: 0; opacity: 1; pointer-events: auto;
+            border-color: #E3E8EF; box-shadow: 0 4px 14px rgba(16,24,40,.04); margin-top: 16px;
+        }
     }
 </style>
 <section class="content">
     <div class="row">
         <div class="col-xs-12">
-            <div id="divTitle">
-                <div class="dp-header">
-                    <div class="dp-header-left">
-                        <div class="dp-header-icon"><i class="fa fa-th-large"></i></div>
-                        <div>
-                            <h1>@ViewData["Title"]</h1>
+            <div class="dp-layout-row stats-collapsed" id="dpLayoutRow">
+                <div class="dp-layout-main">
+                    <div class="dp-card">
+                        <div id="divSearch">
+                            @Html.Partial("_SearchCriteria")
+                        </div>
+                        <div id="divGrid">
+                            @Html.Partial("_GridView")
                         </div>
                     </div>
-                    <div class="dp-header-actions">
-                        @if ((bool)ViewData["Add"])
-                        {
-                            <button type="button" class="dp-btn dp-btn-primary" id="btn_add"><i class="fa fa-plus"></i> Add Section</button>
-                        }
-                        @if ((bool)ViewData["Edit"])
-                        {
-                            <button type="button" class="dp-btn dp-btn-outline" id="btn_edit"><i class="fa fa-pencil-square-o"></i> Edit</button>
-                        }
-                        @if ((bool)ViewData["Delete"])
-                        {
-                            <button type="button" class="dp-btn dp-btn-outline-danger" id="btn_delete"><i class="fa fa-trash-o"></i> Delete</button>
-                        }
-                        <button type="button" class="dp-btn dp-btn-outline" id="btn_export"><i class="fa fa-download"></i> Export Excel</button>
-                        <button type="button" class="dp-icon-btn" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
-                        <button type="button" class="dp-icon-btn" id="btn_toggleStats" title="Hide Summary Cards"><i class="fa fa-chevron-up"></i></button>
+                </div>
+
+                <aside class="dp-stats-panel" id="dpStatsPanel">
+                    <div class="dp-stats-panel-head">
+                        <span>Section Summary</span>
+                        <button type="button" class="dp-stats-panel-close" id="btn_closeStatsPanel"><i class="fa fa-times"></i></button>
                     </div>
-                    <div class="dp-header-stats dp-header-stats-grid" id="smStatsRow">
+                    <div class="dp-stats-panel-body" id="smStatsRow">
                         <div class="dp-stat-card">
                             <div class="dp-stat-card-icon blue"><i class="fa fa-th-large"></i></div>
                             <div>
@@ -62,24 +154,15 @@
                             <div class="dp-stat-card-icon purple"><i class="fa fa-calendar"></i></div>
                             <div>
                                 <span>Last Updated</span>
-                                <b id="smStatLastUpdated" style="font-size:13px;">-</b>
+                                <b id="smStatLastUpdated">-</b>
                                 <small>&nbsp;</small>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-            <div class="dp-card">
-                <div id="divSearch">
-                    @Html.Partial("_SearchCriteria")
-                </div>
-                <div id="divGrid">
-                    @Html.Partial("_GridView")
-                </div>
+                </aside>
             </div>
         </div>
     </div>
 </section>
-
 @Html.Partial("_PopupForm")
 @Html.Partial("_Javascript")

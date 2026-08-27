@@ -176,26 +176,6 @@ namespace DMS.Models.Repo
             return result;
         }
 
-        public DBResult Accept(int requestId, string loginUser, DBContext db)
-        {
-            SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
-            SqlParameter returnMsg = CreateSqlParameterOutputString("@RETURN_MSG");
-
-            List<SqlParameter> param = new List<SqlParameter>
-            {
-                returnVal,
-                new SqlParameter ( "@REQUEST_ID", requestId ),
-                new SqlParameter ( "@LOGIN_USER", loginUser ),
-                returnMsg
-            };
-
-            string query = "EXEC @RETURN_VAL = [dbo].[sp_CopyRequest_Accept] @REQUEST_ID, @LOGIN_USER, @RETURN_MSG OUTPUT";
-            int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
-
-            DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
-            return result;
-        }
-
         public DBResult Submit(int requestId, string loginUser, DBContext db)
         {
             SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
@@ -355,6 +335,39 @@ namespace DMS.Models.Repo
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
             return result;
+        }
+
+        // Antrian cetak PrintTrack (desktop) - baris Approved yang token
+        // cetaknya belum dipakai, di-scope ke requester yang login (request
+        // Hendra 2026-08-15). Menggantikan alur lama di mana desktop
+        // menyimpan sendiri daftar requestId yang pernah dibuatnya.
+        public IList<CopyRequestPrintQueueItem> SearchPrintQueue(string username, DBContext db)
+        {
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                new SqlParameter ( "@USERNAME", CheckNullValue(username) )
+            };
+
+            string query = "EXEC [dbo].[sp_CopyRequest_PrintQueue] @USERNAME";
+            IList<CopyRequestPrintQueueItem> Result = db.CopyRequestPrintQueueItem.FromSqlRaw<CopyRequestPrintQueueItem>(query, param.ToArray()).ToList();
+
+            return Result;
+        }
+
+        // Panel monitoring "Print" di web CopyRequest/Index - satu baris per
+        // percobaan cetak (termasuk yang gagal) plus dokumen yang belum
+        // pernah dicetak sama sekali (request Hendra 2026-08-15).
+        public IList<CopyRequestPrintLogItem> SearchPrintLog(int requestId, DBContext db)
+        {
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                new SqlParameter ( "@REQUEST_ID", requestId )
+            };
+
+            string query = "EXEC [dbo].[sp_CopyRequest_PrintLogSearch] @REQUEST_ID";
+            IList<CopyRequestPrintLogItem> Result = db.CopyRequestPrintLogItem.FromSqlRaw<CopyRequestPrintLogItem>(query, param.ToArray()).ToList();
+
+            return Result;
         }
     }
 }

@@ -37,6 +37,24 @@ BEGIN TRY
 					
 		EXEC sp_StartLog @PROCESS_ID OUTPUT, 'Document Maintenance', 'Update', @LOCATION, @CREATED_BY
 
+		-- Guard status server-side (dulu cuma diandalkan dari tombol Edit yang
+		-- di-disable di browser - _GridView.cshtml: row.STATUS != 1 && row.STATUS
+		-- != 5) - tanpa ini, POST langsung ke AddEditAsync bisa menimpa FILE_PATH
+		-- dokumen yang sudah Approved(1)/Published(5) dan menghapus file fisik
+		-- resmi-nya (DocumentMaintenanceController.AddEditAsync menghapus
+		-- previousFilePath fisik begitu Update sukses). Mirror pola guard yang
+		-- sudah ada di sp_DocumentMaintenance_Delete (request Hendra 2026-08-16).
+		IF EXISTS(SELECT 1
+					FROM TB_R_DOCUMENT
+					WHERE DOCUMENT_TRANSACTION_ID = @DOCUMENT_TRANSACTION_ID
+						AND DELETE_FLAG = 0
+						AND STATUS IN (1, 5))
+		BEGIN
+			SET @RETURN_MSG = 'Edit is not allowed for Approved/Published documents';
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @CREATED_BY
+			RETURN 0;
+		END
+
 		/*
 				-	IF Level = 1																	
 					-	Enable :					-	Company Code										

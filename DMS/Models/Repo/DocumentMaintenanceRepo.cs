@@ -3,6 +3,7 @@ using DMS.Common.Repo;
 using DMS.Models.DB;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 //Recommit DINA 2
 
 namespace DMS.Models.Repo
@@ -356,13 +357,14 @@ namespace DMS.Models.Repo
                 new SqlParameter ( "@MENU_ID", "M00006-01" ),
                 new SqlParameter ( "@DOCUMENT_CREATOR", CheckNullValue(data.DOCUMENT_CREATOR) ),
                 new SqlParameter ( "@MANUAL_SEQ_NO", CheckNullValue(data.MANUAL_SEQ_NO) ),
+                new SqlParameter ( "@RELATED_DIVISIONS", CheckNullValue(data.RELATED_DIVISIONS) ),
                 returnMsg,
                 returnId
             };
 
             string query = "EXEC @RETURN_VAL = [dbo].[sp_DocumentMaintenance_Insert] @DOCUMENT_TRANSACTION_ID, @DOCUMENT_ID,@DOCUMENT_CODE,@DOCUMENT_TRANSACTION_NAME,@DOCUMENT_TYPE," +
                 "@PROCESS_CODE,@COMPANY_CODE,@SECTION_CODE,@ITEM_CHANGED,@REASON,@EXTERNAL_FLAG,@REFERENCE_NO,@SOURCE,@DOCUMENT_DATE,@FILE_PATH,@STATUS,@REVISION," +
-                "@APPROVAL_ID,@DELETE_FLAG,@DIVISION,@CLASSIFIED,@DEPARTMENT_ID, @IMPACT_OTHER_FLAG, @LEVEL_CODE, @CREATED_BY,@CHANGED_BY, @MENU_ID, @DOCUMENT_CREATOR, @MANUAL_SEQ_NO, @RETURN_MSG OUTPUT, @RETURN_ID OUTPUT";
+                "@APPROVAL_ID,@DELETE_FLAG,@DIVISION,@CLASSIFIED,@DEPARTMENT_ID, @IMPACT_OTHER_FLAG, @LEVEL_CODE, @CREATED_BY,@CHANGED_BY, @MENU_ID, @DOCUMENT_CREATOR, @MANUAL_SEQ_NO, @RELATED_DIVISIONS, @RETURN_MSG OUTPUT, @RETURN_ID OUTPUT";
             int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString(), Convert.ToInt32(returnId.Value));
@@ -465,6 +467,76 @@ namespace DMS.Models.Repo
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
             return result;
+        }
+
+        // Related Division "Mengetahui" (SPR/SIPOCOR Level 2, request Hendra
+        // 2026-08-20) - terpisah dari ApprovalRepo.Approve/Reject karena
+        // sekarang tidak lagi bagian dari TB_R_APPROVAL_D (lihat
+        // sp_WorkflowDoc_AppendRelatedDivision di _dropped/ utk alasannya).
+        public IList<DocumentRelatedDivision> GetRelatedDivisionAckStatus(int documentTransactionId, DBContext db)
+        {
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                new SqlParameter ( "@DOCUMENT_TRANSACTION_ID", CheckNullValue(documentTransactionId) )
+            };
+
+            string query = "EXEC [dbo].[sp_DocumentMaintenance_GetRelatedDivisionAckStatus] @DOCUMENT_TRANSACTION_ID";
+            IList<DocumentRelatedDivision> result = db.DocumentRelatedDivision.FromSqlRaw<DocumentRelatedDivision>(query, param.ToArray()).ToList();
+
+            return result;
+        }
+
+        public DBResult AcknowledgeRelatedDivision(int documentTransactionId, string divisionCode, string loginUser, DBContext db, out bool promotedToApproved)
+        {
+            SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
+            SqlParameter returnMsg = CreateSqlParameterOutputString("@RETURN_MSG");
+            SqlParameter promoted = CreateSqlParameterOutputInt("@PROMOTED_TO_APPROVED");
+
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                returnVal,
+                new SqlParameter ( "@DOCUMENT_TRANSACTION_ID", CheckNullValue(documentTransactionId) ),
+                new SqlParameter ( "@DIVISION_CODE", CheckNullValue(divisionCode) ),
+                new SqlParameter ( "@LOGIN_USER", loginUser ),
+                promoted,
+                returnMsg
+            };
+
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_DocumentMaintenance_AcknowledgeRelatedDivision] @DOCUMENT_TRANSACTION_ID, @DIVISION_CODE, @LOGIN_USER, @PROMOTED_TO_APPROVED OUTPUT, @RETURN_MSG OUTPUT";
+            int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
+
+            promotedToApproved = promoted.Value != DBNull.Value && Convert.ToInt32(promoted.Value) == 1;
+
+            DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
+            return result;
+        }
+
+        // Cuma dipakai buat menimbang STATUS "1" (Approved) vs "6" (Waiting
+        // Acknowledgment) begitu approval asli selesai - lihat
+        // DocumentMaintenanceController.ApproveRejectAsync.
+        public int CountPendingRelatedDivisionAck(int documentTransactionId, DBContext db)
+        {
+            using (var cmd = db.Database.GetDbConnection().CreateCommand())
+            {
+                if (cmd.Connection.State != System.Data.ConnectionState.Open) cmd.Connection.Open();
+                // ApproveRejectAsync membungkus semua ini di db.Database.BeginTransaction() -
+                // command ADO mentah WAJIB diikutkan ke transaksi EF yang sedang berjalan,
+                // kalau tidak SQL Server menolak dengan "command has a transaction... pending
+                // local transaction" (request Hendra 2026-08-20, ditemukan saat testing).
+                if (db.Database.CurrentTransaction != null)
+                {
+                    cmd.Transaction = db.Database.CurrentTransaction.GetDbTransaction();
+                }
+                // Cuma peran RELATED yang wajib Acknowledge (request Hendra
+                // 2026-08-20) - MAIN_PIC/NOTE_RELATED tidak difilter di sini akan
+                // bikin dokumen tidak pernah naik ke Approved.
+                cmd.CommandText = "SELECT COUNT(*) FROM [dbo].[TB_R_DOCUMENT_RELATED_DIVISION] WHERE DOCUMENT_TRANSACTION_ID = @id AND ACKNOWLEDGED_FLAG = 0 AND DIVISION_ROLE = 'RELATED'";
+                var idParam = cmd.CreateParameter();
+                idParam.ParameterName = "@id";
+                idParam.Value = documentTransactionId;
+                cmd.Parameters.Add(idParam);
+                return Convert.ToInt32(cmd.ExecuteScalar());
+            }
         }
 
         //Obsolete-control (Jul 2026): dipanggil saat revisi baru suatu dokumen selesai

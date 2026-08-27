@@ -17,14 +17,20 @@ BEGIN TRY
 					
 	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'P4D Maintenance', 'Delete', @LOCATION, @LOGIN_USER
 
+	-- Checking (1) SENGAJA tidak boleh dihapus - QMS sudah mulai Receive/review
+	-- dokumen ini, dan Delete di bawah menghapus PERMANEN (bukan soft-delete)
+	-- log aktivitas & data distribusinya, jadi kalau dibolehkan di tengah
+	-- proses QMS jejaknya hilang tanpa audit trail dan tanpa QMS tahu. Department
+	-- harus Un-Receive dulu (balik ke Draft) baru bisa Delete (request Hendra
+	-- 2026-08-14).
 	IF EXISTS(
 		SELECT 1
 		FROM TB_R_CTRL_DOCUMENT
 		WHERE DOCUMENT_CTRL_ID = @DOCUMENT_CTRL_ID
-			AND [STATUS] NOT IN ('0', '1', '3')
+			AND [STATUS] NOT IN ('0', '3')
 	)
 	BEGIN
-		SET @RETURN_MSG = 'ERROR: Only Document with status not received or rejected could be deleted';
+		SET @RETURN_MSG = 'ERROR: Only Document with status Draft or Rejected could be deleted. If this document is Checking, Un-Receive it first.';
 		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
 		RETURN 0;
 	END

@@ -29,10 +29,11 @@ namespace DMS.Models.DB
         public string? APPROVED_BY { get; set; }
         public DateTime? APPROVED_DT { get; set; }
         public string? APPROVAL_REMARK { get; set; }
-        // Requester mengonfirmasi sudah menerima copy fisiknya - lihat sp_CopyRequest_Accept.
-        public int? ACCEPTED_FLAG { get; set; }
-        public string? ACCEPTED_BY { get; set; }
-        public DateTime? ACCEPTED_DT { get; set; }
         public int? DETAIL_COUNT { get; set; }
+        // Progres cetak fisik (PrintTrack) - lihat sp_CopyRequest_PrintLog_Insert
+        // & sp_CopyRequest_PrintQueue. PRINTED_COUNT dibanding DETAIL_COUNT
+        // menentukan status kolom "Print" di grid.
+        public int? PRINTED_COUNT { get; set; }
+        public int? PRINTED_SHEETS { get; set; }
     }
 }

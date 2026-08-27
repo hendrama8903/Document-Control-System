@@ -5,7 +5,7 @@
     var selectedIds = [];
 
     $(document).ready(function() {
-        setDataSelect2WithParam("addEditDivision", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "- Choose -", "DIVISION");
+        setDataSelect2WithParam("addEditDivision", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "Select division", "DIVISION");
 
         $('#addEditValidFrom').datepicker({
             autoclose: true,
@@ -39,28 +39,33 @@
             confirmDeleteAttachment()
         });
 
+        $("#btn_reset_form").on("click", function() {
+            resetForm();
+        });
+
         $("#btn_export").on("click", function () {
             window.location.href = "@Url.Action("DownloadExcel", "SectionMaster")";
         });
 
+        function setStatsPanelCollapsed(collapsed) {
+            var $row = $("#dpLayoutRow");
+            var $icon = $("#btn_toggleStats i");
+
+            $row.toggleClass("stats-collapsed", collapsed);
+            $icon.toggleClass("fa-angle-double-right", !collapsed).toggleClass("fa-angle-double-left", collapsed);
+            $("#btn_toggleStats").attr("title", collapsed ? "Show Summary" : "Hide Summary");
+
+            setTimeout(function () {
+                $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+            }, 230);
+        }
+
         $("#btn_toggleStats").on("click", function () {
-            var $btn = $(this);
-            var $icon = $btn.find("i");
-            var $row = $("#smStatsRow");
-            $row.stop(true, true).animate(
-                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
-                {
-                    duration: 220,
-                    easing: "swing",
-                    progress: function () { $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight()); },
-                    complete: function () {
-                        var collapsed = !$row.is(":visible");
-                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
-                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
-                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-                    }
-                }
-            );
+            setStatsPanelCollapsed(!$("#dpLayoutRow").hasClass("stats-collapsed"));
+        });
+
+        $("#btn_closeStatsPanel").on("click", function () {
+            setStatsPanelCollapsed(true);
         });
 
     });
@@ -71,34 +76,70 @@
         grid.refresh();
     }
 
+    var gLastEditData = null;
+
     function onAddPrepare() {
         gScreenMode = 'ADD';
+        gLastEditData = null;
         $('#modal-title').html("Add Section Master");
-        $('#addEditSectionCode').val("");
-        $('#addEditSectionName').val("");
-        $('#addEditDivision').val("").trigger("change");
-        $('#addEditDepartmentCode').val("").trigger("change");
+        $('#modal-subtitle').html("Add a new section to the system");
+        resetFormFields();
 
         $('#addEditSectionCode').prop('disabled', false);
         $('#addEditSectionName').prop('disabled', false);
         $('#addEditDivision').prop('disabled', false);
         $('#addEditDepartmentCode').prop('disabled', true);
 
-        $('#addEditValidFrom').prop('disabled', false);
-        $('#addEditValidTo').prop('disabled', false);
-
-        $('#addEditValidFrom').val("");
-        $('#addEditValidTo').datepicker("setDate", new Date(9999, 11, 31));
-
         gTemplate = null;
 
         $("#modalAddEdit").modal();
         $('#modalAddEdit').on('shown.bs.modal', function() {
-            $('#addEditDocumentCode').focus();
+            $('#addEditSectionCode').focus();
         });
+    }
+
+    // Reset ke ADD kosong atau EDIT ke data terakhir di-load, dipakai onAddPrepare
+    // dan tombol Reset di footer (request Hendra 2026-08-19 - form ini sekarang
+    // punya lebih banyak field jadi berguna utk batalkan perubahan tanpa tutup modal).
+    function resetFormFields() {
+        $('#addEditSectionCode').val("");
+        $('#addEditSectionName').val("");
+        $('#addEditDivision').val("").trigger("change");
+        $('#addEditDepartmentCode').val("").trigger("change");
+        $('#addEditValidFrom').val("");
+        $('#addEditValidTo').val("");
+    }
+
+    function resetForm() {
+        if (gScreenMode === 'EDIT' && gLastEditData != null) {
+            populateFormFields(gLastEditData);
+        } else {
+            resetFormFields();
+            $('#addEditDepartmentCode').prop('disabled', true);
+        }
+    }
+
+    function populateFormFields(data) {
+        $('#addEditSectionId').val(data.SECTION_ID);
+        $('#addEditSectionCode').val(data.SECTION_CODE);
+        $('#addEditSectionName').val(data.SECTION_NAME);
+        $('#addEditDivision').select2("trigger", "select", { data: { id: data.DIVISION, text: data.DIVISION } });
+        $('#addEditDepartmentCode').select2("trigger", "select", { data: { id: data.DEPARTMENT_CODE, text: data.DEPARTMENT_CODE } });
+
+        $('#addEditValidFrom').val(moment(data.VALID_FROM).format("DD-MM-YYYY"));
+        $('#addEditValidTo').val(moment(data.VALID_TO).format("DD-MM-YYYY"));
     }
     function addEditData() {
         popUpProgressShow();
+
+        // Field kosong = berlaku tanpa batas waktu (request Hendra 2026-08-19) -
+        // sp_SectionMaster_Insert/Update tetap wajib VALID_TO terisi, jadi
+        // di-default ke tanggal sentinel "selamanya" di sini kalau dikosongkan.
+        var validTo = $('#addEditValidTo').val();
+        if (!validTo) {
+            validTo = "31-12-9999";
+        }
+
         $.ajax({
             type: "POST",
             url: "@Url.Action("AddEdit", "SectionMaster")",
@@ -111,7 +152,7 @@
                 SECTION_NAME: $('#addEditSectionName').val(),
                 DEPARTMENT_CODE: $('#addEditDepartmentCode').val(),
                 VALID_FROM: moment($('#addEditValidFrom').val(), "DD-MM-YYYY").format("YYYY-MM-DD"),
-                VALID_TO: moment($('#addEditValidTo').val(), "DD-MM-YYYY").format("YYYY-MM-DD"),
+                VALID_TO: moment(validTo, "DD-MM-YYYY").format("YYYY-MM-DD"),
             },
             success: function (result) {
                 popUpProgressHide();
@@ -149,17 +190,12 @@
             success: function(result) {
                 if (result.status == true) {
                     var data = result.data;
+                    gLastEditData = data;
 
                     gScreenMode = 'EDIT';
                     $('#modal-title').html("Edit Section Master");
-                    $('#addEditSectionId').val(data.SECTION_ID);
-                    $('#addEditSectionCode').val(data.SECTION_CODE);
-                    $('#addEditSectionName').val(data.SECTION_NAME);
-                    $('#addEditDivision').select2("trigger", "select", { data: { id: data.DIVISION, text: data.DIVISION } });
-                    $('#addEditDepartmentCode').select2("trigger", "select", { data: { id: data.DEPARTMENT_CODE, text: data.DEPARTMENT_CODE } });
-
-                    $('#addEditValidFrom').val(moment(data.VALID_FROM).format("DD-MM-YYYY"));
-                    $('#addEditValidTo').val(moment(data.VALID_TO).format("DD-MM-YYYY"));
+                    $('#modal-subtitle').html("Update section data");
+                    populateFormFields(data);
 
                     $('#addEditSectionCode').prop('disabled', true);
                     $('#addEditValidFrom').prop('disabled', false);
@@ -196,6 +232,13 @@
     }
 
     function confirmAddEditData() {
+        if (!$('#addEditSectionCode').val() || !$('#addEditSectionName').val() ||
+            !$('#addEditDivision').val() || !$('#addEditDepartmentCode').val() ||
+            !$('#addEditValidFrom').val()) {
+            showErrorMesgGrowl("Please fill in all required fields.");
+            return;
+        }
+
         showConfirmMesg("Are you sure you want to continue process?", addEditData, "Confirmation");
     }
 
@@ -306,7 +349,7 @@
 
         $('#addEditDepartmentCode').val("").trigger("change");
         $('#addEditDepartmentCode').prop('disabled', false);
-        setDataSelect2WithParam("addEditDepartmentCode", "@Url.Action("GetListDepartmentByDivision", "DepartmentMaster")", "- Choose -", gModelCode);
+        setDataSelect2WithParam("addEditDepartmentCode", "@Url.Action("GetListDepartmentByDivision", "DepartmentMaster")", "Select department", gModelCode);
     }
 
 </script>

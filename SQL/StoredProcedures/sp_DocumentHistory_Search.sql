@@ -45,17 +45,17 @@ BEGIN
 										S.PROCESS_CODE PROCESS_CODE,
 										S.COMPANY_CODE COMPANY_CODE,
 										S.SECTION_CODE SECTION_CODE,
-										SEC.SECTION_NAME,
+										ISNULL(S.SECTION_NAME, SEC.SECTION_NAME) SECTION_NAME,
 										ISNULL(S.EXTERNAL_FLAG, '''') EXTERNAL_FLAG,
 										CAST(S.DOCUMENT_DATE as date) DOCUMENT_DATE,
 										ISNULL((SELECT MIN(HS.DOCUMENT_DATE) FROM TB_R_DOCUMENT_HISTORY HS WHERE HS.REVISION = 0 AND HS.DOCUMENT_CODE = S.DOCUMENT_CODE), S.DOCUMENT_DATE)  DOCUMENT_REVISION_0_DATE,
 										ISNULL(S.FILE_PATH, '''') FILE_PATH,
 										ISNULL(S.DEPARTMENT, 0) DEPARTMENT_ID,
-										D.DEPARTMENT_CODE AS DEPARTMENT_CODE,
-										D.DEPARTMENT_NAME AS DEPARTMENT_NAME,
+										ISNULL(S.DEPARTMENT_CODE, D.DEPARTMENT_CODE) AS DEPARTMENT_CODE,
+										ISNULL(S.DEPARTMENT_NAME, D.DEPARTMENT_NAME) AS DEPARTMENT_NAME,
 										CAST(YEAR(S.DOCUMENT_DATE) as varchar(4)) DOCUMENT_YEAR,
 										S.DIVISION DIVISION,
-										DSYS.DIVISION_NAME,
+										ISNULL(S.DIVISION_NAME, DSYS.DIVISION_NAME) DIVISION_NAME,
 										'''' IS_APPROVED,
 										S.IMPACT_OTHER_FLAG,
 										S.LEVEL_CODE,
@@ -63,7 +63,19 @@ BEGIN
 										S.DOCUMENT_CREATOR,
 										0 AS DELETE_FLAG,
 										DCAT.DOCUMENT_NAME,
-										'''' P4D_STATUS_VAL
+										NULL NEXT_REVIEW_DATE, -- tidak relevan untuk dokumen obsolete, tapi WAJIB
+										-- ada di result set (FromSqlRaw<DocumentMaintenance> butuh semua kolom
+										-- ter-mapping, lihat DocumentMaintenanceRepo.SearchHistoryToMaintenance) -
+										-- bug ditemukan 2026-08-16: tanpa ini, GeneratePengesahanPdf gagal
+										-- (exception ketangkap) untuk dokumen obsolete, jatuh ke fallback Excel
+										-- viewer biasa (bukan PDF, stempel OBSOLETE tidak sempat diterapkan).
+										'''' CATEGORY_CODE,
+										'''' P4D_STATUS_VAL,
+										NULL CURRENT_APPROVAL_SEQ,
+										NULL TOTAL_APPROVAL_SEQ,
+										'''' CURRENT_APPROVAL_LABEL,
+										'''' CURRENT_APPROVER,
+										'''' CURRENT_APPROVER_NAME
 									FROM [dbo].[TB_R_DOCUMENT_HISTORY] S
 									LEFT JOIN TB_M_DEPARTMENT D
 										ON D.DEPARTMENT_ID = S.DEPARTMENT

@@ -169,11 +169,13 @@
                 { dataField: "EMAIL", caption: "Email" },
                 { dataField: "PHONE", caption: "Phone" },
                 {
+                    dataField: "DEPARTMENT_NAME",
                     caption: "Department",
-                    calculateCellValue: function (row) {
+                    calculateDisplayValue: function (row) {
                         return row.DEPARTMENT_CODE != null ? row.DEPARTMENT_CODE + " - " + row.DEPARTMENT_NAME : "";
                     }
                 },
+                { dataField: "POSITION_NAME", caption: "Position" },
                 {
                     caption: "Role",
                     dataField: "ROLE_NAME",

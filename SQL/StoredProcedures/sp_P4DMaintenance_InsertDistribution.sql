@@ -59,6 +59,17 @@ BEGIN TRY
 		RETURN 0;
 	END
 
+	-- Snapshot nama Division/Department (request Hendra 2026-08-22) - dibekukan
+	-- saat distribusi dibuat, lihat SQL/OrgMasterData_NameSnapshot_Migration.sql.
+	DECLARE @snap_DIVISION VARCHAR(50), @snap_DIVISION_NAME VARCHAR(255),
+					@snap_DEPARTMENT_CODE VARCHAR(5), @snap_DEPARTMENT_NAME VARCHAR(255);
+
+	SELECT @snap_DIVISION = DEP.DIVISION, @snap_DEPARTMENT_CODE = DEP.DEPARTMENT_CODE, @snap_DEPARTMENT_NAME = DEP.DEPARTMENT_NAME
+	FROM [dbo].[TB_M_DEPARTMENT] DEP WHERE DEP.DEPARTMENT_ID = @DEPARTMENT_ID;
+
+	SELECT @snap_DIVISION_NAME = DIV.DIVISION_NAME
+	FROM [dbo].[TB_M_DIVISION] DIV WHERE DIV.DIVISION_CODE = @snap_DIVISION;
+
 	INSERT INTO [dbo].[TB_R_DOCUMENT_DISTRIBUTION]
            ([DOCUMENT_TRANSACTION_ID]
            ,[DEPARTMENT_ID]
@@ -67,7 +78,11 @@ BEGIN TRY
            ,[CREATED_BY]
            ,[CREATED_DT]
            ,[CHANGED_BY]
-           ,[CHANGED_DT])
+           ,[CHANGED_DT]
+           ,[DIVISION]
+           ,[DIVISION_NAME]
+           ,[DEPARTMENT_CODE]
+           ,[DEPARTMENT_NAME])
      SELECT @DOCUMENT_TRANSACTION_ID
            ,@DEPARTMENT_ID
            ,NULL--GETDATE()
@@ -76,6 +91,10 @@ BEGIN TRY
            ,GETDATE()
            ,NULL
            ,NULL
+           ,@snap_DIVISION
+           ,@snap_DIVISION_NAME
+           ,@snap_DEPARTMENT_CODE
+           ,@snap_DEPARTMENT_NAME
 
 	DECLARE @CURRENT_STATUS INT;
 	SET @CURRENT_STATUS = (SELECT STATUS FROM TB_R_CTRL_DOCUMENT WHERE DOCUMENT_TRANSACTION_ID = @DOCUMENT_TRANSACTION_ID)

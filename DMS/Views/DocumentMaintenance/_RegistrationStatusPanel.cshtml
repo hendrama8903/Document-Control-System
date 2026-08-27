@@ -1,0 +1,192 @@
+            <!-- Side panel untuk kolom "Registration Status" - posisi dokumen di
+                 pipeline P4D (Draft > Checking > Accepted > Sent), dan kalau sudah
+                 Sent/Partially Sent, rincian penerimaan per department (reuse
+                 P4DMaintenanceController.SearchDistributionDetail - endpoint yang sama
+                 dipakai panel Acceptance di P4D/DocumentControlDashboard) - request
+                 Hendra 2026-08-15. -->
+<style>
+    #registrationStatusPanel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 420px;
+        max-width: 92vw;
+        height: 100vh;
+        background: #fff;
+        box-shadow: -8px 0 24px rgba(20,35,50,.18);
+        z-index: 1050;
+        display: flex;
+        flex-direction: column;
+        transform: translateX(100%);
+        transition: transform .22s cubic-bezier(.4,0,.2,1);
+    }
+
+    #registrationStatusPanel.open { transform: translateX(0); }
+
+    #registrationStatusPanel .adf-header {
+        background: #fff;
+        color: #101828;
+        padding: 16px 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid #EEF1F5;
+        position: relative;
+        flex: none;
+    }
+
+    #registrationStatusPanel .adf-header-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        background: #E7F1FB;
+        color: #2450D8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        font-size: 15px;
+    }
+
+    #registrationStatusPanel .adf-header-title { font-size: 14px; font-weight: 700; color: #101828; }
+    #registrationStatusPanel .adf-header-sub { font-size: 12px; color: #8A94A3; margin-top: 2px; }
+
+    #registrationStatusPanel .adf-close {
+        background: none;
+        border: none;
+        color: #98A2B3;
+        font-size: 13px;
+        cursor: pointer;
+        padding: 2px;
+        margin-left: auto;
+    }
+
+    #registrationStatusPanel .adf-close:hover { color: #475467; }
+
+    #registrationStatusPanel .panel-body { padding: 18px 20px; flex: 1 1 auto; overflow-y: auto; }
+
+    #registrationStatusPanel .rsp-section-title {
+        font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+        color: #8A94A3; margin-bottom: 14px;
+    }
+
+    /* Horizontal stage stepper */
+    #registrationStatusPanel .rsp-stages { display: flex; align-items: flex-start; margin-bottom: 24px; }
+    #registrationStatusPanel .rsp-stage { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 0; text-align: center; }
+    #registrationStatusPanel .rsp-stage-icon {
+        width: 36px; height: 36px; border-radius: 50%; font-size: 14px;
+        display: flex; align-items: center; justify-content: center;
+    }
+    #registrationStatusPanel .rsp-done .rsp-stage-icon { background: #1E9E5A; color: #fff; }
+    #registrationStatusPanel .rsp-current .rsp-stage-icon { background: #F2A93B; color: #fff; box-shadow: 0 0 0 4px rgba(242,169,59,.22); }
+    #registrationStatusPanel .rsp-upcoming .rsp-stage-icon { background: #fff; border: 2px solid #D5DAE1; color: #D5DAE1; }
+    #registrationStatusPanel .rsp-rejected .rsp-stage-icon { background: #D64545; color: #fff; }
+
+    #registrationStatusPanel .rsp-stage-label { margin-top: 6px; font-size: 10.5px; font-weight: 700; }
+    #registrationStatusPanel .rsp-done .rsp-stage-label { color: #1E9E5A; }
+    #registrationStatusPanel .rsp-current .rsp-stage-label { color: #B36B00; }
+    #registrationStatusPanel .rsp-upcoming .rsp-stage-label { color: #9AA4B2; }
+    #registrationStatusPanel .rsp-rejected .rsp-stage-label { color: #D64545; }
+
+    #registrationStatusPanel .rsp-connector { flex: 0 0 auto; width: 100%; height: 2px; background: #D5DAE1; margin-top: 17px; }
+    #registrationStatusPanel .rsp-connector.done { background: #1E9E5A; }
+    #registrationStatusPanel .rsp-connector-wrap { flex: 1; display: flex; align-items: flex-start; padding: 0 4px; }
+
+    #registrationStatusPanel .rsp-empty { color: #98A2B3; font-size: 12.5px; text-align: center; padding: 20px 0; }
+</style>
+
+<div id="registrationStatusPanel">
+    <div class="adf-header">
+        <div class="adf-header-icon"><i class="fa fa-truck"></i></div>
+        <div>
+            <div class="adf-header-title">Registration Status</div>
+            <div class="adf-header-sub" id="rspDocumentCode">-</div>
+        </div>
+        <button type="button" class="adf-close" id="btn_closeRegistrationStatusPanel"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="panel-body">
+        <div class="rsp-section-title">P4D Progress</div>
+        <div class="rsp-stages" id="rspStages"></div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    // Urutan tahap normal P4D (lihat DOC_CTRL_STATUS di TB_M_SYSTEM):
+    // Draft(0) -> Checking(1) -> Accepted(2) -> Sent(5)/Partially Sent(6).
+    // Rejected(3) dan belum-terdaftar ditangani terpisah di bawah.
+    // Cuma tampilkan alur proses saja, tanpa rincian distribusi per department -
+    // sudah cukup untuk kebutuhan grid ini (request Hendra 2026-08-15).
+    var RSP_STAGES = ["DRAFT", "CHECKING", "ACCEPTED", "SENT"];
+    var RSP_STAGE_LABELS = { "DRAFT": "Draft", "CHECKING": "Checking", "ACCEPTED": "Accepted", "SENT": "Sent" };
+
+    function dmOpenRegistrationStatus(row) {
+        $("#rspDocumentCode").text(row.DOCUMENT_CODE || "-");
+        $("#registrationStatusPanel").addClass("open");
+
+        var value = (row.P4D_STATUS_VAL || "").toUpperCase();
+        renderRspStages(value);
+    }
+
+    function renderRspStages(value) {
+        var $wrap = $("#rspStages").empty();
+
+        if (!value) {
+            $wrap.append('<div class="rsp-empty">This document has not been registered to P4D yet.</div>');
+            return;
+        }
+
+        if (value == "DELETED") {
+            $wrap.append('<div class="rsp-empty">This registration entry has been deleted.</div>');
+            return;
+        }
+
+        if (value == "REJECTED") {
+            $wrap.append(
+                '<div class="rsp-stage rsp-rejected" style="flex:none; width:100%;">' +
+                    '<div class="rsp-stage-icon"><i class="fa fa-times"></i></div>' +
+                    '<div class="rsp-stage-label">Rejected by QMS</div>' +
+                '</div>'
+            );
+            return;
+        }
+
+        // "PARTIALLY SENT" secara tahapan sama dengan "SENT" (distribusi sudah
+        // mulai jalan), bedanya cuma rincian per-department di bawah.
+        var normalized = value == "PARTIALLY SENT" ? "SENT" : value;
+        var currentIdx = RSP_STAGES.indexOf(normalized);
+        if (currentIdx < 0) currentIdx = 0;
+
+        RSP_STAGES.forEach(function (stage, idx) {
+            var state = idx < currentIdx ? "done" : (idx == currentIdx ? "current" : "upcoming");
+            var icon = state == "done" ? "fa-check" : (state == "current" ? "fa-hourglass-half" : "");
+
+            $wrap.append(
+                '<div class="rsp-stage rsp-' + state + '">' +
+                    '<div class="rsp-stage-icon">' + (icon ? '<i class="fa ' + icon + '"></i>' : (idx + 1)) + '</div>' +
+                    '<div class="rsp-stage-label">' + RSP_STAGE_LABELS[stage] + '</div>' +
+                '</div>'
+            );
+
+            if (idx < RSP_STAGES.length - 1) {
+                var connectorDone = idx < currentIdx ? "done" : "";
+                $wrap.append('<div class="rsp-connector-wrap"><div class="rsp-connector ' + connectorDone + '"></div></div>');
+            }
+        });
+
+        if (value == "PARTIALLY SENT") {
+            $wrap.append('<div class="rsp-empty" style="flex-basis:100%; padding-top:12px;">Partially Sent - not all target departments have been sent yet.</div>');
+        }
+    }
+
+    $(document).ready(function () {
+        $("#btn_closeRegistrationStatusPanel").on("click", function () {
+            $("#registrationStatusPanel").removeClass("open");
+        });
+
+        $(document).on("click", function (e) {
+            if ($("#registrationStatusPanel").hasClass("open") && !$(e.target).closest("#registrationStatusPanel").length) {
+                $("#registrationStatusPanel").removeClass("open");
+            }
+        });
+    });
+</script>

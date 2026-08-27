@@ -1,74 +1,199 @@
-﻿<div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+<style>
+    #modalAddEdit .modal-content { border: none; border-radius: 14px; overflow: hidden; padding: 0; }
+    #modalAddEdit .modal-header,
+    #modalAddEdit .modal-footer { display: none; } /* replaced by wfd-header / wfd-footer below */
+
+    .wfd-header {
+        background: linear-gradient(135deg, #2450D8, #1C3FA6);
+        color: #fff;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .wfd-header-icon {
+        width: 32px; height: 32px; border-radius: 9px;
+        background: rgba(255,255,255,.18);
+        display: flex; align-items: center; justify-content: center;
+        flex: none; font-size: 14px;
+    }
+    .wfd-header-title { font-size: 14.5px; font-weight: 700; }
+    .wfd-header-sub { font-size: 11px; color: rgba(255,255,255,.85); margin-top: 1px; }
+    .wfd-close {
+        margin-left: auto; background: none; border: none;
+        color: rgba(255,255,255,.85); font-size: 15px; cursor: pointer; padding: 4px;
+    }
+    .wfd-close:hover { color: #fff; }
+
+    .wfd-body { padding: 14px 20px; max-height: 82vh; overflow-y: auto; }
+
+    .wfd-card {
+        background: #F9FAFB;
+        border: 1px solid #E3E8EE;
+        border-radius: 9px;
+        padding: 10px 12px 0;
+        margin-bottom: 10px;
+    }
+    .wfd-card .form-group { margin-bottom: 8px; }
+    .wfd-card label { font-size: 12px; font-weight: 600; color: #344054; margin-bottom: 3px; }
+
+    .wfd-select-icon { position: relative; }
+    .wfd-select-icon > i {
+        position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+        color: #2450D8; font-size: 13px; z-index: 2; pointer-events: none;
+    }
+    .wfd-select-icon .form-control,
+    .wfd-select-icon .select2-container .select2-selection--single { padding-left: 30px !important; }
+    .wfd-select-icon .select2-container { width: 100% !important; }
+    .wfd-select-icon .select2-selection__rendered { padding-left: 26px !important; }
+
+    .wfd-section-title {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 12.5px; font-weight: 700; color: #1D2939;
+        margin: 0 0 6px;
+    }
+    .wfd-section-title i {
+        width: 22px; height: 22px; border-radius: 6px;
+        background: #E7F1FB; color: #2450D8;
+        display: flex; align-items: center; justify-content: center; font-size: 11px;
+        flex: none;
+    }
+    .wfd-section-title span {
+        display: block; font-size: 10.5px; font-weight: 400; color: #98A2B3; margin-top: 0;
+    }
+    .wfd-section-title .wfd-section-title-text { display: flex; flex-direction: column; }
+
+    .wfd-detail-actions {
+        display: flex; justify-content: flex-end; gap: 8px;
+        padding-bottom: 10px;
+    }
+
+    .wfd-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 14px; border-radius: 7px; font-size: 12px; font-weight: 700;
+        border: 1px solid transparent; cursor: pointer;
+    }
+    .wfd-btn-outline { background: #fff; border-color: #D5DDE8; color: #475467; }
+    .wfd-btn-outline:hover { background: #F4F6F8; }
+    .wfd-btn-success { background: #1E9E63; color: #fff; }
+    .wfd-btn-success:hover { background: #17824F; }
+    .wfd-btn-success.wfd-btn-update { background: #2450D8; }
+    .wfd-btn-success.wfd-btn-update:hover { background: #1C3FA6; }
+    .wfd-btn-primary { background: #2450D8; color: #fff; }
+    .wfd-btn-primary:hover { background: #1C3FA6; }
+    .wfd-btn-cancel { background: #fff; border-color: #D5DDE8; color: #475467; }
+    .wfd-btn-cancel:hover { background: #F4F6F8; }
+
+    .wfd-table-card { padding: 0; overflow: hidden; }
+    #detailgrid { margin-bottom: 0; }
+    #detailgrid thead th {
+        background: #F4F6F8; color: #667085; font-size: 10.5px; font-weight: 700;
+        letter-spacing: .03em; text-transform: uppercase; border-bottom: 1px solid #E3E8EE !important;
+        padding: 6px 10px;
+    }
+    #detailgrid tbody td { padding: 5px 10px; font-size: 12px; color: #344054; vertical-align: middle; }
+    #detailgrid tbody tr:hover { background: #F9FAFB; cursor: pointer; }
+    #detailgrid tbody tr.selected { background: #EAF1FD; }
+    #detailgrid tbody tr.odd, #detailgrid tbody tr.even { background: transparent; }
+
+    .wfd-level-badge {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 24px; height: 24px; border-radius: 7px;
+        background: #E7F1FB; color: #2450D8; font-weight: 700; font-size: 12px;
+    }
+
+    .wfd-row-btn {
+        width: 22px; height: 22px; border-radius: 50%;
+        border: 1px solid #D5DDE8; background: #fff; cursor: pointer;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 10px; margin: 0 2px;
+    }
+    .wfd-row-edit { color: #2450D8; border-color: #C7D9F7; }
+    .wfd-row-edit:hover { background: #F4F8FF; }
+    .wfd-row-delete { color: #C62828; border-color: #F3C6C6; }
+    .wfd-row-delete:hover { background: #FDECEA; }
+    .wfd-row-delete:disabled { color: #C2C8D1; border-color: #E3E8EE; background: #F9FAFB; cursor: not-allowed; }
+
+    .wfd-footer {
+        display: flex; justify-content: flex-end; gap: 8px;
+        padding: 10px 20px; border-top: 1px solid #EEF1F5;
+    }
+</style>
+
+<div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
     <div class="modal-dialog modal-md">
         <div class="modal-content">
-            <!-- Modal Header -->
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-                <h4 class="modal-title" id="modal-title">Add / Edit @ViewData["Title"]</h4>
+            <div class="wfd-header">
+                <div class="wfd-header-icon"><i class="fa fa-sitemap"></i></div>
+                <div>
+                    <div class="wfd-header-title" id="modal-title">Edit Workflow Doc Master</div>
+                    <div class="wfd-header-sub">Manage document level and position within the workflow</div>
+                </div>
+                <button type="button" class="wfd-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
             </div>
 
-            <!-- Modal Body -->
-            <div class="modal-body">
-                <div class="row">
-                    <div class="col-lg-12">
-                        <div class="row">
-                            <div class="col-md-12 form-group">
-                                <label class="control-label">Document Level<span class="text-red"> *</span></label>
-                                <select class="form-control" id="addEditWorkflowDocLevel"></select>
-                            </div>
+            <div class="wfd-body">
+                <div class="wfd-card">
+                    <div class="row">
+                        <div class="col-md-6 form-group">
+                            <label>Document Level<span class="text-red"> *</span></label>
+                            <div class="wfd-select-icon"><i class="fa fa-clone"></i><select class="form-control" id="addEditWorkflowDocLevel"></select></div>
                         </div>
-                        <div class="row">
-                            <div class="col-md-12 form-group">
-                                <label class="control-label">Creator Name<span class="text-red"> *</span></label>
-                                <select class="form-control" id="addEditPositionName"></select>
-                            </div>
-                        </div>
-                        <hr style="margin-top:10px; border-top: 2px solid #eee;" />
-                        <div class="row">
-                            <div class="col-md-3 form-group">
-                                <label class="control-label">Level<span class="text-red"> *</span></label>
-                                <select class="form-control select2s" id="addEditWorkflowSeq"></select>
-                            </div>
-                            <div class="col-md-9 form-group">
-                                <label class="control-label">Position Name<span class="text-red"> *</span></label>
-                                <select class="form-control" id="addEditPositionName2"></select>
-                            </div>
-                        </div>
-                        <div class="row" style="margin-top: 15px;">
-                            <div class="col-xs-6">
-                                <button type="button" class="btn btn-warning" id="btn_edit_detail" style="width: 80px;">Edit</button>
-                                <button type="button" class="btn btn-danger" id="btn_delete_detail" style="width: 80px;">Delete</button>
-                            </div>
-                            <div class="col-xs-6 text-right">
-                                <button type="button" class="btn btn-success" id="btn_add_detail" style="width: 80px;">Add</button>
-                                <button type="button" class="btn btn-grey" id="btn_clear_detail" style="width: 80px;">Clear</button>
-                            </div>
-                        </div>
-                        <div class="row" style="margin-top: 15px;">
-                            <div class="col-lg-12">
-                                <table id="detailgrid" class="table table-bordered table-condensed" width="100%" style="min-width:auto;">
-                                    <thead>
-                                        <tr>
-                                            <th width="20%" class="text-center">Level</th>
-                                            <th width="80%">Position</th>
-                                            <th class="hide">PositionId</th>
-                                        </tr>
-                                    </thead>
-                                </table>
-                            </div>
+                        <div class="col-md-6 form-group">
+                            <label>Creator Name<span class="text-red"> *</span></label>
+                            <div class="wfd-select-icon"><i class="fa fa-user-o"></i><select class="form-control" id="addEditPositionName"></select></div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Modal Footer -->
-            <div class="modal-footer">
-                <div class="row">
-                    <div class="col-xs-12 text-right">
-                        <button type="button" class="btn btn-primary" id="btn_save" style="width: 80px;">Save</button>
-                        <button type="button" class="btn btn-danger" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>
+                <div class="wfd-section-title">
+                    <i class="fa fa-user-plus"></i>
+                    <div class="wfd-section-title-text">
+                        Add New Level &amp; Position
+                        <span>Choose a level and position, then click Add to include it</span>
                     </div>
                 </div>
+                <div class="wfd-card">
+                    <div class="row">
+                        <div class="col-md-3 form-group">
+                            <label>Level<span class="text-red"> *</span></label>
+                            <div class="wfd-select-icon"><i class="fa fa-bar-chart"></i><select class="form-control select2s" id="addEditWorkflowSeq"></select></div>
+                        </div>
+                        <div class="col-md-9 form-group">
+                            <label>Position Name<span class="text-red"> *</span></label>
+                            <div class="wfd-select-icon"><i class="fa fa-briefcase"></i><select class="form-control" id="addEditPositionName2"></select></div>
+                        </div>
+                    </div>
+                    <div class="wfd-detail-actions">
+                        <button type="button" class="wfd-btn wfd-btn-outline" id="btn_clear_detail"><i class="fa fa-refresh"></i> Reset</button>
+                        <button type="button" class="wfd-btn wfd-btn-success" id="btn_add_detail"><i class="fa fa-plus"></i> Add</button>
+                    </div>
+                </div>
+
+                <div class="wfd-section-title">
+                    <i class="fa fa-list-ul"></i>
+                    <div class="wfd-section-title-text">
+                        Level &amp; Position List
+                        <span>Ordered from lowest to highest level</span>
+                    </div>
+                </div>
+                <div class="wfd-card wfd-table-card">
+                    <table id="detailgrid" class="table" width="100%" style="min-width:auto;">
+                        <thead>
+                            <tr>
+                                <th width="18%" class="text-center">Level</th>
+                                <th width="62%">Position Name</th>
+                                <th class="hide">PositionId</th>
+                                <th width="20%" class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                    </table>
+                </div>
+            </div>
+
+            <div class="wfd-footer">
+                <button type="button" class="wfd-btn wfd-btn-cancel" id="btn_cancel" data-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
+                <button type="button" class="wfd-btn wfd-btn-primary" id="btn_save"><i class="fa fa-save"></i> Save Changes</button>
             </div>
         </div>
     </div>

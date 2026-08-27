@@ -66,14 +66,6 @@
 
 <div class="box-body">
     <div id="datagrid"></div>
-    <div class="ud-info-bar">
-        <div class="ud-info-msg"><i class="fa fa-info-circle"></i> Documents with status "Published (Effective)" are the current valid documents. Please ensure you are using the latest revision.</div>
-        <div class="ud-legend">
-            <span><i class="fa fa-check-circle"></i> Accepted</span>
-            <span><i class="fa fa-hourglass-half"></i> Waiting</span>
-            <span><i class="fa fa-times-circle" style="color:#C62828"></i> Obsolete</span>
-        </div>
-    </div>
 </div>
 
 <script type="text/javascript">
@@ -99,21 +91,14 @@
         return Math.max(300, $(window).height() - gridTop - footerHeight - 70);
     }
 
-    // ---------- header stats (Total / Acknowledged / Not Acknowledged / Next Review / Obsolete) ----------
+    // ---------- header stats (Total / Acknowledged / Not Acknowledged / Obsolete) ----------
     function updateHeaderStats(rows) {
         rows = rows || [];
         var total = rows.length;
-        var acknowledged = 0, notAcknowledged = 0, nextReview = 0, obsolete = 0;
-        var today = moment().startOf("day");
-        var in30Days = moment().startOf("day").add(30, "days");
+        var acknowledged = 0, notAcknowledged = 0, obsolete = 0;
 
         rows.forEach(function (r) {
             if (r.PUBLISH_FLAG == 1) acknowledged++; else notAcknowledged++;
-
-            if (r.NEXT_REVIEW_DATE) {
-                var reviewDate = moment(r.NEXT_REVIEW_DATE).startOf("day");
-                if (!reviewDate.isBefore(today) && !reviewDate.isAfter(in30Days)) nextReview++;
-            }
 
             if (r.DOC_STATUS == "4") obsolete++;
         });
@@ -121,11 +106,37 @@
         $("#udTotal").text(total);
         $("#udAcknowledged").text(acknowledged);
         $("#udNotAcknowledged").text(notAcknowledged);
-        $("#udNextReview").text(nextReview);
         $("#udObsolete").text(obsolete);
 
-        $("#udAcknowledgedPct").text(total > 0 ? (Math.round((acknowledged / total) * 1000) / 10) + "% of total documents" : "");
-        $("#udNotAcknowledgedPct").text(total > 0 ? (Math.round((notAcknowledged / total) * 1000) / 10) + "% of total documents" : "");
+        // surfaces the "waiting acceptance" count on the collapsed toggle
+        // too, so it stays useful (not just a bare arrow) even when the
+        // panel is closed
+        udLastNotAcknowledged = notAcknowledged;
+        refreshToggleBadge();
+    }
+
+    // ---------- docked "Document Status" panel toggle - top-level (not
+    // inside $(document).ready) so updateHeaderStats() above can reach
+    // udLastNotAcknowledged too ----------
+    var udLastNotAcknowledged = 0;
+
+    function refreshToggleBadge() {
+        var collapsed = $("#dpLayoutRow").hasClass("stats-collapsed");
+        $("#dpToggleBadge").text(udLastNotAcknowledged).toggle(collapsed && udLastNotAcknowledged > 0);
+    }
+
+    function setStatsPanelCollapsed(collapsed) {
+        var $row = $("#dpLayoutRow");
+        var $icon = $("#btn_toggleStats i");
+
+        $row.toggleClass("stats-collapsed", collapsed);
+        $icon.toggleClass("fa-angle-double-right", !collapsed).toggleClass("fa-angle-double-left", collapsed);
+        $("#btn_toggleStats").attr("title", collapsed ? "Show Document Status" : "Hide Document Status");
+        refreshToggleBadge();
+
+        setTimeout(function () {
+            $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+        }, 230);
     }
 
     var udCategoryPillClasses = ["dms-pill-info", "dms-pill-success", "dms-pill-warning", "dms-pill-primary", "dms-pill-default"];
@@ -267,6 +278,24 @@
                     }
                 },
                 {
+                    dataField: "PUBLISH_FLAG",
+                    caption: "Acceptance",
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        var row = options.data;
+                        var acknowledged = row.PUBLISH_FLAG == 1;
+
+                        $("<span>")
+                            .css({ color: acknowledged ? "#1E9E63" : "#C62828", fontWeight: 600 })
+                            .html('<i class="fa ' + (acknowledged ? "fa-check-circle" : "fa-hourglass-half") + '"></i> ' + (acknowledged ? "Accepted" : "Waiting"))
+                            .appendTo(container);
+
+                        if (acknowledged && row.ACKNOWLEDGE_DT) {
+                            $("<span>").addClass("ud-ack-dt").text(moment(row.ACKNOWLEDGE_DT).format("DD MMM YYYY")).appendTo(container);
+                        }
+                    }
+                },
+                {
                     dataField: "DOCUMENT_DATE",
                     caption: "Date",
                     alignment: "center",
@@ -290,24 +319,6 @@
                             .css({ color: overdue ? "#C62828" : "#B36B00", fontWeight: 600 })
                             .text(reviewDate.format("DD MMM YYYY"))
                             .appendTo(container);
-                    }
-                },
-                {
-                    dataField: "PUBLISH_FLAG",
-                    caption: "Acceptance",
-                    alignment: "center",
-                    cellTemplate: function (container, options) {
-                        var row = options.data;
-                        var acknowledged = row.PUBLISH_FLAG == 1;
-
-                        $("<span>")
-                            .css({ color: acknowledged ? "#1E9E63" : "#C62828", fontWeight: 600 })
-                            .html('<i class="fa ' + (acknowledged ? "fa-check-circle" : "fa-hourglass-half") + '"></i> ' + (acknowledged ? "Accepted" : "Waiting"))
-                            .appendTo(container);
-
-                        if (acknowledged && row.ACKNOWLEDGE_DT) {
-                            $("<span>").addClass("ud-ack-dt").text(moment(row.ACKNOWLEDGE_DT).format("DD MMM YYYY")).appendTo(container);
-                        }
                     }
                 },
                 {
@@ -374,15 +385,8 @@
 
                         container.css("white-space", "nowrap");
 
-                        $("<button>")
-                            .attr({ type: "button", title: "View" })
-                            .addClass("dp-act-eye")
-                            .html('<i class="fa fa-eye"></i>')
-                            .on("click", function () {
-                                onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
-                            })
-                            .appendTo(container);
-
+                        // Tombol mata (View) dihapus - dipindah ke dalam kebab menu supaya
+                        // tidak duplikat (request Hendra 2026-08-15).
                         $("<button>")
                             .attr({ type: "button", title: "More actions" })
                             .addClass("dp-act-kebab")
@@ -419,6 +423,16 @@
             var eligible = canAcknowledge(row);
 
             $menu.empty();
+            $menu.append(
+                $('<li>').append(
+                    $('<button type="button" class="dp-menu-preview">')
+                        .html('<i class="fa fa-eye"></i> View')
+                        .on("click", function () {
+                            $udRowMenu.hide();
+                            onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+                        })
+                )
+            );
             $menu.append(
                 $('<li>').append(
                     $('<button type="button" class="dp-menu-download">')
@@ -460,28 +474,14 @@
             $("#datagrid").dxDataGrid("instance").showColumnChooser();
         });
 
-        // ---------- toggle summary/KPI cards, so the grid below can move up ----------
+        // ---------- toggle the docked "Document Status" panel (collapses to
+        // the right, grid reflows into the freed width via flex) ----------
         $("#btn_toggleStats").on("click", function () {
-            var $btn = $(this);
-            var $icon = $btn.find("i");
-            var $row = $("#udStatsRow");
+            setStatsPanelCollapsed(!$("#dpLayoutRow").hasClass("stats-collapsed"));
+        });
 
-            $row.stop(true, true).animate(
-                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
-                {
-                    duration: 220,
-                    easing: "swing",
-                    progress: function () {
-                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-                    },
-                    complete: function () {
-                        var collapsed = !$row.is(":visible");
-                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
-                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
-                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-                    }
-                }
-            );
+        $("#btn_closeStatsPanel").on("click", function () {
+            setStatsPanelCollapsed(true);
         });
 
         $("#btn_export").on("click", function () {

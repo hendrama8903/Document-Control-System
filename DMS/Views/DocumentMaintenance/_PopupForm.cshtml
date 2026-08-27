@@ -61,7 +61,7 @@
 
     #modalAddEdit .adf-close:hover { color: #fff; }
 
-    /* body: sidebar + content */
+    /* body: content */
     #modalAddEdit .adf-body {
         flex: 1 1 auto;
         min-height: 0;
@@ -69,84 +69,12 @@
         background: #F4F6F8;
     }
 
-    #modalAddEdit .adf-sidebar {
-        flex: none;
-        width: 220px;
-        background: #fff;
-        border-right: 1px solid #E3E8EE;
-        padding: 16px 12px;
-        overflow-y: auto;
-    }
-
-    #modalAddEdit .adf-nav-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 9px 10px;
-        border-radius: 8px;
-        cursor: pointer;
-        margin-bottom: 2px;
-    }
-
-    #modalAddEdit .adf-nav-item:hover { background: #F4F6F8; }
-
-    #modalAddEdit .adf-nav-item.active { background: #E7F1FB; }
-
-    #modalAddEdit .adf-nav-icon {
-        flex: none;
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        background: #EEF0F2;
-        color: #667085;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 11px;
-        font-weight: 700;
-    }
-
-    #modalAddEdit .adf-nav-item.active .adf-nav-icon {
-        background: #2450D8;
-        color: #fff;
-    }
-
-    #modalAddEdit .adf-nav-item b {
-        display: block;
-        font-size: 12.5px;
-        color: #1D2939;
-        font-weight: 600;
-    }
-
-    #modalAddEdit .adf-nav-item span {
-        display: block;
-        font-size: 10.5px;
-        color: #98A2B3;
-    }
-
-    #modalAddEdit .adf-tips {
-        margin-top: 14px;
-        border-top: 1px solid #E3E8EE;
-        padding-top: 14px;
-        font-size: 11px;
-        color: #66788A;
-        line-height: 1.5;
-    }
-
-    #modalAddEdit .adf-tips b {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        color: #1D2939;
-        margin-bottom: 6px;
-        font-size: 11.5px;
-    }
-
     #modalAddEdit .adf-content {
         flex: 1 1 auto;
         min-width: 0;
         overflow-y: auto;
         padding: 18px 22px;
+        counter-reset: adf-sec;
     }
 
     #modalAddEdit .adf-section {
@@ -180,6 +108,11 @@
         justify-content: center;
         font-size: 11.5px;
         font-weight: 700;
+        counter-increment: adf-sec;
+    }
+
+    #modalAddEdit .adf-section-num::before {
+        content: counter(adf-sec);
     }
 
     #modalAddEdit .form-group {
@@ -195,7 +128,7 @@
     #modalAddEdit .external-panel {
         border: 1px solid #DFE5EB;
         border-radius: 10px;
-        padding: 14px 16px 2px;
+        padding: 10px 14px 2px;
         margin: 4px 0 8px;
         background: #F7F9FB;
     }
@@ -203,11 +136,249 @@
     #modalAddEdit .external-panel .panel-title {
         font-weight: 700;
         font-size: 12.5px;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
+    }
+
+    /* Panel External dipadatkan (request Hendra 2026-08-21) - form-group bawaan
+       Bootstrap (margin-bottom 15px) bikin jarak antar baris (External > Reference
+       No/Source > Impact To Other Document) kelihatan longgar untuk panel sekecil
+       ini. Scoped ke .external-panel saja, tidak memengaruhi form-group lain. */
+    #modalAddEdit .external-panel .form-group {
+        margin-bottom: 8px;
     }
 
     #modalAddEdit .checkbox-inline-group {
         padding-top: 26px;
+    }
+
+    /* Related Division - dilebur ke dalam Classification (bukan section
+       terpisah lagi), request Hendra 2026-08-20 mengikuti mockup, supaya
+       user langsung tahu begitu pilih Document Level=2 & Document Code=SPR.
+       Legend ikon "Remarks:" (main-pic/related/not-related) DIHAPUS lagi
+       (request Hendra 2026-08-22) - rd-desc di bawah header sudah cukup. */
+
+    #modalAddEdit .rd-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+
+    #modalAddEdit .rd-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #2450D8;
+    }
+
+    #modalAddEdit .rd-desc {
+        font-size: 11.5px;
+        color: #667085;
+        margin-top: 2px;
+    }
+
+    #modalAddEdit .rd-search-wrap {
+        position: relative;
+        flex: none;
+    }
+
+    #modalAddEdit .rd-search-wrap i {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #98A2B3;
+        font-size: 11.5px;
+    }
+
+    #modalAddEdit .rd-search-wrap input {
+        width: 200px;
+        padding: 6px 10px 6px 28px;
+        font-size: 12px;
+        border: 1px solid #D0D5DD;
+        border-radius: 7px;
+    }
+
+    #modalAddEdit .rd-col {
+        margin-bottom: 6px;
+    }
+
+    /* Tile diringkas jadi 1 baris horizontal (kode kiri, tombol peran kanan) -
+       request Hendra 2026-08-21, supaya area ini lebih compact (dulu kode &
+       tombol ditumpuk vertikal, makan banyak tinggi per tile). */
+    #modalAddEdit .rd-tile {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        border: 1px solid #E3E8EE;
+        border-radius: 7px;
+        padding: 5px 8px;
+        margin: 0;
+        font-weight: normal;
+        height: 100%;
+        text-align: left;
+    }
+
+    #modalAddEdit .rd-tile-info {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        line-height: 1.15;
+    }
+
+    /* Tile sempat berupa 3 tombol ikon sekaligus, lalu 1 tombol teks+dropdown
+       (request Hendra 2026-08-20) - sekarang tombolnya jadi bulat & ICON SAJA
+       tanpa teks (request Hendra 2026-08-20 revisi ke-2, supaya lebih hemat
+       ruang). Peran "Note Related" (●) SENGAJA DIHAPUS lagi (revisi ke-3) -
+       cuma tersisa Main PIC (◎), Related (○), dan default "Not Related (-)".
+       Ikon-ikon ini SENGAJA disamakan dengan marker di export Excel
+       (DocumentMaintenanceController.WriteRelatedDivisionSection) supaya
+       konsisten. Main PIC boleh lebih dari satu divisi & dipilih manual di
+       tile lain - KECUALI tile divisi pembuat dokumen sendiri, yang dikunci
+       selalu Main PIC & read-only (lihat lockCreatorDivisionRole() di
+       _Javascript.cshtml). */
+    #modalAddEdit .rd-tile.role-main_pic {
+        border-color: #2450D8;
+        background: #EFF5FF;
+    }
+
+    #modalAddEdit .rd-tile.role-related {
+        border-color: #1D9E6C;
+        background: #EAFAF2;
+    }
+
+    #modalAddEdit .rd-tile b {
+        font-size: 12px;
+        color: #1D2939;
+    }
+
+    /* Label "CREATOR" cuma dipasang isinya utk tile yang dikunci
+       (lockCreatorDivisionRole()) - :empty menyembunyikannya sepenuhnya
+       (termasuk ruang barisnya) di tile lain, bukan cuma teksnya, supaya
+       tile normal tidak ikut lebih tinggi gara-gara baris kosong. */
+    #modalAddEdit .rd-lock-label {
+        font-size: 8.5px;
+        color: #667085;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .3px;
+    }
+
+    #modalAddEdit .rd-lock-label:empty {
+        display: none;
+    }
+
+    #modalAddEdit .rd-role-select {
+        position: relative;
+        flex: none;
+    }
+
+    #modalAddEdit .rd-role-btn {
+        width: 24px;
+        height: 24px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #D0D5DD;
+        background: #fff;
+        border-radius: 50%;
+        padding: 0;
+        font-size: 11px;
+        color: #98A2B3;
+        cursor: pointer;
+    }
+
+    #modalAddEdit .rd-role-btn:hover {
+        border-color: #98A2B3;
+        color: #667085;
+    }
+
+    #modalAddEdit .rd-role-btn:disabled {
+        cursor: not-allowed;
+    }
+
+    #modalAddEdit .rd-role-icon {
+        font-size: 11px;
+        line-height: 1;
+    }
+
+    #modalAddEdit .rd-role-btn.set[data-role="MAIN_PIC"] {
+        border-color: #2450D8;
+        background: #2450D8;
+        color: #fff;
+    }
+
+    #modalAddEdit .rd-role-btn.set[data-role="RELATED"] {
+        border-color: #1D9E6C;
+        background: #1D9E6C;
+        color: #fff;
+    }
+
+    /* Tombol sekarang di sisi kanan tile (layout horizontal, request Hendra
+       2026-08-21) - dropdown dibuka menggantung dari sisi KANAN tombol
+       (right:0, bukan center) supaya tidak gampang overflow lewat tepi kanan
+       modal/grid untuk tile di kolom paling kanan. */
+    #modalAddEdit .rd-role-menu {
+        position: absolute;
+        top: calc(100% + 4px);
+        right: 0;
+        width: 140px;
+        z-index: 60;
+        background: #fff;
+        border: 1px solid #D0D5DD;
+        border-radius: 8px;
+        box-shadow: 0 8px 20px rgba(16,24,40,.14);
+        padding: 4px;
+        display: none;
+    }
+
+    #modalAddEdit .rd-role-menu.open {
+        display: block;
+    }
+
+    #modalAddEdit .rd-role-menu-item {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        color: #344054;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    #modalAddEdit .rd-role-menu-item:hover {
+        background: #F4F6F8;
+    }
+
+    #modalAddEdit .rd-role-menu-item.active {
+        font-weight: 700;
+    }
+
+    /* "Not Related" (peran default/kosong) sengaja dipisah dengan garis dari
+       2 peran aktif di atasnya (Main PIC/Related), tapi tetap pakai warna
+       teks & ikon yang sama - ini peran yang setara, bukan lagi aksi "Clear"
+       yang diredupkan. */
+    #modalAddEdit .rd-role-menu-clear {
+        border-top: 1px solid #EEF1F5;
+        margin-top: 2px;
+        padding-top: 6px;
+    }
+
+    #modalAddEdit .rd-showmore {
+        margin-top: 4px;
+    }
+
+    #modalAddEdit .rd-showmore a {
+        font-size: 12px;
+        color: #2450D8;
+        font-weight: 600;
+        text-decoration: none;
     }
 
     #modalAddEdit .form-control:required:focus,
@@ -294,66 +465,35 @@
                 <button type="button" class="adf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
             </div>
 
-            <!-- Body: sidebar + sections -->
+            <!-- Horizontal stepper DIHAPUS (request Hendra 2026-08-20, supaya
+                 konten dapat ruang lebih) - klik-scroll-ke-section &
+                 highlight-aktif-saat-scroll di script bawah juga sudah
+                 dilepas karena elemen targetnya (.adf-step) tidak ada lagi.
+                 Penomoran section (.adf-section-num, counter CSS) tetap ada
+                 di judul tiap card sebagai penanda urutan. -->
+
             <div class="adf-body">
-                <div class="adf-sidebar">
-                    <div class="adf-nav-item active" data-target="#adfSectionBasic">
-                        <div class="adf-nav-icon">1</div>
-                        <div>
-                            <b>Basic Information</b>
-                            <span>Document details</span>
-                        </div>
-                    </div>
-                    <div class="adf-nav-item" data-target="#adfSectionOrg">
-                        <div class="adf-nav-icon">2</div>
-                        <div>
-                            <b>Organization</b>
-                            <span>Division &amp; Department</span>
-                        </div>
-                    </div>
-                    <div class="adf-nav-item" data-target="#adfSectionClassification">
-                        <div class="adf-nav-icon">3</div>
-                        <div>
-                            <b>Classification</b>
-                            <span>Document category</span>
-                        </div>
-                    </div>
-                    <div class="adf-nav-item" data-target="#adfSectionAttachment">
-                        <div class="adf-nav-icon">4</div>
-                        <div>
-                            <b>Attachment</b>
-                            <span>Upload &amp; others</span>
-                        </div>
-                    </div>
-
-                    <div class="adf-tips">
-                        <b><i class="fa fa-lightbulb-o"></i> Tips</b>
-                        Fields marked with <b style="display:inline;font-size:inherit;">*</b> are required.
-                    </div>
-                </div>
-
                 <div class="adf-content">
-                    <!-- 1. Basic Information -->
-                    <div class="adf-section" id="adfSectionBasic">
-                        <div class="adf-section-title"><span class="adf-section-num">1</span> Basic Information</div>
+                    <!-- Step: Basic Information - Document Type, Date & Document No jadi
+                         satu baris (request Hendra 2026-08-20). Document No tetap
+                         auto-generate berdasarkan Level/Division/Department/Section/
+                         ProcessCode/CompanyCode yang baru diisi di step berikutnya -
+                         wajar kalau kotaknya masih kosong sampai step 2 & 3 dilengkapi,
+                         karena listener perubahan field-field itu tidak bergantung pada
+                         urutan tampil di DOM. -->
+                    <div class="adf-section" id="adfSectionDocType">
+                        <div class="adf-section-title"><span class="adf-section-num"></span> Basic Information</div>
 
                         <div class="row">
-                            <div class="col-md-4 form-group">
+                            <div class="col-md-3 form-group">
                                 <label class="control-label">Document Type <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditDocumentType" onchange="onChangeDocumentType()" required></select>
                                 <input class="form-control" id="addEditDocumentId" type="hidden" />
                             </div>
-                            <div class="col-md-4 form-group">
-                                <label class="control-label">Document Level <span class="text-red">*</span></label>
-                                <select class="form-control" id="addEditDocumentLevel" onchange="onChangeDocumentLevel()" required></select>
-                            </div>
-                            <div class="col-md-4 form-group">
+                            <div class="col-md-3 form-group">
                                 <label class="control-label">Date <span class="text-red">*</span></label>
                                 <input class="form-control" id="addEditDate" type="date" required />
                             </div>
-                        </div>
-
-                        <div class="row">
                             <div class="col-md-6 form-group">
                                 <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; row-gap:2px;">
                                     <label class="control-label" style="margin-bottom:0;">Document No <span class="text-red">*</span></label>
@@ -374,16 +514,102 @@
                                 @*Updated By Arie - 2023-08-24*@
                                 <select class="form-control" id="addEditDocumentNo2" onchange="onChangeDocumentNo()" required></select>
                             </div>
-                            <div class="col-md-6 form-group">
+                        </div>
+                    </div>
+
+                    <!-- Step: Classification - Document Level dulu (menentukan pilihan
+                         Document Code yang tersedia lewat GetDocumentCodeByLevel), baru
+                         Document Code/Category, Process Code, Classified, Document Name,
+                         External (request Hendra 2026-08-20: Document Name dipindah ke
+                         sini dari step Document Details lama). -->
+                    <div class="adf-section" id="adfSectionClassification">
+                        <div class="adf-section-title"><span class="adf-section-num"></span> Classification</div>
+
+                        <div class="row">
+                            <div class="col-md-2 form-group">
+                                <label class="control-label">Document Level <span class="text-red">*</span></label>
+                                <select class="form-control" id="addEditDocumentLevel" onchange="onChangeDocumentLevel()" required></select>
+                            </div>
+                            <div class="col-md-2 form-group">
+                                <label class="control-label">Document Code <span class="text-red">*</span></label>
+                                <select class="form-control" id="addEditDocumentCode" required></select>
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label class="control-label">Process Code <span id="mandatoryMarkProcessCode" class="text-red">*</span></label>
+                                <select class="form-control" id="addEditProcessCode" required></select>
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label class="control-label">Classified <span class="text-red">*</span></label>
+                                <select class="form-control" id="addEditClassified" required></select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12 form-group">
                                 <label class="control-label">Document Name <span class="text-red">*</span></label>
                                 <input class="form-control" id="addEditDocumentName" type="text" oninput="removeWhiteSpace(this)" maxlength="255" required />
                             </div>
                         </div>
+
+                        <!-- Related Division (SPR/SIPOCOR Level 2 only, conditional -
+                             hidden by default, shown by updateRelatedDivisionVisibility()
+                             in _Javascript.cshtml). Ditaruh LANGSUNG setelah Document
+                             Name, sebelum panel External (request Hendra 2026-08-20) -
+                             supaya begitu user memilih Document Level=2 & Document
+                             Code=SPR, dia langsung lihat blok ini tanpa perlu scroll
+                             lewat panel External dulu. Tile divisi dokumen sendiri
+                             dikunci Main PIC & ikut ter-refresh setelah Division di step
+                             Organization diisi, lewat lockCreatorDivisionRole() -
+                             urutan render tidak masalah. -->
+                        <div id="adfSectionRelatedDivision" style="display:none;">
+                            <div class="rd-header">
+                                <div>
+                                    <div class="rd-title">Related Division</div>
+                                    <div class="rd-desc">Click a division to set its role - Related needs to acknowledge ("Mengetahui"); Not Related is the default.</div>
+                                </div>
+                                <div class="rd-search-wrap">
+                                    <i class="fa fa-search"></i>
+                                    <input type="text" id="relatedDivisionSearch" placeholder="Search division..." oninput="filterRelatedDivisionCheckboxes()" />
+                                </div>
+                            </div>
+                            <div class="row" id="relatedDivisionCheckboxes"></div>
+                            <div class="rd-showmore" id="relatedDivisionShowMore" style="display:none;">
+                                <a href="javascript:void(0);" onclick="toggleRelatedDivisionShowMore()">
+                                    <span id="relatedDivisionShowMoreText">Show more</span> <i class="fa fa-chevron-down"></i>
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="external-panel">
+                            <div class="panel-title">
+                                <input type="checkbox" id="addEditExternal" name="addEditExternal">
+                                <label for="addEditExternal" style="font-weight: 700; margin-left: 4px;">External</label>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 form-group">
+                                    <label class="control-label">Reference No <span id="mandatoryMarkReferenceNo" class="text-red" style="display: none">*</span></label>
+                                    <input class="form-control" id="addEditReferenceNo" type="text" oninput="removeWhiteSpace(this)" maxlength="255" required />
+                                </div>
+                                <div class="col-md-6 form-group">
+                                    <label class="control-label">Source <span id="mandatoryMarkSource" class="text-red" style="display: none">*</span></label>
+                                    <input class="form-control" id="addEditSource" type="text" oninput="removeWhiteSpace(this)" maxlength="255" required />
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 form-group checkbox-inline-group" style="padding-top:0;">
+                                    <input type="checkbox" id="addEditImpactToOtherDocument" name="addEditImpactToOtherDocument" value="IMP">
+                                    <label for="addEditImpactToOtherDocument" style="margin-left: 4px;">Impact To Other Document</label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- 2. Organization -->
+                    <!-- Step: Organization - divisi pemilik dokumen ini, dipakai step
+                         berikutnya (Document Details) utk bikin prefix nomor otomatis,
+                         dan (kalau Document Code = SPR & Level = 2) utk tandai Main PIC
+                         di step "Related Division" di atas. -->
                     <div class="adf-section" id="adfSectionOrg">
-                        <div class="adf-section-title"><span class="adf-section-num">2</span> Organization</div>
+                        <div class="adf-section-title"><span class="adf-section-num"></span> Organization</div>
 
                         <div class="row">
                             <div class="col-md-4 form-group">
@@ -412,52 +638,12 @@
                         </div>
                     </div>
 
-                    <!-- 3. Classification -->
-                    <div class="adf-section" id="adfSectionClassification">
-                        <div class="adf-section-title"><span class="adf-section-num">3</span> Classification</div>
-
-                        <div class="row">
-                            <div class="col-md-4 form-group">
-                                <label class="control-label">Document Code <span class="text-red">*</span></label>
-                                <select class="form-control" id="addEditDocumentCode" required></select>
-                            </div>
-                            <div class="col-md-4 form-group">
-                                <label class="control-label">Process Code <span id="mandatoryMarkProcessCode" class="text-red">*</span></label>
-                                <select class="form-control" id="addEditProcessCode" required></select>
-                            </div>
-                            <div class="col-md-4 form-group">
-                                <label class="control-label">Classified <span class="text-red">*</span></label>
-                                <select class="form-control" id="addEditClassified" required></select>
-                            </div>
-                        </div>
-
-                        <div class="external-panel">
-                            <div class="panel-title">
-                                <input type="checkbox" id="addEditExternal" name="addEditExternal">
-                                <label for="addEditExternal" style="font-weight: 700; margin-left: 4px;">External</label>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6 form-group">
-                                    <label class="control-label">Reference No <span id="mandatoryMarkReferenceNo" class="text-red" style="display: none">*</span></label>
-                                    <input class="form-control" id="addEditReferenceNo" type="text" oninput="removeWhiteSpace(this)" maxlength="255" required />
-                                </div>
-                                <div class="col-md-6 form-group">
-                                    <label class="control-label">Source <span id="mandatoryMarkSource" class="text-red" style="display: none">*</span></label>
-                                    <input class="form-control" id="addEditSource" type="text" oninput="removeWhiteSpace(this)" maxlength="255" required />
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6 form-group checkbox-inline-group" style="padding-top:0;">
-                                    <input type="checkbox" id="addEditImpactToOtherDocument" name="addEditImpactToOtherDocument" value="IMP">
-                                    <label for="addEditImpactToOtherDocument" style="margin-left: 4px;">Impact To Other Document</label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 4. Attachment -->
+                    <!-- Step: Attachment & Others - file diupload TERAKHIR karena baru
+                         di titik ini semua metadata (kode/nomor dokumen dst) sudah
+                         ditentukan, jadi validasi template (ValidateTemplateConfiguration)
+                         punya konteks DOCUMENT_ID yang benar. -->
                     <div class="adf-section" id="adfSectionAttachment">
-                        <div class="adf-section-title"><span class="adf-section-num">4</span> Attachment &amp; Others</div>
+                        <div class="adf-section-title"><span class="adf-section-num"></span> Attachment &amp; Others</div>
 
                         <div class="row">
                             <div class="col-md-6 form-group" id="fileNameContainer">
@@ -485,6 +671,7 @@
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
 
@@ -501,29 +688,6 @@
 
 <script type="text/javascript">
     $(document).ready(function () {
-        // sidebar click -> scroll to section
-        $('#modalAddEdit .adf-nav-item').on('click', function () {
-            var target = $($(this).data('target'));
-            if (target.length) {
-                $('#modalAddEdit .adf-content').animate({ scrollTop: target.position().top + $('#modalAddEdit .adf-content').scrollTop() - 8 }, 250);
-            }
-        });
-
-        // highlight sidebar item on scroll
-        $('#modalAddEdit .adf-content').on('scroll', function () {
-            var scrollPos = $(this).scrollTop();
-            var current = null;
-            $('#modalAddEdit .adf-section').each(function () {
-                if ($(this).position().top - 20 <= 0) {
-                    current = '#' + $(this).attr('id');
-                }
-            });
-            if (current) {
-                $('#modalAddEdit .adf-nav-item').removeClass('active');
-                $('#modalAddEdit .adf-nav-item[data-target="' + current + '"]').addClass('active');
-            }
-        });
-
         // drag & drop upload
         var $dropzone = $('#addEditDropzone');
         var $fileInput = $('#addEditDocumentUpload');

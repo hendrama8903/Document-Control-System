@@ -6,27 +6,6 @@ namespace DMS.Models.PrintTrack
         public string? Password { get; set; }
     }
 
-    public class CreateCopyRequestPayload
-    {
-        public string? SectionCode { get; set; }
-        public string? DocCategory { get; set; }
-        public string? Remark { get; set; }
-        public List<CreateCopyRequestLine> Lines { get; set; } = new();
-    }
-
-    public class CreateCopyRequestLine
-    {
-        public int? DocumentTransactionId { get; set; }
-        public string? DocumentCode { get; set; }
-        public string? DocumentName { get; set; }
-        public int? RevisionNo { get; set; }
-        public string? CopyType { get; set; }
-        public int? CopyQty { get; set; }
-        public string? Reason { get; set; }
-        public string? Countermeasure { get; set; }
-        public string? Remarks { get; set; }
-    }
-
     // PrintStatus: "Success" | "Failed" | "Cancelled" - lihat
     // sp_CopyRequest_PrintLog_Insert, hanya "Success" yang mengunci token.
     public class PrintLogPayload

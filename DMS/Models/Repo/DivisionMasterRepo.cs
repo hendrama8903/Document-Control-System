@@ -72,7 +72,7 @@ namespace DMS.Models.Repo
                 returnMsg
             };
 
-            string query = "EXEC @RETURN_VAL = [dbo].[sp_DivisionMaster_Insert] @DIVISION_CODE, @DIVISION_NAME, @LOGIN_USER, @RETURN_MSG OUTPUT";
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_DivisionMaster_Insert] @DIVISION_CODE=@DIVISION_CODE, @DIVISION_NAME=@DIVISION_NAME, @LOGIN_USER=@LOGIN_USER, @RETURN_MSG=@RETURN_MSG OUTPUT";
             int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
@@ -96,7 +96,7 @@ namespace DMS.Models.Repo
                 returnMsg
             };
 
-            string query = "EXEC @RETURN_VAL = [dbo].[sp_DivisionMaster_Update] @DIVISION_ID, @DIVISION_CODE, @DIVISION_NAME, @LOGIN_USER, @RETURN_MSG OUTPUT";
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_DivisionMaster_Update] @DIVISION_ID=@DIVISION_ID, @DIVISION_CODE=@DIVISION_CODE, @DIVISION_NAME=@DIVISION_NAME, @LOGIN_USER=@LOGIN_USER, @RETURN_MSG=@RETURN_MSG OUTPUT";
             int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());

@@ -4,26 +4,34 @@
         {
             <button type="button" class="btn dp-btn dp-btn-primary" id="btn_add"><i class="fa fa-plus"></i> Add</button>
         }
-        @if ((bool)ViewData["Edit"])
-        {
-            <button type="button" class="btn dp-btn dp-btn-outline" id="btn_edit"><i class="fa fa-pencil-square-o"></i> Edit</button>
-        }
-        @if ((bool)ViewData["Delete"])
-        {
-            <button type="button" class="btn dp-btn dp-btn-outline-danger" id="btn_delete"><i class="fa fa-trash-o"></i> Delete</button>
-        }
-        @if ((bool)ViewData["Approve"])
-        {
-            <button type="button" class="btn dp-btn dp-btn-outline-success" id="btn_approve_toolbar"><i class="fa fa-check-circle-o"></i> Approve</button>
-        }
-        @if ((bool)ViewData["Accept"])
-        {
-            <button type="button" class="btn dp-btn dp-btn-outline-success" id="btn_accept_toolbar" title="Confirm you have received the physical copy"><i class="fa fa-check-square-o"></i> Accepted</button>
-        }
+        <div class="dropdown" style="display:inline-block;">
+            <button type="button" class="btn dp-btn dp-btn-outline dropdown-toggle" data-toggle="dropdown">
+                <i class="fa fa-list"></i> Actions <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu dp-dropdown-menu">
+                @if ((bool)ViewData["Edit"])
+                {
+                    <li><button type="button" id="btn_edit"><i class="fa fa-pencil-square-o dp-menu-edit"></i> Edit</button></li>
+                }
+                @if ((bool)ViewData["Approve"])
+                {
+                    <li><button type="button" id="btn_approve_toolbar"><i class="fa fa-check-circle-o dp-menu-approve"></i> Approve</button></li>
+                }
+                @if ((bool)ViewData["Delete"])
+                {
+                    <li role="separator" class="divider"></li>
+                    <li><button type="button" id="btn_delete"><i class="fa fa-trash-o dp-menu-delete"></i> Delete</button></li>
+                }
+            </ul>
+        </div>
         <button type="button" class="btn dp-btn dp-btn-outline" id="btn_toggleFilters"><i class="fa fa-filter"></i> More Filters</button>
         <button type="button" class="btn dp-btn dp-btn-outline" id="btn_refresh"><i class="fa fa-refresh"></i> Refresh</button>
     </div>
     <div class="dp-toolbar-right">
         <button type="button" class="dp-icon-btn" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>
+        <button type="button" class="dp-icon-btn dp-stats-toggle" id="btn_toggleStats" title="Show Document Status">
+            <i class="fa fa-angle-double-left"></i>
+            <span class="dp-stats-toggle-badge" id="dpToggleBadge">0</span>
+        </button>
     </div>
 </div>

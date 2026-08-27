@@ -1,88 +1,195 @@
-﻿<div class="modal fade" id="modalAddEdit" tabindex="-1" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+<style>
+    #modalAddEdit .modal-content { border: none; border-radius: 14px; overflow: hidden; padding: 0; }
+    #modalAddEdit .modal-header, #modalAddEdit .modal-footer { display: none; }
+
+    .dmf-header {
+        background: linear-gradient(135deg, #2450D8, #1C3FA6);
+        color: #fff;
+        padding: 16px 22px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .dmf-header-icon {
+        width: 38px; height: 38px; border-radius: 10px;
+        background: rgba(255,255,255,.18);
+        display: flex; align-items: center; justify-content: center;
+        flex: none; font-size: 16px;
+    }
+    .dmf-header-title { font-size: 16px; font-weight: 700; }
+    .dmf-header-sub { font-size: 12px; color: rgba(255,255,255,.85); margin-top: 1px; }
+    .dmf-close {
+        margin-left: auto; background: none; border: none;
+        color: rgba(255,255,255,.85); font-size: 16px; cursor: pointer; padding: 4px;
+    }
+    .dmf-close:hover { color: #fff; }
+
+    .dmf-body { padding: 4px 22px; max-height: 74vh; overflow-y: auto; }
+
+    .dmf-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 0;
+        border-bottom: 1px solid #EEF1F5;
+    }
+    .dmf-row:last-child { border-bottom: none; }
+    .dmf-row-left {
+        display: flex; align-items: flex-start; gap: 11px;
+        flex: 0 0 210px;
+    }
+    .dmf-icon {
+        width: 36px; height: 36px; border-radius: 10px;
+        background: #E7F1FB; color: #2450D8;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 14px; flex: none;
+    }
+    .dmf-label { font-size: 13px; font-weight: 700; color: #1D2939; }
+    .dmf-sub { font-size: 11px; color: #98A2B3; margin-top: 1px; line-height: 1.3; }
+    .dmf-row-right { flex: 1 1 0; min-width: 0; }
+
+    @@media (max-width: 640px) {
+        .dmf-row { flex-direction: column; align-items: stretch; }
+        .dmf-row-left { flex: none; }
+    }
+
+    /* ---------- Template upload box ---------- */
+    .dmf-upload-box {
+        display: flex; align-items: center; gap: 12px;
+        border: 1px dashed #D0D5DD; border-radius: 10px;
+        padding: 10px 12px;
+        transition: border-color .15s ease, background .15s ease;
+    }
+    .dmf-upload-box.has-file { border-style: solid; border-color: #C7E8D5; background: #F7FCF9; }
+    .dmf-upload-icon {
+        width: 34px; height: 34px; border-radius: 8px;
+        background: #EEF1F5; color: #8A94A3;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 15px; flex: none;
+    }
+    .dmf-upload-box.has-file .dmf-upload-icon { background: #E4F7EC; color: #1E9E63; }
+    .dmf-upload-text { flex: 1 1 0; min-width: 0; }
+    .dmf-upload-filename { font-size: 12.5px; font-weight: 600; color: #344054; overflow-wrap: anywhere; }
+    .dmf-upload-box.has-file .dmf-upload-filename { color: #1D2939; }
+    .dmf-upload-hint { font-size: 10.5px; color: #98A2B3; margin-top: 1px; }
+
+    .dmf-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 7px 13px; border-radius: 7px; font-size: 12px; font-weight: 700;
+        border: 1px solid transparent; cursor: pointer; white-space: nowrap; flex: none;
+    }
+    .dmf-btn-outline { background: #fff; border-color: #C7D9F7; color: #2450D8; }
+    .dmf-btn-outline:hover { background: #F4F8FF; }
+    .dmf-btn-icon-danger {
+        width: 32px; height: 32px; border-radius: 7px; flex: none;
+        border: 1px solid #F3C6C6; background: #fff; color: #C62828; cursor: pointer;
+    }
+    .dmf-btn-icon-danger:hover { background: #FDECEA; }
+
+    .dmf-upload-maxsize { font-size: 10.5px; color: #98A2B3; margin-top: 6px; }
+
+    .dmf-footer {
+        display: flex; justify-content: flex-end; gap: 10px;
+        padding: 14px 22px; border-top: 1px solid #EEF1F5;
+    }
+    .dmf-btn-cancel { background: #fff; border-color: #D5DDE8; color: #475467; }
+    .dmf-btn-cancel:hover { background: #F4F6F8; }
+    .dmf-btn-primary { background: #2450D8; color: #fff; }
+    .dmf-btn-primary:hover { background: #1C3FA6; }
+</style>
+
+<div class="modal fade" id="modalAddEdit" tabindex="-1" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
     <div class="modal-dialog modal-md">
         <div class="modal-content">
-            <!-- Modal Header -->
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-                <h4 class="modal-title" id="modal-title">Add / Edit @ViewData["Title"]</h4>
+            <div class="dmf-header">
+                <div class="dmf-header-icon"><i class="fa fa-file-text-o"></i></div>
+                <div>
+                    <div class="dmf-header-title" id="modal-title">Add Document Master</div>
+                    <div class="dmf-header-sub">Update the document category and its signing template</div>
+                </div>
+                <button type="button" class="dmf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
             </div>
 
-            <!-- Modal Body -->
-            <div class="modal-body">
-                <div class="row">
-                    <div class="col-lg-12 form-horizontal" style="margin-top:15px; margin-left:15px">
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Document Code<span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditDocumentCode" type="text" oninput="removeWhiteSpace(this)" maxlength="5" />
-                                    </div>
-                                </div>
-                            </div>
+            <div class="dmf-body">
+                <div class="dmf-row">
+                    <div class="dmf-row-left">
+                        <div class="dmf-icon"><i class="fa fa-tag"></i></div>
+                        <div>
+                            <div class="dmf-label">Document Code <span class="text-red">*</span></div>
+                            <div class="dmf-sub">Unique document code</div>
                         </div>
+                    </div>
+                    <div class="dmf-row-right">
+                        <input class="form-control" id="addEditDocumentCode" type="text" oninput="removeWhiteSpace(this)" maxlength="5" />
+                    </div>
+                </div>
 
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Document Name<span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditDocumentName" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
-                                    </div>
-                                </div>
-                            </div>
+                <div class="dmf-row">
+                    <div class="dmf-row-left">
+                        <div class="dmf-icon"><i class="fa fa-file-o"></i></div>
+                        <div>
+                            <div class="dmf-label">Document Name <span class="text-red">*</span></div>
+                            <div class="dmf-sub">Document category name</div>
                         </div>
+                    </div>
+                    <div class="dmf-row-right">
+                        <input class="form-control" id="addEditDocumentName" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
+                    </div>
+                </div>
 
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Level<span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <select class="form-control" id="addEditLevel"></select>
-                                    </div>
-                                </div>
-                            </div>
+                <div class="dmf-row">
+                    <div class="dmf-row-left">
+                        <div class="dmf-icon"><i class="fa fa-clone"></i></div>
+                        <div>
+                            <div class="dmf-label">Level <span class="text-red">*</span></div>
+                            <div class="dmf-sub">Document hierarchy level</div>
                         </div>
+                    </div>
+                    <div class="dmf-row-right">
+                        <select class="form-control" id="addEditLevel"></select>
+                    </div>
+                </div>
 
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Review Cycle (months)</label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditReviewCycleMonths" type="number" min="0" placeholder="Leave empty if periodic review is not required" />
-                                    </div>
-                                </div>
-                            </div>
+                <div class="dmf-row">
+                    <div class="dmf-row-left">
+                        <div class="dmf-icon"><i class="fa fa-history"></i></div>
+                        <div>
+                            <div class="dmf-label">Review Cycle (months)</div>
+                            <div class="dmf-sub">Leave empty if not needed</div>
                         </div>
+                    </div>
+                    <div class="dmf-row-right">
+                        <input class="form-control" id="addEditReviewCycleMonths" type="number" min="0" placeholder="Leave empty if periodic review is not required" />
+                    </div>
+                </div>
 
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group has-feedback" id="inputContainer">
-                                    <label class="col-sm-3 control-label">Template</label>
-                                    <div class="col-sm-6" id="fileNameContainer">
-                                        <input type="file" class="filestyle" data-btnClass="btn-primary" id="attachmentPath" style="height: 31px;">
-                                    </div>
-                                    <div class="col-sm-2" style="padding-left: 0px">
-                                        <div class="btn-group">
-                                            @if ((bool)ViewData["Delete-FilePath"])
-                                            {
-                                                <button type="button" id="btn_delete_filepath" class="btn btn-danger" data-toggle="tooltip" data-placement="bottom" title="Remove Template"><i class="fa fa-trash"></i></button>
-                                            }
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                <div class="dmf-row">
+                    <div class="dmf-row-left">
+                        <div class="dmf-icon"><i class="fa fa-paperclip"></i></div>
+                        <div>
+                            <div class="dmf-label">Template</div>
+                            <div class="dmf-sub">Upload the document's signing template<br />Format: .xlsx, .xls</div>
                         </div>
+                    </div>
+                    <div class="dmf-row-right">
+                        <input type="file" id="attachmentPath" accept=".xls,.xlsx" style="display:none;" />
+                        <div class="dmf-upload-box" id="dmfUploadBox">
+                            <div class="dmf-upload-icon" id="dmfUploadIcon"><i class="fa fa-file-excel-o"></i></div>
+                            <div class="dmf-upload-text">
+                                <div class="dmf-upload-filename" id="dmfUploadFilename">No file selected</div>
+                                <div class="dmf-upload-hint" id="dmfUploadHint">Choose a template file to upload</div>
+                            </div>
+                            <button type="button" class="dmf-btn dmf-btn-outline" id="btn_chooseFile"><i class="fa fa-upload"></i> Choose file</button>
+                            <button type="button" class="dmf-btn-icon-danger" id="btn_delete_filepath" title="Remove Template" style="display:none;"><i class="fa fa-trash"></i></button>
+                        </div>
+                        <div class="dmf-upload-maxsize">Maximum file size 10MB</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Modal Footer -->
-            <div class="modal-footer">
-                <div class="col-xs-12 text-right">
-                    <button type="button" class="btn btn-primary" id="btn_save" style="width: 80px;">Save</button>
-                    <button type="button" class="btn btn-danger" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>
-                </div>
+            <div class="dmf-footer">
+                <button type="button" class="dmf-btn dmf-btn-cancel" id="btn_cancel" data-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
+                <button type="button" class="dmf-btn dmf-btn-primary" id="btn_save"><i class="fa fa-check"></i> Save</button>
             </div>
         </div>
     </div>

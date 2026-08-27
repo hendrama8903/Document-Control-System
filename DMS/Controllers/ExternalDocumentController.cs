@@ -106,6 +106,20 @@ namespace DMS.Controllers
             string folderName = "/Upload/";
             string webRootPath = Environment.WebRootPath;
 
+            // Path file lama (sebelum di-overwrite di bawah kalau ada file baru
+            // di-upload) - dulu dihapus fisik SEBELUM tahu hasil Update, jadi
+            // kalau Update gagal (mis. validasi DOCUMENT_NAME kosong di
+            // sp_ExternalDocument_Update), file lama sudah terlanjur hilang
+            // padahal baris DB masih menunjuk ke path itu (SP gagal = FILE_PATH
+            // di DB tidak berubah) - referensinya jadi rusak. Sekarang dihapus
+            // HANYA setelah Update sukses, pola sama seperti
+            // DocumentMaintenanceController.AddEditAsync (request Hendra
+            // 2026-08-16). Modul ini TIDAK punya konsep Approved/Published
+            // seperti DocumentMaintenance (STATUS di sini cuma Berlaku/Tidak
+            // Berlaku, semua baris memang boleh diedit bebas by design) -
+            // jadi tidak perlu guard status, cuma urutan hapus-nya yang salah.
+            string previousFilePath = data.FILE_PATH;
+
             try
             {
                 if (Request.Form.Files.Count > 0)
@@ -126,15 +140,6 @@ namespace DMS.Controllers
                         Directory.CreateDirectory(pathSave);
                     }
 
-                    if (data.FILE_PATH != null)
-                    {
-                        string pathCheck = webRootPath + data.FILE_PATH.Trim();
-                        if (System.IO.File.Exists(pathCheck))
-                        {
-                            System.IO.File.Delete(pathCheck);
-                        }
-                    }
-
                     data.FILE_PATH = path + fileName;
                     using (var stream = new FileStream(finalPath, FileMode.Create))
                     {
@@ -153,6 +158,17 @@ namespace DMS.Controllers
                 {
                     result = externalDocumentRepo.Update(data, GetLoginUsername(), db);
                 }
+
+                bool fileReplaced = previousFilePath != null && previousFilePath != data.FILE_PATH;
+                if (result.status && fileReplaced)
+                {
+                    string oldPhysicalPath = webRootPath + previousFilePath.Trim();
+                    if (System.IO.File.Exists(oldPhysicalPath))
+                    {
+                        System.IO.File.Delete(oldPhysicalPath);
+                    }
+                }
+
                 return Json(result);
             }
             catch (Exception ex)

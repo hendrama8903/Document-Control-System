@@ -1,147 +1,298 @@
 <style>
-    .li-steps {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        margin-bottom: 16px;
+    :root {
+        --di-primary: #2563EB;
+        --di-primary-light: #EFF6FF;
+        --di-green: #16A34A;
+        --di-green-light: #F0FDF4;
+        --di-green-border: #BBF7D0;
+        --di-amber: #D97706;
+        --di-amber-light: #FFFBEB;
+        --di-amber-border: #FDE68A;
+        --di-red: #DC2626;
+        --di-red-light: #FEF2F2;
+        --di-red-border: #FECACA;
+        --di-border: #E5E7EB;
+        --di-muted: #6B7280;
+        --di-text: #111827;
     }
 
-    .li-step {
-        flex: 1 1 220px;
-        background: var(--surface, #fff);
-        border: 1px solid var(--line, #DFE5EB);
-        border-radius: 10px;
-        padding: 14px 16px;
-    }
+    /* Compact spacing throughout (2026-08-27, request: fit steps 1-2 into one
+       screen, no scroll) - Section 3 (results) is excluded on purpose, it only
+       appears after Preview & Validate and is fine to scroll on its own. */
 
-        .li-step .li-step-no {
-            display: inline-flex;
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            background: var(--primary, #2450D8);
-            color: #fff;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: 700;
-            margin-right: 6px;
-        }
+    #excelFile, #zipFile { display: none !important; }
 
-        .li-step h4 {
-            display: inline;
-            font-size: 13px;
-            font-weight: 700;
-        }
+    .di-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+    .di-header-icon { width: 34px; height: 34px; border-radius: 8px; background: var(--di-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+    .di-header-text { flex: 1; }
+    .di-header-text h1 { font-size: 17px; font-weight: 700; margin: 0 0 2px; color: var(--di-text); }
+    .di-header-text p { margin: 0; font-size: 11.5px; color: var(--di-muted); }
 
-        .li-step p {
-            margin: 8px 0 0;
-            font-size: 12.5px;
-            color: var(--muted, #66788A);
-        }
+    /* ---------- Generic section card ---------- */
+    .di-section { background: #fff; border: 1px solid var(--di-border); border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
+    .di-section-title { font-size: 13px; font-weight: 700; margin: 0 0 2px; color: var(--di-text); }
+    .di-section-desc { font-size: 11px; color: var(--di-muted); margin: 0 0 8px; }
 
-    .li-upload-row {
-        display: flex;
-        gap: 16px;
-        flex-wrap: wrap;
-        align-items: flex-end;
-        margin-bottom: 16px;
-    }
+    /* ---------- Section 1: Prepare ---------- */
+    .di-prepare-grid { display: flex; gap: 14px; flex-wrap: wrap; }
+    .di-prepare-main { flex: 2 1 380px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .di-prepare-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--di-green-light); color: var(--di-green); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .di-prepare-text { flex: 1 1 220px; }
+    .di-prepare-text h3 { font-size: 12.5px; font-weight: 700; margin: 0 0 2px; color: var(--di-text); }
+    .di-prepare-text p { margin: 0; font-size: 11px; color: var(--di-muted); }
+    .di-prepare-cta { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
+    .di-btn-outline { display: inline-flex; align-items: center; gap: 6px; background: #fff; border: 1px solid var(--di-primary); color: var(--di-primary); border-radius: 6px; padding: 7px 14px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .di-btn-outline:hover { background: var(--di-primary-light); color: var(--di-primary); }
+    .di-prepare-meta { font-size: 9.5px; color: var(--di-muted); white-space: nowrap; }
 
-    .li-upload-field { flex: 1 1 260px; }
+    .di-info-box { flex: 1 1 220px; background: var(--di-primary-light); border-radius: 8px; padding: 8px 12px; }
+    .di-info-title { font-size: 11px; font-weight: 700; color: var(--di-primary); margin-bottom: 4px; }
+    .di-info-box ul { list-style: none; margin: 0; padding: 0; }
+    .di-info-box li { font-size: 10.5px; color: var(--di-text); margin-bottom: 3px; display: flex; align-items: center; gap: 6px; }
+    .di-info-check { display: inline-flex; align-items: center; justify-content: center; width: 13px; height: 13px; border-radius: 50%; background: var(--di-primary); color: #fff; font-size: 7px; flex-shrink: 0; }
 
-    .li-summary {
-        display: flex;
-        gap: 10px;
-        margin: 12px 0;
-    }
+    /* ---------- Section 2: Upload ---------- */
+    .di-upload-grid { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+    .di-dropzone { flex: 1 1 260px; border: 2px dashed var(--di-border); border-radius: 8px; padding: 10px 12px; text-align: center; cursor: pointer; transition: all .15s; background: #fff; }
+    .di-dropzone.dragover { border-color: var(--di-primary); background: var(--di-primary-light); }
+    .di-dropzone-excel { border-color: var(--di-green-border); background: var(--di-green-light); }
+    .di-dropzone-zip { border-color: #BFDBFE; background: var(--di-primary-light); }
+    .di-dropzone.filled.di-dropzone-excel { border-style: solid; }
+    .di-dropzone.filled.di-dropzone-zip { border-style: solid; }
+    .di-dz-icon { font-size: 18px; margin-bottom: 2px; }
+    .di-dropzone-excel .di-dz-icon { color: var(--di-green); }
+    .di-dropzone-zip .di-dz-icon { color: var(--di-primary); }
+    .di-dz-title { font-size: 12px; font-weight: 700; color: var(--di-text); }
+    .di-dz-sub { font-size: 10px; color: var(--di-muted); margin-bottom: 6px; }
 
-    .li-badge {
-        padding: 4px 12px;
-        border-radius: 999px;
-        font-size: 12.5px;
-        font-weight: 700;
-    }
+    .di-dz-inner { background: #fff; border: 1px solid var(--di-border); border-radius: 6px; padding: 8px; margin-bottom: 6px; }
+    .di-dz-dropline { font-size: 10.5px; color: var(--di-muted); }
+    .di-dz-or { font-size: 9.5px; color: var(--di-muted); margin: 3px 0; }
+    .di-dz-browse { background: #fff; border: 1px solid var(--di-border); color: var(--di-text); border-radius: 6px; padding: 4px 12px; font-size: 10.5px; font-weight: 700; }
+    .di-dz-browse:hover { background: #F9FAFB; }
 
-    .li-badge.ok { background: #E3F3E7; color: #2E7D3B; }
-    .li-badge.bad { background: #F4E3DF; color: #B5402C; }
+    .di-dz-format { font-size: 9.5px; color: var(--di-muted); margin-top: 4px; }
+    .di-dz-file { display: flex; align-items: center; gap: 8px; border: 1px solid var(--di-border); border-radius: 6px; padding: 6px 10px; margin-bottom: 4px; text-align: left; }
+    .di-dropzone-excel .di-dz-file { background: var(--di-green-light); border-color: var(--di-green-border); }
+    .di-dropzone-zip .di-dz-file { background: var(--di-primary-light); border-color: #BFDBFE; }
+    .di-dz-filename { flex: 1; font-size: 11px; color: var(--di-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .di-dz-filesize { font-size: 10px; color: var(--di-muted); flex-shrink: 0; }
+    .di-dz-check { color: var(--di-green); flex-shrink: 0; }
 
-    #tblImportResult td, #tblImportResult th { vertical-align: middle; font-size: 12.5px; }
+    .di-guidelines { flex: 1 1 220px; }
+    .di-guidelines-title { font-size: 11px; font-weight: 700; color: var(--di-text); margin-bottom: 4px; }
+    .di-guidelines-sub { font-size: 10.5px; font-weight: 700; margin-bottom: 2px; }
+    .di-guidelines-group:first-of-type .di-guidelines-sub { color: var(--di-green); }
+    .di-guidelines-group:last-of-type .di-guidelines-sub { color: var(--di-primary); }
+    .di-guidelines-group { margin-bottom: 6px; }
+    .di-guidelines ul { margin: 0 0 0 14px; padding: 0; }
+    .di-guidelines li { font-size: 10px; color: var(--di-muted); margin-bottom: 1px; }
+    .di-guidelines-help { font-size: 10.5px; color: var(--di-text); margin-top: 4px; }
+    .di-guidelines-help a { color: var(--di-primary); font-weight: 700; text-decoration: none; }
 
-    .li-status-ok { color: #2E7D3B; font-weight: 700; }
-    .li-status-bad { color: #B5402C; font-weight: 700; }
+    .di-preview-row { text-align: center; padding-top: 4px; border-top: 1px solid var(--di-border); }
+    .di-preview-note { font-size: 10px; color: var(--di-muted); margin-top: 4px; }
+    .di-preview-note i { margin-right: 4px; }
+
+    /* ---------- Section 3: Review (now a popup) ---------- */
+    #modalReview .modal-content { border-radius: 10px; overflow: hidden; padding: 0; }
+    #modalReview .modal-header, #modalReview .modal-footer { display: none; }
+    #modalReview .modal-dialog { width: 92%; max-width: 1100px; }
+    #modalReview .modal-body { padding: 16px 18px; max-height: 65vh; overflow-y: auto; }
+
+    .di-review-header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 14px 18px; border-bottom: 1px solid var(--di-border); }
+    .di-review-actions { display: flex; align-items: center; gap: 8px; }
+    .di-modal-close { background: none; border: none; color: var(--di-muted); font-size: 15px; cursor: pointer; padding: 4px; }
+    .di-modal-close:hover { color: var(--di-text); }
+
+    .di-tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+    .di-tab { border: 1px solid var(--di-border); background: #fff; border-radius: 999px; padding: 5px 14px; font-size: 12px; font-weight: 600; color: var(--di-muted); cursor: pointer; }
+    .di-tab.active { background: var(--di-primary); border-color: var(--di-primary); color: #fff; }
+
+    .di-table { width: 100%; }
+    .di-table th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .3px; color: var(--di-muted); border-bottom: 1px solid var(--di-border); padding: 8px 10px; }
+    .di-table td { font-size: 12.5px; padding: 9px 10px; border-bottom: 1px solid #F1F3F5; vertical-align: middle; }
+    .di-status-icon.ready { color: var(--di-green); }
+    .di-status-icon.warning { color: var(--di-amber); }
+    .di-status-icon.error { color: var(--di-red); }
+    .di-msg-ready { color: var(--di-green); }
+    .di-msg-warning { color: var(--di-amber); }
+    .di-msg-error { color: var(--di-red); }
+    .di-empty-row td { text-align: center; color: var(--di-muted); padding: 24px 10px; }
+
+    .di-final-actions { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-top: 1px solid var(--di-border); flex-wrap: wrap; gap: 10px; }
+    .di-final-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .di-final-note { font-size: 11.5px; color: var(--di-muted); }
 </style>
 
 <section class="content">
     <div class="row">
         <div class="col-xs-12">
-            <div class="content-header">
-                <h1>@ViewData["Title"]</h1>
-            </div>
 
-            <div class="li-steps">
-                <div class="li-step">
-                    <h4><span class="li-step-no">1</span>Download Template</h4>
-                    <p>Isi 1 baris per dokumen: nomor dokumen asli, revisi, division/department, dst.</p>
-                </div>
-                <div class="li-step">
-                    <h4><span class="li-step-no">2</span>Siapkan ZIP</h4>
-                    <p>Kumpulkan semua file PDF/Excel dalam satu ZIP. Nama file harus sama persis dengan kolom "File Name" di template.</p>
-                </div>
-                <div class="li-step">
-                    <h4><span class="li-step-no">3</span>Preview &amp; Import</h4>
-                    <p>Upload Excel + ZIP untuk divalidasi dulu. Perbaiki baris yang bermasalah sebelum klik Import.</p>
+            <div class="di-header">
+                <div class="di-header-icon"><i class="fa fa-upload"></i></div>
+                <div class="di-header-text">
+                    <h1>@ViewData["Title"]</h1>
+                    <p>Import multiple controlled documents using Excel metadata and ZIP file.</p>
                 </div>
             </div>
 
-            <div class="box box-primary">
-                <div class="box-header with-border">
-                    <h3 class="box-title">Upload</h3>
+            <!-- Section 1: Prepare -->
+            <div class="di-section">
+                <div class="di-prepare-grid">
+                    <div class="di-prepare-main">
+                        <div class="di-prepare-icon"><i class="fa fa-file-excel-o"></i></div>
+                        <div class="di-prepare-text">
+                            <h3>Prepare Your Files</h3>
+                            <p>Download the Excel template, fill in the document metadata, and prepare all PDF/Excel documents in a ZIP file.</p>
+                        </div>
+                        <div class="di-prepare-cta">
+                            <a class="di-btn-outline" href="@Url.Action("DownloadTemplate")"><i class="fa fa-download"></i> Download Excel Template</a>
+                            <div class="di-prepare-meta">File type: .xlsx &bull; Max size: 10 MB</div>
+                        </div>
+                    </div>
+                    <div class="di-info-box">
+                        <div class="di-info-title"><i class="fa fa-info-circle"></i> Before you upload</div>
+                        <ul>
+                            <li><span class="di-info-check"><i class="fa fa-check"></i></span> Fill metadata in the template</li>
+                            <li><span class="di-info-check"><i class="fa fa-check"></i></span> File Name must match exactly with the template</li>
+                            <li><span class="di-info-check"><i class="fa fa-check"></i></span> Supported file: PDF, Excel</li>
+                            <li><span class="di-info-check"><i class="fa fa-check"></i></span> All documents in a single ZIP file</li>
+                        </ul>
+                    </div>
                 </div>
-                <div class="box-body">
-                    <a class="btn btn-default btn-sm" href="@Url.Action("DownloadTemplate")"><i class="fa fa-download"></i> Download Template Excel</a>
+            </div>
 
-                    <div class="li-upload-row" style="margin-top:16px;">
-                        <div class="li-upload-field">
-                            <label>File Excel (metadata)</label>
-                            <input type="file" id="excelFile" class="form-control" accept=".xlsx" />
+            <!-- Section 2: Upload -->
+            <div class="di-section">
+                <h3 class="di-section-title">Upload Files</h3>
+                <p class="di-section-desc">Upload the completed Excel metadata and ZIP file containing documents.</p>
+
+                <div class="di-upload-grid">
+                    <div class="di-dropzone di-dropzone-excel" id="dzExcel">
+                        <input type="file" id="excelFile" accept=".xlsx,.xls" hidden />
+                        <div class="di-dz-icon"><i class="fa fa-file-excel-o"></i></div>
+                        <div class="di-dz-title">Excel Metadata</div>
+                        <div class="di-dz-sub">Upload your completed Excel template</div>
+                        <div class="di-dz-inner">
+                            <div class="di-dz-dropline">Drag &amp; drop Excel file here</div>
+                            <div class="di-dz-or">or</div>
+                            <button type="button" class="di-dz-browse">Browse File</button>
                         </div>
-                        <div class="li-upload-field">
-                            <label>File ZIP (kumpulan dokumen)</label>
-                            <input type="file" id="zipFile" class="form-control" accept=".zip" />
+                        <div class="di-dz-file" style="display:none;">
+                            <i class="fa fa-file-excel-o"></i>
+                            <span class="di-dz-filename"></span>
+                            <span class="di-dz-filesize"></span>
+                            <i class="fa fa-check-circle di-dz-check"></i>
                         </div>
-                        <div>
-                            <button type="button" class="btn btn-primary" id="btn_preview"><i class="fa fa-search"></i> Preview</button>
-                            @if ((bool)ViewData["Import"])
-                            {
-                                <button type="button" class="btn btn-success" id="btn_import" disabled><i class="fa fa-upload"></i> Import</button>
-                            }
-                        </div>
+                        <div class="di-dz-format">Format: .xlsx, .xls &bull; Max size: 10 MB</div>
                     </div>
 
-                    <div id="resultSummary" class="li-summary" style="display:none;">
-                        <span class="li-badge ok" id="badgeValid"></span>
-                        <span class="li-badge bad" id="badgeInvalid"></span>
+                    <div class="di-dropzone di-dropzone-zip" id="dzZip">
+                        <input type="file" id="zipFile" accept=".zip" hidden />
+                        <div class="di-dz-icon"><i class="fa fa-file-archive-o"></i></div>
+                        <div class="di-dz-title">Document ZIP</div>
+                        <div class="di-dz-sub">Upload ZIP file containing all documents</div>
+                        <div class="di-dz-inner">
+                            <div class="di-dz-dropline">Drag &amp; drop ZIP file here</div>
+                            <div class="di-dz-or">or</div>
+                            <button type="button" class="di-dz-browse">Browse File</button>
+                        </div>
+                        <div class="di-dz-file" style="display:none;">
+                            <i class="fa fa-file-archive-o"></i>
+                            <span class="di-dz-filename"></span>
+                            <span class="di-dz-filesize"></span>
+                            <i class="fa fa-check-circle di-dz-check"></i>
+                        </div>
+                        <div class="di-dz-format">Format: .zip &bull; Max size: 100 MB</div>
                     </div>
 
-                    <div style="overflow-x:auto;">
-                        <table class="table table-bordered" id="tblImportResult" style="display:none;">
-                            <thead>
-                                <tr>
-                                    <th style="width:60px;">Row</th>
-                                    <th>Document Code</th>
-                                    <th>Document Name</th>
-                                    <th style="width:90px;">Status</th>
-                                    <th>Detail</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tblImportResultBody"></tbody>
-                        </table>
+                    <div class="di-guidelines">
+                        <div class="di-guidelines-title">Upload Guidelines</div>
+                        <div class="di-guidelines-group">
+                            <div class="di-guidelines-sub">Excel Metadata</div>
+                            <ul>
+                                <li>Format: .xlsx or .xls</li>
+                                <li>Maximum size: 10 MB</li>
+                            </ul>
+                        </div>
+                        <div class="di-guidelines-group">
+                            <div class="di-guidelines-sub">Document ZIP</div>
+                            <ul>
+                                <li>Format: .zip</li>
+                                <li>Maximum size: 100 MB</li>
+                                <li>Allowed file types: PDF, Excel</li>
+                                <li>File name must match template</li>
+                            </ul>
+                        </div>
+                        <div class="di-guidelines-help">Need help? <a href="#" onclick="return false;">View guide <i class="fa fa-external-link"></i></a></div>
                     </div>
+                </div>
+
+                <div class="di-preview-row">
+                    <button type="button" class="btn btn-primary btn-lg" id="btn_preview"><i class="fa fa-eye"></i> Preview &amp; Validate</button>
+                    <div class="di-preview-note"><i class="fa fa-lock"></i>Import will be available after successful validation</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- Review & Import - shown as a popup once Preview & Validate finishes -->
+<div class="modal fade" id="modalReview" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="di-review-header">
+                <div>
+                    <h3 class="di-section-title" style="margin:0;">Review &amp; Import</h3>
+                    <p class="di-section-desc" style="margin:2px 0 0;">Review validation results before importing documents.</p>
+                </div>
+                <div class="di-review-actions">
+                    <button type="button" class="btn btn-default btn-sm" id="btn_export"><i class="fa fa-download"></i> Export Result</button>
+                    <button type="button" class="btn btn-default btn-sm" id="btn_viewErrors"><i class="fa fa-filter"></i> View Error Only</button>
+                    <button type="button" class="di-modal-close" data-dismiss="modal" aria-label="Close"><i class="fa fa-times"></i></button>
+                </div>
+            </div>
+
+            <div class="modal-body">
+                <div class="di-tabs" id="diTabs">
+                    <button type="button" class="di-tab active" data-filter="all">All <span id="tabAllCount">0</span></button>
+                    <button type="button" class="di-tab" data-filter="ready">Ready <span id="tabReadyCount">0</span></button>
+                    <button type="button" class="di-tab" data-filter="warning">Warning <span id="tabWarningCount">0</span></button>
+                    <button type="button" class="di-tab" data-filter="error">Error <span id="tabErrorCount">0</span></button>
+                </div>
+
+                <div style="overflow-x:auto;">
+                    <table class="table di-table" id="tblImportResult">
+                        <thead>
+                            <tr>
+                                <th style="width:30px;"></th>
+                                <th>Document No.</th>
+                                <th>Revision</th>
+                                <th>Document Title</th>
+                                <th>File Name</th>
+                                <th>File Size</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tblImportResultBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="di-final-actions">
+                <button type="button" class="btn btn-default" id="btn_cancel">Cancel</button>
+                <div class="di-final-right">
+                    @if ((bool)ViewData["Import"])
+                    {
+                        <button type="button" class="btn btn-primary" id="btn_import" disabled><i class="fa fa-upload"></i> Import <span id="btnImportCount">0</span> Documents</button>
+                    }
+                    <div class="di-final-note" id="importNote">All rows must be error-free before you can import</div>
                 </div>
             </div>
         </div>
     </div>
-</section>
+</div>
 
 @Html.Partial("_Javascript")

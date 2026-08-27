@@ -1,0 +1,81 @@
+-- =====================================================================
+-- Maintenance: reset semua data transaksi + nomor urut dokumen ke awal,
+-- untuk mulai testing dari kondisi bersih (2026-08-16, run kedua di hari
+-- yang sama - data uji Register/Revision/P4D dari sesi pengujian
+-- sebelumnya perlu dibersihkan lagi).
+--
+-- Isi & urutan operasi SAMA PERSIS dengan Maintenance_ResetTransactionData_20260816.sql
+-- (sudah diverifikasi jalan tanpa error di run pertama) - cuma suffix nama
+-- tabel backup diganti _20260816b supaya tidak tabrakan dengan backup dari
+-- run pertama hari yang sama (_20260816).
+--
+-- Backup lama (_BACKUP_20260810, _BACKUP_20260812, _BACKUP_20260816) TIDAK disentuh.
+--
+-- Skrip sekali-jalan - jangan dijalankan ulang tanpa sadar.
+-- Jalankan di database DMS_NEW
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- Bagian 1: Backup
+-- ---------------------------------------------------------------------
+SELECT * INTO TB_R_DOCUMENT_BACKUP_20260816b FROM TB_R_DOCUMENT;
+SELECT * INTO TB_R_CTRL_DOCUMENT_BACKUP_20260816b FROM TB_R_CTRL_DOCUMENT;
+SELECT * INTO TB_R_DOCUMENT_DISTRIBUTION_BACKUP_20260816b FROM TB_R_DOCUMENT_DISTRIBUTION;
+SELECT * INTO TB_R_DOCUMENT_LOG_BACKUP_20260816b FROM TB_R_DOCUMENT_LOG;
+SELECT * INTO TB_R_DOCUMENT_HISTORY_BACKUP_20260816b FROM TB_R_DOCUMENT_HISTORY;
+SELECT * INTO TB_R_PUBLISH_HISTORY_BACKUP_20260816b FROM TB_R_PUBLISH_HISTORY;
+SELECT * INTO TB_R_APPROVAL_H_BACKUP_20260816b FROM TB_R_APPROVAL_H;
+SELECT * INTO TB_R_APPROVAL_D_BACKUP_20260816b FROM TB_R_APPROVAL_D;
+SELECT * INTO TB_R_APPROVAL_REASSIGN_LOG_BACKUP_20260816b FROM TB_R_APPROVAL_REASSIGN_LOG;
+SELECT * INTO TB_R_DOC_SUBMISSION_FORM_H_BACKUP_20260816b FROM TB_R_DOC_SUBMISSION_FORM_H;
+SELECT * INTO TB_R_DOC_SUBMISSION_FORM_D_BACKUP_20260816b FROM TB_R_DOC_SUBMISSION_FORM_D;
+SELECT * INTO TB_R_COPY_REQUEST_H_BACKUP_20260816b FROM TB_R_COPY_REQUEST_H;
+SELECT * INTO TB_R_COPY_REQUEST_D_BACKUP_20260816b FROM TB_R_COPY_REQUEST_D;
+SELECT * INTO TB_R_COPY_REQUEST_PRINT_LOG_BACKUP_20260816b FROM TB_R_COPY_REQUEST_PRINT_LOG;
+SELECT * INTO TB_R_NOTIFICATION_BACKUP_20260816b FROM TB_R_NOTIFICATION;
+SELECT * INTO TB_R_LOG_H_BACKUP_20260816b FROM TB_R_LOG_H;
+SELECT * INTO TB_R_LOG_D_BACKUP_20260816b FROM TB_R_LOG_D;
+SELECT * INTO TB_M_EXTERNAL_DOCUMENT_BACKUP_20260816b FROM TB_M_EXTERNAL_DOCUMENT;
+GO
+
+-- ---------------------------------------------------------------------
+-- Bagian 2: Truncate/Delete (child sebelum parent utk yang ada FK)
+-- ---------------------------------------------------------------------
+SET QUOTED_IDENTIFIER ON;
+SET ANSI_NULLS ON;
+GO
+
+TRUNCATE TABLE TB_R_DOC_SUBMISSION_FORM_D;
+DELETE FROM TB_R_DOC_SUBMISSION_FORM_H;
+DBCC CHECKIDENT ('TB_R_DOC_SUBMISSION_FORM_H', RESEED, 0);
+
+TRUNCATE TABLE TB_R_COPY_REQUEST_PRINT_LOG;
+DELETE FROM TB_R_COPY_REQUEST_D;
+DBCC CHECKIDENT ('TB_R_COPY_REQUEST_D', RESEED, 0);
+DELETE FROM TB_R_COPY_REQUEST_H;
+DBCC CHECKIDENT ('TB_R_COPY_REQUEST_H', RESEED, 0);
+
+TRUNCATE TABLE TB_R_LOG_D;
+TRUNCATE TABLE TB_R_LOG_H;
+TRUNCATE TABLE TB_R_APPROVAL_D;
+TRUNCATE TABLE TB_R_APPROVAL_H;
+TRUNCATE TABLE TB_R_APPROVAL_REASSIGN_LOG;
+TRUNCATE TABLE TB_R_DOCUMENT_DISTRIBUTION;
+TRUNCATE TABLE TB_R_PUBLISH_HISTORY;
+TRUNCATE TABLE TB_R_DOCUMENT_HISTORY;
+TRUNCATE TABLE TB_R_DOCUMENT_LOG;
+TRUNCATE TABLE TB_R_CTRL_DOCUMENT;
+TRUNCATE TABLE TB_R_DOCUMENT;
+TRUNCATE TABLE TB_R_NOTIFICATION;
+TRUNCATE TABLE TB_M_EXTERNAL_DOCUMENT;
+GO
+
+-- ---------------------------------------------------------------------
+-- Bagian 3: Reset nomor urut dokumen (TB_M_SEQUENCE) balik ke 0
+-- ---------------------------------------------------------------------
+UPDATE TB_M_SEQUENCE
+SET SEQ_NO = 0,
+	CHANGED_BY = 'dms.admin',
+	CHANGED_DT = GETDATE()
+WHERE SEQ_NO <> 0;
+GO

@@ -53,4 +53,48 @@ namespace DMS.Models.DB
         public string? HEADER_STATUS { get; set; }
         public string? FILE_PATH { get; set; }
     }
+
+    // Proyeksi sp_CopyRequest_PrintQueue - antrian cetak PrintTrack (desktop),
+    // di-scope ke requester yang login. Keyless & tanpa [Table] sama seperti
+    // CopyRequestDetailForPrint (request Hendra 2026-08-15).
+    public class CopyRequestPrintQueueItem
+    {
+        public int? REQUEST_DETAIL_ID { get; set; }
+        public int? REQUEST_ID { get; set; }
+        public string? REQUEST_NO { get; set; }
+        public int? LINE_NO { get; set; }
+        public string? DOCUMENT_CODE { get; set; }
+        public string? DOCUMENT_NAME { get; set; }
+        public int? REVISION_NO { get; set; }
+        public string? COPY_TYPE { get; set; }
+        public string? COPY_TYPE_DISPLAY { get; set; }
+        public int? COPY_QTY { get; set; }
+        public string? APPROVED_BY { get; set; }
+        public DateTime? APPROVED_DT { get; set; }
+    }
+
+    // Proyeksi sp_CopyRequest_PrintLogSearch - panel monitoring "Print" di
+    // web CopyRequest/Index. DETAIL_PRINT_STATUS ('0'/'1') dan
+    // LOG_PRINT_STATUS ('Success'/'Failed'/'Cancelled') SENGAJA dialiaskan
+    // beda nama di SP - dua domain nilai yang berbeda, jangan disatukan
+    // (request Hendra 2026-08-15).
+    public class CopyRequestPrintLogItem
+    {
+        public int? REQUEST_DETAIL_ID { get; set; }
+        public int? LINE_NO { get; set; }
+        public string? DOCUMENT_CODE { get; set; }
+        public string? DOCUMENT_NAME { get; set; }
+        public int? COPY_QTY { get; set; }
+        public string? DETAIL_PRINT_STATUS { get; set; }
+        public int? PRINT_LOG_ID { get; set; }
+        public string? COMPUTER_NAME { get; set; }
+        public string? PRINTER_NAME { get; set; }
+        public int? PAGE_COUNT { get; set; }
+        public int? COPY_COUNT { get; set; }
+        public int? TOTAL_SHEETS { get; set; }
+        public string? LOG_PRINT_STATUS { get; set; }
+        public string? ERROR_DETAIL { get; set; }
+        public string? PRINTED_BY { get; set; }
+        public DateTime? PRINTED_DT { get; set; }
+    }
 }

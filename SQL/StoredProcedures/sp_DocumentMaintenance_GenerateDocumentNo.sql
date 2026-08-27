@@ -40,7 +40,13 @@ BEGIN
 										''  DOCUMENT_YEAR,
 										'' DIVISION,
 										'' IS_APPROVED,
-										'' P4D_STATUS_VAL
+										'' CATEGORY_CODE,
+										'' P4D_STATUS_VAL,
+										NULL CURRENT_APPROVAL_SEQ,
+										NULL TOTAL_APPROVAL_SEQ,
+										'' CURRENT_APPROVAL_LABEL,
+										'' CURRENT_APPROVER,
+										'' CURRENT_APPROVER_NAME
 	from TB_R_DOCUMENT
 
 END

@@ -22,7 +22,8 @@ BEGIN
 										E.MERGE_CELL_ROW,
 										E.MERGE_CELL_COL,
 										E.CHECK_SHEET_POSITION,
-										E.SHEET_POSITION
+										E.SHEET_POSITION,
+										E.TARGET_POSITION_ID
 									FROM [dbo].[TB_M_EXCEL_TEMPLATE] E
 									WHERE 1 = 1 '	
 									

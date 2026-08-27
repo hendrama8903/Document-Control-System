@@ -1,0 +1,113 @@
+<style>
+    #modalTemplateCenter .modal-dialog { width: 820px; max-width: 94vw; }
+    #modalTemplateCenter .modal-content { border: none; border-radius: 14px; overflow: hidden; padding: 0; }
+
+    .tpl-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 18px 22px 14px;
+        border-bottom: 1px solid #EEF1F5;
+    }
+    .tpl-title { font-size: 16px; font-weight: 700; color: #101828; }
+    .tpl-sub { font-size: 12px; color: #667085; margin-top: 3px; }
+
+    .tpl-header-right { display: flex; align-items: center; gap: 10px; }
+    .tpl-search { position: relative; }
+    .tpl-search i {
+        position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+        color: #98A2B3; font-size: 12px; pointer-events: none;
+    }
+    .tpl-search input {
+        width: 200px;
+        padding: 7px 10px 7px 30px;
+        border: 1px solid #D0D5DD;
+        border-radius: 8px;
+        font-size: 12.5px;
+        color: #344054;
+    }
+    .tpl-search input:focus { outline: none; border-color: #2450D8; }
+
+    .tpl-close {
+        background: none; border: none; color: #98A2B3;
+        font-size: 15px; cursor: pointer; padding: 4px;
+    }
+    .tpl-close:hover { color: #475467; }
+
+    .tpl-body { padding: 6px 22px 4px; max-height: 62vh; overflow-y: auto; }
+    .tpl-table { width: 100%; margin-bottom: 0; }
+    .tpl-table thead th {
+        background: #F9FAFB; color: #667085; font-size: 10.5px; font-weight: 700;
+        letter-spacing: .03em; text-transform: uppercase; border-bottom: 1px solid #EEF1F5 !important;
+        padding: 8px 10px; white-space: nowrap;
+    }
+    .tpl-table tbody td { padding: 9px 10px; font-size: 12.5px; color: #344054; vertical-align: middle; border-top: 1px solid #F4F6F8; }
+    .tpl-table tbody tr:hover { background: #F9FAFB; }
+
+    .tpl-doc-code { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #1D2939; }
+    .tpl-doc-code i { color: #1E9E63; font-size: 15px; }
+    .tpl-format { color: #1E9E63; font-weight: 600; font-size: 11.5px; }
+    .tpl-size { color: #98A2B3; }
+
+    .tpl-btn-download {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 5px 12px; border-radius: 7px; font-size: 11.5px; font-weight: 700;
+        background: #2450D8; color: #fff; border: none; cursor: pointer; white-space: nowrap;
+    }
+    .tpl-btn-download:hover { background: #1C3FA6; }
+
+    .tpl-empty { text-align: center; padding: 30px 0; color: #98A2B3; font-size: 12.5px; }
+
+    .tpl-footer {
+        display: flex; align-items: center; gap: 8px;
+        margin: 10px 22px 18px;
+        padding: 10px 14px;
+        background: #F4F8FF;
+        border: 1px solid #E7F1FB;
+        border-radius: 9px;
+        font-size: 11.5px;
+        color: #475467;
+    }
+    .tpl-footer i { color: #2450D8; }
+</style>
+
+<div class="modal fade" id="modalTemplateCenter" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="tpl-header">
+                <div>
+                    <div class="tpl-title">Template Center</div>
+                    <div class="tpl-sub">Download the template that matches your document type.</div>
+                </div>
+                <div class="tpl-header-right">
+                    <div class="tpl-search">
+                        <i class="fa fa-search"></i>
+                        <input type="text" id="tplSearchInput" placeholder="Search template..." autocomplete="off" />
+                    </div>
+                    <button type="button" class="tpl-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
+                </div>
+            </div>
+
+            <div class="tpl-body">
+                <table class="tpl-table">
+                    <thead>
+                        <tr>
+                            <th width="20%">Document Type</th>
+                            <th width="34%">Description</th>
+                            <th width="14%">Format</th>
+                            <th width="14%">Size</th>
+                            <th width="18%">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tplTableBody"></tbody>
+                </table>
+                <div class="tpl-empty" id="tplEmptyState" style="display:none;">No template found.</div>
+            </div>
+
+            <div class="tpl-footer">
+                <i class="fa fa-info-circle"></i> Make sure you use the latest template to avoid upload data errors.
+            </div>
+        </div>
+    </div>
+</div>

@@ -48,6 +48,17 @@ namespace DMS.Models.DB
         public DateTime? DOCUMENT_REVISION_0_DATE { get; set; }
         public DateTime? NEXT_REVIEW_DATE { get; set; }
         public string? P4D_STATUS_VAL { get; set; }
+        public string? CATEGORY_CODE { get; set; }
+
+        // Progress approval berjenjang saat ini (TB_R_APPROVAL_H/D) - biar approver
+        // (mis. DeptHead) tidak perlu buka satu-satu untuk tahu dokumen mana yang
+        // levelnya sudah lewat dia vs yang benar-benar butuh aksinya di grid list
+        // (request Hendra 2026-08-14). Cuma relevan saat STATUS = Waiting Approval.
+        public int? CURRENT_APPROVAL_SEQ { get; set; }
+        public int? TOTAL_APPROVAL_SEQ { get; set; }
+        public string? CURRENT_APPROVAL_LABEL { get; set; }
+        public string? CURRENT_APPROVER { get; set; }
+        public string? CURRENT_APPROVER_NAME { get; set; }
 
         [NotMapped]
         public string? NOT_EXIST_FLAG { get; set; }
@@ -55,5 +66,10 @@ namespace DMS.Models.DB
         public string? REVISION_ALLOWAL_FLAG { get; set; }
         [NotMapped]
         public int? MANUAL_SEQ_NO { get; set; }
+        // Fitur "Divisi Terkait" (SPR/SIPOCOR Level 2) - kode divisi terpilih
+        // dipisah koma (mis. "CED,FAD,ITD"), dikirim dari form Add Document,
+        // bukan kolom TB_R_DOCUMENT (lihat TB_R_DOCUMENT_RELATED_DIVISION).
+        [NotMapped]
+        public string? RELATED_DIVISIONS { get; set; }
     }
 }

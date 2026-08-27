@@ -30,7 +30,6 @@ namespace DMS.Controllers
 
         private CopyRequestRepo copyRequestRepo = CopyRequestRepo.Instance;
         private P4DMaintenanceRepo p4DMaintenanceRepo = P4DMaintenanceRepo.Instance;
-        private UserDashboardRepo userDashboardRepo = UserDashboardRepo.Instance;
 
         public IActionResult Index()
         {
@@ -55,9 +54,8 @@ namespace DMS.Controllers
             ViewData["Submit"] = HttpContext.Session.GetString("functionList").Contains("COPYREQUEST-SUBMIT");
             ViewData["Print"] = HttpContext.Session.GetString("functionList").Contains("COPYREQUEST-PRINT");
             ViewData["Approve"] = HttpContext.Session.GetString("functionList").Contains("COPYREQUEST-APPROVE");
-            ViewData["Accept"] = HttpContext.Session.GetString("functionList").Contains("COPYREQUEST-ACCEPT");
 
-            ViewData["Title"] = "Controlled Copy Request";
+            ViewData["Title"] = "Print Request";
 
             return View();
         }
@@ -163,23 +161,6 @@ namespace DMS.Controllers
             }
         }
 
-        // Requester mengonfirmasi sudah menerima copy fisiknya, setelah QMS
-        // Approve - komunikasi dua arah: QMS lihat status Approve/Reject-nya
-        // sendiri, requester lihat & konfirmasi penerimaan lewat langkah ini
-        // (request Hendra 2026-08-13, mirror Send Distribution/Accepted di P4D).
-        public JsonResult Accept(int requestId)
-        {
-            try
-            {
-                DBResult result = copyRequestRepo.Accept(requestId, GetLoginUsername(), db);
-                return Json(result);
-            }
-            catch (Exception ex)
-            {
-                return Json(new { status = false, message = ex.Message });
-            }
-        }
-
         public JsonResult Cancel(int requestId)
         {
             try
@@ -208,23 +189,52 @@ namespace DMS.Controllers
             }
         }
 
-        // Document picker: dokumen yang SUDAH terdaftar P4D dan sudah
-        // Received/Published (STATUS 2 atau 5) - beda dari
+        // Panel monitoring "Print" - rincian eksekusi cetak per baris dokumen
+        // (PrintTrack), termasuk percobaan yang gagal, untuk kolom Print di
+        // grid CopyRequest/Index (request Hendra 2026-08-15).
+        public ActionResult SearchPrintLog(int requestId)
+        {
+            try
+            {
+                var listData = copyRequestRepo.SearchPrintLog(requestId, db);
+                return Json(new { status = true, data = listData });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        // Document picker: SEMUA dokumen yang SUDAH terdaftar P4D dan sudah
+        // Received/Published (STATUS 2 atau 5), lintas department - TIDAK
+        // dibatasi ke department requester sendiri (request Hendra 2026-08-14,
+        // sebelumnya dibatasi). loginUser sengaja null supaya scoping
+        // division/department bawaan sp_P4DMaintenance_Search (lihat SP:
+        // filter by TB_M_USER_POS milik @USERNAME kalau bukan QMS) juga tidak
+        // ikut membatasi hasilnya. Beda dari
         // DocumentSubmissionController.SearchP4DPendingDocuments yang justru
         // mencari STATUS='0' (belum diregister). OPERATION_TYPE=1 = registrasi
         // P4D asli, bukan baris hasil Request/Copy Request user lain.
+        //
+        // Dulu dokumen yang department requester sudah jadi target distribusi
+        // resminya (softcopy P4D) disembunyikan dari sini - tapi Print
+        // Request selalu untuk HARDCOPY (COPY_TYPE cuma Hitam Putih/Warna,
+        // tidak ada varian softcopy), jadi department yang sudah punya akses
+        // softcopy via distribusi tetap berhak minta cetak fisik terpisah
+        // (mis. untuk ditempel di workstation). Filter itu dihapus (request
+        // Hendra 2026-08-18) - lihat juga sp_CopyRequest_Submit yang jaring
+        // pengaman sisi server-nya juga sudah dicabut.
         public JsonResult SearchApprovedDocuments()
         {
             try
             {
                 var searchData = new DocumentControlMaintenance
                 {
-                    DEPARTMENT_ID = GetLoginDepartmentId(),
                     STATUS = "2,5",
                     OPERATION_TYPE = 1
                 };
 
-                IList<DocumentControlMaintenance> dataList = p4DMaintenanceRepo.Search(searchData, GetLoginUsername(), db, null, null).ToList();
+                IList<DocumentControlMaintenance> dataList = p4DMaintenanceRepo.Search(searchData, null, db, null, null).ToList();
 
                 return Json(new { status = true, data = dataList });
             }
@@ -267,58 +277,22 @@ namespace DMS.Controllers
         // ada chain internal berjenjang seperti Document Submission (keputusan
         // Hendra 2026-08-11). Fulfillment (bikin baris TB_R_CTRL_DOCUMENT)
         // dijalankan begitu status berhasil pindah ke Approved.
+        // Fulfillment (dulu bikin baris TB_R_CTRL_DOCUMENT di UserDashboard
+        // begitu Approved, lewat sp_UserDashboard_Request) SENGAJA dicabut -
+        // requester sekarang cetak sendiri lewat PrintTrack begitu status
+        // Approved, tidak perlu lagi acknowledge terpisah di modul lain
+        // (request Hendra 2026-08-15). Lihat SQL/CopyRequest_RemoveAcceptStep.sql.
         public JsonResult ApproveReject(int requestId, string mode, string remark)
         {
             try
             {
                 bool isApproved = mode == "approve";
                 DBResult result = copyRequestRepo.ApproveReject(requestId, isApproved, remark, GetLoginUsername(), db);
-
-                if (result.status && isApproved)
-                {
-                    CopyRequest header = copyRequestRepo.GetByKey(new CopyRequest { REQUEST_ID = requestId }, db);
-                    if (header != null)
-                    {
-                        FulfillApprovedRequest(requestId, header.REQUESTED_BY);
-                    }
-                }
-
                 return Json(result);
             }
             catch (Exception ex)
             {
                 return Json(new { status = false, message = ex.Message });
-            }
-        }
-
-        // Begitu request Approved, buat baris TB_R_CTRL_DOCUMENT
-        // (OPERATION_TYPE=2) untuk tiap dokumen di detail - reuse
-        // sp_UserDashboard_Request apa adanya (sama seperti tombol "Request
-        // Document" lama), supaya efeknya tetap sama: dokumen muncul di
-        // UserDashboard si requester dan siap di-Acknowledge. Per-baris
-        // dibungkus try/catch terpisah - satu baris gagal (mis. departmentnya
-        // sudah didistribusikan, atau sudah pernah direquest orang ini
-        // sebelumnya) tidak boleh menggagalkan baris lain atau approval yang
-        // sudah tercatat.
-        private void FulfillApprovedRequest(int requestId, string requestedBy)
-        {
-            IList<CopyRequestDetail> details = copyRequestRepo.SearchDetail(new CopyRequestDetail { REQUEST_ID = requestId }, db, null, null);
-
-            foreach (CopyRequestDetail detail in details)
-            {
-                if (detail.DOCUMENT_TRANSACTION_ID == null) continue;
-
-                try
-                {
-                    userDashboardRepo.Insert(new DocumentControlMaintenance
-                    {
-                        DOCUMENT_TRANSACTION_ID = detail.DOCUMENT_TRANSACTION_ID
-                    }, requestedBy, db);
-                }
-                catch
-                {
-                    // Best-effort per baris - lihat komentar di atas.
-                }
             }
         }
 

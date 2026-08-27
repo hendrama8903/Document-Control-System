@@ -16,14 +16,29 @@
         min-width: 170px;
         min-height: 130px;
         background: var(--surface);
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--accent);
         border-radius: 14px;
-        box-shadow: var(--shadow);
+        box-shadow: 0 2px 4px rgba(20,35,50,.06), 0 12px 28px -14px rgba(20,35,50,.28);
         padding: 22px 24px;
         display: flex;
         flex-direction: column;
         justify-content: center;
         gap: 10px;
+        transition: transform .15s ease, box-shadow .15s ease;
     }
+
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(20,35,50,.08), 0 16px 32px -14px rgba(20,35,50,.32);
+        }
+
+        .kpi-card.blue { border-left-color: var(--accent); }
+        .kpi-card.amber { border-left-color: var(--emas); }
+        .kpi-card.red { border-left-color: var(--merah); }
+        .kpi-card.teal { border-left-color: #0E8A8A; }
+        .kpi-card.green { border-left-color: #2E7D3B; }
+        .kpi-card.purple { border-left-color: #6C3FB5; }
 
     .kpi-more-detail {
         position: absolute;
@@ -225,16 +240,8 @@
 </style>
 
 <section class="content">
-    <div class="row">
-        <div class="col-xs-12">
-            <div class="adm-page-head">
-                <h1>@ViewData["Title"]</h1>
-            </div>
-        </div>
-    </div>
-
     <div class="kpi-row">
-        <div class="kpi-card">
+        <div class="kpi-card blue">
             <a class="kpi-more-detail" href="@Url.Action("Index", "DocumentReport")" title="More Detail"><i class="fa fa-external-link"></i></a>
             <div class="kpi-top">
                 <div class="kpi-icon blue"><i class="fa fa-file-text-o"></i></div>
@@ -242,7 +249,7 @@
             </div>
             <div class="kpi-label" id="lblTotalDocuments">Total Documents</div>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card amber">
             <a class="kpi-more-detail" id="lnkPendingApprovals" href="@Url.Action("Index", "DocumentMaintenance")" title="More Detail"><i class="fa fa-external-link"></i></a>
             <div class="kpi-top">
                 <div class="kpi-icon amber"><i class="fa fa-clock-o"></i></div>
@@ -250,7 +257,7 @@
             </div>
             <div class="kpi-label" id="lblPendingApprovals">Pending Approvals</div>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card red">
             <a class="kpi-more-detail" id="lnkRejected" href="@Url.Action("Index", "DocumentMaintenance")" title="More Detail"><i class="fa fa-external-link"></i></a>
             <div class="kpi-top">
                 <div class="kpi-icon red"><i class="fa fa-times-circle"></i></div>
@@ -258,7 +265,7 @@
             </div>
             <div class="kpi-label" id="lblRejected">Rejected Documents</div>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card teal">
             <a class="kpi-more-detail" id="lnkUploadedToday" href="@Url.Action("Index", "DocumentMaintenance")" title="More Detail"><i class="fa fa-external-link"></i></a>
             <div class="kpi-top">
                 <div class="kpi-icon teal"><i class="fa fa-cloud-upload"></i></div>
@@ -266,7 +273,7 @@
             </div>
             <div class="kpi-label" id="lblUploadedToday">Uploaded Today</div>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card purple">
             <a class="kpi-more-detail" id="lnkPublished" href="@Url.Action("Index", "P4DMaintenance")" title="More Detail"><i class="fa fa-external-link"></i></a>
             <div class="kpi-top">
                 <div class="kpi-icon purple"><i class="fa fa-share-alt"></i></div>
@@ -274,7 +281,7 @@
             </div>
             <div class="kpi-label" id="lblPublished">Published Documents</div>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card green">
             <a class="kpi-more-detail" id="lnkDueForReview" href="@Url.Action("Index", "DocumentReport")" title="More Detail"><i class="fa fa-external-link"></i></a>
             <div class="kpi-top">
                 <div class="kpi-icon green"><i class="fa fa-calendar-check-o"></i></div>

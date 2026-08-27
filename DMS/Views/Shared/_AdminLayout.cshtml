@@ -51,9 +51,7 @@
         <aside class="adm-sidebar" id="admSidebar">
             <div class="adm-rail">
                 <a class="adm-rail-ic" href="~/" title="Home">
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path d="M12 3.2 2.5 10.6a1 1 0 0 0 .62 1.8H4.5v7.1a1 1 0 0 0 1 1H9a1 1 0 0 0 1-1v-4.6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4.6a1 1 0 0 0 1 1h3.5a1 1 0 0 0 1-1v-7.1h1.38a1 1 0 0 0 .62-1.8L12 3.2Z" />
-                    </svg>
+                    <img src="~/images/logo.png" alt="Document Control System">
                 </a>
                 <div class="adm-rail-vtext">DOCUMENT <em>CONTROL</em> SYSTEM</div>
                 <button type="button" class="adm-rail-collapse" onclick="admToggleCollapse()" title="Show / hide menu">
@@ -61,9 +59,9 @@
                 </button>
             </div>
             <div class="adm-sidepanel">
-                <div class="adm-brand">
-                    <b>DCS</b>
-                    <span>Document Control System</span>
+                <div class="adm-menu-search">
+                    <i class="fa fa-search"></i>
+                    <input type="text" id="admMenuSearch" placeholder="Search menu..." autocomplete="off">
                 </div>
                 @Html.Partial("_MainMenu")
             </div>
@@ -109,12 +107,6 @@
 
             <div class="adm-content">
                 @RenderBody()
-            </div>
-
-            <div id="divFooter">
-                <footer class="adm-footer">
-                    <strong>Copyright © 2022.</strong> All rights reserved.
-                </footer>
             </div>
         </main>
     </div>

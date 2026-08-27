@@ -27,6 +27,7 @@ using System.Drawing;
 using PdfSharp.Fonts;
 using PdfSharp.Pdf.Advanced;
 using NPOI.POIFS.Crypt.Dsig;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Org.BouncyCastle.Asn1.Pkcs;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -57,6 +58,7 @@ namespace DMS.Controllers
         private DocumentMaintenanceRepo documentMaintenanceRepo = DocumentMaintenanceRepo.Instance;
         private P4DMaintenanceRepo p4DMaintenanceRepo = P4DMaintenanceRepo.Instance;
         private DepartmentMasterRepo departmentMasterRepo = DepartmentMasterRepo.Instance;
+        private DivisionMasterRepo divisionMasterRepo = DivisionMasterRepo.Instance;
         private SectionMasterRepo sectionMasterRepo = SectionMasterRepo.Instance;
         private DocumentMasterRepo documentMasterRepo = DocumentMasterRepo.Instance;
         private MSystemRepo mSystemRepo = MSystemRepo.Instance;
@@ -94,7 +96,86 @@ namespace DMS.Controllers
 
             ViewData["Title"] = "Document Preparation";
 
+            // Kode dokumen yang punya master template pengesahan (wwwroot/document/Template/{CODE}.xls
+            // atau .xlsx) - dipakai toolbar utk menampilkan tombol "Download Template" hanya utk kode
+            // yang memang punya filenya. Sama seperti DocumentMasterController.Index().
+            string templateFolder = System.IO.Path.Combine(Environment.WebRootPath, "document", "Template");
+            var templateCodes = System.IO.Directory.Exists(templateFolder)
+                ? System.IO.Directory.GetFiles(templateFolder, "*.xls")
+                    .Concat(System.IO.Directory.GetFiles(templateFolder, "*.xlsx"))
+                    .Select(f => System.IO.Path.GetFileNameWithoutExtension(f))
+                    .Distinct()
+                    .ToList()
+                : new List<string>();
+            ViewData["TemplateCodes"] = System.Text.Json.JsonSerializer.Serialize(templateCodes);
+
             return View();
+        }
+
+        // Daftar divisi utk checkbox "Related Division" (fitur SPR/SIPOCOR Level 2,
+        // request Hendra 2026-08-20) - baca langsung dari TB_M_DIVISION (Division
+        // Master), BUKAN dari TB_M_SYSTEM SYSTEM_TYPE='DIVISION' yang dipakai
+        // dropdown Division di form ini - dua sumber itu ternyata sudah tidak
+        // sinkron (TB_M_SYSTEM masih bawa kode lama ASY/BDY/BPD/LCD/PPP yang
+        // sudah tidak ada di Division Master, dan sebaliknya tidak punya
+        // PCE/PID/PMA yang sudah ada di Division Master).
+        public JsonResult GetRelatedDivisionOptions()
+        {
+            try
+            {
+                IList<DivisionMaster> divisions = divisionMasterRepo
+                    .Search(new DivisionMaster(), db, null, null)
+                    .OrderBy(x => x.DIVISION_CODE)
+                    .ToList();
+
+                var list = divisions.Select(x => new { code = x.DIVISION_CODE, name = x.DIVISION_NAME }).ToList();
+                return Json(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        // Detail per template (nama/deskripsi kategori, format, ukuran file) utk popup "Template Center"
+        // di toolbar Document Preparation - dipanggil on-demand saat tombol Template diklik, bukan
+        // saat Index() supaya tidak query DocumentMaster tiap load halaman.
+        public JsonResult GetTemplateList()
+        {
+            try
+            {
+                string templateFolder = System.IO.Path.Combine(Environment.WebRootPath, "document", "Template");
+                var files = System.IO.Directory.Exists(templateFolder)
+                    ? System.IO.Directory.GetFiles(templateFolder, "*.xls")
+                        .Concat(System.IO.Directory.GetFiles(templateFolder, "*.xlsx"))
+                        .GroupBy(f => System.IO.Path.GetFileNameWithoutExtension(f))
+                        .Select(g => g.First())
+                        .ToList()
+                    : new List<string>();
+
+                var nameByCode = documentMasterRepo.Search(new DocumentMaster(), db, null, null)
+                    .GroupBy(x => x.DOCUMENT_CODE)
+                    .ToDictionary(g => g.Key, g => g.First().DOCUMENT_NAME);
+
+                var list = files.Select(f =>
+                {
+                    string code = System.IO.Path.GetFileNameWithoutExtension(f);
+                    var info = new System.IO.FileInfo(f);
+                    return new
+                    {
+                        code = code,
+                        name = nameByCode.ContainsKey(code) ? nameByCode[code] : code,
+                        format = info.Extension.TrimStart('.').ToUpper(),
+                        sizeKb = Math.Ceiling(info.Length / 1024.0)
+                    };
+                }).OrderBy(x => x.code).ToList();
+
+                return Json(new { status = true, data = list });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
         }
 
         public JsonResult GetByKey(DocumentMaintenance data)
@@ -1311,6 +1392,14 @@ namespace DMS.Controllers
                 bool isFullyAcknowledged = !isObsolete && currentDocument.STATUS == "5";
                 bool isMasterStamped = !isObsolete && (isFullyAcknowledged || IsReceivedByQms(currentDocument.DOCUMENT_TRANSACTION_ID));
 
+                // CONTROLLED COPY cuma relevan buat perspektif "saya user biasa yang
+                // menerima copy terkendali" - staff dokumen kontrol (type 1/2: Document
+                // Preparation, P4D, Document Control Dashboard) cukup lihat stempel MASTER,
+                // karena bagi mereka file ini adalah master, bukan copy yang diterima.
+                // Hanya viewer type 3 (UserDashboard, end user) yang lihat CONTROLLED COPY
+                // (request Hendra 2026-08-14).
+                bool isEndUserView = type == "3";
+
                 string masterStampPath = null;
                 string controlledCopyStampPath = null;
                 string obsoleteStampPath = null;
@@ -1325,7 +1414,7 @@ namespace DMS.Controllers
                 else
                 {
                     if (isMasterStamped) masterStampPath = webRootPath + "/images/cap_master.png";
-                    if (isFullyAcknowledged) controlledCopyStampPath = webRootPath + "/images/cap_controlledcopy.png";
+                    if (isFullyAcknowledged && isEndUserView) controlledCopyStampPath = webRootPath + "/images/cap_controlledcopy.png";
                 }
 
                 string[] split = documentMaintenance.FILE_PATH.Split("/");
@@ -1666,12 +1755,71 @@ namespace DMS.Controllers
                 IList<ApprovalDetail> approvalDetails =
                     approvalRepo.GetApprovalDetail((int)documentMaintenance.APPROVAL_ID, db, null, null);
 
+                // Kotak tanda tangan pertama (type2Index==0, "Dibuat Oleh") SELALU
+                // menampilkan si pembuat dokumen (documentMaintenance.CREATED_BY),
+                // lepas dari apa isi WORKFLOW_SEQ=1 di TB_R_APPROVAL_D. Normalnya
+                // WORKFLOW_SEQ=1 memang milik si pembuat sendiri (auto-approved oleh
+                // sp_WorkflowDoc_Create saat @DOCUMENT_CREATOR = @APPROVER) sehingga
+                // kotak-kotak approver berikutnya (index>=1) aman mulai mencari dari
+                // WORKFLOW_SEQ+1. TAPI kalau posisi "Dibuat Oleh" di konfigurasi
+                // workflow (TB_M_WORKFLOW_DOC_D) tidak cocok dengan posisi pembuat
+                // aslinya (mis. dokumen Pedoman/Prosedur level tinggi yang justru
+                // dibuat oleh Staff biasa), WORKFLOW_SEQ=1 jadi approver SUNGGUHAN
+                // yang berbeda dari pembuat - kalau tetap dilewati, approver itu sama
+                // sekali tidak pernah muncul di PDF (bug ditemukan 2026-08-18: dokumen
+                // Pedoman, Division Head approve WORKFLOW_SEQ=1 tapi tidak tercetak).
+                // Deteksi kondisinya dengan cek langsung ke data approval, bukan
+                // menduga dari LABEL (LABEL "Dibuat Oleh" bisa menempel ke approver
+                // manapun kalau workflow-nya salah pasang).
+                bool creatorAutoApprovedSeq1 = approvalDetails.Any(x =>
+                    x.WORKFLOW_SEQ == 1 && string.Equals(x.APPROVER, documentMaintenance.CREATED_BY, StringComparison.OrdinalIgnoreCase));
+                int approverSeqOffset = creatorAutoApprovedSeq1 ? 1 : 0;
+
                 string fullPath = webRootPath + filePath;
 
                 IList<ExcelTemplateMaster> excelTemplateMasters = documentMasterRepo
                     .SearchTemplate(new ExcelTemplateMaster { DOCUMENT_ID = documentMaintenance.DOCUMENT_ID }, db);
 
                 if (excelTemplateMasters.Count == 0) return new DBResult(false, "Excel template configuration not found for this document type");
+
+                // Kalau pembuat dokumen KEBETULAN punya jabatan yang juga punya box
+                // sendiri (mis. Dept Head bikin dokumen Pedoman, dan template PDM
+                // punya box khusus "DEPT. HEAD"), tanda tangannya dipindah SEPENUHNYA
+                // ke box jabatan itu, bukan ke box "PIC" generik - box PIC cuma dipakai
+                // kalau jabatan pembuat memang tidak punya box khusus (mis. Staff biasa)
+                // (request Hendra 2026-08-18).
+                User creator = UserRepo.Instance.GetByKey(new User { USERNAME = documentMaintenance.CREATED_BY }, db);
+                int? creatorPositionId = creator?.POSITION_ID;
+                bool creatorHasSpecificBox = creatorPositionId != null && excelTemplateMasters.Any(t =>
+                    t.TYPE == 2 && "DIGITAL_SIGN".Equals(t.FIELD_NAME) &&
+                    t.TARGET_POSITION_ID != null && t.TARGET_POSITION_ID != -1 &&
+                    t.TARGET_POSITION_ID == creatorPositionId);
+
+                // Template Excel EIS (5) & SOE (6) TIDAK punya baris terpisah untuk nama
+                // approver di blok tanda tangan (dicek langsung ke file .xls-nya
+                // 2026-08-16) - beda dari template lain (mis. IK/SOP) yang punya. Baris
+                // "nama" pada template ini ikut ter-merge jadi satu sel bersama kotak
+                // gambar tanda tangan, sehingga kalau tetap dipaksa ditulis, teksnya
+                // ke-squeeze mepet ke baris jabatan di bawahnya (dilaporkan user, lihat
+                // review PDF pengesahan EIS). Diputuskan (keputusan Hendra) untuk
+                // template gaya ini cukup tampilkan tanda tangan + jabatan saja, TANPA
+                // nama - sesuai desain asli template kosongnya.
+                bool skipApproverNameText = documentMaintenance.DOCUMENT_ID == 5 || documentMaintenance.DOCUMENT_ID == 6;
+
+                // Template PDM (Pedoman) & PRO (Prosedur) - cukup tanda tangan + Nama yang
+                // tercetak di kotak "Lembar Pengesahan", baris jabatan di bawahnya TIDAK
+                // perlu (request Hendra 2026-08-18, diperluas ke PRO 2026-08-19 - awalnya
+                // cuma PDM yang diminta, tapi Level 2 PRO pakai template & box layout yang
+                // sama persis jadi harus konsisten). Tipe lain tetap tampilkan jabatan
+                // seperti biasa, tidak berubah.
+                //
+                // EIS (5) & SOE (6) juga ditambahkan ke sini (dilaporkan user 2026-08-27,
+                // hasil cetak EIS) - baris "DEPT. HEAD/SECTION HEAD/STAFF" di bawah kotak
+                // tanda tangan template ini SUDAH teks statis bawaan template, jadi tulisan
+                // jabatan (user.POSITION_NAME) yang ditulis kode di baris +2 cuma jadi
+                // duplikat kecil menempel di bawahnya, bukan mengisi kotak yang kosong.
+                bool skipApproverPositionText = documentMaintenance.DOCUMENT_ID == 1 || documentMaintenance.DOCUMENT_ID == 2
+                    || documentMaintenance.DOCUMENT_ID == 5 || documentMaintenance.DOCUMENT_ID == 6;
 
                 // Field yang HANYA boleh ditulis di COVER sheet (sheetPosition=0) -
                 // sheet lain sudah punya formula =COVER!xxx sehingga otomatis update.
@@ -1698,10 +1846,21 @@ namespace DMS.Controllers
 
                         // Paksa print area selalu pas di 1 halaman - posisi field
                         // pengesahan (ROW/COL di TB_M_EXCEL_TEMPLATE) mengasumsikan
-                        // layout satu halaman.
-                        printOptions.FitToWidth = 1;
-                        printOptions.FitToHeight = 1;
-                        printOptions.FitToPage = true;
+                        // layout satu halaman. DIKECUALIKAN untuk SPR (DOCUMENT_ID=15,
+                        // request Hendra 2026-08-21) - template ini sudah didesain untuk
+                        // ukuran kertasnya sendiri (di-cek: page setup file SPR memang
+                        // sudah pas, bukan perlu di-shrink), dan pemaksaan fit-1-halaman
+                        // ini yang bikin previewnya "pecah"/distorsi (isi ke-squeeze).
+                        // Aman dilepas khusus SPR karena semua kotak tanda tangannya
+                        // (WriteSprSignatureSection & WriteRelatedDivisionSection) pakai
+                        // referensi SEL (row/col index), bukan koordinat piksel halaman -
+                        // jadi tidak bergantung pada skala/pagination cetak.
+                        if (documentMaintenance.DOCUMENT_ID != 15)
+                        {
+                            printOptions.FitToWidth = 1;
+                            printOptions.FitToHeight = 1;
+                            printOptions.FitToPage = true;
+                        }
 
                         IList<ExcelTemplateMaster> excelTemplateMastersBySheet =
                             excelTemplateMasters.Where(x => x.SHEET_ORIENTATION == orientation).ToList();
@@ -1723,6 +1882,94 @@ namespace DMS.Controllers
                          .OrderBy(x => x.TEMPLATE_ID)
                          .ToList();
 
+                        // Marker berbasis Excel Named Range (pilot 2026-08-16, baru dipasang
+                        // di EIS.xls) - kalau sheet yang diupload sudah punya named range
+                        // SIGN_DISETUJUI/DIPERIKSA/DIBUAT & TITLE_..., posisinya dipakai
+                        // langsung (tidak lagi bergantung ke angka ROW/COL/MERGE_CELL_ROW/COL
+                        // di TB_M_EXCEL_TEMPLATE yang gampang basi kalau baris/kolom digeser).
+                        // Kalau named range tidak ada (semua template lain untuk saat ini),
+                        // otomatis jatuh balik ke mekanisme ROW/COL lama - tidak ada perubahan
+                        // perilaku untuk tipe dokumen selain EIS.
+                        // Pemetaan kolom->kotak pakai URUTAN (kiri ke kanan = Disetujui/
+                        // Diperiksa/Dibuat), bukan angka kolom hardcode, supaya otomatis
+                        // berlaku juga kalau template lain menyusul dikasih named range.
+                        Dictionary<int, string> signBoxKeyByCol = new Dictionary<int, string>();
+                        if (type2Templates.Count > 1)
+                        {
+                            string[] boxKeysLeftToRight = { "DISETUJUI", "DIPERIKSA", "DIBUAT" };
+                            var sortedByCol = type2Templates.OrderBy(x => x.COL).ToList();
+                            for (int i = 0; i < sortedByCol.Count && i < boxKeysLeftToRight.Length; i++)
+                            {
+                                signBoxKeyByCol[(int)sortedByCol[i].COL] = boxKeysLeftToRight[i];
+                            }
+                        }
+
+                        // Kalau konfigurasi template cuma py 1 baris DIGITAL_SIGN (jalur fallback
+                        // lama - mis. orientasi landscape EIS/SOE yang belum lengkap), kode lama
+                        // menghitung posisi 3 kotak via WORKFLOW_SEQ (1=Dibuat/creator,
+                        // 2=Diperiksa, 3=Disetujui - urutan ini yang dipakai matematika
+                        // colIndex sebelumnya). Dipetakan ke nama marker yang sama supaya
+                        // marker tetap dipakai walau lewat jalur fallback ini (2026-08-16,
+                        // ditemukan lewat pengujian geser baris - jalur ini sebelumnya
+                        // sama sekali tidak tersentuh marker karena hanya dicek saat
+                        // type2Templates.Count > 1).
+                        string BoxKeyBySeqFallback(int? workflowSeq) => workflowSeq switch
+                        {
+                            1 => "DIBUAT",
+                            2 => "DIPERIKSA",
+                            3 => "DISETUJUI",
+                            _ => null
+                        };
+
+                        string ResolveBoxKey(int col, int? workflowSeqForFallback) => type2Templates.Count > 1
+                            ? (signBoxKeyByCol.TryGetValue(col, out string bk) ? bk : null)
+                            : BoxKeyBySeqFallback(workflowSeqForFallback);
+
+                        // Safety-net: kalau nama named range ADA tapi range-nya sudah rusak
+                        // (mis. jadi #REF! karena baris/kolom target dihapus, bukan digeser),
+                        // DevExpress bisa melempar exception saat .Range diakses. Daripada
+                        // seluruh generate PDF gagal (fallback ke ExcelViewerPreview), marker
+                        // yang rusak dianggap tidak ada supaya jalur ROW/COL lama yang jalan.
+                        DevExpress.Spreadsheet.DefinedName GetValidDefinedName(string name)
+                        {
+                            DevExpress.Spreadsheet.DefinedName dn = sheet.DefinedNames.GetDefinedName(name);
+                            if (dn == null) return null;
+                            try
+                            {
+                                DevExpress.Spreadsheet.CellRange range = dn.Range;
+                                if (range == null) return null;
+                                int touch = range.TopRowIndex + range.LeftColumnIndex;
+                                return dn;
+                            }
+                            catch
+                            {
+                                return null;
+                            }
+                        }
+
+                        DevExpress.Spreadsheet.DefinedName GetSignMarker(int col, int? workflowSeqForFallback = null)
+                        {
+                            string boxKey = ResolveBoxKey(col, workflowSeqForFallback);
+                            return boxKey != null ? GetValidDefinedName("SIGN_" + boxKey) : null;
+                        }
+
+                        // NAME_x - baris nama approver (dipisah dari TITLE_x karena template
+                        // gaya IK/SOP/OPL/ACU punya baris nama TERSENDIRI di antara gambar
+                        // tanda tangan dan baris jabatan; EIS/SOE tidak, makanya file itu
+                        // tidak dikasih named range ini - GetNameMarker otomatis balik null
+                        // dan jalur lama (skipApproverNameText / ROW manual) yang jalan).
+                        DevExpress.Spreadsheet.DefinedName GetNameMarker(int col, int? workflowSeqForFallback = null)
+                        {
+                            string boxKey = ResolveBoxKey(col, workflowSeqForFallback);
+                            return boxKey != null ? GetValidDefinedName("NAME_" + boxKey) : null;
+                        }
+
+                        DevExpress.Spreadsheet.DefinedName GetTitleMarker(int col, int? workflowSeqForFallback = null)
+                        {
+                            string boxKey = ResolveBoxKey(col, workflowSeqForFallback);
+                            return boxKey != null ? GetValidDefinedName("TITLE_" + boxKey) : null;
+                        }
+
                         int type2Index = 0;
 
                         foreach (ExcelTemplateMaster template in excelTemplateMastersBySheet)
@@ -1741,7 +1988,13 @@ namespace DMS.Controllers
                                 object propValue = propertyInfo.GetValue(documentMaintenance);
                                 if (propValue == null) continue;
 
-                                DxSetCellValueBlackFont(sheet[(int)template.ROW, (int)template.COL], propValue.ToString());
+                                DevExpress.Spreadsheet.DefinedName fieldMarker = GetValidDefinedName(template.FIELD_NAME);
+                                DevExpress.Spreadsheet.Cell targetCell = fieldMarker != null
+                                    ? sheet[fieldMarker.Range.TopRowIndex, fieldMarker.Range.LeftColumnIndex]
+                                    : sheet[(int)template.ROW, (int)template.COL];
+                                targetCell = DxResolveMergeAnchor(targetCell);
+
+                                DxSetCellValueBlackFont(targetCell, propValue.ToString());
                             }
 
                             if (template.TYPE == 2)
@@ -1756,39 +2009,136 @@ namespace DMS.Controllers
                                 // urutan iterasi — supaya langkah yang dilewati saat pembuatan
                                 // workflow (mis. section tanpa Section Head) menyisakan
                                 // kotaknya kosong.
-                                IList<ApprovalDetail> targetApprovers = type2Templates.Count > 1
-                                    ? approvalDetails.Where(x => x.WORKFLOW_SEQ == type2Index + 1).ToList()
-                                    : approvalDetails.OrderBy(x => x.WORKFLOW_SEQ).ToList();
-
-                                if (type2Templates.Count > 1 && type2Index == 0)
+                                //
+                                // TAPI kalau box ini punya TARGET_POSITION_ID (template
+                                // PDM/PRO - box-nya punya caption jabatan spesifik seperti
+                                // "MIN. DIV. HEAD" yang tercetak di file), pemetaannya beda:
+                                // dicocokkan ke JABATAN ASLI approver, bukan urutan approval-nya
+                                // - supaya approver yang jabatannya "Div. Head" selalu masuk
+                                // kotak Div. Head walau kebetulan dia yang approve duluan
+                                // (request Hendra 2026-08-18, kasus divhead.itd approve sebagai
+                                // langkah pertama Level 1 tapi harus tercetak di kotak Div.
+                                // Head, bukan kotak pertama/"Dept. Head"). -1 = kotak generik
+                                // untuk approver TERAKHIR dalam chain apapun jabatannya (mis.
+                                // "Disetujui Oleh" - bisa EO, bisa Direktur, tergantung level).
+                                IList<ApprovalDetail> targetApprovers;
+                                if (template.TARGET_POSITION_ID == -1)
                                 {
-                                    User creator = UserRepo.Instance.GetByKey(
-                                        new User { USERNAME = documentMaintenance.CREATED_BY }, db);
-                                    if (creator != null)
+                                    ApprovalDetail lastApprover = approvalDetails.OrderByDescending(x => x.WORKFLOW_SEQ).FirstOrDefault();
+                                    targetApprovers = lastApprover != null ? new List<ApprovalDetail> { lastApprover } : new List<ApprovalDetail>();
+                                }
+                                else if (template.TARGET_POSITION_ID != null)
+                                {
+                                    int wantedPositionId = (int)template.TARGET_POSITION_ID;
+                                    targetApprovers = approvalDetails.Where(x =>
                                     {
-                                        int creatorCol = (int)template.COL;
-                                        // Kotak "Dibuat Oleh" pakai 2 baris: baris tepat di bawah
-                                        // gambar tanda tangan (+1) nampilin NAMA LENGKAP, baris
-                                        // berikutnya (+2) nampilin POSISI - baris +2 ini di
-                                        // template sering sudah ada teks contoh lama yang nempel
-                                        // dari waktu template dibuat (mis. "Jayadi", "Santika"),
-                                        // jadi ditimpa langsung (request user 2026-08-10).
-                                        int creatorNameRow = (int)template.ROW + (int)template.MERGE_CELL_ROW + 1;
-                                        int creatorPositionRow = (int)template.ROW + (int)template.MERGE_CELL_ROW + 2;
+                                        User approverUser = UserRepo.Instance.GetByKey(new User { USERNAME = x.APPROVER }, db);
+                                        return approverUser != null && approverUser.POSITION_ID == wantedPositionId;
+                                    }).ToList();
+                                }
+                                else
+                                {
+                                    targetApprovers = type2Templates.Count > 1
+                                        ? approvalDetails.Where(x => x.WORKFLOW_SEQ == type2Index + approverSeqOffset).ToList()
+                                        : approvalDetails.OrderBy(x => x.WORKFLOW_SEQ).ToList();
+                                }
 
-                                        DxWriteNameCellSafely(sheet, creatorNameRow, creatorCol, (int)template.MERGE_CELL_COL, creator.FULL_NAME);
-                                        DxWriteNameCellSafely(sheet, creatorPositionRow, creatorCol, (int)template.MERGE_CELL_COL, creator.POSITION_NAME);
+                                // Menulis info pembuat dokumen (nama/jabatan/tanda tangan,
+                                // selalu tanpa syarat STATUS - beda dari approver biasa yang
+                                // hanya tercetak tanda tangannya kalau sudah Approved) ke box
+                                // manapun yang diberikan - dipakai baik untuk box "PIC" generik
+                                // maupun box jabatan spesifik kalau ternyata pembuatnya
+                                // kebetulan punya jabatan itu (lihat creatorHasSpecificBox).
+                                void WriteCreatorIntoBox(ExcelTemplateMaster boxTemplate)
+                                {
+                                    if (creator == null) return;
 
-                                        if (!string.IsNullOrEmpty(creator.SIGNATURE_PATH))
+                                    int creatorCol = (int)boxTemplate.COL;
+                                    DevExpress.Spreadsheet.DefinedName creatorSignMarker = GetSignMarker(creatorCol, 1);
+                                    DevExpress.Spreadsheet.DefinedName creatorNameMarker = GetNameMarker(creatorCol, 1);
+                                    DevExpress.Spreadsheet.DefinedName creatorTitleMarker = GetTitleMarker(creatorCol, 1);
+
+                                    // Kotak pakai 2 baris: baris tepat di bawah gambar tanda
+                                    // tangan (+1) nampilin NAMA LENGKAP, baris berikutnya (+2)
+                                    // nampilin POSISI - baris +2 ini di template sering sudah
+                                    // ada teks contoh lama yang nempel dari waktu template
+                                    // dibuat (mis. "Jayadi", "Santika"), jadi ditimpa langsung
+                                    // (request user 2026-08-10).
+                                    int creatorNameRow = creatorNameMarker != null
+                                        ? creatorNameMarker.Range.TopRowIndex
+                                        : (int)boxTemplate.ROW + (int)boxTemplate.MERGE_CELL_ROW + 1;
+                                    int creatorNameCol = creatorNameMarker != null
+                                        ? creatorNameMarker.Range.LeftColumnIndex
+                                        : creatorCol;
+                                    int creatorNameMergeCol = creatorNameMarker != null
+                                        ? creatorNameMarker.Range.ColumnCount
+                                        : (int)boxTemplate.MERGE_CELL_COL;
+                                    int creatorPositionRow = (int)boxTemplate.ROW + (int)boxTemplate.MERGE_CELL_ROW + 2;
+
+                                    if (!skipApproverNameText)
+                                    {
+                                        // Pakai DxWriteNameCellSafely (bukan tulis langsung ke
+                                        // anchor marker) karena NAME_x sengaja menunjuk ke
+                                        // sebagian dari merged cell yang SAMA dengan gambar
+                                        // tanda tangan (mis. IK/SOP/OPL/ACU) - kalau ditulis
+                                        // langsung akan gagal/nggak nempel, jadi tetap perlu
+                                        // dialihkan ke anchor merge itu.
+                                        DxWriteNameCellSafely(sheet, creatorNameRow, creatorNameCol, creatorNameMergeCol, creator.FULL_NAME);
+                                    }
+
+                                    if (!skipApproverPositionText)
+                                    {
+                                        if (creatorTitleMarker != null)
                                         {
-                                            string creatorSignPath = webRootPath + creator.SIGNATURE_PATH;
-                                            if (System.IO.File.Exists(creatorSignPath))
+                                            DxSetCellValueBlackFontBottomAligned(
+                                                sheet[creatorTitleMarker.Range.TopRowIndex, creatorTitleMarker.Range.LeftColumnIndex],
+                                                creator.POSITION_NAME);
+                                        }
+                                        else
+                                        {
+                                            DxWriteNameCellSafely(sheet, creatorPositionRow, creatorCol, (int)boxTemplate.MERGE_CELL_COL, creator.POSITION_NAME);
+                                        }
+                                    }
+
+                                    if (!string.IsNullOrEmpty(creator.SIGNATURE_PATH))
+                                    {
+                                        string creatorSignPath = webRootPath + creator.SIGNATURE_PATH;
+                                        if (System.IO.File.Exists(creatorSignPath))
+                                        {
+                                            if (creatorSignMarker != null)
                                             {
-                                                int creatorRowStart = (int)template.ROW + 1;
-                                                DxAddPicture(sheet, creatorSignPath, creatorRowStart, creatorCol, (int)template.MERGE_CELL_COL, (int)template.MERGE_CELL_ROW);
+                                                DxAddPicture(sheet, creatorSignPath, creatorSignMarker.Range);
+                                            }
+                                            else
+                                            {
+                                                int creatorRowStart = (int)boxTemplate.ROW + 1;
+                                                DxAddPicture(sheet, creatorSignPath, creatorRowStart, creatorCol, (int)boxTemplate.MERGE_CELL_COL, (int)boxTemplate.MERGE_CELL_ROW);
                                             }
                                         }
                                     }
+                                }
+
+                                if (type2Templates.Count > 1 && type2Index == 0)
+                                {
+                                    // Box "PIC" generik cuma dipakai kalau jabatan pembuat TIDAK
+                                    // punya box khusus sendiri di template ini - kalau punya
+                                    // (lihat creatorHasSpecificBox), box PIC dibiarkan kosong,
+                                    // tanda tangannya dipindah sepenuhnya ke box jabatan itu
+                                    // (request Hendra 2026-08-18).
+                                    if (!creatorHasSpecificBox)
+                                    {
+                                        WriteCreatorIntoBox(template);
+                                    }
+                                    type2Index++;
+                                    continue;
+                                }
+
+                                // Box jabatan spesifik ini kebetulan cocok dengan jabatan asli
+                                // si pembuat dokumen - tampilkan info pembuat di sini (bukan di
+                                // box PIC), bukan approver dari TB_R_APPROVAL_D.
+                                if (creatorHasSpecificBox && template.TARGET_POSITION_ID == creatorPositionId)
+                                {
+                                    WriteCreatorIntoBox(template);
                                     type2Index++;
                                     continue;
                                 }
@@ -1822,18 +2172,54 @@ namespace DMS.Controllers
                                     // lama yang nempel dari waktu template dibuat (mis. "Imbrianto
                                     // K", "Santika"), jadi ditimpa langsung dengan posisi approver
                                     // yang sebenarnya - sama seperti kotak "Dibuat Oleh".
-                                    int nameRowIndex = (int)template.ROW + (int)template.MERGE_CELL_ROW + 1;
                                     int positionRowIndex = (int)template.ROW + (int)template.MERGE_CELL_ROW + 2;
-                                    DxWriteNameCellSafely(sheet, nameRowIndex, colIndex, (int)template.MERGE_CELL_COL, user.FULL_NAME);
-                                    DxWriteNameCellSafely(sheet, positionRowIndex, colIndex, (int)template.MERGE_CELL_COL, user.POSITION_NAME);
+                                    DevExpress.Spreadsheet.DefinedName approverSignMarker = GetSignMarker(colIndex, (int?)approvalDetail.WORKFLOW_SEQ);
+                                    DevExpress.Spreadsheet.DefinedName approverNameMarker = GetNameMarker(colIndex, (int?)approvalDetail.WORKFLOW_SEQ);
+                                    DevExpress.Spreadsheet.DefinedName approverTitleMarker = GetTitleMarker(colIndex, (int?)approvalDetail.WORKFLOW_SEQ);
+
+                                    int nameRowIndex = approverNameMarker != null
+                                        ? approverNameMarker.Range.TopRowIndex
+                                        : (int)template.ROW + (int)template.MERGE_CELL_ROW + 1;
+                                    int nameColIndex = approverNameMarker != null
+                                        ? approverNameMarker.Range.LeftColumnIndex
+                                        : colIndex;
+                                    int nameMergeColIndex = approverNameMarker != null
+                                        ? approverNameMarker.Range.ColumnCount
+                                        : (int)template.MERGE_CELL_COL;
+
+                                    if (!skipApproverNameText)
+                                    {
+                                        DxWriteNameCellSafely(sheet, nameRowIndex, nameColIndex, nameMergeColIndex, user.FULL_NAME);
+                                    }
+
+                                    if (!skipApproverPositionText)
+                                    {
+                                        if (approverTitleMarker != null)
+                                        {
+                                            DxSetCellValueBlackFontBottomAligned(
+                                                sheet[approverTitleMarker.Range.TopRowIndex, approverTitleMarker.Range.LeftColumnIndex],
+                                                user.POSITION_NAME);
+                                        }
+                                        else
+                                        {
+                                            DxWriteNameCellSafely(sheet, positionRowIndex, colIndex, (int)template.MERGE_CELL_COL, user.POSITION_NAME);
+                                        }
+                                    }
 
                                     if ("1".Equals(approvalDetail.STATUS))
                                     {
                                         string signFullPath = webRootPath + user.SIGNATURE_PATH;
                                         if (System.IO.File.Exists(signFullPath))
                                         {
-                                            int signRowStart = (int)template.ROW + 1;
-                                            DxAddPicture(sheet, signFullPath, signRowStart, colIndex, (int)template.MERGE_CELL_COL, (int)template.MERGE_CELL_ROW);
+                                            if (approverSignMarker != null)
+                                            {
+                                                DxAddPicture(sheet, signFullPath, approverSignMarker.Range);
+                                            }
+                                            else
+                                            {
+                                                int signRowStart = (int)template.ROW + 1;
+                                                DxAddPicture(sheet, signFullPath, signRowStart, colIndex, (int)template.MERGE_CELL_COL, (int)template.MERGE_CELL_ROW);
+                                            }
                                         }
                                     }
                                 }
@@ -1843,7 +2229,13 @@ namespace DMS.Controllers
 
                             if (template.TYPE == 3)
                             {
-                                DxSetCellValueBlackFont(sheet[(int)template.ROW, (int)template.COL], "-"); // default
+                                DevExpress.Spreadsheet.DefinedName dateMarker = GetValidDefinedName(template.FIELD_NAME);
+                                DevExpress.Spreadsheet.Cell dateCell = dateMarker != null
+                                    ? sheet[dateMarker.Range.TopRowIndex, dateMarker.Range.LeftColumnIndex]
+                                    : sheet[(int)template.ROW, (int)template.COL];
+                                dateCell = DxResolveMergeAnchor(dateCell);
+
+                                DxSetCellValueBlackFont(dateCell, "-"); // default
 
                                 if (template.FIELD_NAME.Equals("DOCUMENT_REVISION_0_DATE"))
                                 {
@@ -1854,23 +2246,52 @@ namespace DMS.Controllers
                                     if (propValue == null) continue;
 
                                     string formattedDate = ParseAndFormatDate(propValue.ToString());
-                                    DxSetCellValueBlackFont(sheet[(int)template.ROW, (int)template.COL], formattedDate);
+                                    DxSetCellValueBlackFont(dateCell, formattedDate);
                                 }
 
                                 if (template.FIELD_NAME.Equals("DOCUMENT_DATE"))
                                 {
+                                    // "Tanggal Dikeluarkan" - tanggal terbit dokumen ini, harus
+                                    // selalu tampil berapa pun REVISION-nya (termasuk revisi 0,
+                                    // dokumen pertama kali terbit). Sebelumnya ada syarat
+                                    // "revisionValue != 0" yang malah menyembunyikan tanggal
+                                    // ini justru di revisi 0 - salah tempat, dihapus (dilaporkan
+                                    // user 2026-08-27, header SIPOCOR kosong).
                                     PropertyInfo propertyInfo = documentMaintenance.GetType().GetProperty(template.FIELD_NAME);
-                                    PropertyInfo revisionPropertyInfo = documentMaintenance.GetType().GetProperty("REVISION");
-                                    if (propertyInfo == null || revisionPropertyInfo == null) continue;
+                                    if (propertyInfo == null) continue;
 
                                     object propValue = propertyInfo.GetValue(documentMaintenance);
-                                    object revisionValue = revisionPropertyInfo.GetValue(documentMaintenance);
-                                    if (propValue == null || revisionValue == null || revisionValue.ToString() == "0") continue;
+                                    if (propValue == null) continue;
 
                                     string formattedDate = ParseAndFormatDate(propValue.ToString());
-                                    DxSetCellValueBlackFont(sheet[(int)template.ROW, (int)template.COL], formattedDate);
+                                    DxSetCellValueBlackFont(dateCell, formattedDate);
                                 }
                             }
+                        }
+
+                        // Kotak tanda tangan Disetujui/Diperiksa/Dibuat & Fitur "Divisi
+                        // Terkait" - khusus SPR (SIPOCOR) Level 2, sheet Cover saja
+                        // (sheetPosition 0). Bukan bagian TB_M_EXCEL_TEMPLATE biasa -
+                        // yang pertama karena mekanisme generik cuma dukung 3 kotak
+                        // (lihat WriteSprSignatureSection), yang kedua karena butuh N
+                        // baris dinamis per divisi terkait (request Hendra 2026-08-20,
+                        // signature section menyusul 2026-08-21).
+                        if (documentMaintenance.DOCUMENT_ID == 15 && sheetPosition == 0)
+                        {
+                            WriteSprSignatureSection(sheet, approvalDetails, creator, webRootPath);
+                            WriteRelatedDivisionSection(sheet, documentMaintenance, webRootPath);
+                        }
+
+                        // Fitur "Divisi Terkait" untuk tipe non-SPR yang templatenya punya
+                        // sheet "LEMBAR MENGETAHUI" sendiri (PDM/PRO, dicek 2026-08-26 -
+                        // request Hendra: kotak tanda tangan Mengetahui belum pernah terisi
+                        // sama sekali di sheet ini). Dipicu lewat NAMA sheet (bukan
+                        // DOCUMENT_ID seperti SPR di atas) supaya otomatis ikut jalan untuk
+                        // tipe Level 2 lain di masa depan yang kebetulan pakai sheet dengan
+                        // nama+layout sama persis - lihat WriteLembarMengetahuiSection.
+                        if ("LEMBAR MENGETAHUI".Equals(sheet.Name?.Trim(), StringComparison.OrdinalIgnoreCase))
+                        {
+                            WriteLembarMengetahuiSection(sheet, documentMaintenance, webRootPath);
                         }
 
                         sheetPosition++;
@@ -1923,10 +2344,50 @@ namespace DMS.Controllers
             cell.Font.Color = System.Drawing.Color.Black;
         }
 
+        // Kalau target cell ternyata bagian NON-ANCHOR dari merged region (mis.
+        // header "Nomor Dokumen"/"Revisi" di template SPR yang value-cell-nya
+        // di-merge lebar ke kanan), nulis langsung ke situ gagal/nggak kebaca
+        // (persis kasus yang sudah didokumentasikan di DxWriteNameCellSafely) -
+        // dialihkan ke anchor (kiri-atas) merge itu dulu. Beda dari
+        // DxWriteNameCellSafely, helper ini TIDAK membuat merge baru kalau belum
+        // ada, cuma redirect kalau memang sudah ke-merge dari template aslinya
+        // (dipakai untuk field header sederhana TYPE 1/3, bukan kotak nama/tanda
+        // tangan approver). Ditemukan 2026-08-27 - header Nomor Dokumen/Tanggal
+        // Dikeluarkan/Revisi/Tanggal Revisi SIPOCOR kosong total di hasil cetak.
+        private DevExpress.Spreadsheet.Cell DxResolveMergeAnchor(DevExpress.Spreadsheet.Cell cell)
+        {
+            IList<DevExpress.Spreadsheet.CellRange> merges = cell.GetMergedRanges();
+            if (merges.Count > 0)
+            {
+                DevExpress.Spreadsheet.CellRange anchor = merges[0];
+                return cell.Worksheet[anchor.TopRowIndex, anchor.LeftColumnIndex];
+            }
+            return cell;
+        }
+
         private void DxSetCellValueBlackFontBottomAligned(DevExpress.Spreadsheet.Cell cell, string value)
         {
             DxSetCellValueBlackFont(cell, value);
+
+            // Baris nama & posisi pengesahan sering menimpa teks contoh lama di
+            // template (lihat komentar DxWriteNameCellSafely) yang formatnya beda-beda
+            // antar file template (warna, bold, rata kiri/kanan) - dipaksa konsisten
+            // di sini (center, non-bold) supaya tidak ikut kebawa dari template asli
+            // walau warnanya sudah dipaksa hitam di DxSetCellValueBlackFont.
+            cell.Font.Bold = false;
+            cell.Alignment.Horizontal = DevExpress.Spreadsheet.SpreadsheetHorizontalAlignment.Center;
             cell.Alignment.Vertical = DevExpress.Spreadsheet.SpreadsheetVerticalAlignment.Bottom;
+        }
+
+        // Rata kiri-tengah (request Hendra 2026-08-26) - dipakai tabel "LEMBAR
+        // MENGETAHUI" (WriteLembarMengetahuiSection) yang defaultnya center-align
+        // dari template, bikin teks pendek (kode divisi/nama) terasa "mengambang"
+        // di tengah kolom lebar.
+        private void DxSetCellValueBlackFontLeftMiddleAligned(DevExpress.Spreadsheet.Cell cell, string value)
+        {
+            DxSetCellValueBlackFont(cell, value);
+            cell.Alignment.Horizontal = DevExpress.Spreadsheet.SpreadsheetHorizontalAlignment.Left;
+            cell.Alignment.Vertical = DevExpress.Spreadsheet.SpreadsheetVerticalAlignment.Center;
         }
 
         /// <summary>
@@ -1951,9 +2412,352 @@ namespace DMS.Controllers
             }
         }
 
+        // Kotak tanda tangan "Disetujui/Diperiksa/Dibuat" - khusus SPR (SIPOCOR),
+        // sheet Cover saja (request Hendra 2026-08-21). TB_M_EXCEL_TEMPLATE TIDAK
+        // punya baris DIGITAL_SIGN sama sekali untuk DOCUMENT_ID=15 (dicek
+        // langsung - kosong), dan mekanisme generik di atas (type2Templates)
+        // cuma bisa mewakili 3 kotak (satu approver per kotak) - template SPR ini
+        // justru punya 4 KOTAK TANDA TANGAN TERPISAH meski "Dibuat" cuma SATU
+        // judul yang membentang di atas 2 di antaranya (Dept. Head & Staff/Section
+        // Head sama-sama "Dibuat", bukan approver tunggal). Makanya dibuat method
+        // khusus di sini, sama seperti WriteRelatedDivisionSection di bawah -
+        // bukan diperluas ke mekanisme generik (risiko regresi ke 8 tipe dokumen
+        // lain yang sudah pakai itu).
+        //
+        // Koordinat sel awalnya ditemukan dengan membuka langsung file yang
+        // di-upload user (tes-134317479101019728.xlsx, DOCUMENT_TRANSACTION_ID=4) -
+        // baris 37-39 (0-indexed 36-38) = area gambar tanda tangan, kolom N/P/R/T
+        //
+        // Diturunkan ke row 36-38 (0-indexed 35-37) - 2026-08-27, user geser satu
+        // baris di template (SPR.xlsx) sehingga baris kosong area tanda tangan
+        // sekarang PERSIS di bawah header "Disetujui/Diperiksa/Dibuat" (row 36),
+        // bukan lagi row 37 - koordinat lama nyerempet 1 baris ke bawah, tumpang
+        // tindih baris caption "EO/Div. Head/Dept. Head/Staff-Section Head" (row 39),
+        // gambar jadi kelihatan naik/kurang rapi dalam kotaknya. Kalau template
+        // digeser lagi, ukur ulang jarak baris kosong antara header dan caption ini,
+        // jangan asumsikan sama - lihat juga catatan serupa di
+        // WriteRelatedDivisionSection.tableEndRow.
+        // (0-indexed 13/15/17/19) = Disetujui(EO)/Diperiksa(Div.Head)/
+        // Dibuat-kiri(Dept.Head)/Dibuat-kanan(Staff/Section Head, diisi PEMBUAT
+        // DOKUMEN, bukan dari TB_R_APPROVAL_D). Label jabatan (EO/Div. Head/
+        // Dept. Head/Staff/Section Head) di baris 40 sudah teks statis di
+        // template, TIDAK perlu ditulis ulang - method ini cuma menempelkan
+        // gambar tanda tangan. Dicocokkan lewat POSITION_ID approver (5=EO,
+        // 4=Div.Head, 3=Dept.Head - lihat sp_UserPosition_InsertUpdate.sql),
+        // BUKAN urutan WORKFLOW_SEQ tetap, supaya tetap benar walau urutan
+        // approval berbeda-beda per Document Level. Kalau template SPR diganti
+        // lagi, petakan ulang koordinat ini dari nol, jangan asumsikan sama.
+        private void WriteSprSignatureSection(DevExpress.Spreadsheet.Worksheet sheet, IList<ApprovalDetail> approvalDetails, User creator, string webRootPath)
+        {
+            const int signRowStart = 35; // Excel row 36 (0-indexed) - atas area gambar tanda tangan
+            const int signRowSpan = 3;   // baris 36-38 (baris 39 = caption EO/Div.Head/dst, jangan ikut)
+            const int signColSpan = 2;   // tiap kotak selebar 2 kolom (mis. N:O)
+            const int disetujuiCol = 13; // Excel col N - EO
+            const int diperiksaCol = 15; // Excel col P - Div. Head
+            const int dibuatDeptCol = 17; // Excel col R - Dept. Head (bagian kiri "Dibuat")
+            const int dibuatStaffCol = 19; // Excel col T - Staff/Section Head/pembuat (bagian kanan "Dibuat")
+
+            void PlaceSignature(int col, string signaturePath)
+            {
+                if (string.IsNullOrEmpty(signaturePath)) return;
+                string fullSignPath = webRootPath + signaturePath;
+                if (System.IO.File.Exists(fullSignPath))
+                {
+                    DxAddPicture(sheet, fullSignPath, signRowStart, col, signColSpan, signRowSpan);
+                }
+            }
+
+            ApprovalDetail FindApprovedByPosition(int positionId) => approvalDetails.FirstOrDefault(x =>
+            {
+                if (!"1".Equals(x.STATUS)) return false; // tanda tangan cuma tampil kalau sudah Approved
+                User approverUser = UserRepo.Instance.GetByKey(new User { USERNAME = x.APPROVER }, db);
+                return approverUser != null && approverUser.POSITION_ID == positionId;
+            });
+
+            ApprovalDetail eoApproval = FindApprovedByPosition(5);
+            if (eoApproval != null)
+            {
+                User eoUser = UserRepo.Instance.GetByKey(new User { USERNAME = eoApproval.APPROVER }, db);
+                PlaceSignature(disetujuiCol, eoUser?.SIGNATURE_PATH);
+            }
+
+            ApprovalDetail divHeadApproval = FindApprovedByPosition(4);
+            if (divHeadApproval != null)
+            {
+                User divHeadUser = UserRepo.Instance.GetByKey(new User { USERNAME = divHeadApproval.APPROVER }, db);
+                PlaceSignature(diperiksaCol, divHeadUser?.SIGNATURE_PATH);
+            }
+
+            ApprovalDetail deptHeadApproval = FindApprovedByPosition(3);
+            if (deptHeadApproval != null)
+            {
+                User deptHeadUser = UserRepo.Instance.GetByKey(new User { USERNAME = deptHeadApproval.APPROVER }, db);
+                PlaceSignature(dibuatDeptCol, deptHeadUser?.SIGNATURE_PATH);
+            }
+
+            // Pembuat dokumen SELALU tanda tangan tanpa syarat status approval -
+            // box "Staff/Section Head" ini bukan approver TB_R_APPROVAL_D sama
+            // sekali (sama seperti WriteCreatorIntoBox() di mekanisme generik di
+            // atas).
+            PlaceSignature(dibuatStaffCol, creator?.SIGNATURE_PATH);
+        }
+
+        // Fitur "Divisi Terkait" - khusus SPR (SIPOCOR) Level 2 (request Hendra
+        // 2026-08-20). Menulis baris marker (satu kolom per divisi - kolomnya
+        // dibaca langsung dari header row H13 di file, TIDAK di-hardcode, supaya
+        // otomatis ikut kalau template diedit lagi) dan tabel "Mengetahui Divisi
+        // Terkait" (baris dinamis, satu per divisi terkait yang dipilih creator)
+        // di sheet Cover. Koordinat baris/kolom tabel & header MASIH hardcode ke
+        // layout SPR2.xlsx saat ini (row 13/14 = header/marker, row 18-29 =
+        // tabel Mengetahui, kolom H/J/L) - kalau template diganti lagi, petakan
+        // ulang koordinat ini dari nol, jangan asumsikan sama.
+        //
+        // tableEndRow diturunkan dari 32 ke 27 (2026-08-27, dicek ulang setelah
+        // user geser satu baris di template) - baris "Remarks:" sekarang mulai
+        // di row 29 (0-indexed), jadi slot terakhir yang aman buat entry 2-baris
+        // adalah start di row 27 (berakhir row 28, masih sebelum Remarks). Kapasitas
+        // tabel jadi ~6 divisi (dari sebelumnya ~8) - lebih dari cukup untuk kasus
+        // nyata, tapi kalau template digeser lagi, ukur ulang jarak ke "Remarks:".
+        private void WriteRelatedDivisionSection(DevExpress.Spreadsheet.Worksheet sheet, DocumentMaintenance documentMaintenance, string webRootPath)
+        {
+            const int headerRow = 12;      // Excel row 13 (0-indexed)
+            const int markerRow = 13;      // Excel row 14
+            const int firstDivisionCol = 1; // Excel col B
+            const int tableStartRow = 17;  // Excel row 18
+            const int tableEndRow = 27;    // Excel row 28 (baris awal terakhir yang aman - berakhir row 29, masih sebelum "Remarks:")
+            const int divisiCol = 7;       // Excel col H
+            const int kepalaDivisiCol = 9; // Excel col J
+            const int tandaTanganCol = 11; // Excel col L
+
+            // DIVISION_ROLE per divisi (request Hendra 2026-08-20) - Main PIC
+            // sekarang dipilih manual & disimpan di tabel ini sendiri (boleh lebih
+            // dari satu divisi), TIDAK LAGI otomatis diturunkan dari
+            // TB_R_DOCUMENT.DIVISION. ACKNOWLEDGED_FLAG dibaca dari kolom yang
+            // sama seperti sebelumnya (acknowledgment sudah lepas dari
+            // TB_R_APPROVAL_D, lihat DocumentMaintenance_RelatedDivision_Role_Migration.sql).
+            Dictionary<string, string> roleByDivision = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, bool> acknowledgedByDivision = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+            using (var cmd = db.Database.GetDbConnection().CreateCommand())
+            {
+                if (cmd.Connection.State != System.Data.ConnectionState.Open) cmd.Connection.Open();
+                cmd.CommandText = "SELECT DIVISION_CODE, DIVISION_ROLE, ACKNOWLEDGED_FLAG FROM TB_R_DOCUMENT_RELATED_DIVISION WHERE DOCUMENT_TRANSACTION_ID = @id";
+                var idParam = cmd.CreateParameter();
+                idParam.ParameterName = "@id";
+                idParam.Value = documentMaintenance.DOCUMENT_TRANSACTION_ID;
+                cmd.Parameters.Add(idParam);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string divisionCode = reader.GetString(0);
+                        roleByDivision[divisionCode] = reader.GetString(1);
+                        acknowledgedByDivision[divisionCode] = reader.GetBoolean(2);
+                    }
+                }
+            }
+
+            // Baris marker (◎ Main PIC / ○ Related / - none) - kolom dibaca
+            // langsung dari header row, berhenti di kolom kosong pertama.
+            // Peran "Note Related" (●) sempat ada lalu dihapus lagi (request
+            // Hendra 2026-08-20 revisi ke-3) - kalau DIVISION_ROLE lama masih
+            // menyimpan nilai itu (data historis), tetap jatuh ke cabang
+            // "○" di bawah, bukan error.
+            for (int col = firstDivisionCol; ; col++)
+            {
+                string divisionCode = sheet[headerRow, col].Value.ToString().Trim();
+                if (string.IsNullOrEmpty(divisionCode)) break;
+
+                string marker = "-";
+                if (roleByDivision.TryGetValue(divisionCode, out string role))
+                {
+                    marker = role.Equals("MAIN_PIC", StringComparison.OrdinalIgnoreCase) ? "◎" : "○"; // RELATED
+                }
+
+                DxSetCellValueBlackFont(sheet[markerRow, col], marker);
+            }
+
+            // Tabel "Mengetahui Divisi Terkait" - satu baris per divisi yang punya
+            // role apapun (Main PIC MAUPUN Related) ikut tanda tangan Mengetahui.
+            // Sebelumnya cuma role RELATED yang dimasukkan (Main PIC dianggap
+            // cukup terwakili di baris marker ◎) - diubah atas request user
+            // 2026-08-27: kolom tanda tangan tetap harus terisi untuk Main PIC
+            // juga, bukan cuma Related.
+            List<string> relatedDivisions = roleByDivision.Keys.ToList();
+
+            // Gambar tanda tangan di-spanning 2 baris template (bukan 1) supaya cukup
+            // tinggi buat kebaca (request Hendra 2026-08-21) - baris tunggal (~20pt,
+            // dirancang buat teks biasa) bikin gambar kegepeng nyaris tak kebaca,
+            // dibanding kotak Disetujui/Diperiksa/Dibuat yang tingginya ~75pt lewat 3
+            // baris. SENGAJA pakai cara spanning-baris (bukan sheet.Rows[i].Height=X) -
+            // sudah dicoba menaikkan Height satu baris secara eksplisit (bahkan sampai
+            // nilai ekstrem 100pt) dan TIDAK berpengaruh sama sekali ke hasil render
+            // PDF (diuji 2026-08-21) - entah kenapa DevExpress mengabaikannya di jalur
+            // export ini. Konsekuensi: kapasitas tabel berkurang jadi separuh (~8
+            // divisi terkait, dari sebelumnya ~16) - lebih dari cukup untuk kasus nyata.
+            const int signRowSpan = 2;
+
+            int tableRow = tableStartRow;
+            foreach (string divisionCode in relatedDivisions)
+            {
+                if (tableRow > tableEndRow) break; // jangan overflow ke area di luar tabel
+
+                string headUsername = null, headFullName = null, headSignaturePath = null;
+                using (var cmd = db.Database.GetDbConnection().CreateCommand())
+                {
+                    if (cmd.Connection.State != System.Data.ConnectionState.Open) cmd.Connection.Open();
+                    cmd.CommandText = "SELECT TOP 1 U.USERNAME, U.FULL_NAME, U.SIGNATURE_PATH " +
+                        "FROM TB_M_USER_POS UP JOIN TB_M_USER U ON UP.USERNAME = U.USERNAME " +
+                        "WHERE UP.POSITION_ID = 4 AND UP.DIVISION = @div";
+                    var divParam = cmd.CreateParameter();
+                    divParam.ParameterName = "@div";
+                    divParam.Value = divisionCode;
+                    cmd.Parameters.Add(divParam);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            headUsername = reader.GetString(0);
+                            headFullName = reader.IsDBNull(1) ? null : reader.GetString(1);
+                            headSignaturePath = reader.IsDBNull(2) ? null : reader.GetString(2);
+                        }
+                    }
+                }
+
+                DxSetCellValueBlackFont(sheet[tableRow, divisiCol], divisionCode);
+
+                if (headUsername != null)
+                {
+                    DxSetCellValueBlackFont(sheet[tableRow, kepalaDivisiCol], headFullName);
+
+                    bool acknowledged = acknowledgedByDivision.TryGetValue(divisionCode, out bool ackFlag) && ackFlag;
+
+                    if (acknowledged && !string.IsNullOrEmpty(headSignaturePath))
+                    {
+                        string signPath = webRootPath + headSignaturePath;
+                        if (System.IO.File.Exists(signPath))
+                        {
+                            DxAddPicture(sheet, signPath, tableRow, tandaTanganCol, 2, signRowSpan);
+                        }
+                    }
+                }
+                else
+                {
+                    DxSetCellValueBlackFont(sheet[tableRow, kepalaDivisiCol], "(Div. Head not assigned)");
+                }
+
+                tableRow += signRowSpan;
+            }
+        }
+
+        // Fitur "Divisi Terkait" - sheet "LEMBAR MENGETAHUI" pada template PDM
+        // (Pedoman, DOCUMENT_ID=1) & PRO (Prosedur, DOCUMENT_ID=2), Level 2
+        // (request Hendra 2026-08-26 - kotak tanda tangan divisi yang mengetahui
+        // belum pernah terisi otomatis dari aplikasi). Beda dari
+        // WriteRelatedDivisionSection (SPR) di atas: sheet ini TIDAK punya baris
+        // marker Main PIC/Related terpisah, cuma satu tabel lurus
+        // "No. | Divisi | Nama | Tanda Tangan" (dicek langsung dari file
+        // tes_dokumen_prosedur_1-134321880018518093.xlsx, DOCUMENT_TRANSACTION_ID=7),
+        // jadi SEMUA divisi terkait ditulis di sini apapun DIVISION_ROLE-nya
+        // (beda dari SPR yang cuma menulis role RELATED ke tabelnya karena Main
+        // PIC sudah terwakili di baris marker terpisah).
+        //
+        // Koordinat baris/kolom (0-indexed) ditemukan dari file yang sama:
+        // header "No./Divisi/Nama/Tanda Tangan" di row 16 (statis, tidak perlu
+        // ditulis ulang), tabel mulai row 18, tiap baris data di-merge 2 baris
+        // (mis. D18:E19, F18:O19, P18:Z19, AA18:AL19) sampai baris aman terakhir
+        // row 54 - kalau template diganti lagi, petakan ulang koordinat ini dari
+        // nol, jangan asumsikan sama.
+        private void WriteLembarMengetahuiSection(DevExpress.Spreadsheet.Worksheet sheet, DocumentMaintenance documentMaintenance, string webRootPath)
+        {
+            const int noCol = 3;           // Excel col D
+            const int divisiCol = 5;       // Excel col F (merge F:O)
+            const int namaCol = 15;        // Excel col P (merge P:Z)
+            const int tandaTanganCol = 26; // Excel col AA (merge AA:AL)
+            const int tableStartRow = 17;  // Excel row 18
+            const int tableEndRow = 53;    // Excel row 54 (baris terakhir yang aman di template)
+            const int rowSpan = 2;         // tiap baris tabel di-merge 2 baris
+
+            // Kolom "Divisi" cukup kode saja (mis. "CED", bukan "CED - Corporate &
+            // External Affairs Div") supaya tidak kepanjangan/terpotong di kolom
+            // tabel yang sempit (request Hendra 2026-08-26, dicek langsung dari
+            // hasil cetak - nama lengkap ke-truncate).
+            var relatedDivisions = new List<(string Code, bool Acknowledged, string HeadFullName, string HeadSignaturePath)>();
+            using (var cmd = db.Database.GetDbConnection().CreateCommand())
+            {
+                if (cmd.Connection.State != System.Data.ConnectionState.Open) cmd.Connection.Open();
+                // Kepala Divisi dicari lewat POSITION_ID=4 (Div. Head), pola sama
+                // persis seperti WriteRelatedDivisionSection di atas.
+                cmd.CommandText = "SELECT RD.DIVISION_CODE, RD.ACKNOWLEDGED_FLAG, U.FULL_NAME, U.SIGNATURE_PATH " +
+                    "FROM TB_R_DOCUMENT_RELATED_DIVISION RD " +
+                    "OUTER APPLY (SELECT TOP 1 UP.USERNAME FROM TB_M_USER_POS UP WHERE UP.POSITION_ID = 4 AND UP.DIVISION = RD.DIVISION_CODE) DH " +
+                    "LEFT JOIN TB_M_USER U ON U.USERNAME = DH.USERNAME " +
+                    "WHERE RD.DOCUMENT_TRANSACTION_ID = @id ORDER BY RD.DIVISION_CODE";
+                var idParam = cmd.CreateParameter();
+                idParam.ParameterName = "@id";
+                idParam.Value = documentMaintenance.DOCUMENT_TRANSACTION_ID;
+                cmd.Parameters.Add(idParam);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        relatedDivisions.Add((
+                            reader.GetString(0),
+                            !reader.IsDBNull(1) && reader.GetBoolean(1),
+                            reader.IsDBNull(2) ? null : reader.GetString(2),
+                            reader.IsDBNull(3) ? null : reader.GetString(3)));
+                    }
+                }
+            }
+
+            int tableRow = tableStartRow;
+            int no = 1;
+            foreach (var division in relatedDivisions)
+            {
+                if (tableRow > tableEndRow) break; // jangan overflow ke area di luar tabel
+
+                DxSetCellValueBlackFontLeftMiddleAligned(sheet[tableRow, noCol], (no++).ToString());
+                DxSetCellValueBlackFontLeftMiddleAligned(sheet[tableRow, divisiCol], division.Code);
+
+                if (division.HeadFullName != null)
+                {
+                    DxSetCellValueBlackFontLeftMiddleAligned(sheet[tableRow, namaCol], division.HeadFullName);
+
+                    if (division.Acknowledged && !string.IsNullOrEmpty(division.HeadSignaturePath))
+                    {
+                        string signPath = webRootPath + division.HeadSignaturePath;
+                        if (System.IO.File.Exists(signPath))
+                        {
+                            // Kolom Tanda Tangan sudah di-merge di template (mis.
+                            // AA18:AL19) - pakai merge yang sudah ada sebagai target
+                            // gambar (pola sama seperti marker-based DxAddPicture di
+                            // atas) daripada menghitung ulang lebar kolom manual.
+                            IList<DevExpress.Spreadsheet.CellRange> signMerges = sheet[tableRow, tandaTanganCol].GetMergedRanges();
+                            DevExpress.Spreadsheet.CellRange signRange = signMerges.Count > 0
+                                ? signMerges[0]
+                                : sheet.Range.FromLTRB(tandaTanganCol, tableRow, tandaTanganCol + 2, tableRow + rowSpan - 1);
+                            DxAddPicture(sheet, signPath, signRange);
+                        }
+                    }
+                }
+                else
+                {
+                    DxSetCellValueBlackFontLeftMiddleAligned(sheet[tableRow, namaCol], "(Div. Head not assigned)");
+                }
+
+                tableRow += rowSpan;
+            }
+        }
+
         private void DxAddPicture(DevExpress.Spreadsheet.Worksheet sheet, string imagePath, int rowStart, int colStart, int mergeCellCol, int mergeCellRow)
         {
             DevExpress.Spreadsheet.CellRange targetRange = sheet.Range.FromLTRB(colStart, rowStart, colStart + mergeCellCol - 1, rowStart + mergeCellRow - 1);
+            DxAddPicture(sheet, imagePath, targetRange);
+        }
+
+        // Overload dipakai jalur marker (Named Range) - area gambar sudah didapat
+        // langsung dari range marker-nya, tidak perlu dihitung dari rowStart/mergeCell.
+        private void DxAddPicture(DevExpress.Spreadsheet.Worksheet sheet, string imagePath, DevExpress.Spreadsheet.CellRange targetRange)
+        {
             sheet.Pictures.AddPicture(DevExpress.Spreadsheet.SpreadsheetImageSource.FromFile(imagePath), targetRange, false);
         }
 
@@ -2449,7 +3253,19 @@ namespace DMS.Controllers
 
                         if (max_seq == workflowSeq)
                         {
-                            documentMaintenance.STATUS = "1";
+                            // Related Division "Mengetahui" (SPR/SIPOCOR Level 2) sudah
+                            // TIDAK bagian dari chain approval ini lagi (request Hendra
+                            // 2026-08-20) - approval asli selesai di sini terlepas dari
+                            // acknowledgment. Tapi dokumen baru benar-benar Approved (1)
+                            // kalau semua Related Division juga sudah Mengetahui; kalau
+                            // masih ada yang pending, dokumen masuk status antara
+                            // "Waiting Acknowledgment" (6) dan efek-samping "selesai
+                            // approval" (obsolete-control, cache PDF, email) ditunda
+                            // sampai acknowledgment terakhir masuk lewat
+                            // AcknowledgeRelatedDivisionAsync.
+                            bool hasPendingAck = documentMaintenanceRepo.CountPendingRelatedDivisionAck((int)documentMaintenance.DOCUMENT_TRANSACTION_ID, db) > 0;
+
+                            documentMaintenance.STATUS = hasPendingAck ? "6" : "1";
                             result = documentMaintenanceRepo.UpdateStatus(documentMaintenance, GetLoginUsername(), db);
                             if (!result.status)
                             {
@@ -2468,37 +3284,13 @@ namespace DMS.Controllers
 
                                 return Json(new { status = false, message = result.message });
                             }
+                            else if (hasPendingAck)
+                            {
+                                logRepo.WriteLog(processid, "1", "INF", "Approval chain completed; waiting on Related Division acknowledgment(s).", location, GetLoginUsername(), db);
+                            }
                             else
                             {
-                                // Obsolete-control (Jul 2026): revisi ini baru saja selesai disetujui
-                                // (langkah approval terakhir) - arsipkan revisi sebelumnya yang masih
-                                // berstatus Approved sebagai OBSOLETE. Kalau tidak ada revisi
-                                // sebelumnya (dokumen baru), SP tidak melakukan apa-apa.
-                                // loginUser sengaja null di kedua Search di bawah - approver yang
-                                // memproses approval ini belum tentu satu divisi/department dengan
-                                // dokumennya, dan Search men-scope hasil berdasarkan TB_M_USER_POS
-                                // loginUser kalau diisi (bisa membuat lookup ini salah kembalikan
-                                // null padahal dokumennya ada).
-                                DocumentMaintenance currentDocument = documentMaintenanceRepo
-                                    .Search(new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = documentMaintenance.DOCUMENT_TRANSACTION_ID }, null, db, 1, 1)
-                                    .FirstOrDefault();
-
-                                DocumentMaintenance previousRevision = currentDocument == null ? null : documentMaintenanceRepo
-                                    .Search(new DocumentMaintenance { DOCUMENT_CODE = currentDocument.DOCUMENT_CODE, STATUS = "1" }, null, db, 1, 10)
-                                    .FirstOrDefault(x => x.DOCUMENT_TRANSACTION_ID != documentMaintenance.DOCUMENT_TRANSACTION_ID);
-
-                                documentMaintenanceRepo.SupersedePreviousRevision(documentMaintenance, GetLoginUsername(), db);
-
-                                if (previousRevision != null)
-                                {
-                                    //Cache PDF revisi lama jangan sampai terus disajikan sebagai
-                                    //"CONTROLLED COPY" - hapus supaya request berikutnya regenerate
-                                    //dengan watermark OBSOLETE (lihat ViewAttachment).
-                                    DeleteDocumentCache(previousRevision, webRootPath);
-                                }
-
-                                DeleteDocumentCache(documentMaintenance, webRootPath);
-                                SendApproveRejectEmail((int)documentMaintenance.DOCUMENT_TRANSACTION_ID, mode, remark);
+                                FinalizeApproval(documentMaintenance, mode, remark, webRootPath);
                                 logRepo.WriteLog(processid, "1", "INF", result.message, location, GetLoginUsername(), db);
                             }
                         }
@@ -2567,6 +3359,121 @@ namespace DMS.Controllers
 
                     return Json(result);
                 }
+            }
+            catch (Exception ex)
+            {
+                db.Database.RollbackTransaction();
+                logRepo.WriteLog(processid, "4", "ERR", ex.Message, location, GetLoginUsername(), db);
+
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        // Efek-samping "selesai approval" (obsolete-control revisi lama, hapus
+        // cache PDF, email) - diekstrak dari ApproveRejectAsync (request Hendra
+        // 2026-08-20) supaya bisa dipakai juga dari AcknowledgeRelatedDivisionAsync
+        // saat acknowledgment TERAKHIR yang menaikkan dokumen ke Approved (dokumen
+        // sempat "Waiting Acknowledgment" menunggu Related Division, bukan
+        // langsung Approved di titik approval asli selesai).
+        private void FinalizeApproval(DocumentMaintenance documentMaintenance, string mode, string remark, string webRootPath)
+        {
+            // loginUser sengaja null di kedua Search di bawah - approver/Div Head
+            // yang memproses ini belum tentu satu divisi/department dengan
+            // dokumennya, dan Search men-scope hasil berdasarkan TB_M_USER_POS
+            // loginUser kalau diisi (bisa membuat lookup ini salah kembalikan
+            // null padahal dokumennya ada).
+            DocumentMaintenance currentDocument = documentMaintenanceRepo
+                .Search(new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = documentMaintenance.DOCUMENT_TRANSACTION_ID }, null, db, 1, 1)
+                .FirstOrDefault();
+
+            DocumentMaintenance previousRevision = currentDocument == null ? null : documentMaintenanceRepo
+                .Search(new DocumentMaintenance { DOCUMENT_CODE = currentDocument.DOCUMENT_CODE, STATUS = "1" }, null, db, 1, 10)
+                .FirstOrDefault(x => x.DOCUMENT_TRANSACTION_ID != documentMaintenance.DOCUMENT_TRANSACTION_ID);
+
+            documentMaintenanceRepo.SupersedePreviousRevision(documentMaintenance, GetLoginUsername(), db);
+
+            if (previousRevision != null)
+            {
+                //Cache PDF revisi lama jangan sampai terus disajikan sebagai
+                //"CONTROLLED COPY" - hapus supaya request berikutnya regenerate
+                //dengan watermark OBSOLETE (lihat ViewAttachment).
+                DeleteDocumentCache(previousRevision, webRootPath);
+            }
+
+            DeleteDocumentCache(documentMaintenance, webRootPath);
+            SendApproveRejectEmail((int)documentMaintenance.DOCUMENT_TRANSACTION_ID, mode, remark);
+        }
+
+        // Panel "Related Division Acknowledgment" di modal Approval List - list
+        // kosong (data.length == 0) berarti dokumen ini bukan SPR Level 2 / tidak
+        // punya Related Division, JS-nya yang menyembunyikan section (request
+        // Hendra 2026-08-20).
+        public JsonResult GetRelatedDivisionAckStatus(int documentTransactionId)
+        {
+            try
+            {
+                IList<DocumentRelatedDivision> data = documentMaintenanceRepo.GetRelatedDivisionAckStatus(documentTransactionId, db);
+                return Json(new { status = true, data = data });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        // Aksi "Mengetahui" Div Head - TERPISAH dari ApproveRejectAsync, tidak ada
+        // opsi reject (lihat sp_DocumentMaintenance_AcknowledgeRelatedDivision utk
+        // alasan lengkapnya). Kalau ini acknowledgment terakhir DAN approval
+        // aslinya sudah selesai lebih dulu (STATUS=6), naikkan ke Approved (1) dan
+        // jalankan efek-samping "selesai approval" yang sama seperti approval biasa.
+        public JsonResult AcknowledgeRelatedDivisionAsync(int documentTransactionId, string divisionCode, string remark)
+        {
+            string webRootPath = Environment.WebRootPath;
+            string location = "DocumentMaintenance/AcknowledgeRelatedDivision";
+
+            LogHeader logH = new LogHeader { MODULE = "Document Maintenance", FUNCTION = "Acknowledge Related Division" };
+            long processid = logRepo.StartLog(logH, location, GetLoginUsername(), db);
+
+            try
+            {
+                db.Database.BeginTransaction();
+
+                DBResult result = documentMaintenanceRepo.AcknowledgeRelatedDivision(documentTransactionId, divisionCode, GetLoginUsername(), db, out bool promotedToApproved);
+
+                if (!result.status)
+                {
+                    db.Database.RollbackTransaction();
+                    logRepo.WriteLog(processid, "3", "ERR", result.message, location, GetLoginUsername(), db);
+
+                    return Json(new { status = false, message = result.message });
+                }
+
+                if (promotedToApproved)
+                {
+                    DocumentMaintenance documentMaintenance = documentMaintenanceRepo
+                        .Search(new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = documentTransactionId }, null, db, 1, 1)
+                        .FirstOrDefault();
+
+                    if (documentMaintenance != null)
+                    {
+                        documentMaintenance.STATUS = "1";
+                        DBResult statusResult = documentMaintenanceRepo.UpdateStatus(documentMaintenance, GetLoginUsername(), db);
+                        if (!statusResult.status)
+                        {
+                            db.Database.RollbackTransaction();
+                            logRepo.WriteLog(processid, "3", "ERR", statusResult.message, location, GetLoginUsername(), db);
+
+                            return Json(new { status = false, message = statusResult.message });
+                        }
+
+                        FinalizeApproval(documentMaintenance, "approve", remark, webRootPath);
+                    }
+                }
+
+                db.Database.CommitTransaction();
+                logRepo.WriteLog(processid, "2", "INF", result.message, location, GetLoginUsername(), db);
+
+                return Json(new { status = true, message = result.message, promotedToApproved = promotedToApproved });
             }
             catch (Exception ex)
             {
@@ -2803,9 +3710,12 @@ namespace DMS.Controllers
                 bool isObsolete = currentDocument == null;
 
                 // Stempel gambar berdasarkan status dokumen, bukan siapa yang login - lihat
-                // ViewAttachment untuk penjelasan lengkap aturannya (sama persis di sini).
+                // ViewAttachment untuk penjelasan lengkap aturannya (sama persis di sini,
+                // termasuk CONTROLLED COPY cuma untuk type 3/end user - request Hendra
+                // 2026-08-14).
                 bool isFullyAcknowledged = !isObsolete && currentDocument.STATUS == "5";
                 bool isMasterStamped = !isObsolete && (isFullyAcknowledged || IsReceivedByQms(currentDocument.DOCUMENT_TRANSACTION_ID));
+                bool isEndUserView = type == "3";
 
                 string masterStampPath = null;
                 string controlledCopyStampPath = null;
@@ -2818,7 +3728,7 @@ namespace DMS.Controllers
                 else
                 {
                     if (isMasterStamped) masterStampPath = webRootPath + "/images/cap_master.png";
-                    if (isFullyAcknowledged) controlledCopyStampPath = webRootPath + "/images/cap_controlledcopy.png";
+                    if (isFullyAcknowledged && isEndUserView) controlledCopyStampPath = webRootPath + "/images/cap_controlledcopy.png";
                 }
 
                 string[] split = documentMaintenance.FILE_PATH.Split("/");

@@ -483,6 +483,29 @@
                     </div>
                 </div>
 
+                <!-- Related Division Acknowledgment (SPR/SIPOCOR Level 2 only) - TERPISAH
+                     dari Approval Route/History di atas (request Hendra 2026-08-20):
+                     Div Head cuma konfirmasi "Mengetahui", bukan approval berjenjang
+                     biasa (tidak ada opsi reject). Section ini disembunyikan otomatis
+                     kalau dokumen tidak punya Related Division - lihat
+                     getRelatedDivisionAckStatus() di _Javascript.cshtml. -->
+                <div class="adf-section" id="relatedDivisionAckSection" style="display:none;">
+                    <div class="adf-section-title"><i class="fa fa-users"></i> Related Division Acknowledgment</div>
+                    <div style="overflow-x:auto;">
+                        <table id="relatedDivisionAckGrid" class="approval-table" width="100%">
+                            <thead>
+                                <tr>
+                                    <th>Division</th>
+                                    <th>Div. Head</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                </div>
+
                 <div id="pengesahanLayout" style="display:none; margin-top: 4px;">
                     <button id="btn_download_pengesahan" class="btn btn-primary"><i class="fa fa-download"></i> Download Bukti Pengesahan</button>
                 </div>

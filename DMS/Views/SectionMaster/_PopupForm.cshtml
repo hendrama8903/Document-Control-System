@@ -1,105 +1,194 @@
-﻿<div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+<style>
+    #modalAddEdit .modal-content { border: none; border-radius: 14px; overflow: hidden; padding: 0; }
+    #modalAddEdit .modal-header, #modalAddEdit .modal-footer { display: none; }
+
+    .scf-header {
+        background: linear-gradient(135deg, #2450D8, #1C3FA6);
+        color: #fff;
+        padding: 11px 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .scf-header-icon {
+        width: 32px; height: 32px; border-radius: 9px;
+        background: rgba(255,255,255,.18);
+        display: flex; align-items: center; justify-content: center;
+        flex: none; font-size: 14px;
+    }
+    .scf-header-title { font-size: 14.5px; font-weight: 700; }
+    .scf-header-sub { font-size: 11px; color: rgba(255,255,255,.85); margin-top: 1px; }
+    .scf-close {
+        margin-left: auto; background: none; border: none;
+        color: rgba(255,255,255,.85); font-size: 15px; cursor: pointer; padding: 4px;
+    }
+    .scf-close:hover { color: #fff; }
+
+    .scf-body { padding: 0 20px; }
+
+    .scf-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        padding: 8px 0;
+        border-bottom: 1px solid #EEF1F5;
+    }
+    .scf-row:last-child { border-bottom: none; }
+    .scf-row-left {
+        display: flex; align-items: flex-start; gap: 9px;
+        flex: 0 0 175px;
+    }
+    .scf-icon {
+        width: 30px; height: 30px; border-radius: 8px;
+        background: #E7F1FB; color: #2450D8;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 12.5px; flex: none;
+    }
+    .scf-label { font-size: 12.5px; font-weight: 700; color: #1D2939; }
+    .scf-sub { font-size: 10.5px; color: #98A2B3; margin-top: 0; line-height: 1.2; }
+    .scf-row-right { flex: 1 1 0; min-width: 0; padding-top: 3px; position: relative; }
+    .scf-row-right .form-control { height: 32px; padding-top: 5px; padding-bottom: 5px; font-size: 12.5px; }
+    .scf-hint { font-size: 10px; color: #98A2B3; margin-top: 3px; line-height: 1.2; }
+    .scf-row-right input[type="text"] { padding-right: 34px; }
+
+    .scf-daterange { display: flex; gap: 12px; }
+    .scf-daterange-col { flex: 1 1 0; min-width: 0; }
+    .scf-date-mini-label { font-size: 10.5px; font-weight: 600; color: #667085; margin-bottom: 3px; }
+    .scf-date-input-wrap { position: relative; }
+    .scf-date-input-wrap .scf-calendar-icon {
+        position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+        color: #98A2B3; font-size: 12px; pointer-events: none;
+    }
+
+    @@media (max-width: 640px) {
+        .scf-row { flex-direction: column; align-items: stretch; }
+        .scf-row-left { flex: none; }
+    }
+
+    .scf-footer {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        padding: 10px 20px; border-top: 1px solid #EEF1F5;
+    }
+    .scf-footer-right { display: flex; gap: 10px; }
+    .scf-btn {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 7px 14px; border-radius: 7px; font-size: 12px; font-weight: 700;
+        border: 1px solid transparent; cursor: pointer; white-space: nowrap;
+    }
+    .scf-btn-reset { background: #fff; border-color: #D5DDE8; color: #475467; }
+    .scf-btn-reset:hover { background: #F4F6F8; }
+    .scf-btn-cancel { background: #fff; border-color: #D5DDE8; color: #475467; }
+    .scf-btn-cancel:hover { background: #F4F6F8; }
+    .scf-btn-primary { background: #2450D8; color: #fff; }
+    .scf-btn-primary:hover { background: #1C3FA6; }
+</style>
+
+<div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
     <div class="modal-dialog modal-md">
         <div class="modal-content">
-            <!-- Modal Header -->
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
-                <h4 class="modal-title" id="modal-title">Add / Edit @ViewData["Title"]</h4>
+            <div class="scf-header">
+                <div class="scf-header-icon"><i class="fa fa-sitemap"></i></div>
+                <div>
+                    <div class="scf-header-title" id="modal-title">Add Section Master</div>
+                    <div class="scf-header-sub" id="modal-subtitle">Add a new section to the system</div>
+                </div>
+                <button type="button" class="scf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
             </div>
 
-            <!-- Modal Body -->
-            <div class="modal-body">
-                <div class="row">
-                    <div class="col-lg-12 form-horizontal" style="margin-top:15px; margin-left:15px">
+            <div class="scf-body">
+                <input class="form-control" id="addEditSectionId" type="hidden" />
 
-                         <div class="row" >
-                            <div class="col-lg-12" type="hidden">
-                                <div class="form-group">
-                                    <label hidden class="col-sm-3 control-label"">Section ID<span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditSectionId" type="hidden" />
-                                    </div>
-                                </div>
-                            </div>
+                <div class="scf-row">
+                    <div class="scf-row-left">
+                        <div class="scf-icon"><i class="fa fa-tag"></i></div>
+                        <div>
+                            <div class="scf-label">Section Code <span class="text-red">*</span></div>
+                            <div class="scf-sub">Unique section code</div>
                         </div>
-                        
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Section Code<span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditSectionCode" type="text" oninput="removeWhiteSpace(this)" maxlength="5" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    </div>
+                    <div class="scf-row-right">
+                        <input class="form-control" id="addEditSectionCode" type="text" oninput="removeWhiteSpace(this)" maxlength="5" placeholder="Enter section code" />
+                        <div class="scf-hint">Use a short, unique code, e.g: SEC01, ADM, FIN</div>
+                    </div>
+                </div>
 
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Section Name<span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditSectionName" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
-                                    </div>
-                                </div>
-                            </div>
+                <div class="scf-row">
+                    <div class="scf-row-left">
+                        <div class="scf-icon"><i class="fa fa-file-o"></i></div>
+                        <div>
+                            <div class="scf-label">Section Name <span class="text-red">*</span></div>
+                            <div class="scf-sub">Section name</div>
                         </div>
-                        
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Division<span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <select class="form-control" id="addEditDivision" onchange="setDepartmentCode(this.value);"></select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    </div>
+                    <div class="scf-row-right">
+                        <input class="form-control" id="addEditSectionName" type="text" oninput="removeWhiteSpace(this)" maxlength="255" placeholder="Enter section name" />
+                        <div class="scf-hint">Enter the full section name</div>
+                    </div>
+                </div>
 
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label">Department<span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <select class="form-control" id="addEditDepartmentCode"></select>
-                                    </div>
+                <div class="scf-row">
+                    <div class="scf-row-left">
+                        <div class="scf-icon"><i class="fa fa-share-alt"></i></div>
+                        <div>
+                            <div class="scf-label">Division <span class="text-red">*</span></div>
+                            <div class="scf-sub">Select division</div>
+                        </div>
+                    </div>
+                    <div class="scf-row-right">
+                        <select class="form-control" id="addEditDivision" onchange="setDepartmentCode(this.value);"></select>
+                        <div class="scf-hint">Select the parent division for this section</div>
+                    </div>
+                </div>
+
+                <div class="scf-row">
+                    <div class="scf-row-left">
+                        <div class="scf-icon"><i class="fa fa-building"></i></div>
+                        <div>
+                            <div class="scf-label">Department <span class="text-red">*</span></div>
+                            <div class="scf-sub">Select department</div>
+                        </div>
+                    </div>
+                    <div class="scf-row-right">
+                        <select class="form-control" id="addEditDepartmentCode"></select>
+                        <div class="scf-hint">Select the related department</div>
+                    </div>
+                </div>
+
+                <div class="scf-row">
+                    <div class="scf-row-left">
+                        <div class="scf-icon"><i class="fa fa-calendar"></i></div>
+                        <div>
+                            <div class="scf-label">Validity Period <span class="text-red">*</span></div>
+                            <div class="scf-sub">Effective date range</div>
+                        </div>
+                    </div>
+                    <div class="scf-row-right">
+                        <div class="scf-daterange">
+                            <div class="scf-daterange-col">
+                                <div class="scf-date-mini-label">Valid From</div>
+                                <div class="scf-date-input-wrap">
+                                    <input class="form-control" id="addEditValidFrom" type="text" placeholder="Select start date" autocomplete="off" />
+                                    <i class="fa fa-calendar scf-calendar-icon"></i>
+                                </div>
+                            </div>
+                            <div class="scf-daterange-col">
+                                <div class="scf-date-mini-label">Valid To</div>
+                                <div class="scf-date-input-wrap">
+                                    <input class="form-control" id="addEditValidTo" type="text" placeholder="Select end date" autocomplete="off" />
+                                    <i class="fa fa-calendar scf-calendar-icon"></i>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group has-feedback">
-                                    <label class="col-sm-3 control-label">Valid From<span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditValidFrom" type="text" />
-                                        <span class="glyphicon glyphicon-calendar form-control-feedback"></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="form-group has-feedback">
-                                    <label class="col-sm-3 control-label">Valid To<span class="text-red"> *</span></label>
-                                    <div class="col-sm-8">
-                                        <input class="form-control" id="addEditValidTo" type="text" />
-                                        <span class="glyphicon glyphicon-calendar form-control-feedback"></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
+                        <div class="scf-hint">Leave "Valid To" empty if valid indefinitely</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Modal Footer -->
-            <div class="modal-footer">
-                <div class="col-xs-12 text-right">
-                    <button type="button" class="btn btn-primary" id="btn_save" style="width: 80px;">Save</button>
-                    <button type="button" class="btn btn-danger" id="btn_cancel" data-dismiss="modal" style="width: 80px;">Cancel</button>
+            <div class="scf-footer">
+                <button type="button" class="scf-btn scf-btn-reset" id="btn_reset_form"><i class="fa fa-refresh"></i> Reset</button>
+                <div class="scf-footer-right">
+                    <button type="button" class="scf-btn scf-btn-cancel" id="btn_cancel" data-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
+                    <button type="button" class="scf-btn scf-btn-primary" id="btn_save"><i class="fa fa-save"></i> Save</button>
                 </div>
             </div>
         </div>

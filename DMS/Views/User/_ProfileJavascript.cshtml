@@ -83,8 +83,7 @@
                     $("#txtUsername").text(data.USERNAME || "-");
                     $("#txtRegNo").text(data.REG_NO || "-");
                     $("#txtEmailSidebar").text(data.EMAIL || "-");
-                    $("#txtPhoneSidebar").text(data.PHONE || "-");
-                    $("#txtMemberSince").text(data.CREATED_DT ? moment(data.CREATED_DT).format("DD MMM YYYY") : "-");
+                    $("#txtPositionSidebar").text(data.POSITION_NAME || "-");
 
                     $("#addEditUsername").val(data.USERNAME);
                     $("#addEditRegNo").val(data.REG_NO);

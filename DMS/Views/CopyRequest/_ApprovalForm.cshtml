@@ -1,67 +1,86 @@
+<!-- Panel review approval - side panel geser dari kanan (BUKAN modal), pola
+     sama persis DocumentControlDashboard/_AcceptanceDetailPopup.cshtml &
+     CopyRequest/_PrintLogPanel.cshtml (request Hendra 2026-08-16, sebelumnya
+     Bootstrap modal). -->
 <style>
-    #modalApproval .modal-dialog {
-        width: 720px;
-        max-width: 96vw;
-    }
-
-    #modalApproval .modal-content {
+    #approvalPanel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 520px;
+        max-width: 94vw;
+        height: 100vh;
+        background: #fff;
+        box-shadow: -8px 0 24px rgba(20,35,50,.18);
+        z-index: 1050;
         display: flex;
         flex-direction: column;
-        max-height: 92vh;
-        border: none;
-        border-radius: 14px;
-        overflow: hidden;
+        transform: translateX(100%);
+        transition: transform .22s cubic-bezier(.4,0,.2,1);
     }
 
-    /* header */
-    #modalApproval .adf-header {
-        flex: none;
-        background: linear-gradient(135deg, #2450D8, #1C3FA6);
-        color: #fff;
-        padding: 16px 22px;
+    #approvalPanel.open { transform: translateX(0); }
+
+    #approvalPanel .adf-header {
+        background: #fff;
+        color: #101828;
+        padding: 16px 18px;
         display: flex;
         align-items: center;
         gap: 12px;
+        border-bottom: 1px solid #EEF1F5;
+        position: relative;
+        flex: none;
     }
 
-    #modalApproval .adf-header-title {
-        font-size: 16px;
-        font-weight: 700;
+    #approvalPanel .adf-header-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        background: #E7F1FB;
+        color: #2450D8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+        font-size: 15px;
     }
 
-    #modalApproval .adf-close {
-        margin-left: auto;
-        background: transparent;
+    #approvalPanel .adf-header-title { font-size: 14px; font-weight: 700; color: #101828; }
+    #approvalPanel .adf-header-sub { font-size: 12px; color: #8A94A3; margin-top: 2px; }
+
+    #approvalPanel .adf-close {
+        background: none;
         border: none;
-        color: rgba(255,255,255,.9);
-        font-size: 18px;
-        line-height: 1;
-        padding: 6px;
+        color: #98A2B3;
+        font-size: 13px;
         cursor: pointer;
+        padding: 2px;
+        margin-left: auto;
     }
 
-    #modalApproval .adf-close:hover { color: #fff; }
+    #approvalPanel .adf-close:hover { color: #475467; }
 
-    /* body */
-    #modalApproval .modal-body {
+    #approvalPanel .panel-body {
         flex: 1 1 auto;
         min-height: 0;
         overflow-y: auto;
+        overflow-x: hidden;
         background: #F4F6F8;
-        padding: 18px 22px;
+        padding: 18px 20px;
     }
 
-    #modalApproval .adf-section {
+    #approvalPanel .adf-section {
         background: #fff;
         border: 1px solid #E3E8EE;
         border-radius: 10px;
         padding: 16px 18px;
-        margin-bottom: 16px;
+        margin-bottom: 14px;
     }
 
-    #modalApproval .adf-section:last-child { margin-bottom: 0; }
+    #approvalPanel .adf-section:last-child { margin-bottom: 0; }
 
-    #modalApproval .adf-section-title {
+    #approvalPanel .adf-section-title {
         display: flex;
         align-items: center;
         gap: 8px;
@@ -73,30 +92,21 @@
         margin-bottom: 14px;
     }
 
-    #modalApproval .adf-section-title i { color: #2450D8; }
+    #approvalPanel .adf-section-title i { color: #2450D8; }
 
-    /* Request Information + Approval Status panel */
-    #modalApproval .adf-info-layout {
-        display: flex;
-        gap: 18px;
-        align-items: flex-start;
-    }
-
-    #modalApproval .adf-info-main {
-        flex: 1;
-        min-width: 0;
+    #approvalPanel .adf-info-main {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 16px 24px;
+        gap: 14px 20px;
     }
 
-    #modalApproval .adf-info-field {
+    #approvalPanel .adf-info-field {
         display: flex;
         gap: 10px;
         align-items: flex-start;
     }
 
-    #modalApproval .adf-info-field > i {
+    #approvalPanel .adf-info-field > i {
         color: #2450D8;
         font-size: 13px;
         margin-top: 3px;
@@ -105,7 +115,7 @@
         text-align: center;
     }
 
-    #modalApproval .adf-info-label {
+    #approvalPanel .adf-info-label {
         font-size: 10.5px;
         font-weight: 700;
         color: #8A94A3;
@@ -113,7 +123,7 @@
         letter-spacing: .02em;
     }
 
-    #modalApproval .adf-info-value {
+    #approvalPanel .adf-info-value {
         font-size: 13.5px;
         color: #1D2939;
         font-weight: 600;
@@ -121,14 +131,16 @@
         word-break: break-word;
     }
 
-    #modalApproval .adf-status-panel {
-        flex: none;
-        width: 200px;
+    /* Status banner - dulu kartu di samping info (side-by-side), sekarang
+       full-width di atas karena lebar sidebar tidak cukup untuk dua kolom
+       (request Hendra 2026-08-16). */
+    #approvalPanel .adf-status-panel {
         border-radius: 10px;
         padding: 14px 16px;
+        margin-bottom: 14px;
     }
 
-    #modalApproval .adf-status-panel .adf-status-label {
+    #approvalPanel .adf-status-panel .adf-status-label {
         font-size: 10.5px;
         font-weight: 700;
         letter-spacing: .04em;
@@ -136,13 +148,13 @@
         margin-bottom: 10px;
     }
 
-    #modalApproval .adf-status-panel .adf-status-row {
+    #approvalPanel .adf-status-panel .adf-status-row {
         display: flex;
         align-items: center;
         gap: 10px;
     }
 
-    #modalApproval .adf-status-panel .adf-status-icon {
+    #approvalPanel .adf-status-panel .adf-status-icon {
         flex: none;
         width: 34px;
         height: 34px;
@@ -153,39 +165,39 @@
         justify-content: center;
     }
 
-    #modalApproval .adf-status-panel .adf-status-icon i {
+    #approvalPanel .adf-status-panel .adf-status-icon i {
         color: #fff;
         font-size: 15px;
     }
 
-    #modalApproval .adf-status-panel .adf-status-text-wrap { min-width: 0; }
+    #approvalPanel .adf-status-panel .adf-status-text-wrap { min-width: 0; }
 
-    #modalApproval .adf-status-panel .adf-status-pre {
+    #approvalPanel .adf-status-panel .adf-status-pre {
         font-size: 10.5px;
         font-weight: 700;
         opacity: .85;
     }
 
-    #modalApproval .adf-status-panel .adf-status-text {
+    #approvalPanel .adf-status-panel .adf-status-text {
         font-weight: 800;
         font-size: 14.5px;
         line-height: 1.25;
         word-break: break-word;
     }
 
-    #modalApproval .adf-status-panel .adf-status-hint {
+    #approvalPanel .adf-status-panel .adf-status-hint {
         font-size: 11px;
         opacity: .85;
         margin-top: 8px;
         line-height: 1.4;
     }
 
-    #modalApproval .adf-status-info { background: #E7F1FB; color: #2E75B6; }
-    #modalApproval .adf-status-success { background: #E6F4EA; color: #1E7E34; }
-    #modalApproval .adf-status-warning { background: #FFF3E0; color: #B36B00; }
-    #modalApproval .adf-status-danger { background: #FDECEA; color: #C62828; }
+    #approvalPanel .adf-status-info { background: #E7F1FB; color: #2E75B6; }
+    #approvalPanel .adf-status-success { background: #E6F4EA; color: #1E7E34; }
+    #approvalPanel .adf-status-warning { background: #FFF3E0; color: #B36B00; }
+    #approvalPanel .adf-status-danger { background: #FDECEA; color: #C62828; }
 
-    #modalApproval .adf-remark-readonly {
+    #approvalPanel .adf-remark-readonly {
         font-size: 12.5px;
         color: #1D2939;
         background: #F4F6F8;
@@ -194,127 +206,123 @@
         padding: 10px 12px;
         white-space: pre-wrap;
     }
-
-    #modalApproval .modal-footer {
-        flex: none;
-        background: #fff;
-        border-top: 1px solid #E3E8EE;
-        padding: 14px 22px;
-    }
 </style>
 
-<div class="modal fade" id="modalApproval" role="dialog" aria-labelledby="basicModal" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <!-- Header -->
-            <div class="adf-header">
-                <div class="adf-header-title">Controlled Copy Request Review</div>
-                <button type="button" class="adf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
+<div id="approvalPanel">
+    <div class="adf-header">
+        <div class="adf-header-icon"><i class="fa fa-check-circle-o"></i></div>
+        <div>
+            <div class="adf-header-title">Print Request Review</div>
+            <div class="adf-header-sub" id="approvalRequestNo">-</div>
+        </div>
+        <button type="button" class="adf-close" id="btn_closeApprovalPanel"><i class="fa fa-times"></i></button>
+    </div>
+
+    <div class="panel-body">
+        <!-- Status -->
+        <div class="adf-status-panel adf-status-warning" id="approvalStatusPanel">
+            <div class="adf-status-label">STATUS</div>
+            <div class="adf-status-row">
+                <div class="adf-status-icon"><i class="fa fa-clock-o" id="approvalStatusIcon"></i></div>
+                <div class="adf-status-text-wrap">
+                    <div class="adf-status-pre" id="approvalStatusPre"></div>
+                    <div class="adf-status-text" id="approvalStatusText">-</div>
+                </div>
             </div>
+            <div class="adf-status-hint" id="approvalStatusHint"></div>
+        </div>
 
-            <!-- Body -->
-            <div class="modal-body">
-                <!-- Request Information + Status -->
-                <div class="adf-section">
-                    <div class="adf-section-title"><i class="fa fa-file-text-o"></i> Request Information</div>
+        <!-- Request Information -->
+        <div class="adf-section">
+            <div class="adf-section-title"><i class="fa fa-file-text-o"></i> Request Information</div>
 
-                    <div class="adf-info-layout">
-                        <div class="adf-info-main">
-                            <div class="adf-info-field">
-                                <i class="fa fa-file-text-o"></i>
-                                <div>
-                                    <div class="adf-info-label">Request No.</div>
-                                    <div class="adf-info-value" id="approvalRequestNo"></div>
-                                </div>
-                            </div>
-                            <div class="adf-info-field">
-                                <i class="fa fa-building-o"></i>
-                                <div>
-                                    <div class="adf-info-label">Division</div>
-                                    <div class="adf-info-value" id="approvalDivision"></div>
-                                </div>
-                            </div>
-                            <div class="adf-info-field">
-                                <i class="fa fa-sitemap"></i>
-                                <div>
-                                    <div class="adf-info-label">Department</div>
-                                    <div class="adf-info-value" id="approvalDepartment"></div>
-                                </div>
-                            </div>
-                            <div class="adf-info-field">
-                                <i class="fa fa-sitemap"></i>
-                                <div>
-                                    <div class="adf-info-label">Section</div>
-                                    <div class="adf-info-value" id="approvalSection"></div>
-                                </div>
-                            </div>
-                            <div class="adf-info-field">
-                                <i class="fa fa-user"></i>
-                                <div>
-                                    <div class="adf-info-label">Requested By</div>
-                                    <div class="adf-info-value" id="approvalRequestedBy"></div>
-                                </div>
-                            </div>
-                            <div class="adf-info-field">
-                                <i class="fa fa-calendar"></i>
-                                <div>
-                                    <div class="adf-info-label">Request Date</div>
-                                    <div class="adf-info-value" id="approvalRequestDate"></div>
-                                </div>
-                            </div>
-                            <div class="adf-info-field">
-                                <i class="fa fa-list-alt"></i>
-                                <div>
-                                    <div class="adf-info-label">Total Documents</div>
-                                    <div class="adf-info-value" id="approvalTotalDocuments"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="adf-status-panel adf-status-warning" id="approvalStatusPanel">
-                            <div class="adf-status-label">STATUS</div>
-                            <div class="adf-status-row">
-                                <div class="adf-status-icon"><i class="fa fa-clock-o" id="approvalStatusIcon"></i></div>
-                                <div class="adf-status-text-wrap">
-                                    <div class="adf-status-pre" id="approvalStatusPre"></div>
-                                    <div class="adf-status-text" id="approvalStatusText">-</div>
-                                </div>
-                            </div>
-                            <div class="adf-status-hint" id="approvalStatusHint"></div>
-                        </div>
+            <div class="adf-info-main">
+                <div class="adf-info-field">
+                    <i class="fa fa-building-o"></i>
+                    <div>
+                        <div class="adf-info-label">Division</div>
+                        <div class="adf-info-value" id="approvalDivision"></div>
                     </div>
                 </div>
-
-                <!-- Document list, so QMS can eyeball it against the physical form -->
-                <div class="adf-section">
-                    <div class="adf-section-title"><i class="fa fa-file-o"></i> Requested Documents</div>
-                    <div id="approvalDocumentList"></div>
-                </div>
-
-                <!-- Action / already-decided remark -->
-                <div class="adf-section" id="approvalActionSection">
-                    <div class="adf-section-title" id="approvalActionTitle"><i class="fa fa-check-circle-o"></i> QMS Review</div>
-
-                    <div id="approvalActionInput">
-                        <p><b>Remark (optional):</b></p>
-                        <textarea id="approvalRemark" rows="4" class="form-control"></textarea>
-                        <div class="text-right" style="margin-top: 14px">
-                            <button type="button" class="btn btn-primary" id="btn_approve"><i class="fa fa-check"></i> Approve</button>
-                            <button type="button" class="btn btn-reject" id="btn_reject"><i class="fa fa-ban"></i> Reject</button>
-                        </div>
+                <div class="adf-info-field">
+                    <i class="fa fa-sitemap"></i>
+                    <div>
+                        <div class="adf-info-label">Department</div>
+                        <div class="adf-info-value" id="approvalDepartment"></div>
                     </div>
-
-                    <div id="approvalActionReadonly" style="display:none;">
-                        <div class="adf-info-label" style="margin-bottom:6px;">Remark</div>
-                        <div class="adf-remark-readonly" id="approvalRemarkReadonly">-</div>
+                </div>
+                <div class="adf-info-field">
+                    <i class="fa fa-sitemap"></i>
+                    <div>
+                        <div class="adf-info-label">Section</div>
+                        <div class="adf-info-value" id="approvalSection"></div>
+                    </div>
+                </div>
+                <div class="adf-info-field">
+                    <i class="fa fa-user"></i>
+                    <div>
+                        <div class="adf-info-label">Requested By</div>
+                        <div class="adf-info-value" id="approvalRequestedBy"></div>
+                    </div>
+                </div>
+                <div class="adf-info-field">
+                    <i class="fa fa-calendar"></i>
+                    <div>
+                        <div class="adf-info-label">Request Date</div>
+                        <div class="adf-info-value" id="approvalRequestDate"></div>
+                    </div>
+                </div>
+                <div class="adf-info-field">
+                    <i class="fa fa-list-alt"></i>
+                    <div>
+                        <div class="adf-info-label">Total Documents</div>
+                        <div class="adf-info-value" id="approvalTotalDocuments"></div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Footer -->
-            <div class="modal-footer">
-                <button type="button" class="btn btn-grey" id="btn_close_approvalList" style="width: 80px;" data-dismiss="modal">Close</button>
+        <!-- Document list, so QMS can eyeball it against the physical form -->
+        <div class="adf-section">
+            <div class="adf-section-title"><i class="fa fa-file-o"></i> Requested Documents</div>
+            <div id="approvalDocumentList"></div>
+        </div>
+
+        <!-- Action / already-decided remark -->
+        <div class="adf-section" id="approvalActionSection">
+            <div class="adf-section-title" id="approvalActionTitle"><i class="fa fa-check-circle-o"></i> QMS Review</div>
+
+            <div id="approvalActionInput">
+                <p><b>Remark (optional):</b></p>
+                <textarea id="approvalRemark" rows="4" class="form-control"></textarea>
+                <div class="text-right" style="margin-top: 14px">
+                    <button type="button" class="btn btn-primary" id="btn_approve"><i class="fa fa-check"></i> Approve</button>
+                    <button type="button" class="btn btn-reject" id="btn_reject"><i class="fa fa-ban"></i> Reject</button>
+                </div>
+            </div>
+
+            <div id="approvalActionReadonly" style="display:none;">
+                <div class="adf-info-label" style="margin-bottom:6px;">Remark</div>
+                <div class="adf-remark-readonly" id="approvalRemarkReadonly">-</div>
             </div>
         </div>
     </div>
 </div>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        $("#btn_closeApprovalPanel").on("click", function () {
+            $("#approvalPanel").removeClass("open");
+        });
+
+        // Klik di luar panel menutup panel - klik pada elemen yang MEMBUKA
+        // panel ini (Request No/kebab "View Approval" di grid) sudah
+        // stopPropagation() masing-masing jadi tidak langsung menutup ulang
+        // panel yang baru dibuka.
+        $(document).on("click", function (e) {
+            if ($("#approvalPanel").hasClass("open") && !$(e.target).closest("#approvalPanel").length) {
+                $("#approvalPanel").removeClass("open");
+            }
+        });
+    });
+</script>

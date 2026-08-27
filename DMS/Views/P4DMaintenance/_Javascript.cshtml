@@ -277,9 +277,19 @@
     }
 
     function setGridButtonState(id) {
+        // Distribusi yang sudah Sent (STATUS=1) tidak boleh dihapus (lihat
+        // sp_P4DMaintenance_DeleteDistribution) - kalau salah satu baris yang
+        // dicentang sudah Sent, tombol Delete langsung nonaktif di sini juga,
+        // tidak perlu tunggu error dari server (request Hendra 2026-08-15).
+        var hasSentSelected = false;
+        $("[name='chkRowDistribution']:checked").each(function () {
+            if ($(this).data("status") == 1) hasSentSelected = true;
+        });
+
         $(id).prop("disabled",
             ($("[name='chkRowDistribution']:checked").length >= 1
                 && (gStatus != 4 && gStatus != 3)
+                && !hasSentSelected
                 //&& (gDepartmentId == "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetInt32("DEPARTMENT_ID"))" ||
                 //    "@ViewData["DocumentControlAccess"]" == "True")
             )

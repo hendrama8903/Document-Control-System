@@ -39,6 +39,7 @@ BEGIN TRY
            ,[PROCESS_CODE]
            ,[COMPANY_CODE]
            ,[SECTION_CODE]
+           ,[SECTION_NAME]
            ,[ITEM_CHANGED]
            ,[REASON]
            ,[EXTERNAL_FLAG]
@@ -52,7 +53,10 @@ BEGIN TRY
            ,[LEVEL_CODE]
            ,[DOCUMENT_ID]
            ,[DIVISION]
+           ,[DIVISION_NAME]
            ,[DEPARTMENT]
+           ,[DEPARTMENT_CODE]
+           ,[DEPARTMENT_NAME]
            ,[CLASSIFIED]
            ,[CREATED_BY]
            ,[CREATED_DT]
@@ -66,6 +70,7 @@ BEGIN TRY
 			   ,[PROCESS_CODE]
 			   ,[COMPANY_CODE]
 			   ,[SECTION_CODE]
+			   ,[SECTION_NAME]
 			   ,[ITEM_CHANGED]
 			   ,[REASON]
 			   ,[EXTERNAL_FLAG]
@@ -79,7 +84,10 @@ BEGIN TRY
 			   ,[LEVEL_CODE]
 			   ,[DOCUMENT_ID]
 				 ,[DIVISION]
+				 ,[DIVISION_NAME]
 				 ,[DEPARTMENT]
+				 ,[DEPARTMENT_CODE]
+				 ,[DEPARTMENT_NAME]
 				 ,[CLASSIFIED]
 			   ,[CREATED_BY]
 			   ,[CREATED_DT]
@@ -90,6 +98,20 @@ BEGIN TRY
 		WHERE DOCUMENT_TRANSACTION_ID = @PREV_TRANSACTION_ID;
 
 		DELETE FROM TB_R_DOCUMENT WHERE DOCUMENT_TRANSACTION_ID = @PREV_TRANSACTION_ID;
+
+		-- Retire registrasi P4D dokumen lama DI SINI (bukan lagi saat revisi
+		-- dibuat, lihat sp_DocumentMaintenance_Insert) - dokumen lama baru
+		-- benar-benar berhenti jadi versi resmi sekarang (revisi barunya baru
+		-- saja disetujui penuh), jadi baru sekarang wajar hilang dari grid P4D
+		-- Maintenance. Selama revisi masih Draft/pending approval, dokumen lama
+		-- tetap terdaftar & terlihat di P4D seperti seharusnya (request Hendra
+		-- 2026-08-16, ditemukan lewat pengujian).
+		UPDATE [dbo].[TB_R_CTRL_DOCUMENT]
+		SET DELETE_FLAG = '1',
+			CHANGED_BY = @LOGIN_USER,
+			CHANGED_DT = GETDATE()
+		WHERE DOCUMENT_TRANSACTION_ID = @PREV_TRANSACTION_ID
+			AND ISNULL(DELETE_FLAG, 0) = 0;
 	END
 
 	SET @RETURN_MSG = 'OK';

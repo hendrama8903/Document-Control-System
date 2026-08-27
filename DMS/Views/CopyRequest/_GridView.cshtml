@@ -1,7 +1,3 @@
-@using Microsoft.AspNetCore.Http
-
-@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
-
 <link rel="stylesheet" href="~/css/devextreme/dx.light.css" />
 <script src="~/js/devextreme/dx.web.js"></script>
 
@@ -28,17 +24,10 @@
     var gCanSubmit = @(((bool)ViewData["Submit"]) ? "true" : "false");
     var gCanPrint = @(((bool)ViewData["Print"]) ? "true" : "false");
     var gCanApprove = @(((bool)ViewData["Approve"]) ? "true" : "false");
-    var gCanAccept = @(((bool)ViewData["Accept"]) ? "true" : "false");
-    var SESSION_DEPARTMENT_ID_LOGIN = "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetInt32("DEPARTMENT_ID"))";
 
     function getSelectedRowData() {
         var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
         return rows.length > 0 ? rows[0] : null;
-    }
-
-    function canAccept(row) {
-        return row != null && row.STATUS == "2" && row.ACCEPTED_FLAG != 1
-            && row.DEPARTMENT_ID == SESSION_DEPARTMENT_ID_LOGIN;
     }
 
     function updateActionButtons() {
@@ -49,7 +38,6 @@
         $("#btn_edit").prop("disabled", !editable);
         $("#btn_delete").prop("disabled", !editable);
         $("#btn_approve_toolbar").prop("disabled", !approvable);
-        $("#btn_accept_toolbar").prop("disabled", !canAccept(row));
     }
 
     function computeGridHeight() {
@@ -74,7 +62,6 @@
         $("#btn_edit").prop("disabled", true);
         $("#btn_delete").prop("disabled", true);
         $("#btn_approve_toolbar").prop("disabled", true);
-        $("#btn_accept_toolbar").prop("disabled", true);
 
         var gridStore = new DevExpress.data.CustomStore({
             key: "REQUEST_ID",
@@ -175,7 +162,11 @@
                             .attr("type", "button")
                             .addClass("dp-link")
                             .text(row.REQUEST_NO)
-                            .on("click", function () {
+                            .on("click", function (e) {
+                                // stopPropagation supaya tidak bentrok dengan
+                                // handler klik-di-luar-panel yang menutup
+                                // #approvalPanel (lihat _ApprovalForm.cshtml).
+                                e.stopPropagation();
                                 if (row.STATUS == "0") {
                                     $("#datagrid").dxDataGrid("instance").selectRows([row.REQUEST_ID], false);
                                     onEditPrepare();
@@ -195,26 +186,55 @@
                     }
                 },
                 {
-                    dataField: "ACCEPTED_FLAG",
-                    caption: "Acceptance",
+                    dataField: "PRINTED_COUNT",
+                    caption: "Print",
                     alignment: "center",
                     cellTemplate: function (container, options) {
                         var row = options.data;
 
-                        // Cuma relevan setelah QMS Approve - komunikasi dua arah:
-                        // requester lihat & konfirmasi sudah terima copy fisiknya
-                        // di sini (request Hendra 2026-08-13, mirror Acceptance
-                        // column di P4D).
+                        // Monitoring cetak fisik (PrintTrack) - cuma relevan
+                        // setelah QMS Approve, sama seperti kolom Acceptance
+                        // (request Hendra 2026-08-15).
                         if (row.STATUS != "2") {
                             container.text("-");
                             return;
                         }
 
-                        var accepted = row.ACCEPTED_FLAG == 1;
+                        var total = row.DETAIL_COUNT || 0;
+                        var printed = row.PRINTED_COUNT || 0;
+                        var sheets = row.PRINTED_SHEETS || 0;
+                        var complete = total > 0 && printed >= total;
+
+                        container.css({ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", cursor: "pointer" });
+
+                        var $wrap = $("<div>").css({ lineHeight: 1.3 });
 
                         $("<span>")
-                            .css({ color: accepted ? "#1E9E63" : "#C62828", fontWeight: 600 })
-                            .html('<i class="fa ' + (accepted ? "fa-check-circle" : "fa-hourglass-half") + '"></i> ' + (accepted ? "Accepted" : "Waiting"))
+                            .css({ fontWeight: 600, color: complete ? "#1E9E63" : "#B36B00" })
+                            .html('<i class="fa ' + (complete ? "fa-check-circle" : "fa-hourglass-half") + '"></i> ' + (complete ? "Printed" : "Waiting (" + printed + "/" + total + ")"))
+                            .appendTo($wrap);
+
+                        if (complete) {
+                            $("<span>")
+                                .css({ display: "block", fontSize: "10.5px", color: "#8A94A6", marginTop: "2px" })
+                                .text(sheets + " sheet" + (sheets !== 1 ? "s" : ""))
+                                .appendTo($wrap);
+                        }
+
+                        $wrap.appendTo(container);
+
+                        // Klik untuk lihat rincian eksekusi cetak per dokumen
+                        // (printer, jumlah lembar, operator, waktu) lewat side
+                        // panel - lihat _PrintLogPanel.cshtml (request Hendra
+                        // 2026-08-15).
+                        container.on("click", function (e) {
+                            e.stopPropagation();
+                            crOpenPrintLog(row);
+                        });
+
+                        $("<i>").addClass("fa fa-chevron-circle-right")
+                            .css({ flex: "none", fontSize: "11px", color: "#B0B8C4" })
+                            .attr("title", "Click for detail")
                             .appendTo(container);
                     }
                 },
@@ -291,38 +311,25 @@
             $(this).toggleClass("active", visible);
         });
 
-        $("#btn_approve_toolbar").on("click", function () {
+        $("#btn_approve_toolbar").on("click", function (e) {
+            // stopPropagation - tanpa ini klik yang sama menyebar ke handler
+            // klik-di-luar-panel (_ApprovalForm.cshtml) dan langsung menutup
+            // lagi panel yang baru dibuka (bug: tombol Approve di toolbar
+            // Actions terlihat tidak berfungsi - ditemukan & diperbaiki
+            // 2026-08-18). Pola sama seperti Request No/kebab "View Approval".
+            e.stopPropagation();
             var row = getSelectedRowData();
             if (row) onApprovalPrepare(row);
         });
 
-        $("#btn_accept_toolbar").on("click", function () {
-            var row = getSelectedRowData();
-            if (row && canAccept(row)) onAcceptPrepare(row.REQUEST_ID);
+        // ---------- toggle the docked "Document Status" panel (collapses to
+        // the right, grid reflows into the freed width via flex) ----------
+        $("#btn_toggleStats").on("click", function () {
+            setStatsPanelCollapsed(!$("#dpLayoutRow").hasClass("stats-collapsed"));
         });
 
-        // ---------- toggle summary/KPI cards, so the grid below can move up ----------
-        $("#btn_toggleStats").on("click", function () {
-            var $btn = $(this);
-            var $icon = $btn.find("i");
-            var $row = $("#crStatsRow");
-
-            $row.stop(true, true).animate(
-                { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
-                {
-                    duration: 220,
-                    easing: "swing",
-                    progress: function () {
-                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-                    },
-                    complete: function () {
-                        var collapsed = !$row.is(":visible");
-                        $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
-                        $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
-                        $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-                    }
-                }
-            );
+        $("#btn_closeStatsPanel").on("click", function () {
+            setStatsPanelCollapsed(true);
         });
 
         $(window).on("resize", function () {
@@ -353,6 +360,35 @@
         $("#crApproved").text(approved);
         $("#crRejected").text(rejected);
         $("#crApprovedToday").text(approvedToday);
+
+        // surfaces the pending count on the collapsed toggle too, so it
+        // stays useful (not just a bare arrow) even when the panel is closed
+        crLastWaitingApproval = waitingApproval;
+        refreshToggleBadge();
+    }
+
+    // ---------- docked "Document Status" panel toggle - top-level (not
+    // inside $(document).ready) so updateHeaderStats() above can reach
+    // crLastWaitingApproval too ----------
+    var crLastWaitingApproval = 0;
+
+    function refreshToggleBadge() {
+        var collapsed = $("#dpLayoutRow").hasClass("stats-collapsed");
+        $("#dpToggleBadge").text(crLastWaitingApproval).toggle(collapsed && crLastWaitingApproval > 0);
+    }
+
+    function setStatsPanelCollapsed(collapsed) {
+        var $row = $("#dpLayoutRow");
+        var $icon = $("#btn_toggleStats i");
+
+        $row.toggleClass("stats-collapsed", collapsed);
+        $icon.toggleClass("fa-angle-double-right", !collapsed).toggleClass("fa-angle-double-left", collapsed);
+        $("#btn_toggleStats").attr("title", collapsed ? "Show Document Status" : "Hide Document Status");
+        refreshToggleBadge();
+
+        setTimeout(function () {
+            $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+        }, 230);
     }
 
     // ---------- per-row "more actions" kebab menu ----------
@@ -376,6 +412,10 @@
         var $li = $('<li><a href="#" class="' + cssClass + '"><i class="fa ' + icon + '"></i> ' + label + '</a></li>');
         $li.find("a").on("click", function (e) {
             e.preventDefault();
+            // stopPropagation supaya menu item yang membuka side panel (mis.
+            // "View Approval" -> #approvalPanel) tidak langsung tertutup
+            // lagi oleh handler klik-di-luar-panel pada event klik yang sama.
+            e.stopPropagation();
             $crRowMenu.hide();
             onClick();
         });
@@ -412,12 +452,6 @@
             $menu.append(menuItem("cr-menu-view", "fa-eye", "View Approval", function () {
                 onApprovalPrepare(row);
             }));
-
-            if (gCanAccept && canAccept(row)) {
-                $menu.append(menuItem("cr-menu-accept", "fa-check-square-o", "Accepted", function () {
-                    onAcceptPrepare(row.REQUEST_ID);
-                }));
-            }
         }
 
         if (gCanPrint) {

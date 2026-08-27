@@ -31,7 +31,12 @@ BEGIN TRY
 		RETURN 0;
 	END
 
-	IF EXISTS(SELECT TOP 1 1 FROM [dbo].[TB_M_USER] WHERE USERNAME = @USERNAME )
+	-- Username yang masih AKTIF saja yang dianggap "sudah dipakai" (request
+	-- Hendra 2026-08-21) - username yang pernah ada tapi sudah di-nonaktifkan
+	-- (soft-delete, DELETE_FLAG=1) tidak lagi memblokir Add di sini; baris
+	-- lama itu justru dihidupkan ulang lewat UPDATE di bawah (PK tidak
+	-- mengizinkan INSERT baris kedua dengan USERNAME yang sama).
+	IF EXISTS(SELECT TOP 1 1 FROM [dbo].[TB_M_USER] WHERE USERNAME = @USERNAME AND ISNULL(DELETE_FLAG, '0') = '0')
  	BEGIN
  			SET @RETURN_MSG = 'ERROR: Username Already Exist';
 			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
@@ -106,33 +111,60 @@ BEGIN TRY
 -- 	END
 
 
-	INSERT INTO [dbo].[TB_M_USER] (
-		USERNAME,
-		REG_NO,
-		FULL_NAME,
-		PASSWORD,
-		EMAIL,
-		PHONE,
-		ROLE_ID,
--- 		DEPARTMENT_ID,
-		FILE_PATH,
-		AD_USER,
-		CREATED_DT,
-		CREATED_BY
-	) VALUES (
-		@USERNAME,
-		@REG_NO,
-		@FULL_NAME,
-		CASE WHEN ISNULL(@AD_USER, '0') = '1' THEN NULL ELSE @PASSWORD END,
-		@EMAIL,
-		@PHONE,
-		@ROLE_ID,
-		@FILE_PATH,
--- 		@DEPARTMENT_ID,
-		ISNULL(@AD_USER, '0'),
-		GETDATE(),
-		@LOGIN_USER
-	)
+	-- Username sama pernah ada tapi sudah di-nonaktifkan (soft-delete) -
+	-- "Add" dengan username itu dianggap menghidupkan kembali baris LAMA
+	-- (UPDATE), bukan bikin baris baru (PK TB_M_USER tidak mengizinkan itu).
+	-- CREATED_BY/CREATED_DT SENGAJA tidak diubah - tetap mencatat kapan &
+	-- oleh siapa username ini pertama kali dibuat, sama seperti perilaku
+	-- sp_User_Restore (request Hendra 2026-08-21). Posisi (TB_M_USER_POS)
+	-- juga TIDAK ikut dipulihkan di sini - sama seperti Restore, harus
+	-- di-assign ulang manual.
+	IF EXISTS (SELECT TOP 1 1 FROM [dbo].[TB_M_USER] WHERE USERNAME = @USERNAME AND ISNULL(DELETE_FLAG, '0') = '1')
+	BEGIN
+		UPDATE [dbo].[TB_M_USER]
+		SET REG_NO = @REG_NO,
+			FULL_NAME = @FULL_NAME,
+			PASSWORD = CASE WHEN ISNULL(@AD_USER, '0') = '1' THEN NULL ELSE @PASSWORD END,
+			EMAIL = @EMAIL,
+			PHONE = @PHONE,
+			ROLE_ID = @ROLE_ID,
+			FILE_PATH = @FILE_PATH,
+			AD_USER = ISNULL(@AD_USER, '0'),
+			DELETE_FLAG = '0',
+			CHANGED_BY = @LOGIN_USER,
+			CHANGED_DT = GETDATE()
+		WHERE USERNAME = @USERNAME;
+	END
+	ELSE
+	BEGIN
+		INSERT INTO [dbo].[TB_M_USER] (
+			USERNAME,
+			REG_NO,
+			FULL_NAME,
+			PASSWORD,
+			EMAIL,
+			PHONE,
+			ROLE_ID,
+	-- 		DEPARTMENT_ID,
+			FILE_PATH,
+			AD_USER,
+			CREATED_DT,
+			CREATED_BY
+		) VALUES (
+			@USERNAME,
+			@REG_NO,
+			@FULL_NAME,
+			CASE WHEN ISNULL(@AD_USER, '0') = '1' THEN NULL ELSE @PASSWORD END,
+			@EMAIL,
+			@PHONE,
+			@ROLE_ID,
+			@FILE_PATH,
+	-- 		@DEPARTMENT_ID,
+			ISNULL(@AD_USER, '0'),
+			GETDATE(),
+			@LOGIN_USER
+		)
+	END
 
 	SET @RETURN_MSG = 'Successfully Save Data'
 	EXEC sp_WriteLog @PROCESS_ID, '2', 'INF', @RETURN_MSG, @LOCATION, @LOGIN_USER

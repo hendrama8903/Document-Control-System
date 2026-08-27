@@ -65,5 +65,7 @@ namespace DMS.Models.DB
         // ACK_TOTAL registration/distribution entries have a matching TB_R_PUBLISH_HISTORY row.
         public int? ACK_TOTAL { get; set; }
         public int? ACK_DONE { get; set; }
+        public int? DIVISION_COUNT { get; set; }
+        public int? PENDING_DISTRIBUTION_COUNT { get; set; }
     }
 }
