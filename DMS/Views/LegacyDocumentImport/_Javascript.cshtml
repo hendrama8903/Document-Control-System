@@ -225,6 +225,7 @@
         }
 
         $("#modalReview").modal("show");
+        renderGrid();
         setActiveTab("all");
     }
 
@@ -232,36 +233,68 @@
         gActiveTab = filter;
         $(".di-tab").removeClass("active");
         $(".di-tab[data-filter='" + filter + "']").addClass("active");
-        renderTableBody();
+
+        var grid = $("#reviewGrid").dxDataGrid("instance");
+        if (filter === "all") {
+            grid.clearFilter();
+        } else {
+            grid.filter(["_category", "=", filter]);
+        }
     }
 
-    function renderTableBody() {
-        var tbody = $("#tblImportResultBody");
-        tbody.empty();
-
-        var rows = gActiveTab === "all" ? gLastRows : gLastRows.filter(function (r) { return r._category === gActiveTab; });
-
-        if (rows.length === 0) {
-            tbody.append('<tr class="di-empty-row"><td colspan="7">No documents in this view.</td></tr>');
+    // ---------- Review grid (DevExtreme, same component used elsewhere in the app) ----------
+    function renderGrid() {
+        if ($("#reviewGrid").data("dxDataGrid")) {
+            $("#reviewGrid").dxDataGrid("instance").option("dataSource", gLastRows);
             return;
         }
 
-        rows.forEach(function (row) {
-            var tr = $("<tr>");
-
-            var iconClass = row._category === "ready" ? "fa-check-circle" : (row._category === "warning" ? "fa-exclamation-triangle" : "fa-times-circle");
-            tr.append($("<td>").append($("<i>").addClass("fa " + iconClass + " di-status-icon " + row._category)));
-
-            tr.append($("<td>").text(row.documentCode || "-"));
-            tr.append($("<td>").text(row.revision != null ? row.revision : "-"));
-            tr.append($("<td>").text(row.documentName || "-"));
-            tr.append($("<td>").text(row.fileName || "-"));
-            tr.append($("<td>").text("-")); // File Size: not available without parsing the ZIP client-side
-
-            var message = buildMessage(row);
-            tr.append($("<td>").addClass("di-msg-" + row._category).text(message));
-
-            tbody.append(tr);
+        $("#reviewGrid").dxDataGrid({
+            dataSource: gLastRows,
+            showBorders: true,
+            columnAutoWidth: true,
+            allowColumnResizing: true,
+            columnResizingMode: "widget",
+            wordWrapEnabled: true,
+            height: "auto",
+            noDataText: "No documents in this view.",
+            paging: { enabled: false },
+            scrolling: { mode: "standard", useNative: false },
+            sorting: { mode: "none" },
+            filterRow: { visible: true, applyFilter: "auto" },
+            searchPanel: { visible: false },
+            columns: [
+                {
+                    caption: "",
+                    dataField: "_category",
+                    width: 34,
+                    alignment: "center",
+                    allowResizing: false,
+                    allowFiltering: false,
+                    cellTemplate: function (container, options) {
+                        var iconClass = options.value === "ready" ? "fa-check-circle" : (options.value === "warning" ? "fa-exclamation-triangle" : "fa-times-circle");
+                        $("<i>").addClass("fa " + iconClass + " di-status-icon " + options.value).appendTo(container);
+                    }
+                },
+                { dataField: "documentCode", caption: "Document No.", calculateCellValue: function (row) { return row.documentCode || "-"; } },
+                { dataField: "revision", caption: "Revision", width: 90, alignment: "center", calculateCellValue: function (row) { return row.revision != null ? row.revision : "-"; } },
+                { dataField: "documentName", caption: "Document Title", calculateCellValue: function (row) { return row.documentName || "-"; } },
+                { dataField: "fileName", caption: "File Name", calculateCellValue: function (row) { return row.fileName || "-"; } },
+                {
+                    caption: "File Size",
+                    width: 90,
+                    allowFiltering: false,
+                    // Not available without parsing the ZIP client-side.
+                    cellTemplate: function (container) { container.text("-"); }
+                },
+                {
+                    caption: "Message",
+                    minWidth: 220,
+                    cellTemplate: function (container, options) {
+                        $("<span>").addClass("di-msg-" + options.data._category).text(buildMessage(options.data)).appendTo(container);
+                    }
+                }
+            ]
         });
     }
 

@@ -1,3 +1,6 @@
+<link rel="stylesheet" href="~/css/devextreme/dx.light.css" />
+<script src="~/js/devextreme/dx.web.js"></script>
+
 <style>
     :root {
         --di-primary: #2563EB;
@@ -109,16 +112,35 @@
     .di-tab { border: 1px solid var(--di-border); background: #fff; border-radius: 999px; padding: 5px 14px; font-size: 12px; font-weight: 600; color: var(--di-muted); cursor: pointer; }
     .di-tab.active { background: var(--di-primary); border-color: var(--di-primary); color: #fff; }
 
-    .di-table { width: 100%; }
-    .di-table th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .3px; color: var(--di-muted); border-bottom: 1px solid var(--di-border); padding: 8px 10px; }
-    .di-table td { font-size: 12.5px; padding: 9px 10px; border-bottom: 1px solid #F1F3F5; vertical-align: middle; }
+    /* Tab warna sesuai kondisinya sendiri, bukan cuma warna generik saat aktif */
+    .di-tab[data-filter="ready"] { border-color: var(--di-green-border); color: var(--di-green); background: var(--di-green-light); }
+    .di-tab[data-filter="warning"] { border-color: var(--di-amber-border); color: var(--di-amber); background: var(--di-amber-light); }
+    .di-tab[data-filter="error"] { border-color: var(--di-red-border); color: var(--di-red); background: var(--di-red-light); }
+
+    .di-tab[data-filter="all"].active { background: var(--di-primary); border-color: var(--di-primary); color: #fff; }
+    .di-tab[data-filter="ready"].active { background: var(--di-green); border-color: var(--di-green); color: #fff; }
+    .di-tab[data-filter="warning"].active { background: var(--di-amber); border-color: var(--di-amber); color: #fff; }
+    .di-tab[data-filter="error"].active { background: var(--di-red); border-color: var(--di-red); color: #fff; }
+
+    /* ---------- Review grid (DevExtreme) ---------- */
+    #reviewGrid .dx-datagrid { font-size: 12.5px; }
+    #reviewGrid .dx-datagrid-headers { font-size: 11.5px; text-transform: uppercase; letter-spacing: .3px; color: var(--di-muted); }
+    #reviewGrid .dx-datagrid-filter-row .dx-texteditor {
+        border: 1px solid #d9d9d9;
+        border-radius: 6px;
+        background: #fff;
+    }
+    #reviewGrid .dx-datagrid-filter-row .dx-texteditor-input {
+        padding: 4px 6px;
+        min-height: 26px;
+        font-size: 12px;
+    }
     .di-status-icon.ready { color: var(--di-green); }
     .di-status-icon.warning { color: var(--di-amber); }
     .di-status-icon.error { color: var(--di-red); }
     .di-msg-ready { color: var(--di-green); }
     .di-msg-warning { color: var(--di-amber); }
     .di-msg-error { color: var(--di-red); }
-    .di-empty-row td { text-align: center; color: var(--di-muted); padding: 24px 10px; }
 
     .di-final-actions { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; border-top: 1px solid var(--di-border); flex-wrap: wrap; gap: 10px; }
     .di-final-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -263,22 +285,7 @@
                     <button type="button" class="di-tab" data-filter="error">Error <span id="tabErrorCount">0</span></button>
                 </div>
 
-                <div style="overflow-x:auto;">
-                    <table class="table di-table" id="tblImportResult">
-                        <thead>
-                            <tr>
-                                <th style="width:30px;"></th>
-                                <th>Document No.</th>
-                                <th>Revision</th>
-                                <th>Document Title</th>
-                                <th>File Name</th>
-                                <th>File Size</th>
-                                <th>Message</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tblImportResultBody"></tbody>
-                    </table>
-                </div>
+                <div id="reviewGrid"></div>
             </div>
 
             <div class="di-final-actions">
