@@ -139,6 +139,22 @@
         }, 230);
     }
 
+    // ---------- Folders sidebar toggle (request Hendra 2026-08-29: folder feature
+    // ported from Document Control Dashboard) - independent of the Document Status
+    // toggle above, defaults shown. ----------
+    function setFoldersPanelCollapsed(collapsed) {
+        var $row = $("#dpLayoutRow");
+        var $icon = $("#btn_toggleFolders i");
+
+        $row.toggleClass("folders-collapsed", collapsed);
+        $icon.toggleClass("fa-angle-double-left", !collapsed).toggleClass("fa-angle-double-right", collapsed);
+        $("#btn_toggleFolders").attr("title", collapsed ? "Show Folders" : "Hide Folders");
+
+        setTimeout(function () {
+            $("#datagrid").dxDataGrid("instance").updateDimensions();
+        }, 230);
+    }
+
     var udCategoryPillClasses = ["dms-pill-info", "dms-pill-success", "dms-pill-warning", "dms-pill-primary", "dms-pill-default"];
     function udCategoryPillClass(code) {
         var sum = 0;
@@ -146,8 +162,65 @@
         return udCategoryPillClasses[sum % udCategoryPillClasses.length];
     }
 
+    // ---------- folder breadcrumb/title + grid filter (ported from Document
+    // Control Dashboard, request Hendra 2026-08-29) ----------
+    // Called from the shared _FolderTree.cshtml's dcdSelectFolder(). The grid
+    // already loads every document once (loadMode:"raw"/length:100000) - folder
+    // selection filters that same loaded set client-side, no extra round-trip.
+    function dcdApplyFolderFilter(folderId) {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        grid.filter(folderId === null ? null : ["FOLDER_ID", "=", folderId]);
+
+        var $crumb = $("#dcdCrumb").empty();
+        if (folderId === null) {
+            $("#dcdFolderTitle").text("All Documents");
+        } else {
+            var path = dcdGetFolderPath(folderId);
+            if (path.length > 1) {
+                path.forEach(function (folder, i) {
+                    if (i > 0) { $("<span>").addClass("dcd-crumb-sep").text("›").appendTo($crumb); }
+                    $("<span>").addClass("dcd-crumb-item").text(folder.FOLDER_NAME).on("click", function () { dcdSelectFolder(folder.FOLDER_ID); }).appendTo($crumb);
+                });
+            }
+            $("#dcdFolderTitle").text(path.length > 0 ? path[path.length - 1].FOLDER_NAME : "");
+        }
+    }
+
+    // ---------- "Move to Folder" (toolbar button + per-row kebab). Selection on
+    // this grid is capped at one row (see onSelectionChanged below), so this only
+    // ever moves a single document - unlike Document Control Dashboard's bulk
+    // version. No explicit grid `key` is configured here (pre-existing), so this
+    // reads DOCUMENT_TRANSACTION_ID off the row data directly rather than via
+    // getSelectedRowKeys(). ----------
+    function dcdMoveDocumentToFolder(documentTransactionId, $anchor) {
+        dcdOpenFolderPicker($anchor, function (folderId) {
+            $.ajax({
+                type: "POST",
+                url: "@Url.Action("MoveDocumentsToFolder", "UserDashboard")",
+                traditional: true,
+                data: { documentTransactionIds: [documentTransactionId], folderId: folderId },
+                success: function (result) {
+                    if (result.status == true) {
+                        showSuccessMesgGrowl(result.message);
+                        loadFolderTree();
+                        $("#datagrid").dxDataGrid("instance").refresh();
+                    } else {
+                        showErrorMesgGrowl(result.message);
+                    }
+                },
+                error: function (result) { showErrorMesgGrowl(result); }
+            });
+        });
+    }
+
     $(document).ready(function () {
         $("#btn_acknowledge").prop("disabled", true);
+
+        $("#btn_moveToFolder").on("click", function () {
+            var row = getSelectedRowData();
+            if (row == null) { return; }
+            dcdMoveDocumentToFolder(row.DOCUMENT_TRANSACTION_ID, $(this));
+        });
 
         var gridStore = new DevExpress.data.CustomStore({
             loadMode: "raw",
@@ -213,6 +286,11 @@
                     return;
                 }
                 updateActionButtons();
+                $("#btn_moveToFolder").toggle(e.selectedRowKeys.length > 0);
+            },
+            onContentReady: function (e) {
+                var count = e.component.totalCount();
+                $("#dcdFolderSubtitle").text(count >= 0 ? (count + " document" + (count !== 1 ? "s" : "")) : "");
             },
             columns: [
                 { type: "selection", width: 40, fixed: true, fixedPosition: "left" },
@@ -344,6 +422,8 @@
                         return row.STATUS == 0 ? "REQUESTED" : row.STATUS_VAL;
                     }
                 },
+                { dataField: "FOLDER_ID", dataType: "number", caption: "Folder", visible: false, allowHeaderFiltering: false },
+                { dataField: "FOLDER_NAME", caption: "Folder Name", visible: false },
                 { dataField: "ITEM_CHANGED", caption: "Item Changed", visible: false },
                 { dataField: "REASON", caption: "Reason", visible: false },
                 { dataField: "CREATED_BY", caption: "Created By", visible: false },
@@ -461,6 +541,18 @@
                 );
             }
 
+            $menu.append('<li class="divider"></li>');
+            $menu.append(
+                $('<li>').append(
+                    $('<button type="button">')
+                        .html('<i class="fa fa-folder-o"></i> Move to Folder')
+                        .on("click", function () {
+                            $udRowMenu.hide();
+                            dcdMoveDocumentToFolder(row.DOCUMENT_TRANSACTION_ID, $btn);
+                        })
+                )
+            );
+
             // use getBoundingClientRect (+ scroll offset) rather than jQuery's .offset() -
             // DevExtreme's fixed/frozen columns are transform-positioned, which throws off
             // offset()'s offsetParent-chain math but not the actual rendered rect.
@@ -472,6 +564,12 @@
 
         $("#btn_columns").on("click", function () {
             $("#datagrid").dxDataGrid("instance").showColumnChooser();
+        });
+
+        // ---------- toggle the Folders sidebar (collapses to the left, grid
+        // reflows into the freed width) ----------
+        $("#btn_toggleFolders").on("click", function () {
+            setFoldersPanelCollapsed(!$("#dpLayoutRow").hasClass("folders-collapsed"));
         });
 
         // ---------- toggle the docked "Document Status" panel (collapses to

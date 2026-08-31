@@ -31,6 +31,7 @@ namespace DMS.Controllers
 
         private DocumentControlDashboardRepo DocumentControlDashboardRepo = DocumentControlDashboardRepo.Instance;
         private P4DMaintenanceRepo P4DMaintenanceRepo = P4DMaintenanceRepo.Instance;
+        private DocumentFolderRepo DocumentFolderRepo = DocumentFolderRepo.Instance;
 
         public IActionResult Index(string DOCUMENT_CODE)
         {
@@ -113,6 +114,93 @@ namespace DMS.Controllers
             }
         }
 
+        // ---------- Folder tree (request Hendra 2026-08-28) ----------
+        // Not gated behind "DocumentControlAccess" (that flag is department-specific,
+        // e.g. QMS/QPD - DMS-ADMIN and other departments with access to this menu
+        // still don't have it, which hid the whole feature for them). Folders are just
+        // an organizational structure, not sensitive data, so anyone who can reach this
+        // menu (already checked in Index()) can manage them - same as every other AJAX
+        // endpoint in this app having no extra per-action guard by default.
+
+        public JsonResult GetFolderTree()
+        {
+            try
+            {
+                IList<DocumentFolder> result = DocumentFolderRepo.GetTree(db);
+                return Json(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public JsonResult CreateFolder(string folderName, int? parentId)
+        {
+            try
+            {
+                DBResult result = DocumentFolderRepo.Insert(new DocumentFolder { FOLDER_NAME = folderName, PARENT_ID = parentId }, GetLoginUsername(), db);
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public JsonResult RenameFolder(int folderId, string folderName)
+        {
+            try
+            {
+                DocumentFolder existing = DocumentFolderRepo.GetTree(db).FirstOrDefault(f => f.FOLDER_ID == folderId);
+                if (existing == null)
+                {
+                    return Json(new { status = false, message = "Folder not found" });
+                }
+
+                DBResult result = DocumentFolderRepo.Update(new DocumentFolder { FOLDER_ID = folderId, FOLDER_NAME = folderName, PARENT_ID = existing.PARENT_ID }, GetLoginUsername(), db);
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public JsonResult DeleteFolder(int folderId)
+        {
+            try
+            {
+                DBResult result = DocumentFolderRepo.Delete(new DocumentFolder { FOLDER_ID = folderId }, GetLoginUsername(), db);
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public JsonResult MoveDocumentsToFolder(List<int> documentTransactionIds, int? folderId)
+        {
+            try
+            {
+                foreach (var id in documentTransactionIds)
+                {
+                    DBResult result = DocumentControlDashboardRepo.AssignFolder(id, folderId, GetLoginUsername(), db);
+                    if (!result.status)
+                    {
+                        return Json(result);
+                    }
+                }
+
+                return Json(new { status = true, message = "Document(s) moved successfully" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
         public IActionResult DownloadDocument(string path)
         {
             string webRootPath = Environment.WebRootPath;
@@ -130,7 +218,6 @@ namespace DMS.Controllers
             IList<DocumentControlDashboardDocument> listData = DocumentControlDashboardRepo.Search(
                 new DocumentControlMaintenance(), db, null, null);
 
-            var memoryStream = new MemoryStream();
             IWorkbook workbook = new XSSFWorkbook();
             ISheet sheet = workbook.CreateSheet("Document Control");
 
@@ -174,10 +261,14 @@ namespace DMS.Controllers
                 sheet.AutoSizeColumn(col);
             }
 
-            workbook.Write(memoryStream);
-            memoryStream.Position = 0;
+            byte[] fileBytes;
+            using (var memoryStream = new MemoryStream())
+            {
+                workbook.Write(memoryStream);
+                fileBytes = memoryStream.ToArray();
+            }
 
-            return File(memoryStream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "DOCUMENT-CONTROL-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
 

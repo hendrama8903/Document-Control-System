@@ -3,13 +3,19 @@
     /* ---------- KPI cards moved out of the top header into a docked
        right-side panel (request Hendra 2026-08-17: same treatment as
        Document Preparation/Registration/Control). ---------- */
+    /* Folder tree feature ported from DocumentControlDashboard (request Hendra
+       2026-08-29: "samakan juga untuk fitur folder") - same flex-wrap layout:
+       Folders + Document Status stay side by side as long as they both fit, only
+       the main grid card drops to its own line once the row runs out of width. */
     .dp-layout-row {
         display: flex;
         align-items: stretch;
+        flex-wrap: wrap;
+        row-gap: 16px;
     }
     .dp-layout-main {
-        flex: 1 1 0;
-        min-width: 0;
+        flex: 1 1 420px;
+        min-width: 420px;
         display: flex;
         flex-direction: column;
     }
@@ -23,9 +29,8 @@
         min-height: 0;
     }
 
-    /* toggle lives in the grid toolbar next to Export - a plain toolbar
-       button so it never overlaps grid content, matching the other icon
-       buttons there. */
+    /* toggle lives in the grid toolbar - a plain toolbar button so it never
+       overlaps grid content, matching the other icon buttons there. */
     .dp-stats-toggle {
         position: relative;
         color: #2450D8;
@@ -52,30 +57,6 @@
         align-items: center;
         justify-content: center;
         border: 2px solid #fff;
-    }
-
-    .dp-stats-panel {
-        flex: 0 0 272px;
-        width: 272px;
-        margin-left: 16px;
-        background: #fff;
-        border: 1px solid #E3E8EF;
-        border-radius: 16px;
-        box-shadow: 0 4px 14px rgba(16,24,40,.04);
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        transition: flex-basis .22s cubic-bezier(.4,0,.2,1), width .22s cubic-bezier(.4,0,.2,1),
-                    margin-left .22s cubic-bezier(.4,0,.2,1), opacity .18s ease, border-color .22s ease, box-shadow .22s ease;
-    }
-    .dp-layout-row.stats-collapsed .dp-stats-panel {
-        flex-basis: 0;
-        width: 0;
-        margin-left: 0;
-        opacity: 0;
-        border-color: transparent;
-        box-shadow: none;
-        pointer-events: none;
     }
 
     .dp-stats-panel-head {
@@ -118,7 +99,6 @@
     }
 
     .dp-stats-panel-foot {
-        margin-top: auto;
         padding: 6px 18px 18px;
     }
     .dp-stats-viewall {
@@ -137,21 +117,57 @@
     .dp-stats-viewall:hover { background: #F4F8FF; color: #2450D8; text-decoration: none; }
     .dp-stats-viewall i { margin-right: 6px; }
 
-    @@media (max-width: 900px) {
-        .dp-layout-row { flex-direction: column; }
-        .dp-stats-toggle { display: none; }
-        .dp-stats-panel, .dp-layout-row.stats-collapsed .dp-stats-panel {
-            flex-basis: auto; width: 100%; margin-left: 0; opacity: 1; pointer-events: auto;
-            border-color: #E3E8EF; box-shadow: 0 4px 14px rgba(16,24,40,.04); margin-top: 16px;
-        }
+    /* Document Status - same treatment as Register Overview on Document Control:
+       fixed-width sidebar card next to Folders, own independent show/hide toggle,
+       defaults hidden (same default as before Folders existed). */
+    .dcd-stats-panel {
+        flex: 0 0 260px;
+        width: 260px;
+        margin-right: 16px;
+        background: #fff;
+        border: 1px solid #E3E8EF;
+        border-radius: 16px;
+        box-shadow: 0 4px 14px rgba(16,24,40,.04);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: flex-basis .22s cubic-bezier(.4,0,.2,1), width .22s cubic-bezier(.4,0,.2,1),
+                    margin-right .22s cubic-bezier(.4,0,.2,1), opacity .18s ease, border-color .22s ease, box-shadow .22s ease;
+    }
+    .dp-layout-row.stats-collapsed .dcd-stats-panel {
+        flex-basis: 0;
+        width: 0;
+        margin-right: 0;
+        opacity: 0;
+        border-color: transparent;
+        box-shadow: none;
+        pointer-events: none;
+    }
+
+    /* Only on a genuinely narrow (phone-width) viewport, where even Folders +
+       Document Status alone (260+16+260px) no longer fit side by side, let the
+       collapse toggles recede - collapsing wouldn't free up meaningful room once
+       everything's already wrapped onto its own line. */
+    @@media (max-width: 560px) {
+        #btn_toggleFolders, #btn_toggleStats { display: none; }
     }
 </style>
 <section class="content">
     <div class="row">
         <div class="col-xs-12">
             <div class="dp-layout-row stats-collapsed" id="dpLayoutRow">
+                @{ ViewData["FolderController"] = "UserDashboard"; }
+                @Html.Partial("~/Views/DocumentControlDashboard/_FolderTree.cshtml")
+
                 <div class="dp-layout-main">
                     <div class="dp-card">
+                        <div class="dcd-folder-header-block">
+                            <div class="dcd-crumb" id="dcdCrumb"></div>
+                            <div class="dcd-folder-title-row">
+                                <span class="dcd-folder-title" id="dcdFolderTitle">All Documents</span>
+                                <span class="dcd-folder-subtitle" id="dcdFolderSubtitle"></span>
+                            </div>
+                        </div>
                         <div id="divSearch">
                             @Html.Partial("_SearchCriteria")
                         </div>
@@ -161,7 +177,7 @@
                     </div>
                 </div>
 
-                <aside class="dp-stats-panel" id="dpStatsPanel">
+                <aside class="dcd-stats-panel" id="dpStatsPanel">
                     <div class="dp-stats-panel-head">
                         <span>Document Status</span>
                         <button type="button" class="dp-stats-panel-close" id="btn_closeStatsPanel"><i class="fa fa-times"></i></button>

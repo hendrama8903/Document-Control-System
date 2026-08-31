@@ -1,0 +1,453 @@
+<style>
+    /* ---------- Folder tree sidebar (request Hendra 2026-08-28) - own recursive-depth
+       tree (Menu's .mf-tree* is 2-level only), same visual language (colors, kebab
+       via the already-global .dp-act-kebab/.dp-dropdown-menu) as the rest of the app. ---------- */
+    .dcd-folder-panel {
+        flex: 0 0 260px;
+        width: 260px;
+        margin-right: 16px;
+        background: #fff;
+        border: 1px solid #E3E8EF;
+        border-radius: 16px;
+        box-shadow: 0 4px 14px rgba(16,24,40,.04);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        transition: flex-basis .22s cubic-bezier(.4,0,.2,1), width .22s cubic-bezier(.4,0,.2,1),
+                    margin-right .22s cubic-bezier(.4,0,.2,1), opacity .18s ease, border-color .22s ease, box-shadow .22s ease;
+    }
+    .dp-layout-row.folders-collapsed .dcd-folder-panel {
+        flex-basis: 0;
+        width: 0;
+        margin-right: 0;
+        opacity: 0;
+        border-color: transparent;
+        box-shadow: none;
+        pointer-events: none;
+    }
+    .dcd-folder-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 18px;
+        border-bottom: 1px solid #EEF1F5;
+    }
+    .dcd-folder-head span { font-size: 14px; font-weight: 700; color: #101828; }
+    .dcd-folder-add-btn {
+        background: #F4F8FF;
+        border: 1px solid #C7D9F7;
+        color: #2450D8;
+        border-radius: 8px;
+        width: 26px;
+        height: 26px;
+        cursor: pointer;
+        line-height: 1;
+    }
+    .dcd-folder-add-btn:hover { background: #E7F1FB; }
+    .dcd-folder-tree { flex: 1 1 auto; overflow-y: auto; padding: 8px; min-height: 120px; }
+    .dcd-folder-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 8px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        color: #344054;
+    }
+    .dcd-folder-row:hover { background: #F4F6F8; }
+    .dcd-folder-row.selected { background: #E7F1FB; color: #1C3FA6; font-weight: 600; }
+    .dcd-folder-chevron {
+        flex: none;
+        width: 14px;
+        font-size: 10px;
+        color: #98A2B3;
+        text-align: center;
+        transition: transform .15s;
+        cursor: pointer;
+    }
+    .dcd-folder-chevron.expanded { transform: rotate(90deg); }
+    .dcd-folder-icon { flex: none; width: 15px; text-align: center; color: #2450D8; font-size: 13px; }
+    .dcd-folder-row.selected .dcd-folder-icon { color: #1C3FA6; }
+    .dcd-folder-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dcd-folder-count {
+        flex: none;
+        font-size: 11px;
+        color: #98A2B3;
+        background: #F2F4F7;
+        border-radius: 10px;
+        padding: 1px 7px;
+    }
+    .dcd-folder-row.selected .dcd-folder-count { color: #1C3FA6; background: #DCE8FC; }
+    .dcd-folder-row .dp-act-kebab { width: 22px; height: 22px; margin-left: auto; flex: none; }
+    .dcd-folder-input-row { padding: 4px 8px 4px; }
+    .dcd-folder-input-row input {
+        width: 100%;
+        border: 1px solid #2450D8;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 12.5px;
+        outline: none;
+    }
+    .dcd-folder-foot {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 18px;
+        border-top: 1px solid #EEF1F5;
+        font-size: 11.5px;
+        color: #667085;
+    }
+    .dcd-folder-foot b { color: #101828; }
+
+    /* breadcrumb + folder title, sits above the existing toolbar in _GridView.cshtml -
+       .dp-card itself has no padding (its children, e.g. .dp-toolbar, supply their own
+       16px/14px), so this block needs the same padding to line up with the toolbar
+       below it instead of sitting flush against the card edge. */
+    .dcd-folder-header-block { padding: 14px 16px 0; }
+    .dcd-crumb { font-size: 12px; color: #667085; margin: 2px 0 6px; }
+    .dcd-crumb .dcd-crumb-item { cursor: pointer; }
+    .dcd-crumb .dcd-crumb-item:hover { color: #2450D8; text-decoration: underline; }
+    .dcd-crumb .dcd-crumb-sep { margin: 0 6px; color: #D0D5DD; }
+    .dcd-folder-title-row { display: flex; align-items: baseline; gap: 10px; padding: 0 0 12px; }
+    .dcd-folder-title { font-size: 18px; font-weight: 700; color: #101828; }
+    .dcd-folder-subtitle { font-size: 12px; color: #667085; }
+
+    /* small folder-picker popup used by "Move to Folder" */
+    .dcd-folder-picker {
+        position: fixed;
+        z-index: 2100;
+        width: 260px;
+        max-height: 320px;
+        overflow-y: auto;
+        background: #fff;
+        border: 1px solid #E3E8EF;
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(16,24,40,.12);
+        padding: 6px;
+    }
+    .dcd-folder-picker-item {
+        padding: 7px 10px;
+        border-radius: 6px;
+        font-size: 12.5px;
+        color: #344054;
+        cursor: pointer;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .dcd-folder-picker-item:hover { background: #F4F6F8; }
+</style>
+
+<aside class="dcd-folder-panel" id="dcdFolderPanel">
+    <div class="dcd-folder-head">
+        <span>Folders</span>
+        <button type="button" class="dcd-folder-add-btn" id="btn_addRootFolder" title="New Folder"><i class="fa fa-plus"></i></button>
+    </div>
+    <div class="dcd-folder-tree" id="dcdFolderTree"></div>
+    <div class="dcd-folder-foot">
+        <span>Total Folders <b id="dcdTotalFolders">0</b></span>
+    </div>
+</aside>
+
+@{
+    // Reused as-is from both DocumentControlDashboard (global folders) and
+    // UserDashboard (personal folders, request Hendra 2026-08-29) - the two
+    // pages point this same tree UI at different controllers/tables entirely.
+    // Falls back to DocumentControlDashboard so that page needs no ViewData change.
+    var folderController = ViewData["FolderController"] as string ?? "DocumentControlDashboard";
+}
+<script type="text/javascript">
+    var gAllFolders = [];
+    var gExpandedFolders = new Set();
+    var gSelectedFolderId = null; // null = "All Documents"
+    var gFolderCanManage = true; // folders are org structure, not sensitive - anyone reaching this menu can manage them
+    var gFolderAddingUnder = undefined; // folder id (or null for root) currently showing the inline "new folder" input
+    var gFolderRenamingId = undefined; // folder id currently showing the inline rename input
+
+    function dcdGetFolderChildren(parentId) {
+        return gAllFolders.filter(function (f) { return (f.PARENT_ID || null) === (parentId || null); });
+    }
+
+    function dcdGetFolderById(folderId) {
+        return gAllFolders.find(function (f) { return f.FOLDER_ID === folderId; });
+    }
+
+    // Ancestor chain root -> selected, for the breadcrumb.
+    function dcdGetFolderPath(folderId) {
+        var path = [];
+        var cur = dcdGetFolderById(folderId);
+        while (cur) {
+            path.unshift(cur);
+            cur = cur.PARENT_ID ? dcdGetFolderById(cur.PARENT_ID) : null;
+        }
+        return path;
+    }
+
+    function loadFolderTree(afterLoad) {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetFolderTree", folderController)",
+            success: function (result) {
+                if (result.status == true) {
+                    gAllFolders = result.data;
+                    $("#dcdTotalFolders").text(gAllFolders.length);
+                    renderFolderTree();
+                    if (typeof afterLoad === "function") { afterLoad(); }
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) { showErrorMesgGrowl(result); }
+        });
+    }
+
+    function renderFolderTree() {
+        var $tree = $("#dcdFolderTree").empty();
+
+        var $all = $("<div>").addClass("dcd-folder-row").toggleClass("selected", gSelectedFolderId === null);
+        $("<span>").addClass("dcd-folder-chevron").appendTo($all); // spacer, no children
+        $("<i>").addClass("fa fa-folder-open-o dcd-folder-icon").appendTo($all);
+        $("<span>").addClass("dcd-folder-name").text("All Documents").appendTo($all);
+        $all.on("click", function () { dcdSelectFolder(null); });
+        $tree.append($all);
+
+        if (gFolderAddingUnder === null) {
+            dcdAppendFolderInput($tree, null);
+        }
+
+        dcdRenderFolderLevel($tree, null, 0);
+
+        if (gAllFolders.length === 0 && gFolderAddingUnder !== null) {
+            $("<div>").addClass("mf-empty-state").text("No folders yet - click + to create one.").appendTo($tree);
+        }
+    }
+
+    function dcdRenderFolderLevel($container, parentId, depth) {
+        dcdGetFolderChildren(parentId).forEach(function (folder) {
+            var children = dcdGetFolderChildren(folder.FOLDER_ID);
+            var hasChildren = children.length > 0;
+            var expanded = gExpandedFolders.has(folder.FOLDER_ID);
+
+            if (gFolderRenamingId === folder.FOLDER_ID) {
+                var $editRow = $("<div>").addClass("dcd-folder-input-row").css("padding-left", (8 + depth * 18) + "px");
+                var $input = $("<input>").attr("type", "text").val(folder.FOLDER_NAME).appendTo($editRow);
+                dcdWireFolderInput($input, function (name) { dcdConfirmRenameFolder(folder.FOLDER_ID, name); }, function () { gFolderRenamingId = undefined; renderFolderTree(); });
+                $container.append($editRow);
+                setTimeout(function () { $input.focus().select(); }, 0);
+            } else {
+                var $row = $("<div>").addClass("dcd-folder-row").toggleClass("selected", gSelectedFolderId === folder.FOLDER_ID).css("padding-left", (8 + depth * 18) + "px");
+                var $chevron = $("<span>").addClass("dcd-folder-chevron fa fa-chevron-right").toggleClass("expanded", expanded).css("visibility", hasChildren ? "visible" : "hidden").appendTo($row);
+                $chevron.on("click", function (e) { e.stopPropagation(); dcdToggleFolderExpand(folder.FOLDER_ID); });
+                $("<i>").addClass("fa fa-folder-o dcd-folder-icon").appendTo($row);
+                $("<span>").addClass("dcd-folder-name").text(folder.FOLDER_NAME).appendTo($row);
+                $("<span>").addClass("dcd-folder-count").text(folder.DOCUMENT_COUNT || 0).appendTo($row);
+                if (gFolderCanManage) { dcdAppendFolderKebab($row, folder); }
+
+                $row.on("click", function (e) {
+                    if ($(e.target).closest(".dp-act-kebab, .dp-dropdown-menu").length > 0) { return; }
+                    dcdSelectFolder(folder.FOLDER_ID);
+                });
+
+                $container.append($row);
+            }
+
+            if (expanded) {
+                if (gFolderAddingUnder === folder.FOLDER_ID) {
+                    dcdAppendFolderInput($container, folder.FOLDER_ID, depth + 1);
+                }
+                dcdRenderFolderLevel($container, folder.FOLDER_ID, depth + 1);
+            }
+        });
+    }
+
+    function dcdAppendFolderInput($container, parentId, depth) {
+        var $row = $("<div>").addClass("dcd-folder-input-row").css("padding-left", (8 + (depth || 0) * 18) + "px");
+        var $input = $("<input>").attr("type", "text").attr("placeholder", "Folder name").appendTo($row);
+        dcdWireFolderInput($input, function (name) { dcdConfirmCreateFolder(parentId, name); }, function () { gFolderAddingUnder = undefined; renderFolderTree(); });
+        $container.append($row);
+        setTimeout(function () { $input.focus(); }, 0);
+    }
+
+    // "settled" guards against a double-submit: confirming via Enter re-renders the
+    // tree (async, once the save completes), which removes this <input> from the DOM -
+    // and browsers fire a native blur when a focused element is removed, which would
+    // otherwise re-trigger the deferred blur-confirm below with the same value.
+    function dcdWireFolderInput($input, onConfirm, onCancel) {
+        var settled = false;
+        function confirmOnce(val) { if (settled) { return; } settled = true; onConfirm(val); }
+        function cancelOnce() { if (settled) { return; } settled = true; onCancel(); }
+
+        $input.on("keydown", function (e) {
+            if (e.key === "Enter") {
+                var val = $input.val().trim();
+                if (val) { confirmOnce(val); } else { cancelOnce(); }
+            } else if (e.key === "Escape") {
+                cancelOnce();
+            }
+        });
+        $input.on("blur", function () {
+            setTimeout(function () {
+                if (settled) { return; }
+                var val = $input.val().trim();
+                if (val) { confirmOnce(val); } else { cancelOnce(); }
+            }, 120);
+        });
+    }
+
+    function dcdToggleFolderExpand(folderId) {
+        if (gExpandedFolders.has(folderId)) { gExpandedFolders.delete(folderId); } else { gExpandedFolders.add(folderId); }
+        renderFolderTree();
+    }
+
+    function dcdSelectFolder(folderId) {
+        gSelectedFolderId = folderId;
+        renderFolderTree();
+        if (typeof dcdApplyFolderFilter === "function") { dcdApplyFolderFilter(folderId); }
+    }
+
+    function dcdAppendFolderKebab($row, folder) {
+        var $btn = $("<button>").attr("type", "button").addClass("dp-act-kebab").html('<i class="fa fa-ellipsis-v"></i>')
+            .on("click", function (e) {
+                e.stopPropagation();
+                var already = $btn.data("menu-open");
+                dcdCloseFolderMenu();
+                if (already) { $btn.data("menu-open", false); return; }
+                dcdOpenFolderMenu($btn, folder);
+                $btn.data("menu-open", true);
+            });
+        $row.append($btn);
+    }
+
+    function dcdCloseFolderMenu() { $(".dcd-folder-dropdown-menu").remove(); }
+
+    function dcdOpenFolderMenu($btn, folder) {
+        var $menu = $("<ul>").addClass("dropdown-menu dp-dropdown-menu dcd-folder-dropdown-menu")
+            .css({ position: "fixed", "z-index": 2000, "min-width": "170px", background: "#fff", margin: 0, "list-style": "none" });
+
+        $("<li>").append($("<button>").attr("type", "button").html('<i class="fa fa-plus"></i> Add Subfolder').on("click", function (e) {
+            e.stopPropagation(); dcdCloseFolderMenu();
+            gExpandedFolders.add(folder.FOLDER_ID);
+            gFolderAddingUnder = folder.FOLDER_ID;
+            renderFolderTree();
+        })).appendTo($menu);
+
+        $("<li>").append($("<button>").attr("type", "button").html('<i class="fa fa-pencil"></i> Rename').on("click", function (e) {
+            e.stopPropagation(); dcdCloseFolderMenu();
+            gFolderRenamingId = folder.FOLDER_ID;
+            renderFolderTree();
+        })).appendTo($menu);
+
+        $("<li>").append($("<button>").attr("type", "button").html('<i class="fa fa-trash-o"></i> Delete').on("click", function (e) {
+            e.stopPropagation(); dcdCloseFolderMenu();
+            showConfirmMesg("Are you sure you want to delete folder \"" + folder.FOLDER_NAME + "\"?", function () { dcdConfirmDeleteFolder(folder.FOLDER_ID); }, "Confirmation");
+        })).appendTo($menu);
+
+        $menu.appendTo("body");
+        var offset = $btn.offset();
+        // Bootstrap's base .dropdown-menu class defaults to display:none - without
+        // this explicit .show(), the menu is created/positioned correctly but stays
+        // invisible (bug found 2026-08-29: kebab click did nothing visible).
+        $menu.css({ top: offset.top + $btn.outerHeight() + 4, left: offset.left - $menu.outerWidth() + $btn.outerWidth() }).show();
+    }
+
+    $(document).on("click", function () { dcdCloseFolderMenu(); });
+
+    function dcdConfirmCreateFolder(parentId, folderName) {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("CreateFolder", folderController)",
+            data: { folderName: folderName, parentId: parentId },
+            success: function (result) {
+                gFolderAddingUnder = undefined;
+                if (result.status == true) {
+                    showSuccessMesgGrowl("Folder created");
+                    if (parentId != null) { gExpandedFolders.add(parentId); }
+                    loadFolderTree();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                    renderFolderTree();
+                }
+            },
+            error: function (result) { showErrorMesgGrowl(result); renderFolderTree(); }
+        });
+    }
+
+    function dcdConfirmRenameFolder(folderId, folderName) {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("RenameFolder", folderController)",
+            data: { folderId: folderId, folderName: folderName },
+            success: function (result) {
+                gFolderRenamingId = undefined;
+                if (result.status == true) {
+                    showSuccessMesgGrowl("Folder renamed");
+                    loadFolderTree();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                    renderFolderTree();
+                }
+            },
+            error: function (result) { showErrorMesgGrowl(result); renderFolderTree(); }
+        });
+    }
+
+    function dcdConfirmDeleteFolder(folderId) {
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("DeleteFolder", folderController)",
+            data: { folderId: folderId },
+            success: function (result) {
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    if (gSelectedFolderId === folderId) { dcdSelectFolder(null); }
+                    loadFolderTree();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) { showErrorMesgGrowl(result); }
+        });
+    }
+
+    // ---------- flat indented picker, reused by _GridView.cshtml's "Move to Folder" ----------
+    function dcdFlattenFolders(parentId, depth, out) {
+        dcdGetFolderChildren(parentId).forEach(function (folder) {
+            out.push({ folder: folder, depth: depth });
+            dcdFlattenFolders(folder.FOLDER_ID, depth + 1, out);
+        });
+        return out;
+    }
+
+    function dcdOpenFolderPicker($anchor, onPick) {
+        $(".dcd-folder-picker").remove();
+
+        var $picker = $("<div>").addClass("dcd-folder-picker");
+        $("<div>").addClass("dcd-folder-picker-item").text("All Documents (unassigned)").on("click", function () {
+            $picker.remove(); onPick(null);
+        }).appendTo($picker);
+
+        dcdFlattenFolders(null, 0, []).forEach(function (entry) {
+            $("<div>").addClass("dcd-folder-picker-item").css("padding-left", (10 + entry.depth * 14) + "px")
+                .text(entry.folder.FOLDER_NAME)
+                .on("click", function () { $picker.remove(); onPick(entry.folder.FOLDER_ID); })
+                .appendTo($picker);
+        });
+
+        $picker.appendTo("body");
+        var offset = $anchor.offset();
+        $picker.css({ top: offset.top + $anchor.outerHeight() + 4, left: offset.left });
+
+        setTimeout(function () {
+            $(document).one("click.dcdFolderPicker", function () { $picker.remove(); });
+        }, 0);
+    }
+
+    $("#btn_addRootFolder").on("click", function () {
+        gFolderAddingUnder = null;
+        renderFolderTree();
+    });
+
+    $(document).ready(function () {
+        loadFolderTree();
+    });
+</script>

@@ -41,6 +41,8 @@ namespace DMS.Models
         public virtual DbSet<UserDashboardDocument>? UserDashboardSearch { get; set; }
         public virtual DbSet<DocumentControlMaintenance>? DocumentControlDashboard { get; set; }
         public virtual DbSet<DocumentControlDashboardDocument>? DocumentControlDashboardSearch { get; set; }
+        public virtual DbSet<DocumentFolder>? DocumentFolder { get; set; }
+        public virtual DbSet<DocumentFolderPersonal>? DocumentFolderPersonal { get; set; }
         public virtual DbSet<ApprovalHeader>? ApprovalHeader { get; set; }
         public virtual DbSet<ApprovalDetail>? ApprovalDetail { get; set; }
         public virtual DbSet<PositionMaster>? PositionMaster { get; set; }

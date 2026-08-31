@@ -1,6 +1,7 @@
             <!-- RECOMMIT DINA -->
 <div class="box-header dp-toolbar">
     <div class="dp-toolbar-left">
+        <button type="button" class="dp-icon-btn dp-stats-toggle" id="btn_toggleFolders" title="Hide Folders"><i class="fa fa-angle-double-left"></i></button>
         @if ((bool)ViewData["Acknowledge"])
         {
             <div class="dropdown" style="display:inline-block;">
@@ -15,6 +16,7 @@
         <button type="button" class="dp-btn dp-btn-outline" id="btn_toggleFilters"><i class="fa fa-filter"></i> More Filters</button>
         <button type="button" class="dp-btn dp-btn-outline" id="btn_resetFilters"><i class="fa fa-refresh"></i> Reset</button>
         <button type="button" class="dp-btn dp-btn-outline" id="btn_refresh"><i class="fa fa-refresh"></i> Refresh</button>
+        <button type="button" class="dp-btn dp-btn-outline" id="btn_moveToFolder" style="display:none;"><i class="fa fa-folder-o"></i> Move to Folder</button>
     </div>
     <div class="dp-toolbar-right">
         <button type="button" class="dp-icon-btn" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i></button>

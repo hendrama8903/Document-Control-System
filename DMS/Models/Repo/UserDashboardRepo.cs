@@ -241,5 +241,30 @@ namespace DMS.Models.Repo
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
             return result;
         }
+
+        // Assigns (or clears, when folderId is null) one document's PERSONAL folder
+        // for loginUser - request Hendra 2026-08-29. Independent of Document
+        // Control's global TB_R_DOCUMENT.FOLDER_ID - see
+        // TB_R_DOCUMENT_FOLDER_PERSONAL / sp_UserDashboard_AssignFolder.
+        public DBResult AssignFolder(int documentTransactionId, int? folderId, string loginUser, DBContext db)
+        {
+            SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
+            SqlParameter returnMsg = CreateSqlParameterOutputString("@RETURN_MSG");
+
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                returnVal,
+                new SqlParameter ( "@DOCUMENT_TRANSACTION_ID", documentTransactionId ),
+                new SqlParameter ( "@USERNAME", loginUser ),
+                new SqlParameter ( "@FOLDER_ID", CheckNullValue(folderId) ),
+                returnMsg
+            };
+
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_UserDashboard_AssignFolder] @DOCUMENT_TRANSACTION_ID, @USERNAME, @FOLDER_ID, @RETURN_MSG OUTPUT";
+            int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
+
+            DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
+            return result;
+        }
     }
 }

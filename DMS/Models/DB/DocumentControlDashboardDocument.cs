@@ -67,5 +67,10 @@ namespace DMS.Models.DB
         public int? ACK_DONE { get; set; }
         public int? DIVISION_COUNT { get; set; }
         public int? PENDING_DISTRIBUTION_COUNT { get; set; }
+
+        // Folder tree assignment (request Hendra 2026-08-28) - NULL = unassigned,
+        // shown under "All Documents". See TB_M_DOCUMENT_FOLDER / DocumentFolder.cs.
+        public int? FOLDER_ID { get; set; }
+        public string? FOLDER_NAME { get; set; }
     }
 }

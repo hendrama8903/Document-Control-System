@@ -3,13 +3,22 @@
     /* ---------- KPI cards moved out of the top header into a docked
        right-side panel (request Hendra 2026-08-17: same treatment as
        Document Preparation/Registration). ---------- */
+    /* flex-wrap (not a max-width breakpoint) keeps Folders + Register Overview
+       side by side as long as they both fit (request Hendra 2026-08-29: "sejajar
+       seperti pada mockup") - only the main grid card (last in source order, and
+       the one that needs the most room) drops to its own line once the row runs
+       out of width. On a genuinely narrow/phone viewport, Folders and Register
+       Overview eventually wrap onto separate lines too, each still keeping its
+       own fixed card width rather than stretching full-width. */
     .dp-layout-row {
         display: flex;
         align-items: stretch;
+        flex-wrap: wrap;
+        row-gap: 16px;
     }
     .dp-layout-main {
-        flex: 1 1 0;
-        min-width: 0;
+        flex: 1 1 420px;
+        min-width: 420px;
         display: flex;
         flex-direction: column;
     }
@@ -23,9 +32,8 @@
         min-height: 0;
     }
 
-    /* toggle lives in the grid toolbar next to Export - a plain toolbar
-       button so it never overlaps grid content, matching the other icon
-       buttons there. */
+    /* toggle lives in the grid toolbar - a plain toolbar button so it never
+       overlaps grid content, matching the other icon buttons there. */
     .dp-stats-toggle {
         position: relative;
         color: #2450D8;
@@ -52,30 +60,6 @@
         align-items: center;
         justify-content: center;
         border: 2px solid #fff;
-    }
-
-    .dp-stats-panel {
-        flex: 0 0 272px;
-        width: 272px;
-        margin-left: 16px;
-        background: #fff;
-        border: 1px solid #E3E8EF;
-        border-radius: 16px;
-        box-shadow: 0 4px 14px rgba(16,24,40,.04);
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        transition: flex-basis .22s cubic-bezier(.4,0,.2,1), width .22s cubic-bezier(.4,0,.2,1),
-                    margin-left .22s cubic-bezier(.4,0,.2,1), opacity .18s ease, border-color .22s ease, box-shadow .22s ease;
-    }
-    .dp-layout-row.stats-collapsed .dp-stats-panel {
-        flex-basis: 0;
-        width: 0;
-        margin-left: 0;
-        opacity: 0;
-        border-color: transparent;
-        box-shadow: none;
-        pointer-events: none;
     }
 
     .dp-stats-panel-head {
@@ -118,7 +102,6 @@
     }
 
     .dp-stats-panel-foot {
-        margin-top: auto;
         padding: 6px 18px 18px;
     }
     .dp-stats-viewall {
@@ -137,21 +120,60 @@
     .dp-stats-viewall:hover { background: #F4F8FF; color: #2450D8; text-decoration: none; }
     .dp-stats-viewall i { margin-right: 6px; }
 
-    @@media (max-width: 900px) {
-        .dp-layout-row { flex-direction: column; }
-        .dp-stats-toggle { display: none; }
-        .dp-stats-panel, .dp-layout-row.stats-collapsed .dp-stats-panel {
-            flex-basis: auto; width: 100%; margin-left: 0; opacity: 1; pointer-events: auto;
-            border-color: #E3E8EF; box-shadow: 0 4px 14px rgba(16,24,40,.04); margin-top: 16px;
-        }
+    /* Register Overview (request Hendra 2026-08-29: same row as Folders, both
+       fixed-width sidebar cards side by side ("sejajar seperti pada mockup"),
+       stretched to match height via the row's align-items:stretch - not stacked,
+       not fused into Folders' own card. Each keeps its OWN independent show/hide
+       toggle ("keduanya bisa show hide" - restored 2026-08-29): Folders defaults
+       shown (folders-collapsed), Register Overview defaults hidden
+       (stats-collapsed) - same default as before this whole feature existed. */
+    .dcd-stats-panel {
+        flex: 0 0 260px;
+        width: 260px;
+        margin-right: 16px;
+        background: #fff;
+        border: 1px solid #E3E8EF;
+        border-radius: 16px;
+        box-shadow: 0 4px 14px rgba(16,24,40,.04);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: flex-basis .22s cubic-bezier(.4,0,.2,1), width .22s cubic-bezier(.4,0,.2,1),
+                    margin-right .22s cubic-bezier(.4,0,.2,1), opacity .18s ease, border-color .22s ease, box-shadow .22s ease;
+    }
+    .dp-layout-row.stats-collapsed .dcd-stats-panel {
+        flex-basis: 0;
+        width: 0;
+        margin-right: 0;
+        opacity: 0;
+        border-color: transparent;
+        box-shadow: none;
+        pointer-events: none;
+    }
+
+    /* Only on a genuinely narrow (phone-width) viewport, where even Folders +
+       Register Overview alone (260+16+260px) no longer fit side by side, let the
+       collapse toggles recede - collapsing wouldn't free up meaningful room once
+       everything's already wrapped onto its own line. */
+    @@media (max-width: 560px) {
+        #btn_toggleFolders, #btn_toggleStats { display: none; }
     }
 </style>
 <section class="content">
     <div class="row">
         <div class="col-xs-12">
             <div class="dp-layout-row stats-collapsed" id="dpLayoutRow">
+                @Html.Partial("_FolderTree")
+
                 <div class="dp-layout-main">
                     <div class="dp-card">
+                        <div class="dcd-folder-header-block">
+                            <div class="dcd-crumb" id="dcdCrumb"></div>
+                            <div class="dcd-folder-title-row">
+                                <span class="dcd-folder-title" id="dcdFolderTitle">All Documents</span>
+                                <span class="dcd-folder-subtitle" id="dcdFolderSubtitle"></span>
+                            </div>
+                        </div>
                         <div id="divSearch">
                             @Html.Partial("_SearchCriteria")
                         </div>
@@ -161,45 +183,7 @@
                     </div>
                 </div>
 
-                <aside class="dp-stats-panel" id="dpStatsPanel">
-                    <div class="dp-stats-panel-head">
-                        <span>Register Overview</span>
-                        <button type="button" class="dp-stats-panel-close" id="btn_closeStatsPanel"><i class="fa fa-times"></i></button>
-                    </div>
-                    <div class="dp-stats-panel-body" id="dcdStatsRow">
-                        <div class="dp-stat-card">
-                            <div class="dp-stat-card-icon blue"><i class="fa fa-file-text-o"></i></div>
-                            <div>
-                                <span>Total Documents</span>
-                                <b id="dcdTotal">-</b>
-                            </div>
-                        </div>
-                        <div class="dp-stat-card">
-                            <div class="dp-stat-card-icon green"><i class="fa fa-check-circle"></i></div>
-                            <div>
-                                <span>Effective Documents</span>
-                                <b id="dcdEffective">-</b>
-                            </div>
-                        </div>
-                        <div class="dp-stat-card">
-                            <div class="dp-stat-card-icon amber"><i class="fa fa-clock-o"></i></div>
-                            <div>
-                                <span>Need Review</span>
-                                <b id="dcdNeedReview">-</b>
-                            </div>
-                        </div>
-                        <div class="dp-stat-card">
-                            <div class="dp-stat-card-icon purple"><i class="fa fa-users"></i></div>
-                            <div>
-                                <span>Waiting Acceptance</span>
-                                <b id="dcdPendingAck">-</b>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="dp-stats-panel-foot">
-                        <a href="@Url.Action("Index", "Home")" class="dp-stats-viewall"><i class="fa fa-bar-chart"></i>View All Statistics</a>
-                    </div>
-                </aside>
+                @Html.Partial("_RegisterOverview")
             </div>
         </div>
     </div>

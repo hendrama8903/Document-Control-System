@@ -120,21 +120,37 @@
         $("#dcdNeedReview").text(needReview);
         $("#dcdPendingAck").text(pendingAck);
 
-        // surfaces the pending-acknowledgement count on the collapsed toggle
-        // too, so it stays useful (not just a bare arrow) even when the
-        // panel is closed
+        // surfaces the pending-acknowledgement count on the folders toggle too,
+        // so it stays useful (not just a bare arrow) even when the sidebar - which
+        // now also holds Register Overview - is collapsed.
         dcdLastPendingAck = pendingAck;
         refreshToggleBadge();
     }
 
-    // ---------- docked "Register Overview" panel toggle - top-level (not
-    // inside $(document).ready) so updateHeaderStats() above can reach
-    // dcdLastPendingAck too ----------
+    // ---------- Folders / Register Overview sidebar toggles - each independent
+    // (restored 2026-08-29: "keduanya bisa show hide" separately, Register Overview
+    // defaults hidden like before) - top-level (not inside $(document).ready) so
+    // updateHeaderStats() above can reach dcdLastPendingAck too ----------
     var dcdLastPendingAck = 0;
 
     function refreshToggleBadge() {
         var collapsed = $("#dpLayoutRow").hasClass("stats-collapsed");
         $("#dpToggleBadge").text(dcdLastPendingAck).toggle(collapsed && dcdLastPendingAck > 0);
+    }
+
+    function setFoldersPanelCollapsed(collapsed) {
+        var $row = $("#dpLayoutRow");
+        var $icon = $("#btn_toggleFolders i");
+
+        $row.toggleClass("folders-collapsed", collapsed);
+        $icon.toggleClass("fa-angle-double-left", !collapsed).toggleClass("fa-angle-double-right", collapsed);
+        $("#btn_toggleFolders").attr("title", collapsed ? "Show Folders" : "Hide Folders");
+
+        // width-only change (grid height is unaffected), but DevExtreme needs a nudge
+        // to reflow column widths into the space freed/reclaimed by the transition.
+        setTimeout(function () {
+            $("#datagrid").dxDataGrid("instance").updateDimensions();
+        }, 230);
     }
 
     function setStatsPanelCollapsed(collapsed) {
@@ -147,7 +163,7 @@
         refreshToggleBadge();
 
         setTimeout(function () {
-            $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+            $("#datagrid").dxDataGrid("instance").updateDimensions();
         }, 230);
     }
 
@@ -207,8 +223,12 @@
         // dashboard ini) - onHistoryPrepare() otomatis baca row.DOCUMENT_CODE
         // dari getSelectedRowData() (request Hendra 2026-08-16).
         $menu.append(dcdMenuItem("dp-menu-history", "fa-history", "History", function () {
-            $("#datagrid").dxDataGrid("instance").selectRows([row.DOCUMENT_CTRL_ID], false);
+            $("#datagrid").dxDataGrid("instance").selectRows([row.DOCUMENT_TRANSACTION_ID], false);
             onHistoryPrepare();
+        }));
+
+        $menu.append(dcdMenuItem("dp-menu-move", "fa-folder-o", "Move to Folder", function () {
+            dcdMoveDocumentsToFolder([row.DOCUMENT_TRANSACTION_ID], $btn);
         }));
 
         var offset = $btn.offset();
@@ -216,9 +236,71 @@
             .show();
     }
 
+    // ---------- folder breadcrumb/title + grid filter (request Hendra 2026-08-28) ----------
+    // Called from _FolderTree.cshtml's dcdSelectFolder(). The grid already loads every
+    // document once (loadMode:"raw"/length:100000) and relies on DevExtreme's own
+    // client-side filtering elsewhere (see the DOCUMENT_CODE deep-link filter in
+    // onContentReady below) - folder selection reuses that same mechanism, no extra
+    // server round-trip.
+    function dcdApplyFolderFilter(folderId) {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        // NOTE: columnOption(field, "filterValue", value) silently does nothing for a
+        // hidden (visible:false) column in this DevExtreme version - verified directly.
+        // grid.filter(expr) works regardless of column visibility and still combines
+        // (AND) with any other active column filters - filter(null) clears just this
+        // criterion, leaving other filters (e.g. the DOCUMENT_CODE deep-link one below,
+        // or user header filters) untouched.
+        grid.filter(folderId === null ? null : ["FOLDER_ID", "=", folderId]);
+
+        // Breadcrumb only shown for a nested folder (depth > 1) - the title below
+        // already names the current folder, so a 1-item breadcrumb would just repeat
+        // it (request Hendra 2026-08-29: "tulisan breadcrumb ada 2, buat satu aja").
+        var $crumb = $("#dcdCrumb").empty();
+        if (folderId === null) {
+            $("#dcdFolderTitle").text("All Documents");
+        } else {
+            var path = dcdGetFolderPath(folderId);
+            if (path.length > 1) {
+                path.forEach(function (folder, i) {
+                    if (i > 0) { $("<span>").addClass("dcd-crumb-sep").text("›").appendTo($crumb); }
+                    $("<span>").addClass("dcd-crumb-item").text(folder.FOLDER_NAME).on("click", function () { dcdSelectFolder(folder.FOLDER_ID); }).appendTo($crumb);
+                });
+            }
+            $("#dcdFolderTitle").text(path.length > 0 ? path[path.length - 1].FOLDER_NAME : "");
+        }
+    }
+
+    // ---------- "Move to Folder" (bulk toolbar button + per-row kebab) ----------
+    function dcdMoveDocumentsToFolder(documentTransactionIds, $anchor) {
+        dcdOpenFolderPicker($anchor, function (folderId) {
+            $.ajax({
+                type: "POST",
+                url: "@Url.Action("MoveDocumentsToFolder", "DocumentControlDashboard")",
+                traditional: true,
+                data: { documentTransactionIds: documentTransactionIds, folderId: folderId },
+                success: function (result) {
+                    if (result.status == true) {
+                        showSuccessMesgGrowl(result.message);
+                        loadFolderTree();
+                        $("#datagrid").dxDataGrid("instance").refresh();
+                    } else {
+                        showErrorMesgGrowl(result.message);
+                    }
+                },
+                error: function (result) { showErrorMesgGrowl(result); }
+            });
+        });
+    }
+
     $(document).ready(function () {
+        $("#btn_moveToFolder").on("click", function () {
+            var selected = $("#datagrid").dxDataGrid("instance").getSelectedRowKeys();
+            if (selected.length === 0) { return; }
+            dcdMoveDocumentsToFolder(selected, $(this));
+        });
+
         var gridStore = new DevExpress.data.CustomStore({
-            key: "DOCUMENT_CTRL_ID",
+            key: "DOCUMENT_TRANSACTION_ID",
             loadMode: "raw",
             load: function () {
                 var d = $.Deferred();
@@ -261,6 +343,9 @@
                 mode: "multiple",
                 showCheckBoxesMode: "always",
                 allowSelectAll: true
+            },
+            onSelectionChanged: function (e) {
+                $("#btn_moveToFolder").toggle(e.selectedRowKeys.length > 0);
             },
             paging: { pageSize: 10 },
             pager: {
@@ -478,6 +563,8 @@
                         container.text(value != null ? moment(value).format("DD MMM YYYY HH:mm") : "");
                     }
                 },
+                { dataField: "FOLDER_ID", dataType: "number", caption: "Folder", visible: false, allowHeaderFiltering: false },
+                { dataField: "FOLDER_NAME", caption: "Folder Name", visible: false },
                 { dataField: "LOCATION", caption: "Location", visible: false },
                 { dataField: "REFERENCE_NO", caption: "Reference No", visible: false },
                 {
@@ -535,6 +622,9 @@
                 if (documentCode && !e.component.columnOption("DOCUMENT_CODE", "filterValue")) {
                     e.component.columnOption("DOCUMENT_CODE", "filterValue", documentCode);
                 }
+
+                var count = e.component.totalCount();
+                $("#dcdFolderSubtitle").text(count >= 0 ? (count + " document" + (count !== 1 ? "s" : "")) : "");
             }
         });
 
@@ -542,8 +632,14 @@
             $("#datagrid").dxDataGrid("instance").showColumnChooser();
         });
 
-        // ---------- toggle the docked "Register Overview" panel (collapses to
-        // the right, grid reflows into the freed width via flex) ----------
+        // ---------- toggle the Folders sidebar (collapses to the left, grid
+        // reflows into the freed width) ----------
+        $("#btn_toggleFolders").on("click", function () {
+            setFoldersPanelCollapsed(!$("#dpLayoutRow").hasClass("folders-collapsed"));
+        });
+
+        // ---------- toggle the docked Register Overview panel (independent of
+        // Folders - defaults hidden) ----------
         $("#btn_toggleStats").on("click", function () {
             setStatsPanelCollapsed(!$("#dpLayoutRow").hasClass("stats-collapsed"));
         });

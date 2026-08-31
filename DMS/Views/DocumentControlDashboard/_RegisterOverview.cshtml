@@ -1,0 +1,45 @@
+@* Markup only - kept separate from _FolderTree.cshtml so it can sit on the right
+   side of the layout in Index.cshtml (request Hendra 2026-08-29: position should
+   match its toggle icon, which lives in the toolbar's right side) while its JS
+   (updateHeaderStats, setStatsPanelCollapsed, etc.) stays in _GridView.cshtml /
+   _FolderTree.cshtml - those just address these elements by id, so location in
+   the DOM doesn't matter to them. *@
+<aside class="dcd-stats-panel" id="dcdStatsPanel">
+    <div class="dp-stats-panel-head">
+        <span>Register Overview</span>
+        <button type="button" class="dp-stats-panel-close" id="btn_closeStatsPanel"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="dp-stats-panel-body" id="dcdStatsRow">
+        <div class="dp-stat-card">
+            <div class="dp-stat-card-icon blue"><i class="fa fa-file-text-o"></i></div>
+            <div>
+                <span>Total Documents</span>
+                <b id="dcdTotal">-</b>
+            </div>
+        </div>
+        <div class="dp-stat-card">
+            <div class="dp-stat-card-icon green"><i class="fa fa-check-circle"></i></div>
+            <div>
+                <span>Effective Documents</span>
+                <b id="dcdEffective">-</b>
+            </div>
+        </div>
+        <div class="dp-stat-card">
+            <div class="dp-stat-card-icon amber"><i class="fa fa-clock-o"></i></div>
+            <div>
+                <span>Need Review</span>
+                <b id="dcdNeedReview">-</b>
+            </div>
+        </div>
+        <div class="dp-stat-card">
+            <div class="dp-stat-card-icon purple"><i class="fa fa-users"></i></div>
+            <div>
+                <span>Waiting Acceptance</span>
+                <b id="dcdPendingAck">-</b>
+            </div>
+        </div>
+    </div>
+    <div class="dp-stats-panel-foot">
+        <a href="@Url.Action("Index", "Home")" class="dp-stats-viewall"><i class="fa fa-bar-chart"></i>View All Statistics</a>
+    </div>
+</aside>

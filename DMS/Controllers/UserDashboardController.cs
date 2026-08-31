@@ -44,6 +44,7 @@ namespace DMS.Controllers
         private MSystemRepo mSystemRepo = MSystemRepo.Instance;
         private P4DMaintenanceRepo P4DMaintenanceRepo = P4DMaintenanceRepo.Instance;
         private DocumentLogRepo documentLogRepo = DocumentLogRepo.Instance;
+        private DocumentFolderPersonalRepo DocumentFolderPersonalRepo = DocumentFolderPersonalRepo.Instance;
 
         public IActionResult Index(string DOCUMENT_CODE)
         {
@@ -344,6 +345,94 @@ namespace DMS.Controllers
         }
 
 
+        // ---------- Personal folder tree (request Hendra 2026-08-29: "My Document
+        // itu punya dashboard user" - fully separate per user from Document
+        // Control's global folder tree, own tables/SPs, see
+        // TB_M_DOCUMENT_FOLDER_PERSONAL / TB_R_DOCUMENT_FOLDER_PERSONAL). Every
+        // action is scoped to GetLoginUsername() - a user only ever sees/touches
+        // their own folders. ----------
+
+        public JsonResult GetFolderTree()
+        {
+            try
+            {
+                IList<DocumentFolderPersonal> result = DocumentFolderPersonalRepo.GetTree(GetLoginUsername(), db);
+                return Json(new { status = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public JsonResult CreateFolder(string folderName, int? parentId)
+        {
+            try
+            {
+                DBResult result = DocumentFolderPersonalRepo.Insert(new DocumentFolderPersonal { FOLDER_NAME = folderName, PARENT_ID = parentId }, GetLoginUsername(), db);
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public JsonResult RenameFolder(int folderId, string folderName)
+        {
+            try
+            {
+                string username = GetLoginUsername();
+                DocumentFolderPersonal existing = DocumentFolderPersonalRepo.GetTree(username, db).FirstOrDefault(f => f.FOLDER_ID == folderId);
+                if (existing == null)
+                {
+                    return Json(new { status = false, message = "Folder not found" });
+                }
+
+                DBResult result = DocumentFolderPersonalRepo.Update(new DocumentFolderPersonal { FOLDER_ID = folderId, FOLDER_NAME = folderName, PARENT_ID = existing.PARENT_ID }, username, db);
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public JsonResult DeleteFolder(int folderId)
+        {
+            try
+            {
+                DBResult result = DocumentFolderPersonalRepo.Delete(new DocumentFolderPersonal { FOLDER_ID = folderId }, GetLoginUsername(), db);
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public JsonResult MoveDocumentsToFolder(List<int> documentTransactionIds, int? folderId)
+        {
+            try
+            {
+                string username = GetLoginUsername();
+                foreach (var id in documentTransactionIds)
+                {
+                    DBResult result = UserDashboardRepo.AssignFolder(id, folderId, username, db);
+                    if (!result.status)
+                    {
+                        return Json(result);
+                    }
+                }
+
+                return Json(new { status = true, message = "Document(s) moved successfully" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
         public IActionResult DownloadDocument(string path)
         {
             string webRootPath = Environment.WebRootPath;
@@ -364,7 +453,6 @@ namespace DMS.Controllers
             IList<UserDashboardDocument> listData = UserDashboardRepo.Search(
                 new DocumentControlMaintenance(), GetLoginUsername(), db, null, null);
 
-            var memoryStream = new MemoryStream();
             IWorkbook workbook = new XSSFWorkbook();
             ISheet sheet = workbook.CreateSheet("Document Request");
 
@@ -413,10 +501,14 @@ namespace DMS.Controllers
                 sheet.AutoSizeColumn(col);
             }
 
-            workbook.Write(memoryStream);
-            memoryStream.Position = 0;
+            byte[] fileBytes;
+            using (var memoryStream = new MemoryStream())
+            {
+                workbook.Write(memoryStream);
+                fileBytes = memoryStream.ToArray();
+            }
 
-            return File(memoryStream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "DOCUMENT-REQUEST-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
     }

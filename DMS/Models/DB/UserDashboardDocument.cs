@@ -66,5 +66,10 @@ namespace DMS.Models.DB
         // Latest acknowledgement timestamp for this document/department, from
         // TB_R_PUBLISH_HISTORY.
         public DateTime? ACKNOWLEDGE_DT { get; set; }
+
+        // Folder tree assignment (request Hendra 2026-08-29) - NULL = unassigned,
+        // shown under "All Documents". See TB_M_DOCUMENT_FOLDER / DocumentFolder.cs.
+        public int? FOLDER_ID { get; set; }
+        public string? FOLDER_NAME { get; set; }
     }
 }

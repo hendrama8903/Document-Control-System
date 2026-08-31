@@ -1,0 +1,56 @@
+-- Mirrors sp_DocumentFolder_Delete, scoped to @USERNAME. Soft delete, blocked if
+-- the folder still has a non-deleted subfolder or any document filed in it
+-- (TB_R_DOCUMENT_FOLDER_PERSONAL) - and only ever touches a folder that
+-- actually belongs to @USERNAME.
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentFolderPersonal_Delete]
+	@FOLDER_ID		INT,
+	@USERNAME		VARCHAR(255),
+	@RETURN_MSG		VARCHAR(MAX) OUTPUT
+AS
+BEGIN TRY
+	DECLARE @PROCESS_ID BIGINT,
+					@LOCATION VARCHAR(255) = 'sp_DocumentFolderPersonal_Delete';
+
+	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'My Documents', 'Personal Folder Delete', @LOCATION, @USERNAME
+
+	IF NOT EXISTS (SELECT 1 FROM [dbo].[TB_M_DOCUMENT_FOLDER_PERSONAL] WHERE FOLDER_ID = @FOLDER_ID AND USERNAME = @USERNAME)
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Folder not found';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @USERNAME
+		RETURN 0;
+	END
+
+	IF EXISTS (SELECT TOP 1 1 FROM [dbo].[TB_M_DOCUMENT_FOLDER_PERSONAL] WHERE PARENT_ID = @FOLDER_ID AND ISNULL(DELETE_FLAG, 0) = 0)
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: This folder still has subfolders - delete or move them first';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @USERNAME
+		RETURN 0;
+	END
+
+	IF EXISTS (SELECT TOP 1 1 FROM [dbo].[TB_R_DOCUMENT_FOLDER_PERSONAL] WHERE FOLDER_ID = @FOLDER_ID)
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: This folder still has documents assigned - move them first';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @USERNAME
+		RETURN 0;
+	END
+
+	UPDATE [dbo].[TB_M_DOCUMENT_FOLDER_PERSONAL]
+	SET DELETE_FLAG	= 1,
+			CHANGED_DT	= GETDATE(),
+			CHANGED_BY	= @USERNAME
+	WHERE FOLDER_ID = @FOLDER_ID AND USERNAME = @USERNAME
+
+	SET @RETURN_MSG = 'Successfully Delete Data'
+	EXEC sp_WriteLog @PROCESS_ID, '2', 'INF', @RETURN_MSG, @LOCATION, @USERNAME
+	RETURN 1;
+END TRY
+BEGIN CATCH
+	SET @RETURN_MSG = 'ERROR: ' + ERROR_PROCEDURE() +': '+ ERROR_MESSAGE() + ', at line = ' +  CAST(ERROR_LINE() AS VARCHAR);
+	EXEC sp_WriteLog @PROCESS_ID, '4', 'ERR', @RETURN_MSG, @LOCATION, @USERNAME
+	RETURN 0;
+END CATCH
+GO

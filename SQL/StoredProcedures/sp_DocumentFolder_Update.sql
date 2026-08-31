@@ -1,0 +1,64 @@
+-- Rename (and optionally re-parent) a folder. The current UI only exposes
+-- Rename (PARENT_ID passed back unchanged), but the SP accepts both since
+-- it costs nothing extra - matches sp_SectionMaster_Update's shape.
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentFolder_Update]
+	@FOLDER_ID		INT,
+	@FOLDER_NAME	VARCHAR(255),
+	@PARENT_ID		INT,
+	@LOGIN_USER		VARCHAR(255),
+	@RETURN_MSG		VARCHAR(MAX) OUTPUT
+AS
+BEGIN TRY
+	DECLARE @PROCESS_ID BIGINT,
+					@LOCATION VARCHAR(255) = 'sp_DocumentFolder_Update';
+
+	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'Document Control Dashboard', 'Folder Update', @LOCATION, @LOGIN_USER
+
+	IF @FOLDER_NAME IS NULL OR LEN(@FOLDER_NAME) < 1
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Folder Name should not be null';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+		RETURN 0;
+	END
+
+	IF @PARENT_ID = @FOLDER_ID
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: A folder cannot be its own parent';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+		RETURN 0;
+	END
+
+	IF EXISTS (
+		SELECT 1 FROM [dbo].[TB_M_DOCUMENT_FOLDER]
+		WHERE FOLDER_NAME = @FOLDER_NAME
+		AND ISNULL(PARENT_ID, 0) = ISNULL(@PARENT_ID, 0)
+		AND ISNULL(DELETE_FLAG, 0) = 0
+		AND FOLDER_ID != @FOLDER_ID
+	)
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: A folder named ' + @FOLDER_NAME + ' already exists here';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+		RETURN 0;
+	END
+
+	UPDATE [dbo].[TB_M_DOCUMENT_FOLDER]
+	SET FOLDER_NAME	= @FOLDER_NAME,
+			PARENT_ID	= @PARENT_ID,
+			CHANGED_DT	= GETDATE(),
+			CHANGED_BY	= @LOGIN_USER
+	WHERE FOLDER_ID = @FOLDER_ID
+
+	SET @RETURN_MSG = 'Successfully Save Data'
+	EXEC sp_WriteLog @PROCESS_ID, '2', 'INF', @RETURN_MSG, @LOCATION, @LOGIN_USER
+	RETURN 1;
+END TRY
+BEGIN CATCH
+	SET @RETURN_MSG = 'ERROR: ' + ERROR_PROCEDURE() +': '+ ERROR_MESSAGE() + ', at line = ' +  CAST(ERROR_LINE() AS VARCHAR);
+	EXEC sp_WriteLog @PROCESS_ID, '4', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+	RETURN 0;
+END CATCH
+GO
