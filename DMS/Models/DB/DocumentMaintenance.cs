@@ -65,6 +65,8 @@ namespace DMS.Models.DB
         [NotMapped]
         public string? REVISION_ALLOWAL_FLAG { get; set; }
         [NotMapped]
+        public string? EXCLUDE_MIGRATION_FLAG { get; set; }
+        [NotMapped]
         public int? MANUAL_SEQ_NO { get; set; }
         // Fitur "Divisi Terkait" (SPR/SIPOCOR Level 2) - kode divisi terpilih
         // dipisah koma (mis. "CED,FAD,ITD"), dikirim dari form Add Document,

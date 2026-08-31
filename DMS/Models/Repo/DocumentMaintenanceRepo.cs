@@ -42,13 +42,14 @@ namespace DMS.Models.Repo
                 new SqlParameter ( "@STATUS", CheckNullValue(data.STATUS) ),
                 new SqlParameter ( "@NOT_EXIST_FLAG", CheckNullValue(data.NOT_EXIST_FLAG) ),
                 new SqlParameter ( "@REVISION_ALLOWAL_FLAG", CheckNullValue(data.REVISION_ALLOWAL_FLAG) ),
+                new SqlParameter ( "@EXCLUDE_MIGRATION_FLAG", CheckNullValue(data.EXCLUDE_MIGRATION_FLAG) ),
                 new SqlParameter ( "@USERNAME", CheckNullValue(loginUser) ),
                 new SqlParameter ( "@PageNumber", CheckNullValue(PageNumber) ),
                 new SqlParameter ( "@PageSize", CheckNullValue(PageSize) )
             };
 
             string query = "EXEC [dbo].[sp_DocumentMaintenance_Search] @DOCUMENT_TRANSACTION_ID, @DOCUMENT_CODE, @DIVISION, @DEPARTMENT_ID, @DEPARTMENT_CODE, @DOCUMENT_TRANSACTION_NAME, @YEAR, @STATUS, " +
-                "@NOT_EXIST_FLAG, @REVISION_ALLOWAL_FLAG, @USERNAME, @PageNumber, @PageSize";
+                "@NOT_EXIST_FLAG, @REVISION_ALLOWAL_FLAG, @EXCLUDE_MIGRATION_FLAG, @USERNAME, @PageNumber, @PageSize";
             IList<DocumentMaintenance> Result = db.DocumentMaintenance.FromSqlRaw<DocumentMaintenance>(query, param.ToArray()).ToList();
             return Result;
         }

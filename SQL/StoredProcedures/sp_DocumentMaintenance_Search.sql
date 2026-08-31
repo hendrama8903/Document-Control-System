@@ -36,6 +36,7 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentMaintenance_Search]
 	@STATUS							CHAR,
 	@NOT_EXIST_FLAG 		char,
 	@REVISION_ALLOWAL_FLAG	char,
+	@EXCLUDE_MIGRATION_FLAG	char = NULL,
 	@USERNAME			  		VARCHAR(255),
 	@PageNumber 				int,
 	@PageSize 					int
@@ -204,6 +205,19 @@ BEGIN
 											SET @QUERY += ' AND S.DEPARTMENT IN (SELECT DEPARTMENT_ID FROM TB_M_USER_POS WHERE USERNAME = '''+ @USERNAME+''') '
 										END
 									END
+
+										-- Dokumen hasil Legacy Document Import (SOURCE = 'MIGRATION') sudah
+										-- jadi dokumen master (hardcopy sudah berstempel MASTER), bukan
+										-- dokumen yang sedang disusun/diproses lewat Document Preparation -
+										-- disembunyikan dari grid Index (request Hendra 2026-08-28). Cuma
+										-- dipasang di action grid Search itu sendiri, bukan default SP -
+										-- lookup lain (preview, download, approval, dst.) yang reuse SP ini
+										-- lewat DocumentMaintenanceRepo.Search() harus tetap bisa menemukan
+										-- dokumen migrasi.
+										IF @EXCLUDE_MIGRATION_FLAG = '1'
+										BEGIN
+											SET @QUERY += ' AND ISNULL(S.SOURCE, '''') <> ''MIGRATION'' '
+										END
 
 										IF @NOT_EXIST_FLAG = '1'
 										BEGIN

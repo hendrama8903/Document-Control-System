@@ -143,15 +143,20 @@
                     allowFiltering: false,
                     cellTemplate: function (container, options) {
                         var historyRow = options.data;
+                        var hasFile = !!historyRow.FILE_PATH;
 
-                        $("<button>")
-                            .attr({ type: "button", title: "View" })
-                            .addClass("btn btn-primary btn-sm adm-act-btn")
+                        var btn = $("<button>")
+                            .attr({ type: "button", title: hasFile ? "View" : "No file recorded for this revision" })
+                            .addClass("btn btn-sm adm-act-btn")
+                            .addClass(hasFile ? "btn-primary" : "btn-default disabled")
                             .html('<i class="fa fa-file-pdf-o"></i>')
-                            .on("click", function () {
-                                onViewAttachment(historyRow.FILE_PATH, historyRow.DOCUMENT_TRANSACTION_ID);
-                            })
                             .appendTo(container);
+
+                        if (hasFile) {
+                            btn.on("click", function () {
+                                onViewAttachment(historyRow.FILE_PATH, historyRow.DOCUMENT_TRANSACTION_ID);
+                            });
+                        }
                     }
                 }
             ]

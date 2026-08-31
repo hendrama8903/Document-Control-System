@@ -1251,7 +1251,10 @@
     }
 
     function onChangeDocumentCode() {
-        $("#addEditDate").val('');
+        // Date is NOT level-dependent - it used to be cleared here too, but this
+        // function fires on every Document Level change (see onChangeDocumentLevel
+        // below), wiping out a date the user already typed just because they
+        // picked/changed the level (bug reported by Hendra 2026-08-29).
         $("#addEditDocumentUpload").val('');
         $('#addEditDocumentCode').val("").trigger("change");
 
@@ -2204,9 +2207,9 @@
         viewAttachment();
     }
 
-    function viewAttachment() 
+    function viewAttachment()
     {
-        if (gAttachmentPath !== "null" && gAttachmentPath !== null) {
+        if (gAttachmentPath !== "null" && gAttachmentPath !== null && gAttachmentPath !== "") {
             var link = '@Html.Raw(Url.Action("ViewAttachment", "DocumentMaintenance", new { FILE_PATH = "-1", DOCUMENT_TRANSACTION_ID = "-2", type = "-3" }))';
             link = link.replace("-1", gAttachmentPath);
             link = link.replace("-2", gDocumentId);

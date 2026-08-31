@@ -209,6 +209,13 @@ namespace DMS.Controllers
                 }
                 else
                 {
+                    // Dokumen hasil Legacy Document Import sudah jadi dokumen master
+                    // (hardcopy berstempel MASTER) - disembunyikan dari grid Index ini
+                    // (request Hendra 2026-08-28). Dipaksa di sini, bukan dari input
+                    // client, supaya lookup lain yang reuse documentMaintenanceRepo.Search()
+                    // (preview, download, approval, dst.) tidak ikut kena.
+                    data.EXCLUDE_MIGRATION_FLAG = "1";
+
                     var listData = documentMaintenanceRepo.Search(data, GetLoginUsername(), db, pageNumber, pageSize);
                     var dataCount = documentMaintenanceRepo.Search(data, GetLoginUsername(), db, null, null).Count;
                     recordsTotal = dataCount;
