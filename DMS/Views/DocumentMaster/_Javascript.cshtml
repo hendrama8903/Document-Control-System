@@ -237,12 +237,12 @@
                     popUpProgressHide();
                     $("#modalAddEdit").modal('hide');
                 } else {
-                    //showErrorMesgGrowl(result.message);
+                    showErrorMesgGrowl(result.message);
                     popUpProgressHide();
                 }
             },
             error: function(result) {
-                //showErrorMesgGrowl(result);
+                showErrorMesgGrowl(result);
                 popUpProgressHide();
             }
         });
