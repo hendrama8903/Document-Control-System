@@ -97,7 +97,6 @@ namespace DMS.Controllers
         {
             IList<RoleListItem> listData = roleRepo.SearchGrid(new Role(), db, null, null);
 
-            var memoryStream = new MemoryStream();
             IWorkbook workbook = new XSSFWorkbook();
             ISheet sheet = workbook.CreateSheet("Role Authorization");
 
@@ -130,10 +129,14 @@ namespace DMS.Controllers
                 sheet.AutoSizeColumn(col);
             }
 
-            workbook.Write(memoryStream);
-            memoryStream.Position = 0;
+            byte[] fileBytes;
+            using (var memoryStream = new MemoryStream())
+            {
+                workbook.Write(memoryStream);
+                fileBytes = memoryStream.ToArray();
+            }
 
-            return File(memoryStream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "ROLE-AUTHORIZATION-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
 

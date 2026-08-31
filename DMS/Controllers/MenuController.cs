@@ -110,7 +110,6 @@ namespace DMS.Controllers
         {
             IList<MenuListItem> menuList = menuRepo.GetTree(db);
 
-            var memoryStream = new MemoryStream();
             IWorkbook workbook = new XSSFWorkbook();
             ISheet sheet = workbook.CreateSheet("Menu & Function");
 
@@ -145,10 +144,14 @@ namespace DMS.Controllers
                 sheet.AutoSizeColumn(col);
             }
 
-            workbook.Write(memoryStream);
-            memoryStream.Position = 0;
+            byte[] fileBytes;
+            using (var memoryStream = new MemoryStream())
+            {
+                workbook.Write(memoryStream);
+                fileBytes = memoryStream.ToArray();
+            }
 
-            return File(memoryStream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "MENU-FUNCTION-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
 

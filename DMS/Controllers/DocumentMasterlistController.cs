@@ -75,7 +75,6 @@ namespace DMS.Controllers
         {
             IList<DocumentMasterlist> listData = documentMaintenanceRepo.GetMasterlist(db);
 
-            var memoryStream = new MemoryStream();
             IWorkbook workbook = new XSSFWorkbook();
             ISheet sheet = workbook.CreateSheet("Document Masterlist");
 
@@ -117,10 +116,14 @@ namespace DMS.Controllers
                 sheet.AutoSizeColumn(col);
             }
 
-            workbook.Write(memoryStream);
-            memoryStream.Position = 0;
+            byte[] fileBytes;
+            using (var memoryStream = new MemoryStream())
+            {
+                workbook.Write(memoryStream);
+                fileBytes = memoryStream.ToArray();
+            }
 
-            return File(memoryStream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "DOCUMENT-MASTERLIST-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
     }

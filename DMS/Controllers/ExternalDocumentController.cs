@@ -277,7 +277,6 @@ namespace DMS.Controllers
         {
             IList<ExternalDocument> listData = externalDocumentRepo.Search(new ExternalDocument(), GetLoginDivision(), GetLoginDepartmentId(), db, null, null);
 
-            var memoryStream = new MemoryStream();
             IWorkbook workbook = new XSSFWorkbook();
             ISheet sheet = workbook.CreateSheet("External Document");
 
@@ -322,10 +321,14 @@ namespace DMS.Controllers
                 sheet.AutoSizeColumn(col);
             }
 
-            workbook.Write(memoryStream);
-            memoryStream.Position = 0;
+            byte[] fileBytes;
+            using (var memoryStream = new MemoryStream())
+            {
+                workbook.Write(memoryStream);
+                fileBytes = memoryStream.ToArray();
+            }
 
-            return File(memoryStream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "EXTERNAL-DOCUMENT-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
     }
