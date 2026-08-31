@@ -40,6 +40,12 @@ namespace DMS.Controllers
 
         public JsonResult Search()
         {
+            if (HttpContext.Session.GetString("USERNAME") == null)
+            {
+                Response.StatusCode = 401;
+                return Json(new { status = false, message = "Session expired. Please login again." });
+            }
+
             try
             {
                 Notification filter = new Notification { USERNAME = GetLoginUsername() };
@@ -55,6 +61,12 @@ namespace DMS.Controllers
 
         public JsonResult MarkRead(int notificationId, string status)
         {
+            if (HttpContext.Session.GetString("USERNAME") == null)
+            {
+                Response.StatusCode = 401;
+                return Json(new { status = false, message = "Session expired. Please login again." });
+            }
+
             try
             {
                 Notification notification = new Notification
@@ -75,6 +87,12 @@ namespace DMS.Controllers
 
         public JsonResult MarkAllRead()
         {
+            if (HttpContext.Session.GetString("USERNAME") == null)
+            {
+                Response.StatusCode = 401;
+                return Json(new { status = false, message = "Session expired. Please login again." });
+            }
+
             try
             {
                 var result = notificationRepo.MarkAllRead(GetLoginUsername(), GetLoginUsername(), db);
