@@ -85,7 +85,10 @@
                             <li>
                                 <ul class="adm-notif-list" id="listNotification"></ul>
                             </li>
-                            <li class="adm-notif-foot"><a href="#" onclick="GetListNotif()">Refresh</a></li>
+                            <li class="adm-notif-foot">
+                                <a href="#" onclick="GetListNotif()">Refresh</a>
+                                <a href="#" onclick="onClearAllNotif(); return false;">Clear</a>
+                            </li>
                         </ul>
                     </div>
                     @{
@@ -195,6 +198,23 @@
                 showErrorMesgGrowl(result);
             }
         });
+    }
+
+    function onClearAllNotif() {
+        showConfirmMesg("Are you sure you want to clear all notifications? This cannot be undone.", function () {
+            $.ajax({
+                type: "POST",
+                url: "@Url.Action("ClearAll", "Inbox")"
+            }).done(function (result) {
+                if (result.status == true) {
+                    GetListNotif();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            }).fail(function (result) {
+                showErrorMesgGrowl(result);
+            });
+        }, "Confirmation");
     }
 
     function onClickNotif(path, notificationId) {

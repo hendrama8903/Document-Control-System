@@ -526,6 +526,10 @@ body.adm-body {
     font-size: 12.5px;
 }
 
+.adm-notif-foot a + a {
+    margin-left: 18px;
+}
+
 /* ---------- Content & footer ---------- */
 .adm-content {
     padding: 24px 28px 32px;
