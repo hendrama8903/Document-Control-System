@@ -520,14 +520,22 @@ body.adm-body {
     border-top: 1px solid var(--line);
 }
 
-.adm-notif-foot a {
+/* Higher specificity than Bootstrap's .dropdown-menu>li>a (display:block,
+   padding:3px 20px, clear:both) so Refresh/Clear sit side by side instead
+   of stacking. */
+.dropdown-menu .adm-notif-foot a {
+    display: inline-block;
+    clear: none;
+    padding: 0;
     color: var(--accent);
     font-weight: 700;
     font-size: 12.5px;
 }
 
-.adm-notif-foot a + a {
-    margin-left: 18px;
+.dropdown-menu .adm-notif-foot a + a {
+    margin-left: 14px;
+    padding-left: 14px;
+    border-left: 1px solid var(--line);
 }
 
 /* ---------- Content & footer ---------- */
