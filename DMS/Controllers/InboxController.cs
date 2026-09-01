@@ -104,5 +104,25 @@ namespace DMS.Controllers
                 return Json(new { status = false, message = ex.Message });
             }
         }
+
+        public JsonResult ClearAll()
+        {
+            if (HttpContext.Session.GetString("USERNAME") == null)
+            {
+                Response.StatusCode = 401;
+                return Json(new { status = false, message = "Session expired. Please login again." });
+            }
+
+            try
+            {
+                var result = notificationRepo.ClearAll(GetLoginUsername(), GetLoginUsername(), db);
+
+                return Json(new { status = result.status, message = result.message });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
     }
 }
