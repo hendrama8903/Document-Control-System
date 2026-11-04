@@ -207,9 +207,13 @@ namespace DMS.Controllers
                 return;
             }
 
-            CultureInfo cultureInfo = new CultureInfo("id-ID");
             DateTime date = (DateTime)documentMaintenance.DOCUMENT_DATE;
-            string dateString = date.ToString("dddd, d MMMM yyyy", cultureInfo);
+            string dateString = date.ToString("dd MMM yyyy", CultureInfo.InvariantCulture);
+
+            string documentType = string.IsNullOrEmpty(documentMaintenance.CATEGORY_CODE)
+                ? "-" : documentMaintenance.CATEGORY_CODE + " - " + documentMaintenance.DOCUMENT_NAME;
+            string proposerUsername = documentMaintenance.DOCUMENT_CREATOR ?? documentMaintenance.CREATED_BY;
+            User proposer = UserRepo.Instance.GetByKey(new User { USERNAME = proposerUsername }, db);
 
             List<string> toAddresses = new List<string> { user.EMAIL };
 
@@ -222,7 +226,9 @@ namespace DMS.Controllers
                 .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE)
                 .Replace("{DOCUMENT_NAME}", documentMaintenance.DOCUMENT_TRANSACTION_NAME)
                 .Replace("{DOCUMENT_DATE}", dateString)
-                .Replace("{REVISION}", documentMaintenance.REVISION.ToString());
+                .Replace("{REVISION}", documentMaintenance.REVISION.ToString())
+                .Replace("{DOCUMENT_TYPE}", documentType)
+                .Replace("{PROPOSER}", proposer?.FULL_NAME ?? proposerUsername);
             string buttonLink = $"{this.Request.Scheme}://{this.Request.Host}{this.Request.PathBase}" + emailTemplate.Where(x => x.SYSTEM_CODE == "BUTTON_LINK").First().SYSTEM_VALUE
                 .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE);
 
