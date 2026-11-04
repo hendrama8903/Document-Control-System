@@ -14,6 +14,12 @@
         min-height: 28px;
     }
 
+    /* sisakan ruang untuk ikon kaca pembesar (menu operator filter) agar tidak menimpa teks */
+    #datagrid .dx-datagrid-filter-row .dx-editor-with-menu .dx-texteditor-input,
+    #datagrid .dx-datagrid-filter-row .dx-editor-with-menu .dx-placeholder::before {
+        padding-left: 32px;
+    }
+
     /* baris kedaluwarsa (VALID_TO sudah lewat) */
     #datagrid .dx-data-row.row-danger > td {
         background-color: #F4E3DF;
