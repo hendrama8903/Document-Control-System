@@ -94,7 +94,15 @@ namespace DMS.Services
                             .Replace("{DOCUMENT_CODE}", document.DOCUMENT_NAME)
                             .Replace("{NEXT_REVIEW_DATE}", reviewDateText);
 
-                        await emailService.SendEmailAsync(new List<string> { recipient.EMAIL }, subject, title, body, buttonLink);
+                        // satu email gagal tidak boleh menghentikan reminder untuk penerima/dokumen berikutnya
+                        try
+                        {
+                            await emailService.SendEmailAsync(new List<string> { recipient.EMAIL }, subject, title, body, buttonLink);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"External review reminder email to {recipient.EMAIL} for {document.DOCUMENT_NAME} failed: {ex.Message}");
+                        }
                     }
 
                     Notification notification = new Notification

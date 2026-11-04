@@ -445,8 +445,8 @@ namespace DMS.Controllers
                         }
                     }
 
-                    toAddresses.Distinct().ToList();
-                    toUsernames.Distinct().ToList();
+                    toAddresses = toAddresses.Where(x => !string.IsNullOrEmpty(x)).Distinct().ToList();
+                    toUsernames = toUsernames.Distinct().ToList();
 
                     User creator = UserRepo.Instance.GetByKey(new User { USERNAME = documentControlMaintenance.CREATED_BY }, db);
 
