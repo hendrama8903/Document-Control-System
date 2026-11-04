@@ -17,6 +17,7 @@
     <![endif]-->
     <style type="text/css">
         a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; }
+        a.dcs-btn, a.dcs-btn:link, a.dcs-btn:visited, a.dcs-btn:hover, a.dcs-btn:active { color: #1D4ED8 !important; }
         @media only screen and (max-width:600px) {
             .dcs-container { width: 100% !important; }
             .dcs-pad { padding-left: 16px !important; padding-right: 16px !important; }
@@ -38,21 +39,8 @@
                     <!-- header -->
                     <tr>
                         <td class="dcs-pad" style="padding:20px 24px 16px 24px;border-bottom:1px solid #E3E7ED">
-                            <table cellspacing="0" cellpadding="0" border="0" role="presentation" style="border-collapse:collapse">
-                                <tr>
-                                    <td valign="top" style="padding:2px 10px 0 0">
-                                        <table cellspacing="0" cellpadding="0" border="0" role="presentation" style="border-collapse:separate">
-                                            <tr>
-                                                <td align="center" valign="middle" width="20" height="22" style="width:20px;height:22px;border:2px solid #334E68;border-radius:4px;font-size:12px;line-height:12px;font-weight:bold;color:#334E68">&#10003;</td>
-                                            </tr>
-                                        </table>
-                                    </td>
-                                    <td valign="top">
-                                        <div style="font-size:16px;line-height:20px;font-weight:600;color:#1F2A37">Document Control System</div>
-                                        <div style="font-size:12px;line-height:16px;color:#6B7280">Internal Notification</div>
-                                    </td>
-                                </tr>
-                            </table>
+                            <div style="font-size:16px;line-height:20px;font-weight:600;color:#1F2A37">Document Control System</div>
+                            <div style="font-size:12px;line-height:16px;color:#6B7280">Internal Notification</div>
                         </td>
                     </tr>
                     <!-- label -->
@@ -66,13 +54,8 @@
                     <!-- button -->
                     <tr>
                         <td class="dcs-pad" style="padding:0 24px 16px 24px">
-                            <table width="100%" cellspacing="0" cellpadding="0" border="0" role="presentation" style="border-collapse:separate">
-                                <tr>
-                                    <td align="center" bgcolor="#334E68" style="background-color:#334E68;border-radius:6px">
-                                        <a href="{buttonLink}" target="_blank" style="display:block;padding:12px 20px;font-size:15px;line-height:20px;font-weight:600;color:#FFFFFF;text-decoration:none;border-radius:6px">Review Document</a>
-                                    </td>
-                                </tr>
-                            </table>
+                            <!-- link teks tanpa background: Outlook memaksa warna visited (ungu) sehingga tulisan di atas background gelap jadi tidak terbaca -->
+                            <a class="dcs-btn" href="{buttonLink}" target="_blank" style="font-size:15px;line-height:20px;font-weight:600;color:#1D4ED8;text-decoration:underline"><span style="color:#1D4ED8">Review Document &rarr;</span></a>
                         </td>
                     </tr>
                     <!-- footer -->

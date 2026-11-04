@@ -922,8 +922,13 @@ namespace DMS.Controllers
                             DateTime date = (DateTime)documentMaintenance.DOCUMENT_DATE;
                             string dateString = date.ToString("dd MMM yyyy", CultureInfo.InvariantCulture);
 
-                            string documentType = string.IsNullOrEmpty(documentMaintenance.CATEGORY_CODE)
+                            MSystem documentTypeSystem = MSystemRepo.Instance.GetByKey(new MSystem { SYSTEM_TYPE = "DOCUMENT_TYPE", SYSTEM_CODE = documentMaintenance.DOCUMENT_TYPE }, db);
+                            string documentType = documentTypeSystem != null
+                                ? documentMaintenance.DOCUMENT_TYPE + " - " + documentTypeSystem.SYSTEM_VALUE : (documentMaintenance.DOCUMENT_TYPE ?? "-");
+                            string documentCategory = string.IsNullOrEmpty(documentMaintenance.CATEGORY_CODE)
                                 ? "-" : documentMaintenance.CATEGORY_CODE + " - " + documentMaintenance.DOCUMENT_NAME;
+                            string classification = string.IsNullOrEmpty(documentMaintenance.CLASSIFIED_VAL)
+                                ? "-" : documentMaintenance.CLASSIFIED + " - " + documentMaintenance.CLASSIFIED_VAL;
                             string proposerUsername = documentMaintenance.DOCUMENT_CREATOR ?? documentMaintenance.CREATED_BY;
                             User proposer = UserRepo.Instance.GetByKey(new User { USERNAME = proposerUsername }, db);
 
@@ -942,6 +947,8 @@ namespace DMS.Controllers
                                 .Replace("{DOCUMENT_DATE}", dateString)
                                 .Replace("{REVISION}", documentMaintenance.REVISION.ToString())
                                 .Replace("{DOCUMENT_TYPE}", documentType)
+                                .Replace("{DOCUMENT_CATEGORY}", documentCategory)
+                                .Replace("{CLASSIFICATION}", classification)
                                 .Replace("{PROPOSER}", proposer?.FULL_NAME ?? proposerUsername);
                             string buttonLink = $"{this.Request.Scheme}://{this.Request.Host}{this.Request.PathBase}" + emailTemplate.Where(x => x.SYSTEM_CODE == "BUTTON_LINK").First().SYSTEM_VALUE
                                 .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE);
@@ -974,70 +981,243 @@ namespace DMS.Controllers
             }
         }
 
-        public void SendApproveRejectEmail(int documentTransactionId, string mode, string remark)
+        // Email hasil approval ke pengusul - dikirim di SETIAP tahap (request Hendra
+        // 2026-11-04), bukan hanya saat final, supaya pengusul tahu progresnya:
+        //   - approve tahap tengah  : "disetujui oleh X (tahap n dari N)" + approver berikutnya
+        //   - approve tahap terakhir: kalau masih ada Related Division pending (STATUS 6)
+        //                             "menunggu acknowledgment", kalau tidak "Approved"
+        //   - reject                : "ditolak oleh X" + remark
+        // workflowSeq = tahap yang baru diproses; null kalau dipicu acknowledgment Related
+        // Division terakhir (bukan bagian chain approval).
+        public void SendApproveRejectEmail(int documentTransactionId, string mode, string remark, int? workflowSeq = null)
         {
-            string judgement = "DITOLAK";
-            if (mode == "approve")
+            // loginUser null - approver belum tentu satu divisi/department dengan dokumen
+            // (lihat catatan di FinalizeApproval), Search ter-scope bisa mengembalikan null.
+            DocumentMaintenance documentMaintenance = documentMaintenanceRepo.Search(
+                new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = documentTransactionId }, null, db, 1, 1).FirstOrDefault();
+
+            if (documentMaintenance == null)
             {
-                judgement = "DITERIMA";
+                return;
             }
 
-            DocumentMaintenance documentMaintenance = documentMaintenanceRepo.Search(
-                new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = documentTransactionId }, GetLoginUsername(), db, 1, 1).FirstOrDefault();
+            IList<ApprovalDetail> approvalDetails = documentMaintenance.APPROVAL_ID == null
+                ? new List<ApprovalDetail>()
+                : approvalRepo.GetApprovalDetail((int)documentMaintenance.APPROVAL_ID, db, null, null);
+            int totalStep = approvalDetails.Count > 0 ? approvalDetails.Max(x => x.WORKFLOW_SEQ ?? 0) : 0;
+            ApprovalDetail actedDetail = approvalDetails.FirstOrDefault(x => x.WORKFLOW_SEQ == workflowSeq);
+            ApprovalDetail nextDetail = approvalDetails.FirstOrDefault(x => x.WORKFLOW_SEQ == workflowSeq + 1);
 
-            if (documentMaintenance != null)
+            User actor = UserRepo.Instance.GetByKey(new User { USERNAME = GetLoginUsername() }, db);
+            string actorName = actedDetail?.APPROVER_NAME ?? actor?.FULL_NAME ?? GetLoginUsername();
+            string actorPosition = actedDetail?.APPROVER_POSITION;
+            string actionBy = string.IsNullOrEmpty(actorPosition) ? actorName : actorName + " (" + actorPosition + ")";
+            string stepInfo = workflowSeq != null && totalStep > 0 ? "Step " + workflowSeq + " of " + totalStep : "Completed";
+
+            string heading, message, statusText, statusColor, subjectStatus, judgement, actionLabel;
+            string nextApprover = "-";
+
+            if (mode != "approve")
             {
-                User user = UserRepo.Instance.GetByKey(new User { USERNAME = documentMaintenance.CREATED_BY }, db);
-                if (user != null)
+                heading = "Document Rejected";
+                message = "Your document has been <strong>rejected by " + Encode(actionBy) + "</strong>. Please review the remark below and revise the document if needed.";
+                statusText = "Rejected";
+                statusColor = "#B91C1C";
+                subjectStatus = "Document Rejected";
+                judgement = "DITOLAK oleh " + actorName;
+                actionLabel = "Rejected By";
+            }
+            else if (documentMaintenance.STATUS == "1")
+            {
+                heading = "Document Approved";
+                message = workflowSeq != null
+                    ? "Your document has been <strong>fully approved</strong>. The final approval was given by " + Encode(actionBy) + "."
+                    : "Your document has been <strong>fully approved</strong> and acknowledged by all related divisions.";
+                statusText = "Approved";
+                statusColor = "#15803D";
+                subjectStatus = "Document Approved";
+                judgement = "DISETUJUI (approval selesai)";
+                actionLabel = workflowSeq != null ? "Approved By" : "Acknowledged By";
+            }
+            else if (documentMaintenance.STATUS == "6")
+            {
+                heading = "Approval Progress";
+                message = "Your document has been <strong>approved by " + Encode(actionBy) + "</strong>. All approval steps are complete; the document is now waiting for Related Division acknowledgment.";
+                statusText = "Waiting Acknowledgment";
+                statusColor = "#C2410C";
+                subjectStatus = "Document Approved (" + stepInfo + ")";
+                judgement = "DISETUJUI oleh " + actorName + ", menunggu acknowledgment Related Division";
+                actionLabel = "Approved By";
+                nextApprover = "Related Division Acknowledgment";
+            }
+            else
+            {
+                if (nextDetail != null)
                 {
-                    CultureInfo cultureInfo = new CultureInfo("id-ID"); // Budaya Indonesia
-                    DateTime date = (DateTime)documentMaintenance.DOCUMENT_DATE;
-                    string dateString = date.ToString("dddd, d MMMM yyyy", cultureInfo);
+                    nextApprover = string.IsNullOrEmpty(nextDetail.APPROVER_POSITION)
+                        ? nextDetail.APPROVER_NAME : nextDetail.APPROVER_NAME + " (" + nextDetail.APPROVER_POSITION + ")";
+                }
 
-                    List<string> toAddresses = new List<string>();
+                heading = "Approval Progress";
+                message = "Your document has been <strong>approved by " + Encode(actionBy) + "</strong> and is now waiting for the next approval.";
+                statusText = "In Progress";
+                statusColor = "#C2410C";
+                subjectStatus = "Document Approved (" + stepInfo + ")";
+                judgement = "DISETUJUI oleh " + actorName + " (tahap " + workflowSeq + " dari " + totalStep + ")";
+                actionLabel = "Approved By";
+            }
 
-                    toAddresses.Add(user.EMAIL);
+            DateTime date = (DateTime)documentMaintenance.DOCUMENT_DATE;
+            string dateString = date.ToString("dd MMM yyyy", CultureInfo.InvariantCulture);
+            MSystem documentTypeSystem = MSystemRepo.Instance.GetByKey(new MSystem { SYSTEM_TYPE = "DOCUMENT_TYPE", SYSTEM_CODE = documentMaintenance.DOCUMENT_TYPE }, db);
+            string documentType = documentTypeSystem != null
+                ? documentMaintenance.DOCUMENT_TYPE + " - " + documentTypeSystem.SYSTEM_VALUE : (documentMaintenance.DOCUMENT_TYPE ?? "-");
+            string documentCategory = string.IsNullOrEmpty(documentMaintenance.CATEGORY_CODE)
+                ? "-" : documentMaintenance.CATEGORY_CODE + " - " + documentMaintenance.DOCUMENT_NAME;
+            string classification = string.IsNullOrEmpty(documentMaintenance.CLASSIFIED_VAL)
+                ? "-" : documentMaintenance.CLASSIFIED + " - " + documentMaintenance.CLASSIFIED_VAL;
+            string approvalFlow = BuildApprovalFlowHtml(approvalDetails, mode != "approve");
 
-                    IList<MSystem> emailTemplate = MSystemRepo.Instance.Search(new MSystem { SYSTEM_TYPE = "DOCUMENT_APPROVE_REJECT_EMAIL_TEMPLATE" }, db, null, null);
-                    string subject = emailTemplate.Where(x => x.SYSTEM_CODE == "SUBJECT").First().SYSTEM_VALUE
-                         .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE);
-                    string title = emailTemplate.Where(x => x.SYSTEM_CODE == "TITLE").First().SYSTEM_VALUE;
+            // Penerima: pengusul (DOCUMENT_CREATOR) + penginput (CREATED_BY) kalau orangnya beda
+            List<User> recipients = new[] { documentMaintenance.DOCUMENT_CREATOR, documentMaintenance.CREATED_BY }
+                .Where(x => !string.IsNullOrEmpty(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(x => UserRepo.Instance.GetByKey(new User { USERNAME = x }, db))
+                .Where(x => x != null)
+                .ToList();
+
+            IList<MSystem> emailTemplate = MSystemRepo.Instance.Search(new MSystem { SYSTEM_TYPE = "DOCUMENT_APPROVE_REJECT_EMAIL_TEMPLATE" }, db, null, null);
+            IList<MSystem> notificationTemplate = MSystemRepo.Instance.Search(new MSystem { SYSTEM_TYPE = "DOCUMENT_APPROVE_REJECT_NOTIFICATION" }, db, null, null);
+            bool emailEnabled = NotificationSettingRepo.Instance.IsEmailEnabled("DOCUMENT_APPROVE_REJECT", db);
+
+            string subject = emailTemplate.Where(x => x.SYSTEM_CODE == "SUBJECT").First().SYSTEM_VALUE
+                .Replace("{SUBJECT_STATUS}", subjectStatus)
+                .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE);
+            string title = emailTemplate.Where(x => x.SYSTEM_CODE == "TITLE").First().SYSTEM_VALUE;
+            string buttonLink = $"{this.Request.Scheme}://{this.Request.Host}{this.Request.PathBase}" + emailTemplate.Where(x => x.SYSTEM_CODE == "BUTTON_LINK").First().SYSTEM_VALUE
+                .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE);
+
+            foreach (User user in recipients)
+            {
+                if (emailEnabled && !string.IsNullOrEmpty(user.EMAIL))
+                {
+                    List<string> toAddresses = new List<string> { user.EMAIL };
                     string body = emailTemplate.Where(x => x.SYSTEM_CODE == "BODY").First().SYSTEM_VALUE
-                        .Replace("{FULL_NAME}", user.FULL_NAME)
-                        .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE)
-                        .Replace("{DOCUMENT_NAME}", documentMaintenance.DOCUMENT_TRANSACTION_NAME)
+                        .Replace("{HEADING}", heading)
+                        .Replace("{MESSAGE}", message)
+                        .Replace("{FULL_NAME}", Encode(user.FULL_NAME))
+                        .Replace("{DOCUMENT_CODE}", Encode(documentMaintenance.DOCUMENT_CODE))
+                        .Replace("{DOCUMENT_NAME}", Encode(documentMaintenance.DOCUMENT_TRANSACTION_NAME))
                         .Replace("{DOCUMENT_DATE}", dateString)
                         .Replace("{REVISION}", documentMaintenance.REVISION.ToString())
-                        .Replace("{REMARK}", remark)
-                        .Replace("{JUDGEMENT}", judgement);
-                    string buttonLink = $"{this.Request.Scheme}://{this.Request.Host}{this.Request.PathBase}" + emailTemplate.Where(x => x.SYSTEM_CODE == "BUTTON_LINK").First().SYSTEM_VALUE
-                        .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE);
+                        .Replace("{DOCUMENT_TYPE}", Encode(documentType))
+                        .Replace("{DOCUMENT_CATEGORY}", Encode(documentCategory))
+                        .Replace("{CLASSIFICATION}", Encode(classification))
+                        .Replace("{ACTION_LABEL}", actionLabel)
+                        .Replace("{ACTION_BY}", Encode(actionBy))
+                        .Replace("{STEP_INFO}", stepInfo)
+                        .Replace("{NEXT_APPROVER}", Encode(nextApprover))
+                        .Replace("{REMARK}", string.IsNullOrWhiteSpace(remark) ? "-" : Encode(remark))
+                        .Replace("{STATUS}", statusText)
+                        .Replace("{STATUS_COLOR}", statusColor)
+                        .Replace("{APPROVAL_FLOW}", approvalFlow);
 
-                    if (NotificationSettingRepo.Instance.IsEmailEnabled("DOCUMENT_APPROVE_REJECT", db))
-                        backgroundJobClient.Enqueue(() => EmailService.SendEmailAsync(toAddresses, subject, title, body, buttonLink));
+                    backgroundJobClient.Enqueue(() => EmailService.SendEmailAsync(toAddresses, subject, title, body, buttonLink));
+                }
 
-                    IList<MSystem> notificationTemplate = MSystemRepo.Instance.Search(new MSystem { SYSTEM_TYPE = "DOCUMENT_APPROVE_REJECT_NOTIFICATION" }, db, null, null);
-                    Notification notification = new Notification
-                    {
-                        NOTIFICATION_TEXT = notificationTemplate.Where(x => x.SYSTEM_CODE == "TEXT").First().SYSTEM_VALUE
-                        .Replace("{JUDGEMENT}", judgement)
-                        .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE)
-                        .Replace("{DOCUMENT_NAME}", documentMaintenance.DOCUMENT_TRANSACTION_NAME),
-                        NOTIFICATION_TITLE = notificationTemplate.Where(x => x.SYSTEM_CODE == "TITLE").First().SYSTEM_VALUE
-                        .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE)
-                        .Replace("{DOCUMENT_NAME}", documentMaintenance.DOCUMENT_TRANSACTION_NAME),
-                        NOTIFICATION_URL = notificationTemplate.Where(x => x.SYSTEM_CODE == "URL").First().SYSTEM_VALUE
-                        .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE),
-                        USERNAME = user.USERNAME,
-                    };
+                Notification notification = new Notification
+                {
+                    NOTIFICATION_TEXT = notificationTemplate.Where(x => x.SYSTEM_CODE == "TEXT").First().SYSTEM_VALUE
+                    .Replace("{JUDGEMENT}", judgement)
+                    .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE)
+                    .Replace("{DOCUMENT_NAME}", documentMaintenance.DOCUMENT_TRANSACTION_NAME),
+                    NOTIFICATION_TITLE = notificationTemplate.Where(x => x.SYSTEM_CODE == "TITLE").First().SYSTEM_VALUE
+                    .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE)
+                    .Replace("{DOCUMENT_NAME}", documentMaintenance.DOCUMENT_TRANSACTION_NAME),
+                    NOTIFICATION_URL = notificationTemplate.Where(x => x.SYSTEM_CODE == "URL").First().SYSTEM_VALUE
+                    .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE),
+                    USERNAME = user.USERNAME,
+                };
 
-                    DBResult result = NotificationRepo.Instance.Insert(notification, GetLoginUsername(), db);
-                    if (result.status)
-                    {
-                        _hubContext.Clients.Group(user.USERNAME).SendAsync("ReceiveMessage", "Document approval update, check notification!");
-                    }
+                DBResult result = NotificationRepo.Instance.Insert(notification, GetLoginUsername(), db);
+                if (result.status)
+                {
+                    _hubContext.Clients.Group(user.USERNAME).SendAsync("ReceiveMessage", "Document approval update, check notification!");
                 }
             }
+
+            static string Encode(string value) => System.Net.WebUtility.HtmlEncode(value ?? "-");
+        }
+
+        // Daftar seluruh tahap approval (placeholder {APPROVAL_FLOW}) supaya pengusul
+        // melihat progres lengkap: siapa yang sudah approve/reject + kapan, siapa yang
+        // sedang ditunggu, dan tahap yang belum sampai. Status TB_R_APPROVAL_D:
+        // 0 Waiting, 1 Approved, 2 Rejected, 3 Rolled Back. HTML berbasis tabel +
+        // style inline agar aman di Outlook.
+        private static string BuildApprovalFlowHtml(IList<ApprovalDetail> approvalDetails, bool rejected)
+        {
+            List<ApprovalDetail> steps = approvalDetails.OrderBy(x => x.WORKFLOW_SEQ).ToList();
+            if (steps.Count == 0)
+            {
+                return "";
+            }
+
+            // Tahap yang sedang ditunggu = tahap Waiting pertama (tidak ada kalau dokumen ditolak)
+            int? currentSeq = rejected ? null : steps.Where(x => x.STATUS == "0").Select(x => x.WORKFLOW_SEQ).FirstOrDefault();
+
+            System.Text.StringBuilder html = new System.Text.StringBuilder();
+            for (int i = 0; i < steps.Count; i++)
+            {
+                ApprovalDetail step = steps[i];
+                string icon, iconColor, statusText, statusColor;
+                string actionDate = step.CHANGED_DT?.ToString("dd MMM yyyy, HH:mm", CultureInfo.InvariantCulture);
+
+                switch (step.STATUS)
+                {
+                    case "1":
+                        icon = "&#10003;"; iconColor = "#15803D"; statusText = "Approved"; statusColor = "#15803D";
+                        break;
+                    case "2":
+                        icon = "&#10007;"; iconColor = "#B91C1C"; statusText = "Rejected"; statusColor = "#B91C1C";
+                        break;
+                    case "3":
+                        icon = "&#8634;"; iconColor = "#6B7280"; statusText = "Rolled Back"; statusColor = "#6B7280";
+                        break;
+                    default:
+                        actionDate = null;
+                        if (step.WORKFLOW_SEQ == currentSeq)
+                        {
+                            icon = "&#9679;"; iconColor = "#C2410C"; statusText = "Waiting for Approval"; statusColor = "#C2410C";
+                        }
+                        else
+                        {
+                            icon = "&#9675;"; iconColor = "#9CA3AF"; statusText = rejected ? "Not Processed" : "Pending"; statusColor = "#9CA3AF";
+                        }
+                        break;
+                }
+
+                string border = i < steps.Count - 1 ? "border-bottom:1px solid #E3E7ED;" : "";
+                string position = string.IsNullOrEmpty(step.APPROVER_POSITION) ? "" : " &middot; " + System.Net.WebUtility.HtmlEncode(step.APPROVER_POSITION);
+
+                html.Append("<tr>")
+                    .Append("<td width=\"28\" valign=\"top\" style=\"padding:12px 0;" + border + "font-size:16px;line-height:20px;font-weight:700;color:" + iconColor + "\">" + icon + "</td>")
+                    .Append("<td valign=\"top\" style=\"padding:12px 8px 12px 0;" + border + "\">")
+                    .Append("<div style=\"font-size:12px;line-height:16px;color:#6B7280\">Step " + step.WORKFLOW_SEQ + position + "</div>")
+                    .Append("<div style=\"font-size:15px;line-height:20px;font-weight:600;color:#1F2A37;padding-top:2px\">" + System.Net.WebUtility.HtmlEncode(step.APPROVER_NAME ?? step.APPROVER) + "</div>")
+                    .Append("</td>")
+                    .Append("<td align=\"right\" valign=\"top\" style=\"padding:12px 0;" + border + "\">")
+                    .Append("<div style=\"font-size:13px;line-height:18px;font-weight:600;color:" + statusColor + "\">" + statusText + "</div>")
+                    .Append(actionDate == null ? "" : "<div style=\"font-size:12px;line-height:16px;color:#6B7280;padding-top:2px\">" + actionDate + "</div>")
+                    .Append("</td>")
+                    .Append("</tr>");
+            }
+
+            return "<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" role=\"presentation\" style=\"border-collapse:separate;border:1px solid #E3E7ED;border-radius:10px;margin-top:16px\">"
+                + "<tr><td style=\"padding:16px 16px 4px 16px\">"
+                + "<div style=\"font-size:12px;line-height:16px;font-weight:600;letter-spacing:0.3px;color:#4B5563\">APPROVAL FLOW</div>"
+                + "<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" role=\"presentation\" style=\"border-collapse:collapse\">"
+                + html
+                + "</table></td></tr></table>";
         }
 
         public JsonResult Delete(DocumentMaintenance data, string path)
@@ -3299,11 +3479,12 @@ namespace DMS.Controllers
                             }
                             else if (hasPendingAck)
                             {
+                                SendApproveRejectEmail((int)documentMaintenance.DOCUMENT_TRANSACTION_ID, mode, remark, workflowSeq);
                                 logRepo.WriteLog(processid, "1", "INF", "Approval chain completed; waiting on Related Division acknowledgment(s).", location, GetLoginUsername(), db);
                             }
                             else
                             {
-                                FinalizeApproval(documentMaintenance, mode, remark, webRootPath);
+                                FinalizeApproval(documentMaintenance, mode, remark, webRootPath, workflowSeq);
                                 logRepo.WriteLog(processid, "1", "INF", result.message, location, GetLoginUsername(), db);
                             }
                         }
@@ -3322,6 +3503,7 @@ namespace DMS.Controllers
                             {
                                 DeleteDocumentCache(documentMaintenance, webRootPath);
                                 SendApprovalEmailAsync((int)documentMaintenance.DOCUMENT_TRANSACTION_ID);
+                                SendApproveRejectEmail((int)documentMaintenance.DOCUMENT_TRANSACTION_ID, mode, remark, workflowSeq);
                                 logRepo.WriteLog(processid, "1", "INF", result.message, location, GetLoginUsername(), db);
                             }
                         }
@@ -3365,7 +3547,7 @@ namespace DMS.Controllers
                         return Json(new { status = false, message = result.message });
                     }
                     DeleteDocumentCache(documentMaintenance, webRootPath);
-                    SendApproveRejectEmail((int)documentMaintenance.DOCUMENT_TRANSACTION_ID, mode, remark);
+                    SendApproveRejectEmail((int)documentMaintenance.DOCUMENT_TRANSACTION_ID, mode, remark, workflowSeq);
 
                     db.Database.CommitTransaction();
                     logRepo.WriteLog(processid, "2", "INF", result.message, location, GetLoginUsername(), db);
@@ -3388,7 +3570,7 @@ namespace DMS.Controllers
         // saat acknowledgment TERAKHIR yang menaikkan dokumen ke Approved (dokumen
         // sempat "Waiting Acknowledgment" menunggu Related Division, bukan
         // langsung Approved di titik approval asli selesai).
-        private void FinalizeApproval(DocumentMaintenance documentMaintenance, string mode, string remark, string webRootPath)
+        private void FinalizeApproval(DocumentMaintenance documentMaintenance, string mode, string remark, string webRootPath, int? workflowSeq = null)
         {
             // loginUser sengaja null di kedua Search di bawah - approver/Div Head
             // yang memproses ini belum tentu satu divisi/department dengan
@@ -3414,7 +3596,7 @@ namespace DMS.Controllers
             }
 
             DeleteDocumentCache(documentMaintenance, webRootPath);
-            SendApproveRejectEmail((int)documentMaintenance.DOCUMENT_TRANSACTION_ID, mode, remark);
+            SendApproveRejectEmail((int)documentMaintenance.DOCUMENT_TRANSACTION_ID, mode, remark, workflowSeq);
         }
 
         // Panel "Related Division Acknowledgment" di modal Approval List - list

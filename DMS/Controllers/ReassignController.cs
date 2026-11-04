@@ -210,8 +210,13 @@ namespace DMS.Controllers
             DateTime date = (DateTime)documentMaintenance.DOCUMENT_DATE;
             string dateString = date.ToString("dd MMM yyyy", CultureInfo.InvariantCulture);
 
-            string documentType = string.IsNullOrEmpty(documentMaintenance.CATEGORY_CODE)
+            MSystem documentTypeSystem = mSystemRepo.GetByKey(new MSystem { SYSTEM_TYPE = "DOCUMENT_TYPE", SYSTEM_CODE = documentMaintenance.DOCUMENT_TYPE }, db);
+            string documentType = documentTypeSystem != null
+                ? documentMaintenance.DOCUMENT_TYPE + " - " + documentTypeSystem.SYSTEM_VALUE : (documentMaintenance.DOCUMENT_TYPE ?? "-");
+            string documentCategory = string.IsNullOrEmpty(documentMaintenance.CATEGORY_CODE)
                 ? "-" : documentMaintenance.CATEGORY_CODE + " - " + documentMaintenance.DOCUMENT_NAME;
+            string classification = string.IsNullOrEmpty(documentMaintenance.CLASSIFIED_VAL)
+                ? "-" : documentMaintenance.CLASSIFIED + " - " + documentMaintenance.CLASSIFIED_VAL;
             string proposerUsername = documentMaintenance.DOCUMENT_CREATOR ?? documentMaintenance.CREATED_BY;
             User proposer = UserRepo.Instance.GetByKey(new User { USERNAME = proposerUsername }, db);
 
@@ -228,6 +233,8 @@ namespace DMS.Controllers
                 .Replace("{DOCUMENT_DATE}", dateString)
                 .Replace("{REVISION}", documentMaintenance.REVISION.ToString())
                 .Replace("{DOCUMENT_TYPE}", documentType)
+                .Replace("{DOCUMENT_CATEGORY}", documentCategory)
+                .Replace("{CLASSIFICATION}", classification)
                 .Replace("{PROPOSER}", proposer?.FULL_NAME ?? proposerUsername);
             string buttonLink = $"{this.Request.Scheme}://{this.Request.Host}{this.Request.PathBase}" + emailTemplate.Where(x => x.SYSTEM_CODE == "BUTTON_LINK").First().SYSTEM_VALUE
                 .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE);

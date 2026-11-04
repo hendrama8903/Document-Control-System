@@ -3,8 +3,10 @@
 --
 -- Body email dibuat berformat kartu "Document Information" sesuai mockup,
 -- ditambah field baru:
---   {DOCUMENT_TYPE} : kategori dokumen (TB_M_DOCUMENT, mis. "PRO - Prosedur")
---   {PROPOSER}      : nama lengkap pengusul (DOCUMENT_CREATOR -> TB_M_USER.FULL_NAME)
+--   {DOCUMENT_TYPE}     : tipe dokumen (TB_M_SYSTEM DOCUMENT_TYPE, mis. "01 - New")
+--   {DOCUMENT_CATEGORY} : kategori dokumen (TB_M_DOCUMENT, mis. "PRO - Prosedur")
+--   {CLASSIFICATION}    : klasifikasi (TB_M_SYSTEM CLASSIFIED, mis. "1 - Umum")
+--   {PROPOSER}          : nama lengkap pengusul (DOCUMENT_CREATOR -> TB_M_USER.FULL_NAME)
 -- Kedua placeholder diisi di DocumentMaintenanceController.SendApprovalEmailAsync
 -- dan ReassignController (keduanya memakai template ini).
 --
@@ -21,7 +23,7 @@ SET SYSTEM_VALUE = N'Document Approval Request'
 WHERE SYSTEM_TYPE = 'DOCUMENT_APPROVAL_REQUEST_EMAIL_TEMPLATE' AND SYSTEM_CODE = 'TITLE';
 
 UPDATE TB_M_SYSTEM
-SET SYSTEM_VALUE = N'<div style="font-size:24px;line-height:32px;font-weight:600;color:#1F2A37;padding:4px 0 8px 0">Approval Request</div>'
+SET SYSTEM_VALUE = CAST(N'<div style="font-size:24px;line-height:32px;font-weight:600;color:#1F2A37;padding:4px 0 8px 0">Approval Request</div>' AS NVARCHAR(MAX)) -- MAX: gabungan N'' biasa terpotong di 4000 karakter
     + N'<p style="margin:0 0 12px 0">Dear {FULL_NAME},</p>'
     + N'<p style="margin:0 0 16px 0">A document has been submitted and requires your review and approval.</p>'
     + N'<table width="100%" cellspacing="0" cellpadding="0" border="0" role="presentation" style="border-collapse:separate;border:1px solid #E3E7ED;border-radius:10px">'
@@ -36,6 +38,10 @@ SET SYSTEM_VALUE = N'<div style="font-size:24px;line-height:32px;font-weight:600
     +   N'<table width="100%" cellspacing="0" cellpadding="0" border="0" role="presentation" style="border-collapse:collapse">'
     +   N'<tr>'
     +     N'<td class="dcs-col" width="50%" valign="top" style="padding:14px 8px 14px 0;border-bottom:1px solid #E3E7ED"><div style="font-size:12px;line-height:16px;color:#6B7280">Document Type</div><div style="font-size:15px;line-height:20px;font-weight:600;color:#1F2A37;padding-top:2px">{DOCUMENT_TYPE}</div></td>'
+    +     N'<td class="dcs-col" width="50%" valign="top" style="padding:14px 0 14px 8px;border-bottom:1px solid #E3E7ED"><div style="font-size:12px;line-height:16px;color:#6B7280">Document Category</div><div style="font-size:15px;line-height:20px;font-weight:600;color:#1F2A37;padding-top:2px">{DOCUMENT_CATEGORY}</div></td>'
+    +   N'</tr>'
+    +   N'<tr>'
+    +     N'<td class="dcs-col" width="50%" valign="top" style="padding:14px 8px 14px 0;border-bottom:1px solid #E3E7ED"><div style="font-size:12px;line-height:16px;color:#6B7280">Document Classification</div><div style="font-size:15px;line-height:20px;font-weight:600;color:#1F2A37;padding-top:2px">{CLASSIFICATION}</div></td>'
     +     N'<td class="dcs-col" width="50%" valign="top" style="padding:14px 0 14px 8px;border-bottom:1px solid #E3E7ED"><div style="font-size:12px;line-height:16px;color:#6B7280">Revision</div><div style="font-size:15px;line-height:20px;font-weight:600;color:#1F2A37;padding-top:2px">{REVISION}</div></td>'
     +   N'</tr>'
     +   N'<tr>'
@@ -43,8 +49,8 @@ SET SYSTEM_VALUE = N'<div style="font-size:24px;line-height:32px;font-weight:600
     +     N'<td class="dcs-col" width="50%" valign="top" style="padding:14px 0 14px 8px;border-bottom:1px solid #E3E7ED"><div style="font-size:12px;line-height:16px;color:#6B7280">Proposed By</div><div style="font-size:15px;line-height:20px;font-weight:600;color:#1F2A37;padding-top:2px">{PROPOSER}</div></td>'
     +   N'</tr>'
     +   N'<tr>'
-    +     N'<td valign="middle" style="padding:12px 0;font-size:12px;line-height:16px;color:#6B7280">Approval Status</td>'
-    +     N'<td align="right" valign="middle" style="padding:12px 0"><span style="display:inline-block;padding:3px 10px;border-radius:12px;background-color:#FDE8DA;color:#C2410C;font-size:12px;line-height:16px;font-weight:600">Pending Approval</span></td>'
+    +     N'<td valign="middle" style="padding:14px 0;font-size:15px;line-height:20px;color:#6B7280">Approval Status</td>'
+    +     N'<td align="right" valign="middle" style="padding:14px 0;font-size:15px;line-height:20px;font-weight:600;color:#C2410C">Pending Approval</td>'
     +   N'</tr>'
     +   N'</table>'
     + N'</td></tr>'
