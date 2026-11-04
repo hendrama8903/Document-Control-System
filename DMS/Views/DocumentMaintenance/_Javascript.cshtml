@@ -1481,7 +1481,10 @@
             var source = $('#addEditSource').val();
             var impactToOtherDocument = $('#addEditImpactToOtherDocument').val();
             var levelCode = $('#addEditDocumentLevel').val();
-            var documentCategoryArray = $('#addEditDocumentCode').val().split('|');
+            // Document Code belum dipilih -> val() null; jangan sampai .split() error
+            // setelah loading tampil (popup progress jadi tertahan). Biarkan SP yang
+            // mengembalikan pesan validasi field kosong.
+            var documentCategoryArray = ($('#addEditDocumentCode').val() || '').split('|');
             var documentCreator = $('#addEditDocumentCreator').val();
 
             if ($('#addEditExternal').is(":checked")) {

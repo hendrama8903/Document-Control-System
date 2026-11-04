@@ -79,6 +79,16 @@ BEGIN TRY
 			RETURN 0;
 		END
 
+		-- Document Code (kategori TB_M_DOCUMENT) wajib: tanpa ini Type 01 lolos sampai
+		-- sp_generate_doc_no -> sp_GetNextSeqNo dan gagal insert SEQ_CODE NULL (2026-11-04)
+		IF @DOCUMENT_ID IS NULL OR LEN(@DOCUMENT_ID) < 1
+		BEGIN
+			SET @RETURN_MSG = 'ERROR: Document Code should not be null';
+			SET @RETURN_ID = 0;
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @CREATED_BY
+			RETURN 0;
+		END
+
 		IF @DOCUMENT_TRANSACTION_NAME IS NULL OR LEN(@DOCUMENT_TRANSACTION_NAME) < 1
 		BEGIN
 			SET @RETURN_MSG = 'ERROR: Document Name should not be null';
