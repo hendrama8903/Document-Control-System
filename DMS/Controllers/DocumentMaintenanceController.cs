@@ -921,7 +921,7 @@ namespace DMS.Controllers
                             // draft/pending belum punya riwayat revisi resmi untuk file ini).
                             DeleteCachedPdfFor(previousFilePath);
 
-                            string oldPhysicalPath = webRootPath + previousFilePath.Trim();
+                            string oldPhysicalPath = Services.UploadPath.Resolve(webRootPath, previousFilePath);
                             if (System.IO.File.Exists(oldPhysicalPath))
                                 System.IO.File.Delete(oldPhysicalPath);
                         }
@@ -1276,7 +1276,7 @@ namespace DMS.Controllers
                 {
                     if (data.FILE_PATH != null)
                     {
-                        string pathCheck = webRootPath + data.FILE_PATH.Trim();
+                        string pathCheck = Services.UploadPath.Resolve(webRootPath, data.FILE_PATH);
                         //Delete File
                         if (System.IO.File.Exists(pathCheck))
                         {
@@ -1424,7 +1424,7 @@ namespace DMS.Controllers
                 }
 
                 string webRootPath = Environment.WebRootPath;
-                string fullPath = webRootPath + documentMaintenance.FILE_PATH;
+                string fullPath = Services.UploadPath.Resolve(webRootPath, documentMaintenance.FILE_PATH);  // path dari request, dibatasi ke folder upload
 
                 if (!System.IO.File.Exists(fullPath))
                 {
@@ -1594,7 +1594,7 @@ namespace DMS.Controllers
                 }
 
                 string webRootPath = Environment.WebRootPath;
-                string fullPath = webRootPath + documentMaintenance.FILE_PATH;
+                string fullPath = Services.UploadPath.Resolve(webRootPath, documentMaintenance.FILE_PATH);  // path dari request, dibatasi ke folder upload
 
                 if (!System.IO.File.Exists(fullPath))
                 {
@@ -1770,7 +1770,7 @@ namespace DMS.Controllers
         public IActionResult SpreadsheetPreview(string filePath)
         {
             string webRootPath = Environment.WebRootPath;
-            string fullPath = webRootPath + filePath;
+            string fullPath = Services.UploadPath.Resolve(webRootPath, filePath);  // dibatasi ke folder upload
 
             if (!System.IO.File.Exists(fullPath))
             {
@@ -1801,7 +1801,7 @@ namespace DMS.Controllers
         public IActionResult ExcelViewerPreview(string filePath)
         {
             string webRootPath = Environment.WebRootPath;
-            string fullPath = webRootPath + filePath;
+            string fullPath = Services.UploadPath.Resolve(webRootPath, filePath);  // dibatasi ke folder upload
 
             if (!System.IO.File.Exists(fullPath))
             {
@@ -2019,7 +2019,7 @@ namespace DMS.Controllers
                     x.WORKFLOW_SEQ == 1 && string.Equals(x.APPROVER, documentMaintenance.CREATED_BY, StringComparison.OrdinalIgnoreCase));
                 int approverSeqOffset = creatorAutoApprovedSeq1 ? 1 : 0;
 
-                string fullPath = webRootPath + filePath;
+                string fullPath = Services.UploadPath.Resolve(webRootPath, filePath);  // dibatasi ke folder upload
 
                 IList<ExcelTemplateMaster> excelTemplateMasters = documentMasterRepo
                     .SearchTemplate(new ExcelTemplateMaster { DOCUMENT_ID = documentMaintenance.DOCUMENT_ID }, db);
@@ -4054,7 +4054,7 @@ namespace DMS.Controllers
 
                 string pdfPath = System.IO.File.Exists(cachedPdf)
                     ? cachedPdf
-                    : webRootPath + filePath;
+                    : Services.UploadPath.Resolve(webRootPath, filePath);
 
                 if (!System.IO.File.Exists(pdfPath))
                     return Json(new { status = false, pageCount = 0 });
@@ -4085,7 +4085,7 @@ namespace DMS.Controllers
                     return Json(new { status = false, message = result.message });
 
                 string webRootPath = Environment.WebRootPath;
-                string fullPath = webRootPath + documentMaintenance.FILE_PATH;
+                string fullPath = Services.UploadPath.Resolve(webRootPath, documentMaintenance.FILE_PATH);  // path dari request, dibatasi ke folder upload
 
                 if (!System.IO.File.Exists(fullPath))
                     return Json(new { status = false, message = "File Not Found" });

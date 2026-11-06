@@ -437,7 +437,7 @@ namespace DMS.Controllers
                 {
                     if (data.FILE_PATH != null)
                     {
-                        string pathCheck = webRootPath + data.FILE_PATH.Trim();
+                        string pathCheck = Services.UploadPath.Resolve(webRootPath, data.FILE_PATH);
                         //Delete File
                         if (System.IO.File.Exists(pathCheck))
                         {
@@ -470,7 +470,7 @@ namespace DMS.Controllers
 
                     if (result.status)
                     {
-                        string pathCheck = webRootPath + data.FILE_PATH.Trim();
+                        string pathCheck = Services.UploadPath.Resolve(webRootPath, data.FILE_PATH);
                         if (System.IO.File.Exists(pathCheck))
                         {
                             System.IO.File.Delete(pathCheck);
@@ -489,9 +489,10 @@ namespace DMS.Controllers
         public IActionResult DownloadAttachment(string path)
         {
             string webRootPath = Environment.WebRootPath;
-            string fullPath = webRootPath + path;
-            string[] split = path.Split("/");
-            string fileName = split[4];
+            // Hanya file di wwwroot/Upload/ATTACHMENT/ (perbaikan path traversal 2026-11-06)
+            string fullPath = Services.UploadPath.Resolve(webRootPath, path);
+            if (fullPath == null || !System.IO.File.Exists(fullPath)) return NotFound();
+            string fileName = Path.GetFileName(fullPath);
 
             byte[] bytes = System.IO.File.ReadAllBytes(fullPath);
 

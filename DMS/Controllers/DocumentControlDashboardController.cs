@@ -204,9 +204,10 @@ namespace DMS.Controllers
         public IActionResult DownloadDocument(string path)
         {
             string webRootPath = Environment.WebRootPath;
-            string fullPath = webRootPath + path;
-            string[] split = path.Split("/");
-            string fileName = split[4];
+            // Hanya file di wwwroot/Upload/ATTACHMENT/ (perbaikan path traversal 2026-11-06)
+            string fullPath = Services.UploadPath.Resolve(webRootPath, path);
+            if (fullPath == null || !System.IO.File.Exists(fullPath)) return NotFound();
+            string fileName = Path.GetFileName(fullPath);
 
             byte[] bytes = System.IO.File.ReadAllBytes(fullPath);
 
