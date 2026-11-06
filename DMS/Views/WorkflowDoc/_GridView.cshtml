@@ -37,6 +37,12 @@
         background: #E7F1FB;
         color: #2450D8;
     }
+    .wf-cat-pill {
+        display: inline-block; padding: 3px 10px; border-radius: 20px;
+        font-size: 11.5px; font-weight: 700; background: #FEF0C7; color: #93370D;
+    }
+    .wf-cat-default { color: #98A2B3; font-size: 12px; }
+    .wf-note-warn { color: #B54708; font-size: 12px; white-space: normal; }
 
 </style>
 
@@ -186,9 +192,43 @@
                         $("<span>").addClass("wf-level-pill").text("Level " + options.data.DOCUMENT_LEVEL).appendTo(container);
                     }
                 },
-                { dataField: "CREATOR_NAME", caption: "Creator Position" },
+                {
+                    // Kosong = alur default level (berlaku untuk semua kategori di level
+                    // itu yang tidak punya alur khusus); terisi = alur khusus kategori.
+                    dataField: "DOCUMENT_CODE",
+                    caption: "Document Category",
+                    cellTemplate: function (container, options) {
+                        if (options.data.DOCUMENT_ID) {
+                            $("<span>").addClass("wf-cat-pill").text(options.data.DOCUMENT_CODE).appendTo(container);
+                        } else {
+                            $("<span>").addClass("wf-cat-default").text("Default (all categories)").appendTo(container);
+                        }
+                    }
+                },
+                { dataField: "CREATOR_NAME", caption: "Creator Level" },
                 { dataField: "WORKFLOW_SEQ", caption: "Total Steps", alignment: "center" },
-                { dataField: "POSITION_NAME", caption: "Approver Chain" },
+                {
+                    dataField: "POSITION_NAME",
+                    caption: "Approver Chain",
+                    cellTemplate: function (container, options) {
+                        container.text(options.data.POSITION_NAME || "");
+                        if ((options.data.POSITION_NAME || "").indexOf("*") >= 0) {
+                            container.attr("title", "* = mandatory approver");
+                        }
+                    }
+                },
+                {
+                    dataField: "NOTES",
+                    caption: "Notes",
+                    cellTemplate: function (container, options) {
+                        if (options.data.NOTES) {
+                            $("<span>").addClass("wf-note-warn")
+                                .html('<i class="fa fa-exclamation-triangle"></i> ')
+                                .append(document.createTextNode(options.data.NOTES))
+                                .appendTo(container);
+                        }
+                    }
+                },
                 { dataField: "CREATED_BY", caption: "Created By", visible: false },
                 {
                     dataField: "CREATED_DT",

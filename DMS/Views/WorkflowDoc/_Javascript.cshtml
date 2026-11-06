@@ -12,13 +12,11 @@
     // 2026-08-18, redesign UI popup ini).
     var gDetailEditMode = false;
 
-    // Kolom "Action" (ikon edit/delete per baris) - dipakai di DUA konfigurasi
-    // DataTable (onAddPrepare & onEditPrepare) supaya tidak duplikasi definisi.
-    // Delete cuma boleh untuk baris LEVEL PALING TINGGI (aturan sama seperti
-    // tombol Delete lama - urutan level harus tetap rapat, tidak boleh bolong
-    // di tengah).
+    // Kolom "Action" (ikon edit/delete per baris).
+    // Delete cuma boleh untuk baris LEVEL PALING TINGGI (urutan level harus
+    // tetap rapat, tidak boleh bolong di tengah).
     var detailActionColumnDef = {
-        "targets": [3],
+        "targets": [4],
         "className": "text-center",
         "orderable": false,
         "render": function (data, type, row) {
@@ -28,13 +26,65 @@
         }
     };
 
+    // Konfigurasi DataTable detail - sama untuk Add dan Edit.
+    function buildDetailTable() {
+        $("#detailgrid").dataTable().fnDestroy();
+        detailTable = $('#detailgrid').DataTable({
+            "ordering"      : false,
+            "oLanguage"     : { "sEmptyTable": "Data not found." },
+            "scrollY"       : '110px',
+            "scrollCollapse": false,
+            "paging"        : false,
+            "info"          : false,
+            "searching"     : false,
+            "data"          : [],
+            "columnDefs"    : [
+                {
+                    "targets"   : [0],
+                    "width"     : "16%",
+                    "className" : "seq text-center",
+                    "render"    : function (data) { return '<span class="wfd-level-badge">' + data + '</span>'; }
+                },
+                {
+                    "targets": [2],
+                    "className": "hide"
+                },
+                {
+                    "targets": [3],
+                    "className": "text-center",
+                    "render": function (data) { return data === true || data === "true" ? '<span class="wfd-mandatory-badge">Mandatory</span>' : '-'; }
+                },
+                detailActionColumnDef
+            ],
+            "columns": [
+                { "data": "WORKFLOW_SEQ", "name": "WORKFLOW_SEQ" },
+                { "data": "POSITION_NAME", "name": "POSITION_NAME" },
+                { "data": "POSITION_ID", "name": "POSITION_ID" },
+                { "data": "IS_MANDATORY", "name": "IS_MANDATORY" },
+                { "data": null, "name": "ACTION", "defaultContent": "" }
+            ]
+        });
+    }
+
+    // Dropdown kategori bergantung pada Document Level terpilih.
+    function setCategorySelect(level) {
+        setDataSelect2WithParam("addEditWorkflowCategory", "@Url.Action("GetDocumentCategories", "WorkflowDoc")", "- Default workflow (all categories) -", level || "");
+    }
+
     $(document).ready(function() {
 
-        setDataSelect2("addEditApprover", "@Url.Action("GetUserName", "User")", "- Choose -");
-
         setDataSelect2WithParam("addEditWorkflowDocLevel", "@Url.Action("GetSystemCodeSystemValue", "MSystem")", "- Choose -", "LEVEL_CODE");
-        setDataSelect2("addEditPositionName", "@Url.Action("GetPositionName", "WorkflowDoc")", "- Choose -");
+        // CREATOR_LEVEL = POSITION_LEVEL pembuat (bukan ID jabatan) - satu
+        // pilihan per level, berisi semua jabatan di level itu.
+        setDataSelect2("addEditPositionName", "@Url.Action("GetCreatorLevels", "WorkflowDoc")", "- Choose -");
         setDataSelect2("addEditPositionName2", "@Url.Action("GetPositionName", "WorkflowDoc")", "- Choose -");
+        setCategorySelect("");
+
+        $("#addEditWorkflowDocLevel").on("change", function () {
+            if (gScreenMode == 'EDIT') return;
+            $("#addEditWorkflowCategory").val(null).trigger("change");
+            setCategorySelect($(this).val());
+        });
 
         $("#btn_add").on("click", function() {
             onAddPrepare();
@@ -52,8 +102,7 @@
             confirmAddEditData();
         });
 
-        // Tombol tunggal "Add"/"Update" - lihat gDetailEditMode (di-toggle oleh
-        // onSelectDetail waktu baris dipilih, dan onClearDetail waktu direset).
+        // Tombol tunggal "Add"/"Update" - lihat gDetailEditMode.
         $("#btn_add_detail").on("click", function () {
             if (gDetailEditMode) {
                 onEditDetail();
@@ -70,10 +119,6 @@
             onSelectDetail($(this));
         });
 
-        // Ikon pensil/tempat sampah per baris (kolom Action) - pensil pilih
-        // baris untuk diedit (form di atas ikut dipetakan lewat onSelectDetail,
-        // tombol Add berubah jadi Update), tempat sampah langsung hapus baris
-        // itu (kalau memang boleh - lihat detailActionColumnDef).
         $("#detailgrid").on("click", ".wfd-row-edit", function (e) {
             e.stopPropagation();
             onSelectDetail($(this).closest("tr"));
@@ -122,49 +167,23 @@
         $('#modal-title').html("Add Workflow Document Master");
         $("#addEditWorkflowDocLevel").val("").trigger("change");
         $("#addEditPositionName").val("").trigger("change");
+        $("#addEditWorkflowCategory").val(null).trigger("change");
+        setCategorySelect("");
         $("#addEditWorkflowSeq").val("").trigger("change");
         $("#addEditPositionName2").val("").trigger("change");
-        
+
         $('#addEditWorkflowDocLevel').prop('disabled', false);
         $('#addEditPositionName').prop('disabled', false);
+        $('#addEditWorkflowCategory').prop('disabled', false);
         $('#addEditWorkflowSeq').prop('disabled', false);
         $('#addEditPositionName2').prop('disabled', false);
 
-        $("#detailgrid").dataTable().fnDestroy();
-        detailTable = $('#detailgrid').DataTable({
-            "ordering"      : false,
-            "oLanguage"     : { "sEmptyTable": "Data not found." },
-            "scrollY"       : '110px',
-            "scrollCollapse": false,
-            "paging"        : false,
-            "info"          : false,
-            "searching"     : false,
-            "data"          : [],
-            "columnDefs"    : [
-                {
-                    "targets"   : [0],
-                    "width"     : "18%",
-                    "className" : "seq text-center",
-                    "render"    : function (data) { return '<span class="wfd-level-badge">' + data + '</span>'; }
-                },
-                {
-                    "targets": [2],
-                    "className": "hide"
-                },
-                detailActionColumnDef
-            ],
-            "columns": [
-                { "data": "WORKFLOW_SEQ", "name": "WORKFLOW_SEQ" },
-                { "data": "POSITION_NAME", "name": "POSITION_NAME" },
-                { "data": "POSITION_ID", "name": "POSITION_ID" },
-                { "data": null, "name": "ACTION", "defaultContent": "" }
-            ]
-        });
-        
+        buildDetailTable();
+
         seq = 1;
         detailData = [];
         onClearDetail();
-        
+
         $('#addEditWorkflowSeq').empty();
         $('#addEditWorkflowSeq').append(new Option(seq, seq, false, false)).trigger('change');
 
@@ -173,7 +192,6 @@
             keyboard: false
         });
         $('#modalAddEdit').on('shown.bs.modal', function() {
-            $('#addEditWorkflowCode').focus();
             $("#detailgrid").DataTable().columns.adjust().draw();
         });
     }
@@ -195,56 +213,39 @@
             async: false,
             data: {
                 WORKFLOW_DOC_ID: gId,
-                DOCUMENT_LEVEL : gCode,
-                POSITION_ID: gName
-
+                DOCUMENT_LEVEL : gCode
             },
             success: function(result) {
                 if (result.status == true) {
                     var data = result.data;
-                    var data2 = result.data2;
-                    console.log(data)
                     gScreenMode = 'EDIT';
                     $('#modal-title').html("Edit Workflow Doc Master");
                     $('#addEditWorkflowDocLevel').select2("trigger", "select", { data: { id: gCode.toString(), text: gCode.toString() } });
-                    $('#addEditPositionName').select2("trigger", "select", { data: { id: data2.POSITION_ID, text: data2.POSITION_NAME } });
+                    $('#addEditPositionName').select2("trigger", "select", { data: { id: gName.toString(), text: result.creatorText || ("Level " + gName) } });
+                    if (row.DOCUMENT_ID) {
+                        $('#addEditWorkflowCategory').select2("trigger", "select", { data: { id: row.DOCUMENT_ID.toString(), text: result.categoryText || row.DOCUMENT_CODE } });
+                    } else {
+                        $('#addEditWorkflowCategory').val(null).trigger("change");
+                    }
 
+                    // Level, level pembuat, dan kategori adalah kunci alur - tidak
+                    // bisa diubah saat edit (buat alur baru kalau perlu kombinasi lain).
                     $("#addEditWorkflowDocLevel").prop("disabled", true);
                     $("#addEditPositionName").prop("disabled", true);
-                    
-                    $("#detailgrid").dataTable().fnDestroy();
-                    detailTable = $('#detailgrid').DataTable({
-                        "ordering"      : false,
-                        "oLanguage"     : { "sEmptyTable": "Data not found." },
-                        "scrollY"       : '110px',
-                        "scrollCollapse": false,
-                        "paging"        : false,
-                        "info"          : false,
-                        "searching"     : false,
-                        "data"          : [],
-                        "columnDefs"    : [
-                            {
-                                "targets": [0],
-                                "width": "18%",
-                                "className": "seq text-center",
-                                "render": function (data) { return '<span class="wfd-level-badge">' + data + '</span>'; }
-                            },
-                            {
-                                "targets": [2],
-                                "className": "hide"
-                            },
-                            detailActionColumnDef
-                        ],
-                        "columns": [
-                            { "data": "WORKFLOW_SEQ", "name": "WORKFLOW_SEQ" },
-                            { "data": "POSITION_NAME", "name": "POSITION_NAME" },
-                            { "data": "POSITION_ID", "name": "POSITION_ID" },
-                            { "data": null, "name": "ACTION", "defaultContent": "" }
-                        ]
-                    });
-        
+                    $("#addEditWorkflowCategory").prop("disabled", true);
+
+                    buildDetailTable();
+
                     seq = 1;
-                    detailData = data;
+                    detailData = data.map(function (d) {
+                        return {
+                            WORKFLOW_SEQ : d.WORKFLOW_SEQ,
+                            POSITION_NAME: d.POSITION_NAME,
+                            POSITION_ID  : d.POSITION_ID,
+                            IS_MANDATORY : d.IS_MANDATORY === true,
+                            LABEL        : d.LABEL
+                        };
+                    });
 
                     detailTable.clear().draw();
                     detailTable.rows.add(detailData).draw(false);
@@ -268,7 +269,6 @@
                 }
             },
             error: function(result) {
-                //popUpProgressHide();
                 showErrorMesgGrowl(result);
             }
         });
@@ -285,7 +285,7 @@
 
         showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
     }
-    
+
     // Ganti tampilan tombol Add/Update sesuai gDetailEditMode.
     function refreshDetailActionButton() {
         var $btn = $("#btn_add_detail");
@@ -299,6 +299,7 @@
     function onClearDetail() {
         $('#addEditWorkflowSeq').val(seq).trigger("change");
         $('#addEditPositionName2').val("").trigger("change");
+        $('#addEditMandatory').prop("checked", false);
 
         $("#addEditWorkflowSeq").prop("disabled", false);
         $("#btn_add_detail").prop("disabled", false);
@@ -310,35 +311,42 @@
     }
 
     function onSelectDetail($row) {
-        if(!$row.find("td:nth-child(1)").hasClass("dataTables_empty")){
-            var workflowSeq = $row.find("td:nth-child(1)").text();
-            var fullname    = $row.find("td:nth-child(2)").text();
-            var approver    = $row.find("td:nth-child(3)").text();
+        if ($row.find("td:nth-child(1)").hasClass("dataTables_empty")) return;
+        var d = detailTable.row($row).data();
+        if (!d) return;
 
-            $('#addEditWorkflowSeq').val(workflowSeq).trigger("change");
-            $('#addEditPositionName2').select2("trigger", "select", { data: { id: approver, text: fullname } });
+        $('#addEditWorkflowSeq').val(d.WORKFLOW_SEQ).trigger("change");
+        $('#addEditPositionName2').select2("trigger", "select", { data: { id: d.POSITION_ID, text: d.POSITION_NAME } });
+        $('#addEditMandatory').prop("checked", d.IS_MANDATORY === true);
 
-            $("#addEditWorkflowSeq").prop("disabled", true);
+        $("#addEditWorkflowSeq").prop("disabled", true);
 
-            gDetailEditMode = true;
-            refreshDetailActionButton();
+        gDetailEditMode = true;
+        refreshDetailActionButton();
 
-            $('#detailgrid tr').removeClass("selected");
-            $row.addClass('selected');
-        }
+        $('#detailgrid tr').removeClass("selected");
+        $row.addClass('selected');
+    }
+
+    function readDetailForm(previous) {
+        var positionId = $('#addEditPositionName2').val();
+        return {
+            "WORKFLOW_SEQ" : $('#addEditWorkflowSeq').val(),
+            "POSITION_NAME": $('#addEditPositionName2').select2('data')[0].text,
+            "POSITION_ID"  : positionId,
+            "IS_MANDATORY" : $('#addEditMandatory').is(':checked'),
+            // Label lama ("Dibuat Oleh", dst.) dipertahankan selama jabatannya
+            // tidak diganti; jabatan baru -> label = nama jabatan (diisi SP).
+            "LABEL"        : previous && String(previous.POSITION_ID) == String(positionId) ? previous.LABEL : null
+        };
     }
 
     function onAddDetail(){
         if ($('#addEditPositionName2').val() != null) {
 
-            var data = {
-                "WORKFLOW_SEQ" : $('#addEditWorkflowSeq').val(),
-                "POSITION_NAME": $('#addEditPositionName2').select2('data')[0].text,
-                "POSITION_ID"  : $('#addEditPositionName2').val(),
-            };
-            detailData.push(data);
+            detailData.push(readDetailForm(null));
             detailData.sort((a, b) => parseInt(a.WORKFLOW_SEQ) - parseInt(b.WORKFLOW_SEQ));
-            
+
             detailTable.clear().draw();
             detailTable.rows.add(detailData).draw(false);
 
@@ -353,15 +361,10 @@
     function onEditDetail(){
         if ($('#addEditPositionName2').val() != null) {
             var i = $('#detailgrid tr.selected').index();
-            
-            var data = {
-                "WORKFLOW_SEQ" : $('#addEditWorkflowSeq').val(),
-                "POSITION_NAME": $('#addEditPositionName2').select2('data')[0].text,
-                "POSITION_ID"  : $('#addEditPositionName2').val(),
-            };
-            detailData[i] = data;
+
+            detailData[i] = readDetailForm(detailData[i]);
             detailData.sort((a, b) => parseInt(a.WORKFLOW_SEQ) - parseInt(b.WORKFLOW_SEQ));
-            
+
             detailTable.clear().draw();
             detailTable.rows.add(detailData).draw(false);
 
@@ -375,7 +378,7 @@
 
             detailData.splice(i, 1);
             detailData.sort((a, b) => parseInt(a.WORKFLOW_SEQ) - parseInt(b.WORKFLOW_SEQ));
-            
+
             detailTable.clear().draw();
             detailTable.rows.add(detailData).draw(false);
 
@@ -394,12 +397,11 @@
     }
 
     function confirmAddEditData() {
-        
-        if ($("#addEditWorkflowDocLevel").val().length == 0) {
-            showErrorMesgGrowl("Workflow Level cannot be null");
+        if (!$("#addEditWorkflowDocLevel").val()) {
+            showErrorMesgGrowl("Document Level cannot be empty");
         }
-        if ($("#addEditPositionName").val().length == 0) {
-            showErrorMesgGrowl("Workflow Position Name cannot be null");
+        else if (!$("#addEditPositionName").val()) {
+            showErrorMesgGrowl("Creator Level cannot be empty");
         }
         else if (detailData.length == 0) {
             showErrorMesgGrowl("Detail Workflow cannot be empty");
@@ -411,16 +413,21 @@
 
     function addEditData() {
         var row = getSelectedRowData();
-        if (row != null) {
+        if (gScreenMode == 'EDIT' && row != null) {
             gId = row.WORKFLOW_DOC_ID;
         }
-        
+        if (gScreenMode == 'ADD') {
+            gId = null;
+        }
+
+        var category = $('#addEditWorkflowCategory').val();
         detailData.forEach(function (data) {
             data.WORKFLOW_DOC_ID = gId;
             data.DOCUMENT_LEVEL  = $('#addEditWorkflowDocLevel').val();
             data.CREATOR_LEVEL   = $('#addEditPositionName').val();
+            data.DOCUMENT_ID     = category ? category : null;
         });
-        
+
         popUpProgressShow();
         $.ajax({
             contentType: 'application/json; charset=utf-8',

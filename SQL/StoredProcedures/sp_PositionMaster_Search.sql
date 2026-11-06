@@ -21,6 +21,7 @@ BEGIN
 										P.POSITION_ID,
 										P.POSITION_NAME,
 										P.POSITION_LEVEL,
+										P.APPROVER_SCOPE,
 										ISNULL(P.DELETE_FLAG, 0) AS DELETE_FLAG,
 										P.CREATED_DT,
 										P.CREATED_BY,

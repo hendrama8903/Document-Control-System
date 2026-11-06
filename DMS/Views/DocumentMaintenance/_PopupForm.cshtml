@@ -86,6 +86,24 @@
         scroll-margin-top: 8px;
     }
 
+    #modalAddEdit .adf-approval-preview {
+        border: 1px solid #E3E8EE; border-radius: 8px; background: #F9FAFB;
+        padding: 10px 12px; margin: 0 0 12px;
+    }
+    #modalAddEdit .adf-approval-preview.has-error { border-color: #F3C6C6; background: #FFF6F5; }
+    #modalAddEdit .adf-ap-title { font-size: 12px; font-weight: 700; color: #344054; margin-bottom: 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    #modalAddEdit .adf-ap-tag { font-size: 10.5px; font-weight: 700; padding: 1px 8px; border-radius: 10px; background: #E7F1FB; color: #2450D8; }
+    #modalAddEdit .adf-ap-tag.cat { background: #FEF0C7; color: #93370D; }
+    #modalAddEdit .adf-ap-steps { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; }
+    #modalAddEdit .adf-ap-step { border: 1px solid #D5DDE8; background: #fff; border-radius: 7px; padding: 5px 9px; font-size: 11.5px; min-width: 130px; }
+    #modalAddEdit .adf-ap-step b { display: block; font-size: 11px; color: #667085; font-weight: 600; }
+    #modalAddEdit .adf-ap-step.auto { border-color: #A6E3C4; background: #F0FBF5; }
+    #modalAddEdit .adf-ap-step.skip { border-style: dashed; color: #98A2B3; background: #F9FAFB; }
+    #modalAddEdit .adf-ap-step.missing { border-color: #F04438; background: #FEF3F2; color: #B42318; }
+    #modalAddEdit .adf-ap-arrow { align-self: center; color: #98A2B3; font-size: 11px; }
+    #modalAddEdit .adf-ap-msg { font-size: 11.5px; margin-top: 6px; color: #B42318; }
+    #modalAddEdit .adf-ap-note { font-size: 11px; margin-top: 6px; color: #667085; }
+
     #modalAddEdit .adf-section-title {
         display: flex;
         align-items: center;
@@ -636,6 +654,11 @@
                                 <select class="form-control" id="addEditDocumentCreator" required></select>
                             </div>
                         </div>
+
+                        <!-- Pratinjau approval chain (2026-11-06): alur yang berlaku untuk
+                             Level + Document Code + Creator terpilih, dihitung server dengan
+                             fungsi yang sama dengan pembuatan approval sebenarnya. -->
+                        <div class="adf-approval-preview" id="addEditApprovalPreview" style="display:none;"></div>
                     </div>
 
                     <!-- Step: Attachment & Others - file diupload TERAKHIR karena baru

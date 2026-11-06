@@ -135,6 +135,12 @@
         $('#addEditDocumentLevel, #addEditDocumentCode').on('change', function () {
             updateRelatedDivisionVisibility();
         });
+
+        // Pratinjau approval chain (2026-11-06) - ikut berubah saat Level,
+        // Document Code (kategori), atau Creator berubah.
+        $('#addEditDocumentLevel, #addEditDocumentCode, #addEditDocumentCreator').on('change', function () {
+            scheduleApprovalPreview();
+        });
         $('#addEditDivision').on('change', function () {
             lockCreatorDivisionRole();
         });
@@ -754,6 +760,7 @@
         $('#addEditDocumentType').val("").trigger("change");
 
         reset();
+        $('#addEditApprovalPreview').hide().empty();
 
         gFilePath = null;
 
@@ -1049,6 +1056,91 @@
     }
 
     var gManualNoPrefixRequestSeq = 0;
+
+    // ---------- Pratinjau approval chain (2026-11-06) ----------
+    var gApprovalPreviewTimer = null;
+    var gApprovalPreviewSeq = 0;
+
+    function scheduleApprovalPreview() {
+        clearTimeout(gApprovalPreviewTimer);
+        gApprovalPreviewTimer = setTimeout(refreshApprovalPreview, 250);
+    }
+
+    function refreshApprovalPreview() {
+        var $box = $('#addEditApprovalPreview');
+        var level = $('#addEditDocumentLevel').val();
+        var documentId = (($('#addEditDocumentCode').val() || "").split('|')[0]) || "";
+        var creator = $('#addEditDocumentCreator').val();
+
+        if (!level || !creator || level == "null" || creator == "null") {
+            $box.hide().empty();
+            return;
+        }
+
+        var requestSeq = ++gApprovalPreviewSeq;
+        $.ajax({
+            type: "GET",
+            url: "@Url.Action("GetApprovalPreview", "DocumentMaintenance")",
+            data: { levelCode: level, documentId: documentId, creator: creator },
+            success: function (result) {
+                if (requestSeq !== gApprovalPreviewSeq) return;
+                if (result.status != true || result.ready != true) { $box.hide().empty(); return; }
+                renderApprovalPreview(result.steps || []);
+            },
+            error: function () {
+                if (requestSeq !== gApprovalPreviewSeq) return;
+                $box.hide().empty();
+            }
+        });
+    }
+
+    function renderApprovalPreview(steps) {
+        var $box = $('#addEditApprovalPreview').removeClass('has-error').empty();
+        var esc = function (s) { return $('<div>').text(s == null ? "" : s).html(); };
+        var first = steps[0] || {};
+
+        var $title = $('<div class="adf-ap-title"><i class="fa fa-sitemap"></i> Approval Flow</div>');
+        if (first.STATUS == "NO_CREATOR") {
+            $box.addClass('has-error').append($title)
+                .append('<div class="adf-ap-msg"><i class="fa fa-times-circle"></i> The selected creator has no position in User Position - the document cannot be submitted.</div>')
+                .show();
+            return;
+        }
+        if (first.STATUS == "NO_WORKFLOW") {
+            $box.addClass('has-error').append($title)
+                .append('<div class="adf-ap-msg"><i class="fa fa-times-circle"></i> No approval workflow is set up for this Document Level and creator position (' + esc(first.CREATOR_POSITION) + '). Ask the admin to add it in Approval Workflow Setup.</div>')
+                .show();
+            return;
+        }
+
+        $title.append(first.IS_CATEGORY_WORKFLOW
+            ? '<span class="adf-ap-tag cat">Category workflow</span>'
+            : '<span class="adf-ap-tag">Default workflow for this level</span>');
+        $box.append($title);
+
+        var $steps = $('<div class="adf-ap-steps"></div>');
+        var missing = [], skipped = [];
+        steps.forEach(function (s, i) {
+            if (i > 0) $steps.append('<span class="adf-ap-arrow"><i class="fa fa-chevron-right"></i></span>');
+            var cls = s.STATUS == "AUTO" ? "auto" : s.STATUS == "SKIP" ? "skip" : s.STATUS == "MISSING" ? "missing" : "";
+            var who = s.APPROVER
+                ? esc(s.APPROVER_NAME || s.APPROVER) + (s.STATUS == "AUTO" ? ' <i class="fa fa-check" title="Creator - approved automatically"></i>' : '')
+                : (s.STATUS == "MISSING" ? 'Not found (mandatory)' : 'Not found - skipped');
+            $steps.append('<div class="adf-ap-step ' + cls + '"><b>' + esc(s.LABEL || s.POSITION_NAME) +
+                (s.IS_MANDATORY ? ' *' : '') + '</b>' + esc(s.POSITION_NAME) + '<br>' + who + '</div>');
+            if (s.STATUS == "MISSING") missing.push(s.POSITION_NAME);
+            if (s.STATUS == "SKIP") skipped.push(s.POSITION_NAME);
+        });
+        $box.append($steps);
+
+        if (missing.length > 0) {
+            $box.addClass('has-error').append('<div class="adf-ap-msg"><i class="fa fa-times-circle"></i> Mandatory approver not found: ' + esc(missing.join(", ")) +
+                '. The document cannot be saved until User Position is completed.</div>');
+        } else if (skipped.length > 0) {
+            $box.append('<div class="adf-ap-note"><i class="fa fa-info-circle"></i> ' + esc(skipped.join(", ")) + ' will be skipped (nobody holds this position for the selected creator).</div>');
+        }
+        $box.show();
+    }
 
     function refreshManualNoPrefix() {
         if (!$('#addEditNumberingModeManual').is(':checked')) return;

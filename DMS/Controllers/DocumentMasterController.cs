@@ -281,8 +281,35 @@ namespace DMS.Controllers
                 .FirstOrDefault(System.IO.File.Exists);
         }
 
+        // Kotak POS<id> di template yang jabatannya tidak pernah ada di alur approval
+        // kategori ini (alur khusus kategori, atau default level) akan selalu kosong -
+        // diperingatkan, tidak diblokir (request Hendra 2026-11-06).
+        private void AddWorkflowWarnings(TemplateMarkerService.Report report, int? level, int? documentId)
+        {
+            if (!report.HasMarkers || level == null) return;
+
+            WorkflowCategoryPositions flow = WorkflowDocRepo.Instance.CategoryPositions(level, documentId, db);
+            if (!flow.HasWorkflow)
+            {
+                report.Warnings.Add($"Belum ada alur approval untuk Document Level {level}. Atur dulu di menu Approval Workflow Setup, kalau tidak dokumen jenis ini tidak bisa dibuat.");
+                return;
+            }
+
+            var boxKeys = report.Boxes
+                .Select(b => b.Split(':')[0].Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase);
+            foreach (string key in boxKeys)
+            {
+                int? positionId = TemplateMarkerService.PositionIdOfBox(key);
+                if (positionId == null || flow.Positions.ContainsKey(positionId.Value)) continue;
+
+                string name = PositionMasterRepo.Instance.GetByKey(new PositionMaster { POSITION_ID = positionId }, db)?.POSITION_NAME ?? "jabatan " + positionId;
+                report.Warnings.Add($"Kotak {key} ({name}) tidak ada di alur approval {(documentId == null ? "level ini" : "jenis dokumen ini")}, jadi kotak itu akan selalu kosong. Tambahkan {name} di Approval Workflow Setup, atau periksa kode POS-nya. Alur saat ini memuat: {string.Join(", ", flow.Positions.Values)}.");
+            }
+        }
+
         [HttpPost]
-        public JsonResult CheckTemplate(int? documentId, string code)
+        public JsonResult CheckTemplate(int? documentId, string code, int? level)
         {
             if (HttpContext.Session.GetString("USERNAME") == null)
                 return Json(new { status = false, message = "Session expired." });
@@ -301,6 +328,7 @@ namespace DMS.Controllers
                     if (path == null) return Json(new { status = false, message = "Template file not found." });
                     report = AnalyzeTemplate(() => { var wb = new DevExpress.Spreadsheet.Workbook(); wb.LoadDocument(path); return wb; }, documentId);
                 }
+                AddWorkflowWarnings(report, level, documentId);
                 return Json(new
                 {
                     status = true,

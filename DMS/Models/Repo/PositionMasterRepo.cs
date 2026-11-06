@@ -66,11 +66,12 @@ namespace DMS.Models.Repo
                 returnVal,
                 new SqlParameter ( "@POSITION_NAME", CheckNullValue(data.POSITION_NAME) ),
                 new SqlParameter ( "@POSITION_LEVEL", CheckNullValue(data.POSITION_LEVEL) ),
+                new SqlParameter ( "@APPROVER_SCOPE", CheckNullValue(data.APPROVER_SCOPE) ),
                 new SqlParameter ( "@LOGIN_USER", loginUser ),
                 returnMsg
             };
 
-            string query = "EXEC @RETURN_VAL = [dbo].[sp_PositionMaster_Insert] @POSITION_NAME, @POSITION_LEVEL, @LOGIN_USER, @RETURN_MSG OUTPUT";
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_PositionMaster_Insert] @POSITION_NAME, @POSITION_LEVEL, @LOGIN_USER, @RETURN_MSG OUTPUT, @APPROVER_SCOPE = @APPROVER_SCOPE";
             int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
@@ -88,11 +89,12 @@ namespace DMS.Models.Repo
                 new SqlParameter ( "@POSITION_ID", CheckNullValue(data.POSITION_ID) ),
                 new SqlParameter ( "@POSITION_NAME", CheckNullValue(data.POSITION_NAME) ),
                 new SqlParameter ( "@POSITION_LEVEL", CheckNullValue(data.POSITION_LEVEL) ),
+                new SqlParameter ( "@APPROVER_SCOPE", CheckNullValue(data.APPROVER_SCOPE) ),
                 new SqlParameter ( "@LOGIN_USER", loginUser ),
                 returnMsg
             };
 
-            string query = "EXEC @RETURN_VAL = [dbo].[sp_PositionMaster_Update] @POSITION_ID, @POSITION_NAME, @POSITION_LEVEL, @LOGIN_USER, @RETURN_MSG OUTPUT";
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_PositionMaster_Update] @POSITION_ID, @POSITION_NAME, @POSITION_LEVEL, @LOGIN_USER, @RETURN_MSG OUTPUT, @APPROVER_SCOPE = @APPROVER_SCOPE";
             int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());

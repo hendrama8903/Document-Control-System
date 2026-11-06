@@ -104,7 +104,7 @@ namespace DMS.Controllers
             IWorkbook workbook = new XSSFWorkbook();
             ISheet sheet = workbook.CreateSheet("Position Master");
 
-            string[] headers = { "No", "Position Name", "Position Level", "Status" };
+            string[] headers = { "No", "Position Name", "Position Level", "Approver Scope", "Status" };
 
             IRow headerRow = sheet.CreateRow(0);
             for (int col = 0; col < headers.Length; col++)
@@ -120,7 +120,8 @@ namespace DMS.Controllers
                 row.CreateCell(0).SetCellValue(no);
                 row.CreateCell(1).SetCellValue(item.POSITION_NAME);
                 row.CreateCell(2).SetCellValue(item.POSITION_LEVEL ?? 0);
-                row.CreateCell(3).SetCellValue(item.DELETE_FLAG == 1 ? "Inactive" : "Active");
+                row.CreateCell(3).SetCellValue(item.APPROVER_SCOPE ?? "");
+                row.CreateCell(4).SetCellValue(item.DELETE_FLAG == 1 ? "Inactive" : "Active");
 
                 rowIndex++;
                 no++;

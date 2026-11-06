@@ -114,6 +114,18 @@
     .wfd-row-delete:hover { background: #FDECEA; }
     .wfd-row-delete:disabled { color: #C2C8D1; border-color: #E3E8EE; background: #F9FAFB; cursor: not-allowed; }
 
+    .wfd-optional { font-weight: 400; color: #98A2B3; }
+    .wfd-help { font-size: 10.5px; color: #667085; margin-top: 3px; line-height: 1.35; }
+    .wfd-check {
+        display: flex !important; align-items: center; gap: 6px;
+        height: 34px; font-weight: 600 !important; cursor: pointer; margin: 0;
+    }
+    .wfd-check input { margin: 0; }
+    .wfd-mandatory-badge {
+        display: inline-block; padding: 1px 8px; border-radius: 10px;
+        background: #FDECEA; color: #B42318; font-size: 10.5px; font-weight: 700;
+    }
+
     .wfd-footer {
         display: flex; justify-content: flex-end; gap: 8px;
         padding: 10px 20px; border-top: 1px solid #EEF1F5;
@@ -140,8 +152,15 @@
                             <div class="wfd-select-icon"><i class="fa fa-clone"></i><select class="form-control" id="addEditWorkflowDocLevel"></select></div>
                         </div>
                         <div class="col-md-6 form-group">
-                            <label>Creator Name<span class="text-red"> *</span></label>
+                            <label>Creator Level<span class="text-red"> *</span></label>
                             <div class="wfd-select-icon"><i class="fa fa-user-o"></i><select class="form-control" id="addEditPositionName"></select></div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 form-group">
+                            <label>Document Category <span class="wfd-optional">(optional)</span></label>
+                            <div class="wfd-select-icon"><i class="fa fa-folder-o"></i><select class="form-control" id="addEditWorkflowCategory"></select></div>
+                            <div class="wfd-help">Leave empty for the default workflow of this level. Choose a category to give that document type its own approval chain - other categories keep using the default.</div>
                         </div>
                     </div>
                 </div>
@@ -159,9 +178,15 @@
                             <label>Level<span class="text-red"> *</span></label>
                             <div class="wfd-select-icon"><i class="fa fa-bar-chart"></i><select class="form-control select2s" id="addEditWorkflowSeq"></select></div>
                         </div>
-                        <div class="col-md-9 form-group">
+                        <div class="col-md-6 form-group">
                             <label>Position Name<span class="text-red"> *</span></label>
                             <div class="wfd-select-icon"><i class="fa fa-briefcase"></i><select class="form-control" id="addEditPositionName2"></select></div>
+                        </div>
+                        <div class="col-md-3 form-group">
+                            <label>&nbsp;</label>
+                            <label class="wfd-check" title="If nobody holds this position for the document creator, the document cannot be submitted. Unchecked steps are skipped instead.">
+                                <input type="checkbox" id="addEditMandatory" /> Mandatory
+                            </label>
                         </div>
                     </div>
                     <div class="wfd-detail-actions">
@@ -181,10 +206,11 @@
                     <table id="detailgrid" class="table" width="100%" style="min-width:auto;">
                         <thead>
                             <tr>
-                                <th width="18%" class="text-center">Level</th>
-                                <th width="62%">Position Name</th>
+                                <th width="16%" class="text-center">Level</th>
+                                <th width="46%">Position Name</th>
                                 <th class="hide">PositionId</th>
-                                <th width="20%" class="text-center">Action</th>
+                                <th width="20%" class="text-center">Mandatory</th>
+                                <th width="18%" class="text-center">Action</th>
                             </tr>
                         </thead>
                     </table>

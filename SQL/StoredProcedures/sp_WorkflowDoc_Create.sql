@@ -2,6 +2,19 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
+-- Membuat approval chain (TB_R_APPROVAL_H/D) untuk satu dokumen.
+--
+-- 2026-11-06 (request Hendra, lihat SQL/WorkflowPerCategory_Migration.sql):
+--  * @DOCUMENT_ID (opsional, parameter terakhir supaya pemanggil lama tetap
+--    jalan): kalau Document Category punya alur khusus, alur itu yang dipakai;
+--    kalau tidak, alur default per DOCUMENT_LEVEL seperti sebelumnya.
+--  * Approver dicari sesuai TB_M_POSITION.APPROVER_SCOPE, bukan lagi IF per
+--    POSITION_ID yang ditulis di sini.
+--  * Langkah IS_MANDATORY = 1 yang approvernya tidak ditemukan membatalkan
+--    pembuatan approval (sebelumnya semua langkah kosong dilewati diam-diam).
+--    Langkah tidak wajib tetap dilewati seperti dulu.
+--  * Pencarian langkah & approver ada di dbo.fn_WorkflowDoc_* - dipakai juga
+--    sp_WorkflowDoc_Preview, jadi pratinjau = hasil sebenarnya.
 CREATE OR ALTER PROCEDURE [dbo].[sp_WorkflowDoc_Create]
 	@DOCUMENT_LEVEL 	INT,
 	@LOGIN_USER 			VARCHAR(255),
@@ -9,48 +22,90 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_WorkflowDoc_Create]
 	@MENU_ID		 			VARCHAR(50),
 	@DOCUMENT_CREATOR VARCHAR(50),
 	@RETURN_MSG 			VARCHAR(MAX) OUTPUT,
-	@RETURN_ID	 			VARCHAR(MAX) OUTPUT
+	@RETURN_ID	 			VARCHAR(MAX) OUTPUT,
+	@DOCUMENT_ID			INT = NULL
 AS
 BEGIN TRY
 	SET NOCOUNT ON;
 	SET @RETURN_ID = 0;
 
 	DECLARE @CREATOR_LEVEL INT,
-					@CREATOR_POSITION_ID INT,
 					@POSITION_NAME VARCHAR(255),
-					@DIVISION VARCHAR(50),
-					@DEPARTMENT_ID INT,
-					@SECTION_ID INT,
-					@WORKFLOW_DOC_ID INT;
+					@WORKFLOW_DOC_ID INT,
+					@IS_CATEGORY_WORKFLOW BIT;
 
-	-- Get Creator Level
-	SELECT TOP 1
-		@CREATOR_LEVEL = A.POSITION_LEVEL,
-		@CREATOR_POSITION_ID = A.POSITION_ID,
-		@POSITION_NAME = A.POSITION_NAME,
-		@DIVISION = B.DIVISION,
-		@DEPARTMENT_ID = B.DEPARTMENT_ID,
-		@SECTION_ID = B.SECTION_ID
-	FROM TB_M_POSITION A
-	JOIN TB_M_USER_POS B ON B.POSITION_ID = A.POSITION_ID
-	WHERE B.USERNAME = @DOCUMENT_CREATOR
+	SELECT @CREATOR_LEVEL = POSITION_LEVEL, @POSITION_NAME = POSITION_NAME
+	FROM dbo.fn_WorkflowDoc_Creator(@DOCUMENT_CREATOR);
 
 	IF @CREATOR_LEVEL IS NULL
 	BEGIN
-		SET @RETURN_MSG = 'ERROR: User Position for ' + @DOCUMENT_CREATOR + ' not found.'
+		SET @RETURN_MSG = 'ERROR: User Position for ' + ISNULL(@DOCUMENT_CREATOR, '(empty)') + ' not found.'
 		RETURN 0;
 	END
 
-	-- Get Workflow Doc
-	SELECT @WORKFLOW_DOC_ID = WORKFLOW_DOC_ID FROM TB_M_WORKFLOW_DOC_H
-	WHERE DOCUMENT_LEVEL = @DOCUMENT_LEVEL AND CREATOR_LEVEL = @CREATOR_LEVEL
+	SELECT @WORKFLOW_DOC_ID = WORKFLOW_DOC_ID, @IS_CATEGORY_WORKFLOW = IS_CATEGORY_WORKFLOW
+	FROM dbo.fn_WorkflowDoc_FindHeader(@DOCUMENT_LEVEL, @DOCUMENT_ID, @CREATOR_LEVEL);
 
 	IF @WORKFLOW_DOC_ID IS NULL
 	BEGIN
 		SET @RETURN_MSG = 'ERROR: Workflow for Document level ' + CAST(@DOCUMENT_LEVEL AS VARCHAR) + ' and creator level ' + @POSITION_NAME + ' not found.'
 		RETURN 0;
 	END
+
+	-- Langkah alur + approver hasil pencarian. ACTUAL_SEQ = nomor urut yang
+	-- benar-benar dipakai di TB_R_APPROVAL_D: rapat 1,2,3,... hanya untuk
+	-- langkah yang approvernya ada (langkah tidak wajib yang kosong dilewati,
+	-- request Hendra 2026-08-18) - kode lain (mis. pemetaan kotak tanda tangan
+	-- STEPn di GeneratePengesahanPdf) berasumsi urutan rapat.
+	DECLARE @STEPS TABLE (
+		WORKFLOW_SEQ INT,
+		POSITION_ID INT,
+		POSITION_NAME VARCHAR(255),
+		LABEL VARCHAR(255),
+		IS_MANDATORY BIT,
+		APPROVER VARCHAR(50),
+		ACTUAL_SEQ INT NULL
+	);
+
+	INSERT INTO @STEPS (WORKFLOW_SEQ, POSITION_ID, POSITION_NAME, LABEL, IS_MANDATORY, APPROVER)
+	SELECT WORKFLOW_SEQ, POSITION_ID, POSITION_NAME, LABEL, IS_MANDATORY, APPROVER
+	FROM dbo.fn_WorkflowDoc_Steps(@WORKFLOW_DOC_ID, @DOCUMENT_CREATOR);
+
+	-- Langkah wajib tanpa approver: batalkan SEBELUM apa pun ditulis
+	DECLARE @MISSING VARCHAR(MAX);
+	SELECT @MISSING = STUFF((
+		SELECT ', ' + ISNULL(POSITION_NAME, 'Position ' + CAST(POSITION_ID AS VARCHAR))
+		FROM @STEPS
+		WHERE IS_MANDATORY = 1 AND APPROVER IS NULL
+		ORDER BY WORKFLOW_SEQ
+		FOR XML PATH(''), TYPE).value('.', 'VARCHAR(MAX)'), 1, 2, '');
+
+	IF @MISSING IS NOT NULL
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Mandatory approver not found: ' + @MISSING
+			+ '. No user holds this position for creator ' + @DOCUMENT_CREATOR
+			+ ' - complete the User Position data first.';
+		RETURN 0;
+	END
+
+	-- Jaring pengaman: kalau SEMUA posisi di chain ternyata kosong (org belum
+	-- lengkap sama sekali), jangan buat approval header tanpa satupun approver -
+	-- dokumen akan macet permanen di "Waiting Approval".
+	IF NOT EXISTS (SELECT 1 FROM @STEPS WHERE APPROVER IS NOT NULL)
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: No approver found for any step in this workflow (Document level ' + CAST(@DOCUMENT_LEVEL AS VARCHAR) + ', creator level ' + @POSITION_NAME + ') - all positions in the chain are unfilled.';
+		RETURN 0;
+	END
+
+	;WITH N AS (
+		SELECT ACTUAL_SEQ, ROW_NUMBER() OVER (ORDER BY WORKFLOW_SEQ) AS RN
+		FROM @STEPS WHERE APPROVER IS NOT NULL
+	)
+	UPDATE N SET ACTUAL_SEQ = RN;
+
 	-- Insert Approval Header
+	DECLARE @APPROVAL_ID INT;
+
 	INSERT INTO [dbo].[TB_R_APPROVAL_H] (
 		[APPROVAL_DATE],
 		[APPROVAL_STATUS],
@@ -70,200 +125,62 @@ BEGIN TRY
 		GETDATE()
 	)
 
-	-- Insert Approval Detail
-	IF @@ROWCOUNT > 0
+	IF @@ROWCOUNT = 0
 	BEGIN
-		DECLARE @APPROVAL_ID INT,
-						@DETAIL_CURSOR CURSOR,
-						@WORKFLOW_SEQ INT,
-						@POSITION_ID INT,
-						@LABEL VARCHAR(255),
-						@APPROVER VARCHAR(50),
-						@STATUS INT,
-						@UPDATE_FLAG INT = 0,
-						-- Nomor urut SESUNGGUHNYA yang dipakai di TB_R_APPROVAL_D, terpisah
-						-- dari @WORKFLOW_SEQ master (TB_M_WORKFLOW_DOC_D) - cuma naik untuk
-						-- langkah yang BENAR-BENAR di-insert (lihat blok skip-jika-kosong di
-						-- bawah). Supaya WORKFLOW_SEQ hasil insert selalu rapat 1,2,3,... tanpa
-						-- lubang, walau ada langkah yang dilewati - kode lain yang berasumsi
-						-- nomor urut berurutan (mis. pemetaan kotak tanda tangan approver di
-						-- GeneratePengesahanPdf) tetap benar tanpa perlu tahu ada langkah yang
-						-- dilewati (request Hendra 2026-08-18, generalisasi skip-logic).
-						@ACTUAL_SEQ INT = 0;
-
-		SET @APPROVAL_ID = SCOPE_IDENTITY();
-
-		SET @DETAIL_CURSOR = CURSOR FOR
-		SELECT WORKFLOW_SEQ, POSITION_ID, LABEL FROM TB_M_WORKFLOW_DOC_D
-		WHERE WORKFLOW_DOC_ID = @WORKFLOW_DOC_ID
-		ORDER BY WORKFLOW_SEQ ASC
-
-		OPEN @DETAIL_CURSOR
-		FETCH NEXT FROM @DETAIL_CURSOR INTO @WORKFLOW_SEQ, @POSITION_ID, @LABEL
-
-		WHILE @@FETCH_STATUS = 0
-		BEGIN
-
-			-- Reset supaya nilai approver iterasi sebelumnya tidak terbawa
-			-- (SELECT @var = ... yang tidak menemukan baris TIDAK mengubah variabel)
-			SET @APPROVER = NULL;
-
-			-- Get Approver by position
-
-			IF @POSITION_ID = 1 OR @POSITION_ID = 2 -- Staff, Section Head
-			BEGIN
-				IF @POSITION_ID = @CREATOR_POSITION_ID
-				BEGIN
-					SET @APPROVER = @DOCUMENT_CREATOR
-				END
-				ELSE
-				BEGIN
-					SELECT TOP 1 @APPROVER = USERNAME
-					FROM TB_M_USER_POS
-					WHERE POSITION_ID = @POSITION_ID
-					AND DIVISION = @DIVISION
-					AND DEPARTMENT_ID = @DEPARTMENT_ID
-					AND SECTION_ID = @SECTION_ID
-				END
-			END
-			ELSE IF @POSITION_ID = 3 -- Department Head
-			BEGIN
-				IF @POSITION_ID = @CREATOR_POSITION_ID
-				BEGIN
-					SET @APPROVER = @DOCUMENT_CREATOR
-				END
-				ELSE
-				BEGIN
-					SELECT TOP 1 @APPROVER = USERNAME
-					FROM TB_M_USER_POS
-					WHERE POSITION_ID = @POSITION_ID
-					AND DIVISION = @DIVISION
-					AND DEPARTMENT_ID = @DEPARTMENT_ID
-				END
-			END
-			ELSE IF @POSITION_ID = 4 OR @POSITION_ID = 5 -- Div Head, EO
-			BEGIN
-				IF @POSITION_ID = @CREATOR_POSITION_ID
-				BEGIN
-					SET @APPROVER = @DOCUMENT_CREATOR
-				END
-				ELSE
-				BEGIN
-					SELECT TOP 1 @APPROVER = USERNAME
-					FROM TB_M_USER_POS
-					WHERE POSITION_ID = @POSITION_ID
-					AND DIVISION = @DIVISION
-				END
-			END
-			ELSE -- Dir, Presdir
-			BEGIN
-				SELECT TOP 1 @APPROVER = USERNAME
-				FROM TB_M_USER_POS
-				WHERE POSITION_ID = @POSITION_ID
-			END
-
-			IF @APPROVER IS NULL
-			BEGIN
-				-- Posisi kosong di division/department/section terkait: lewati
-				-- langkah ini, workflow lanjut ke approver berikutnya - berlaku untuk
-				-- SEMUA posisi (dulu cuma Section Head/POSITION_ID=2 yang di-skip,
-				-- posisi lain malah error kalau usernya tidak ketemu; digeneralisasi
-				-- request Hendra 2026-08-18 supaya org yang belum lengkap posisinya
-				-- - mis. department tanpa Dept Head - tidak memblokir seluruh
-				-- pembuatan dokumen).
-				FETCH NEXT FROM @DETAIL_CURSOR INTO @WORKFLOW_SEQ, @POSITION_ID, @LABEL
-				CONTINUE
-			END
-
-			DECLARE @CHANGED_BY VARCHAR(255), @CHANGED_DT DATETIME = NULL;
-
-			SET @ACTUAL_SEQ = @ACTUAL_SEQ + 1;
-
-			-- Check if Creator = Level 1 then auto approve - pakai @ACTUAL_SEQ (posisi
-			-- SESUNGGUHNYA setelah langkah yang di-skip dirapatkan), bukan @WORKFLOW_SEQ
-			-- master, supaya tetap benar walau langkah pertama di master (mis. Section
-			-- Head) ternyata yang dilewati.
-			IF @ACTUAL_SEQ = 1 AND @DOCUMENT_CREATOR = @APPROVER
-			BEGIN
-				SET @STATUS = 1;
-				SET @UPDATE_FLAG = 1;
-				SET @CHANGED_BY = @DOCUMENT_CREATOR;
-				SET @CHANGED_DT = GETDATE();
-			END
-			ELSE BEGIN
-				SET @STATUS = 0;
-				SET @REMARK = NULL;
-			END
-
-			INSERT INTO [dbo].[TB_R_APPROVAL_D] (
-				[APPROVAL_ID],
-				[WORKFLOW_SEQ],
-				[APPROVER],
-				[STATUS],
-				[REMARK],
-				[LABEL],
-				[CREATED_BY],
-				[CREATED_DT],
-				[CHANGED_BY],
-				[CHANGED_DT]
-			)
-			VALUES (
-				@APPROVAL_ID,
-				@ACTUAL_SEQ,
-				@APPROVER,
-				@STATUS,
-				@REMARK,
-				@LABEL,
-				@LOGIN_USER,
-				GETDATE(),
-				@CHANGED_BY,
-				@CHANGED_DT
-			)
-
-			FETCH NEXT FROM @DETAIL_CURSOR INTO @WORKFLOW_SEQ, @POSITION_ID, @LABEL
-		END
-
-		CLOSE @DETAIL_CURSOR
-		DEALLOCATE @DETAIL_CURSOR
-
-		-- Jaring pengaman: kalau SEMUA posisi di chain ternyata kosong (org belum
-		-- lengkap sama sekali), jangan buat approval header tanpa satupun approver -
-		-- dokumen akan macet permanen di "Waiting Approval" tanpa ada yang bisa
-		-- memprosesnya.
-		IF @ACTUAL_SEQ = 0
-		BEGIN
-			SET @RETURN_MSG = 'ERROR: No approver found for any step in this workflow (Document level ' + CAST(@DOCUMENT_LEVEL AS VARCHAR) + ', creator level ' + @POSITION_NAME + ') - all positions in the chain are unfilled.';
-			RETURN 0;
-		END
-
-		-- Update Approval Header
-		IF @UPDATE_FLAG = 1
-		BEGIN
-			-- Lanjut ke seq pending berikutnya yang benar-benar ada
-			-- (bisa melompat kalau ada langkah yang dilewati)
-			DECLARE @NEXT_SEQ INT;
-			SELECT @NEXT_SEQ = MIN(WORKFLOW_SEQ)
-			FROM [dbo].[TB_R_APPROVAL_D]
-			WHERE APPROVAL_ID = @APPROVAL_ID AND [STATUS] = 0;
-
-			UPDATE [dbo].[TB_R_APPROVAL_H]
-			SET [CURRENT_SEQ] = ISNULL(@NEXT_SEQ, [CURRENT_SEQ] + 1),
-					[CHANGED_BY] = @LOGIN_USER,
-					[CHANGED_DT] = GETDATE()
-			WHERE APPROVAL_ID = @APPROVAL_ID
-		END
-
-		SET @RETURN_ID = @APPROVAL_ID;
-		SET @RETURN_MSG = 'Successfully Create Workflow for Document level ' + CAST(@DOCUMENT_LEVEL AS VARCHAR) + ' and creator level ' + @POSITION_NAME
-		RETURN 1;
-
-	END
-	ELSE BEGIN
-
 		SET @RETURN_MSG = 'ERROR: Create Workflow for Document level ' + CAST(@DOCUMENT_LEVEL AS VARCHAR) + ' and creator level ' + @POSITION_NAME
 		RETURN 0;
-
 	END
+
+	SET @APPROVAL_ID = SCOPE_IDENTITY();
+
+	-- Insert Approval Detail. Langkah pertama yang approvernya = pembuat
+	-- langsung dianggap approve (auto-approve pembuat), membawa @REMARK.
+	INSERT INTO [dbo].[TB_R_APPROVAL_D] (
+		[APPROVAL_ID],
+		[WORKFLOW_SEQ],
+		[APPROVER],
+		[STATUS],
+		[REMARK],
+		[LABEL],
+		[CREATED_BY],
+		[CREATED_DT],
+		[CHANGED_BY],
+		[CHANGED_DT]
+	)
+	SELECT
+		@APPROVAL_ID,
+		S.ACTUAL_SEQ,
+		S.APPROVER,
+		CASE WHEN S.ACTUAL_SEQ = 1 AND S.APPROVER = @DOCUMENT_CREATOR THEN 1 ELSE 0 END,
+		CASE WHEN S.ACTUAL_SEQ = 1 AND S.APPROVER = @DOCUMENT_CREATOR THEN @REMARK ELSE NULL END,
+		S.LABEL,
+		@LOGIN_USER,
+		GETDATE(),
+		CASE WHEN S.ACTUAL_SEQ = 1 AND S.APPROVER = @DOCUMENT_CREATOR THEN @DOCUMENT_CREATOR ELSE NULL END,
+		CASE WHEN S.ACTUAL_SEQ = 1 AND S.APPROVER = @DOCUMENT_CREATOR THEN GETDATE() ELSE NULL END
+	FROM @STEPS S
+	WHERE S.ACTUAL_SEQ IS NOT NULL
+	ORDER BY S.ACTUAL_SEQ;
+
+	-- Update Approval Header: lanjut ke seq pending berikutnya
+	IF EXISTS (SELECT 1 FROM @STEPS WHERE ACTUAL_SEQ = 1 AND APPROVER = @DOCUMENT_CREATOR)
+	BEGIN
+		DECLARE @NEXT_SEQ INT;
+		SELECT @NEXT_SEQ = MIN(WORKFLOW_SEQ)
+		FROM [dbo].[TB_R_APPROVAL_D]
+		WHERE APPROVAL_ID = @APPROVAL_ID AND [STATUS] = 0;
+
+		UPDATE [dbo].[TB_R_APPROVAL_H]
+		SET [CURRENT_SEQ] = ISNULL(@NEXT_SEQ, [CURRENT_SEQ] + 1),
+				[CHANGED_BY] = @LOGIN_USER,
+				[CHANGED_DT] = GETDATE()
+		WHERE APPROVAL_ID = @APPROVAL_ID
+	END
+
+	SET @RETURN_ID = @APPROVAL_ID;
+	SET @RETURN_MSG = 'Successfully Create Workflow for Document level ' + CAST(@DOCUMENT_LEVEL AS VARCHAR) + ' and creator level ' + @POSITION_NAME
+		+ CASE WHEN @IS_CATEGORY_WORKFLOW = 1 THEN ' (category workflow)' ELSE '' END;
+	RETURN 1;
 
 END TRY
 BEGIN CATCH

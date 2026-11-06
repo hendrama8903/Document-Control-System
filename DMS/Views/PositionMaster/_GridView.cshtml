@@ -173,6 +173,10 @@
                 { dataField: "POSITION_NAME", caption: "Position Name", fixed: true, fixedPosition: "left" },
                 { dataField: "POSITION_LEVEL", caption: "Position Level", alignment: "center", width: 120 },
                 {
+                    dataField: "APPROVER_SCOPE", caption: "Approver Scope", alignment: "center", width: 140,
+                    calculateCellValue: function (r) { var s = r.APPROVER_SCOPE || ""; return s ? s.charAt(0) + s.slice(1).toLowerCase() : ""; }
+                },
+                {
                     dataField: "DELETE_FLAG",
                     caption: "Status",
                     alignment: "center",

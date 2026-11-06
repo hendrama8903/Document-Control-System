@@ -2,74 +2,81 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
+-- 2026-11-06 (workflow per Document Category, request Hendra):
+--  * DOCUMENT_ID / DOCUMENT_CODE: kosong = alur default level, terisi = alur
+--    khusus kategori itu.
+--  * CREATOR_NAME = semua jabatan dengan POSITION_LEVEL = CREATOR_LEVEL
+--    (dulu di-join ke POSITION_ID, salah untuk jabatan yang ID-nya beda dari
+--    levelnya, mis. Supervisor ID 9 level 2).
+--  * Approver chain menandai langkah wajib dengan "*".
+--  * NOTES: peringatan kombinasi - alur kategori yang tidak mencakup level
+--    pembuat yang ada di alur default levelnya (pembuat level itu diam-diam
+--    memakai alur default).
 CREATE OR ALTER PROCEDURE [dbo].[sp_Workflow_DocSearch]
 	@CREATOR_LEVEL  	int,
 	@DOCUMENT_LEVEL  	int,
 	@PageNumber 			int,
 	@PageSize 				int
 AS
-BEGIN  
+BEGIN
+	SET NOCOUNT ON;
 
-	DECLARE @QUERY VARCHAR(MAX)
-	
-	SET @QUERY = 'WITH data AS 
-								(
-									SELECT 
-								    ROW_NUMBER() OVER (ORDER BY W.DOCUMENT_LEVEL ASC) as RowNumber,  
-										W.WORKFLOW_DOC_ID,
-										W.DOCUMENT_LEVEL,
-										W.CREATOR_LEVEL,
-										PH.POSITION_NAME AS CREATOR_NAME,
-										CAST((SELECT MAX(WORKFLOW_SEQ) FROM TB_M_WORKFLOW_DOC_D WHERE WORKFLOW_DOC_ID = W.WORKFLOW_DOC_ID) AS INT) AS WORKFLOW_SEQ,
-										(SELECT CAST(STUFF(
-														(
-																SELECT '', '' + CONVERT(NVARCHAR(50), POSITION_ID)
-																FROM TB_M_WORKFLOW_DOC_D
-																WHERE WORKFLOW_DOC_ID = W.WORKFLOW_DOC_ID
-																FOR XML PATH(''''), TYPE
-														).value(''.[1]'', ''nvarchar(max)''), 1, 2, ''''
-												) AS VARCHAR(max)
-										)) AS POSITION_ID_ARR,
-										
-										(SELECT CAST(STUFF(
-														(
-																SELECT '', '' + CONVERT(NVARCHAR(50), P.POSITION_NAME)
-																FROM TB_M_WORKFLOW_DOC_D DD
-																LEFT JOIN [dbo].[TB_M_POSITION] P ON P.POSITION_ID = DD.POSITION_ID
-																WHERE DD.WORKFLOW_DOC_ID = W.WORKFLOW_DOC_ID
-																FOR XML PATH(''''), TYPE
-														).value(''.[1]'', ''nvarchar(max)''), 1, 2, ''''
-												) AS VARCHAR(max)
-										)) AS POSITION_NAME,
-										W.CREATED_DT,
-										W.CREATED_BY,
-										W.CHANGED_DT,
-										W.CHANGED_BY
-									FROM [dbo].[TB_M_WORKFLOW_DOC_H] W
-									LEFT JOIN [dbo].[TB_M_POSITION] PH ON PH.POSITION_ID = W.CREATOR_LEVEL
-									WHERE 1 = 1 '
-									
-	IF @CREATOR_LEVEL IS NOT NULL
-	BEGIN
-		SET @QUERY += ' AND W.CREATOR_LEVEL LIKE ''' + REPLACE(@CREATOR_LEVEL , '*', '%') + ''' '
-	END
-	
-	IF @DOCUMENT_LEVEL IS NOT NULL
-	BEGIN
-		SET @QUERY += ' AND W.DOCUMENT_LEVEL LIKE ''' + REPLACE(@DOCUMENT_LEVEL , '*', '%') + ''' '
-	END
-	
-	SET @QUERY += '									
-								)
-								SELECT * FROM data
-								WHERE 1 = 1'
-	
-	IF (@PageSize IS NOT NULL AND @PageNumber IS NOT NULL)
-	BEGIN
-		SET @QUERY += ' AND RowNumber > '+ CAST((@PageSize * (@PageNumber - 1)) AS VARCHAR) +' AND RowNumber <= ' +CAST(@PageSize + (@PageSize * (@PageNumber - 1)) AS VARCHAR);
-	END
-	
-	EXEC(@QUERY)
-	
+	;WITH data AS (
+		SELECT
+			ROW_NUMBER() OVER (ORDER BY W.DOCUMENT_LEVEL ASC, CASE WHEN W.DOCUMENT_ID IS NULL THEN 0 ELSE 1 END, M.DOCUMENT_CODE, W.CREATOR_LEVEL) AS RowNumber,
+			W.WORKFLOW_DOC_ID,
+			W.DOCUMENT_LEVEL,
+			W.CREATOR_LEVEL,
+			W.DOCUMENT_ID,
+			M.DOCUMENT_CODE,
+			CAST(ISNULL(STUFF((
+				SELECT ', ' + P.POSITION_NAME
+				FROM dbo.TB_M_POSITION P
+				WHERE P.POSITION_LEVEL = W.CREATOR_LEVEL AND ISNULL(P.DELETE_FLAG, 0) = 0
+				ORDER BY P.POSITION_ID
+				FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, ''), 'Level ' + CAST(W.CREATOR_LEVEL AS VARCHAR)) AS VARCHAR(MAX)) AS CREATOR_NAME,
+			CAST((SELECT MAX(WORKFLOW_SEQ) FROM dbo.TB_M_WORKFLOW_DOC_D WHERE WORKFLOW_DOC_ID = W.WORKFLOW_DOC_ID) AS INT) AS WORKFLOW_SEQ,
+			CAST(STUFF((
+				SELECT ', ' + CONVERT(NVARCHAR(50), DD.POSITION_ID)
+				FROM dbo.TB_M_WORKFLOW_DOC_D DD
+				WHERE DD.WORKFLOW_DOC_ID = W.WORKFLOW_DOC_ID
+				ORDER BY DD.WORKFLOW_SEQ
+				FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS VARCHAR(MAX)) AS POSITION_ID_ARR,
+			CAST(STUFF((
+				SELECT ', ' + ISNULL(P.POSITION_NAME, '?') + CASE WHEN DD.IS_MANDATORY = 1 THEN ' *' ELSE '' END
+				FROM dbo.TB_M_WORKFLOW_DOC_D DD
+				LEFT JOIN dbo.TB_M_POSITION P ON P.POSITION_ID = DD.POSITION_ID
+				WHERE DD.WORKFLOW_DOC_ID = W.WORKFLOW_DOC_ID
+				ORDER BY DD.WORKFLOW_SEQ
+				FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS VARCHAR(MAX)) AS POSITION_NAME,
+			CAST(CASE
+				WHEN W.DOCUMENT_ID IS NOT NULL THEN
+					CASE WHEN EXISTS (
+						SELECT 1 FROM dbo.TB_M_WORKFLOW_DOC_H D
+						WHERE D.DOCUMENT_ID IS NULL AND D.DOCUMENT_LEVEL = W.DOCUMENT_LEVEL
+						AND NOT EXISTS (SELECT 1 FROM dbo.TB_M_WORKFLOW_DOC_H C WHERE C.DOCUMENT_ID = W.DOCUMENT_ID AND C.CREATOR_LEVEL = D.CREATOR_LEVEL))
+					THEN 'Creator level ' + STUFF((
+						SELECT ', ' + CAST(D.CREATOR_LEVEL AS VARCHAR)
+						FROM dbo.TB_M_WORKFLOW_DOC_H D
+						WHERE D.DOCUMENT_ID IS NULL AND D.DOCUMENT_LEVEL = W.DOCUMENT_LEVEL
+						AND NOT EXISTS (SELECT 1 FROM dbo.TB_M_WORKFLOW_DOC_H C WHERE C.DOCUMENT_ID = W.DOCUMENT_ID AND C.CREATOR_LEVEL = D.CREATOR_LEVEL)
+						ORDER BY D.CREATOR_LEVEL
+						FOR XML PATH(''), TYPE).value('.', 'VARCHAR(MAX)'), 1, 2, '')
+						+ ' not set for ' + ISNULL(M.DOCUMENT_CODE, '?') + ' - those creators use the default level workflow'
+					END
+			END AS VARCHAR(MAX)) AS NOTES,
+			W.CREATED_DT,
+			W.CREATED_BY,
+			W.CHANGED_DT,
+			W.CHANGED_BY
+		FROM dbo.TB_M_WORKFLOW_DOC_H W
+		LEFT JOIN dbo.TB_M_DOCUMENT M ON M.DOCUMENT_ID = W.DOCUMENT_ID
+		WHERE (@CREATOR_LEVEL IS NULL OR W.CREATOR_LEVEL = @CREATOR_LEVEL)
+		AND (@DOCUMENT_LEVEL IS NULL OR W.DOCUMENT_LEVEL = @DOCUMENT_LEVEL)
+	)
+	SELECT * FROM data
+	WHERE (@PageSize IS NULL OR @PageNumber IS NULL)
+	   OR (RowNumber > @PageSize * (@PageNumber - 1) AND RowNumber <= @PageSize * @PageNumber)
+	ORDER BY RowNumber;
 END
 GO

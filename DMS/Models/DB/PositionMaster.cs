@@ -11,6 +11,9 @@ namespace DMS.Models.DB
         public int? POSITION_ID { get; set; }
         public string? POSITION_NAME { get; set; }
         public int? POSITION_LEVEL { get; set; }
+        // Lingkup pencarian approver dengan jabatan ini, relatif terhadap pembuat
+        // dokumen: SECTION / DEPARTMENT / DIVISION / COMPANY (2026-11-06)
+        public string? APPROVER_SCOPE { get; set; }
         public int? DELETE_FLAG { get; set; }
         public string? CREATED_BY { get; set; }
         public DateTime? CREATED_DT { get; set; }

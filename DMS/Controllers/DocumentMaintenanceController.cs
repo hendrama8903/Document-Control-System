@@ -702,6 +702,28 @@ namespace DMS.Controllers
             }
         }
 
+        /// <summary>
+        /// Pratinjau approval chain di form Document Preparation sebelum disimpan:
+        /// alur yang berlaku (khusus kategori / default level) dan siapa approvernya,
+        /// dihitung dengan fungsi yang sama dengan sp_WorkflowDoc_Create (2026-11-06).
+        /// </summary>
+        public JsonResult GetApprovalPreview(int? levelCode, int? documentId, string creator)
+        {
+            try
+            {
+                if (levelCode == null || string.IsNullOrWhiteSpace(creator))
+                {
+                    return Json(new { status = true, ready = false });
+                }
+                List<WorkflowPreviewStep> steps = WorkflowDocRepo.Instance.Preview(levelCode, documentId, creator, db);
+                return Json(new { status = true, ready = true, steps });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
         public JsonResult GetLevelByDocumentCode(DocumentMaster data)
         {
             try

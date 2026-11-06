@@ -13,6 +13,7 @@ BEGIN
 										P.POSITION_ID,
 										P.POSITION_NAME,
 										P.POSITION_LEVEL,
+										P.APPROVER_SCOPE,
 										P.DELETE_FLAG,
 										P.CREATED_DT,
 										P.CREATED_BY,

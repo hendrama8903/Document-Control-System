@@ -216,6 +216,9 @@
         var data = new FormData();
         if (gScreenMode === 'EDIT' && gDocumentId != null) data.append("documentId", gDocumentId);
         if (file) data.append("file0", file); else data.append("code", code);
+        // Level dipakai untuk mencocokkan kotak POS/STEP dengan alur approval (2026-11-06)
+        var level = $('#addEditLevel').val();
+        if (level && level != "null") data.append("level", level);
 
         $('#dmfTemplateCheck').removeClass("ok warn err")
             .html('<span class="dmf-check-muted"><i class="fa fa-spinner fa-spin"></i> Checking signing markers...</span>')
@@ -296,6 +299,15 @@
 
         showUploadBoxFile(file.name, "(" + Math.ceil(file.size / 1024) + " KB) - will be uploaded on Save");
         runTemplateCheck(file, null);
+    });
+
+    // Level berubah setelah template dipilih: cek ulang supaya peringatan kotak
+    // vs alur approval memakai level yang benar (2026-11-06).
+    $(document).on('change', '#addEditLevel', function () {
+        if (!$('#dmfTemplateCheck').is(":visible")) return;
+        var files = $('#attachmentPath')[0].files;
+        if (files && files.length > 0) runTemplateCheck(files[0], null);
+        else if (gScreenMode === 'EDIT') runTemplateCheck(null, $('#addEditDocumentCode').val());
     });
 
     function addEditData() {

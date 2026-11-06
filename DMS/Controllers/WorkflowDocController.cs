@@ -79,14 +79,23 @@ namespace DMS.Controllers
             }
         }
 
-        public JsonResult GetByCode(WorkflowDoc data, PositionMaster data2 )
+        public JsonResult GetByCode(WorkflowDoc data)
         {
             try
             {
                 IList<WorkflowDoc> result = workflowDocRepo.GetByCode(data, db);
-                //get position name 
-                PositionMaster result2    = positionMasterRepo.GetByKey(data2, db);
-                return Json(new { status = true, data = result, data2 = result2 });
+                WorkflowDoc first = result.FirstOrDefault();
+                // CREATOR_LEVEL = POSITION_LEVEL pembuat (bukan POSITION_ID) - teksnya
+                // dibentuk dari semua jabatan di level itu, sama seperti dropdown.
+                string creatorText = first?.CREATOR_LEVEL == null ? null : CreatorLevelText(first.CREATOR_LEVEL.Value);
+                string categoryText = null;
+                if (first?.DOCUMENT_ID != null)
+                {
+                    DocumentMaster category = DocumentMasterRepo.Instance.Search(new DocumentMaster { DOCUMENT_ID = first.DOCUMENT_ID }, db, null, null)
+                        .FirstOrDefault(m => m.DOCUMENT_ID == first.DOCUMENT_ID);
+                    categoryText = category == null ? "#" + first.DOCUMENT_ID : category.DOCUMENT_CODE + " - " + category.DOCUMENT_NAME;
+                }
+                return Json(new { status = true, data = result, creatorText, categoryText });
             }
             catch (Exception ex)
             {
@@ -97,37 +106,114 @@ namespace DMS.Controllers
         [HttpPost]
         public ActionResult AddEdit([FromBody] List<WorkflowDoc> data)
         {
-            DBResult result = null;
-            DBResult resultHeader = null;
+            if (data == null || data.Count == 0)
+            {
+                return Json(new { status = false, message = "Detail Workflow cannot be empty" });
+            }
+
+            // Hapus alur lama + simpan ulang dalam SATU transaksi: dulu kalau simpan
+            // header/detail gagal (mis. kombinasi dobel), alur lama sudah terlanjur
+            // terhapus.
+            using var transaction = db.Database.BeginTransaction();
             try
             {
-                if (data != null && data.Count > 0)
+                WorkflowDoc temp = new WorkflowDoc();
+                temp.WORKFLOW_DOC_ID = data[0].WORKFLOW_DOC_ID;
+
+                if (temp.WORKFLOW_DOC_ID != null)
                 {
-                    WorkflowDoc temp     = new WorkflowDoc();
-                    temp.WORKFLOW_DOC_ID = data[0].WORKFLOW_DOC_ID;
-
-                    if (workflowDocRepo.GetByName(temp, db).Count > 0)
+                    DBResult deleted = workflowDocRepo.Delete(temp, GetLoginUsername(), db);
+                    if (!deleted.status)
                     {
-                        result = workflowDocRepo.Delete(temp, GetLoginUsername(), db);
-                    }
-
-                    temp.DOCUMENT_LEVEL = data[0].DOCUMENT_LEVEL;
-                    temp.CREATOR_LEVEL = data[0].CREATOR_LEVEL;
-                    resultHeader = workflowDocRepo.InsertHeader(temp, GetLoginUsername(), db);
-                    if (resultHeader.status)
-                    {
-                        foreach (var workflow in data)
-                        {
-                            workflow.WORKFLOW_DOC_ID = resultHeader.returnId;
-                            result = workflowDocRepo.InsertDetail(workflow, GetLoginUsername(), db);
-                        }
-                    }
-                    else
-                    {
-                        return Json(resultHeader);
+                        transaction.Rollback();
+                        return Json(deleted);
                     }
                 }
+
+                temp.DOCUMENT_LEVEL = data[0].DOCUMENT_LEVEL;
+                temp.CREATOR_LEVEL  = data[0].CREATOR_LEVEL;
+                temp.DOCUMENT_ID    = data[0].DOCUMENT_ID;
+                DBResult resultHeader = workflowDocRepo.InsertHeader(temp, GetLoginUsername(), db);
+                if (!resultHeader.status)
+                {
+                    transaction.Rollback();
+                    return Json(resultHeader);
+                }
+
+                DBResult result = resultHeader;
+                foreach (var workflow in data.OrderBy(w => w.WORKFLOW_SEQ))
+                {
+                    workflow.WORKFLOW_DOC_ID = resultHeader.returnId;
+                    result = workflowDocRepo.InsertDetail(workflow, GetLoginUsername(), db);
+                    if (!result.status)
+                    {
+                        transaction.Rollback();
+                        return Json(result);
+                    }
+                }
+
+                transaction.Commit();
                 return Json(result);
+            }
+            catch (Exception ex)
+            {
+                transaction.Rollback();
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        /// <summary>Dropdown "Creator Level": satu pilihan per POSITION_LEVEL, berisi semua jabatan di level itu.</summary>
+        public JsonResult GetCreatorLevels(string q, string pageLimit, string page)
+        {
+            try
+            {
+                var list = positionMasterRepo.Search(new PositionMaster(), db, null, null)
+                    .Where(p => p.POSITION_LEVEL != null)
+                    .GroupBy(p => p.POSITION_LEVEL.Value)
+                    .OrderBy(g => g.Key)
+                    .Select(g => new Select2 { id = g.Key.ToString(), text = "Level " + g.Key + " - " + string.Join(", ", g.Select(p => p.POSITION_NAME)) })
+                    .Where(s => string.IsNullOrWhiteSpace(q) || s.text.Contains(q, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                return Json(new { status = true, items = Page(list, pageLimit, page) });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        // Paging untuk select2 (site.js meminta halaman berikutnya selama hasil >= pageLimit)
+        static List<Select2> Page(List<Select2> list, string pageLimit, string page)
+        {
+            int size = int.TryParse(pageLimit, out int l) && l > 0 ? l : 10;
+            int number = int.TryParse(page, out int p) && p > 0 ? p : 1;
+            return list.Skip((number - 1) * size).Take(size).ToList();
+        }
+
+        string CreatorLevelText(int level)
+        {
+            var names = positionMasterRepo.Search(new PositionMaster(), db, null, null)
+                .Where(p => p.POSITION_LEVEL == level)
+                .Select(p => p.POSITION_NAME);
+            return "Level " + level + " - " + string.Join(", ", names);
+        }
+
+        /// <summary>Dropdown "Document Category" (opsional) - kategori di Document Level terpilih.</summary>
+        public JsonResult GetDocumentCategories(string q, string param, string pageLimit, string page)
+        {
+            try
+            {
+                if (!int.TryParse(param, out int level))
+                {
+                    return Json(new { status = true, items = new List<Select2>() });
+                }
+                var list = DocumentMasterRepo.Instance.Search(new DocumentMaster { LEVEL = level }, db, null, null)
+                    .Where(m => m.LEVEL == level)
+                    .OrderBy(m => m.DOCUMENT_CODE)
+                    .Select(m => new Select2 { id = m.DOCUMENT_ID.ToString(), text = m.DOCUMENT_CODE + " - " + m.DOCUMENT_NAME })
+                    .Where(s => string.IsNullOrWhiteSpace(q) || s.text.Contains(q, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                return Json(new { status = true, items = Page(list, pageLimit, page) });
             }
             catch (Exception ex)
             {

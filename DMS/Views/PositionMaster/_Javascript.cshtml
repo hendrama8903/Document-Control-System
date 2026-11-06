@@ -57,6 +57,7 @@
         $('#addEditId').val("");
         $('#addEditPositionNm').val("");
         $('#addEditPositionLvl').val("");
+        $('#addEditApproverScope').val("");
 
         $('#addEditPositionNm').prop('disabled', false);
         $('#addEditPositionLvl').prop('disabled', false);
@@ -91,6 +92,7 @@
                     $('#addEditId').val(data.POSITION_ID);
                     $('#addEditPositionNm').val(data.POSITION_NAME);
                     $('#addEditPositionLvl').val(data.POSITION_LEVEL);
+                    $('#addEditApproverScope').val(data.APPROVER_SCOPE || "");
 
                     $("#addEditPositionNm").prop("disabled", false);
                     $("#addEditPositionLvl").prop("disabled", false);
@@ -125,6 +127,10 @@
             showErrorMesgGrowl("Position Level should not be empty");
             return;
         }
+        if (!$('#addEditApproverScope').val()) {
+            showErrorMesgGrowl("Approver Scope should not be empty");
+            return;
+        }
         showConfirmMesg("Are you sure you want to continue process?", addEditData, "Confirmation");
     }
 
@@ -138,7 +144,8 @@
                 screenMode: gScreenMode,
                 POSITION_ID: $('#addEditId').val(),
                 POSITION_NAME: $('#addEditPositionNm').val(),
-                POSITION_LEVEL: $('#addEditPositionLvl').val()
+                POSITION_LEVEL: $('#addEditPositionLvl').val(),
+                APPROVER_SCOPE: $('#addEditApproverScope').val()
             },
             success: function (result) {
                 if (result.status == true) {

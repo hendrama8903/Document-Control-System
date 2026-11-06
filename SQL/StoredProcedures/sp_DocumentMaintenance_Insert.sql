@@ -258,7 +258,9 @@ BEGIN TRY
 
 	-- Create Workflow Document
 	DECLARE @RETVAL INT;
-	EXEC @RETVAL = sp_WorkflowDoc_Create @LEVEL_CODE, @CREATED_BY, NULL, @MENU_ID, @DOCUMENT_CREATOR, @RETURN_MSG OUTPUT, @APPROVAL_ID OUTPUT
+	-- @DOCUMENT_ID: alur khusus Document Category bila ada (2026-11-06).
+	-- @rev_DOCUMENT_ID = kategori dokumen, terisi baik untuk dokumen baru maupun revisi.
+	EXEC @RETVAL = sp_WorkflowDoc_Create @LEVEL_CODE, @CREATED_BY, NULL, @MENU_ID, @DOCUMENT_CREATOR, @RETURN_MSG OUTPUT, @APPROVAL_ID OUTPUT, @DOCUMENT_ID = @rev_DOCUMENT_ID
 	IF @RETVAL = 1
 	BEGIN
 		EXEC sp_WriteLog @PROCESS_ID, '2', 'INF', @RETURN_MSG, @LOCATION, @CREATED_BY
