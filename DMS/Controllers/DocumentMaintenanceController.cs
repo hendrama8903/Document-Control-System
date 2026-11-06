@@ -1973,7 +1973,9 @@ namespace DMS.Controllers
                 IList<ExcelTemplateMaster> excelTemplateMasters = documentMasterRepo
                     .SearchTemplate(new ExcelTemplateMaster { DOCUMENT_ID = documentMaintenance.DOCUMENT_ID }, db);
 
-                if (excelTemplateMasters.Count == 0) return new DBResult(false, "Excel template configuration not found for this document type");
+                // Cek "konfigurasi tidak ada" dipindah ke SETELAH workbook dibuka (lihat
+                // dcsMarkerMode di bawah) - file yang sudah berpenanda DCS_ tidak butuh
+                // baris TB_M_EXCEL_TEMPLATE sama sekali.
 
                 // Kalau pembuat dokumen KEBETULAN punya jabatan yang juga punya box
                 // sendiri (mis. Dept Head bikin dokumen Pedoman, dan template PDM
@@ -2029,6 +2031,18 @@ namespace DMS.Controllers
                 {
                     workbook.LoadDocument(fullPath);
 
+                    // Mode penanda DCS_ (opsi B, keputusan Hendra 2026-11-06): kalau file
+                    // punya Named Range berawalan "DCS_", posisi seluruh field pengesahan
+                    // dibaca dari penanda di file itu sendiri dan TB_M_EXCEL_TEMPLATE
+                    // diabaikan untuk file ini. Penanda ikut terbawa ke setiap dokumen
+                    // yang dibuat dari template, jadi dokumen dari template lama (tanpa
+                    // penanda -> jalur ROW/COL lama di bawah) dan template baru (berpenanda)
+                    // sama-sama tercetak benar walau tata letaknya berbeda. File tanpa
+                    // penanda DCS_ berperilaku persis seperti sebelumnya.
+                    bool dcsMarkerMode = Services.TemplateMarkerService.HasMarkers(workbook);
+                    if (!dcsMarkerMode && excelTemplateMasters.Count == 0)
+                        return new DBResult(false, "Excel template configuration not found for this document type");
+
                     int sheetPosition = 0;
                     int selectedSheetPosition = 0;
 
@@ -2055,8 +2069,16 @@ namespace DMS.Controllers
                             printOptions.FitToPage = true;
                         }
 
-                        IList<ExcelTemplateMaster> excelTemplateMastersBySheet =
-                            excelTemplateMasters.Where(x => x.SHEET_ORIENTATION == orientation).ToList();
+                        // Mode penanda: jalur ROW/COL di bawah dikosongkan (loop-nya jadi
+                        // no-op), semua field ditulis oleh DcsWriteMarkedFields.
+                        IList<ExcelTemplateMaster> excelTemplateMastersBySheet = dcsMarkerMode
+                            ? new List<ExcelTemplateMaster>()
+                            : excelTemplateMasters.Where(x => x.SHEET_ORIENTATION == orientation).ToList();
+
+                        if (dcsMarkerMode)
+                        {
+                            DcsWriteMarkedFields(workbook, sheet, documentMaintenance, approvalDetails, creator, approverSeqOffset, webRootPath);
+                        }
 
                         bool hasSheetPositionCheck = excelTemplateMastersBySheet.Any(x => x.CHECK_SHEET_POSITION == 1);
                         if (hasSheetPositionCheck)
@@ -2532,10 +2554,7 @@ namespace DMS.Controllers
         }
 
         private void DxSetCellValueBlackFont(DevExpress.Spreadsheet.Cell cell, string value)
-        {
-            cell.SetValueFromText(value);
-            cell.Font.Color = System.Drawing.Color.Black;
-        }
+            => Services.TemplateMarkerService.SetValueBlackFont(cell, value);
 
         // Kalau target cell ternyata bagian NON-ANCHOR dari merged region (mis.
         // header "Nomor Dokumen"/"Revisi" di template SPR yang value-cell-nya
@@ -2548,29 +2567,14 @@ namespace DMS.Controllers
         // tangan approver). Ditemukan 2026-08-27 - header Nomor Dokumen/Tanggal
         // Dikeluarkan/Revisi/Tanggal Revisi SIPOCOR kosong total di hasil cetak.
         private DevExpress.Spreadsheet.Cell DxResolveMergeAnchor(DevExpress.Spreadsheet.Cell cell)
-        {
-            IList<DevExpress.Spreadsheet.CellRange> merges = cell.GetMergedRanges();
-            if (merges.Count > 0)
-            {
-                DevExpress.Spreadsheet.CellRange anchor = merges[0];
-                return cell.Worksheet[anchor.TopRowIndex, anchor.LeftColumnIndex];
-            }
-            return cell;
-        }
+            => Services.TemplateMarkerService.ResolveMergeAnchor(cell);
 
+        // Baris nama & posisi pengesahan sering menimpa teks contoh lama di
+        // template (lihat komentar DxWriteNameCellSafely) yang formatnya beda-beda
+        // antar file template (warna, bold, rata kiri/kanan) - dipaksa konsisten
+        // (center, non-bold) supaya tidak ikut kebawa dari template asli.
         private void DxSetCellValueBlackFontBottomAligned(DevExpress.Spreadsheet.Cell cell, string value)
-        {
-            DxSetCellValueBlackFont(cell, value);
-
-            // Baris nama & posisi pengesahan sering menimpa teks contoh lama di
-            // template (lihat komentar DxWriteNameCellSafely) yang formatnya beda-beda
-            // antar file template (warna, bold, rata kiri/kanan) - dipaksa konsisten
-            // di sini (center, non-bold) supaya tidak ikut kebawa dari template asli
-            // walau warnanya sudah dipaksa hitam di DxSetCellValueBlackFont.
-            cell.Font.Bold = false;
-            cell.Alignment.Horizontal = DevExpress.Spreadsheet.SpreadsheetHorizontalAlignment.Center;
-            cell.Alignment.Vertical = DevExpress.Spreadsheet.SpreadsheetVerticalAlignment.Bottom;
-        }
+            => Services.TemplateMarkerService.SetValueBlackFontBottomAligned(cell, value);
 
         // Rata kiri-tengah (request Hendra 2026-08-26) - dipakai tabel "LEMBAR
         // MENGETAHUI" (WriteLembarMengetahuiSection) yang defaultnya center-align
@@ -2591,19 +2595,7 @@ namespace DMS.Controllers
         /// dirender. Kalau belum ada merge, buat baru selebar mergeCellCol.
         /// </summary>
         private void DxWriteNameCellSafely(DevExpress.Spreadsheet.Worksheet sheet, int row, int col, int mergeCellCol, string value)
-        {
-            IList<DevExpress.Spreadsheet.CellRange> existingMerges = sheet[row, col].GetMergedRanges();
-            if (existingMerges.Count > 0)
-            {
-                DevExpress.Spreadsheet.CellRange existing = existingMerges[0];
-                DxSetCellValueBlackFontBottomAligned(sheet[existing.TopRowIndex, existing.LeftColumnIndex], value);
-            }
-            else
-            {
-                DxSetCellValueBlackFontBottomAligned(sheet[row, col], value);
-                sheet.MergeCells(sheet.Range.FromLTRB(col, row, col + mergeCellCol - 1, row));
-            }
-        }
+            => Services.TemplateMarkerService.WriteNameCellSafely(sheet, row, col, mergeCellCol, value);
 
         // Kotak tanda tangan "Disetujui/Diperiksa/Dibuat" - khusus SPR (SIPOCOR),
         // sheet Cover saja (request Hendra 2026-08-21). TB_M_EXCEL_TEMPLATE TIDAK
@@ -2941,6 +2933,76 @@ namespace DMS.Controllers
             }
         }
 
+        // Mode penanda DCS_ (opsi B, 2026-11-06) - konvensi & logika tulis ada di
+        // Services/TemplateMarkerService. Di sini cuma pemetaan kotak -> orang
+        // berdasarkan data approval dokumen.
+        private void DcsWriteMarkedFields(
+            DevExpress.Spreadsheet.Workbook workbook,
+            DevExpress.Spreadsheet.Worksheet sheet,
+            DocumentMaintenance documentMaintenance,
+            IList<ApprovalDetail> approvalDetails,
+            User creator,
+            int approverSeqOffset,
+            string webRootPath)
+        {
+            var userCache = new Dictionary<string, User>(StringComparer.OrdinalIgnoreCase);
+            User GetUser(string username)
+            {
+                if (string.IsNullOrEmpty(username)) return null;
+                if (!userCache.TryGetValue(username, out User u))
+                {
+                    u = UserRepo.Instance.GetByKey(new User { USERNAME = username }, db);
+                    userCache[username] = u;
+                }
+                return u;
+            }
+
+            ApprovalDetail ApproverAtStep(int step) =>
+                approvalDetails.FirstOrDefault(x => x.WORKFLOW_SEQ == step + approverSeqOffset);
+
+            // Kotak jabatan yang ada di sheet ini - kalau jabatan PEMBUAT punya kotak POS-nya
+            // sendiri, pembuat ditulis di sana dan kotak DIBUAT dibiarkan kosong (sama seperti
+            // aturan TARGET_POSITION_ID di jalur ROW/COL).
+            var boxPositionIds = Services.TemplateMarkerService.Collect(workbook, sheet).Keys
+                .Select(k => k.Contains('_') ? k.Substring(k.IndexOf('_') + 1) : k)
+                .Select(Services.TemplateMarkerService.PositionIdOfBox)
+                .Where(id => id != null)
+                .ToHashSet();
+            bool creatorHasPositionBox = creator?.POSITION_ID != null && boxPositionIds.Contains(creator.POSITION_ID);
+
+            Services.TemplateMarkerService.BoxFill Fill(User person, bool showSignature) => person == null ? null : new Services.TemplateMarkerService.BoxFill
+            {
+                FullName = person.FULL_NAME,
+                PositionName = person.POSITION_NAME,
+                SignatureFullPath = showSignature && !string.IsNullOrEmpty(person.SIGNATURE_PATH) ? webRootPath + person.SIGNATURE_PATH : null,
+            };
+
+            Services.TemplateMarkerService.BoxFill Resolve(string boxKey)
+            {
+                int? boxPositionId = Services.TemplateMarkerService.PositionIdOfBox(boxKey);
+
+                // Tanda tangan pembuat selalu tampil; approver hanya kalau langkahnya sudah Approved.
+                if (boxKey == "DIBUAT") return creatorHasPositionBox ? null : Fill(creator, true);
+                if (boxPositionId != null && creatorHasPositionBox && creator.POSITION_ID == boxPositionId) return Fill(creator, true);
+
+                ApprovalDetail approval = null;
+                if (boxKey == "DIPERIKSA") approval = ApproverAtStep(1);
+                else if (boxKey == "DISETUJUI") approval = ApproverAtStep(2);
+                else if (boxKey == "LAST") approval = approvalDetails.OrderByDescending(x => x.WORKFLOW_SEQ).FirstOrDefault();
+                else if (boxKey.StartsWith("STEP") && int.TryParse(boxKey.Substring(4), out int step)) approval = ApproverAtStep(step);
+                else if (boxPositionId != null)
+                {
+                    approval = approvalDetails
+                        .OrderBy(x => x.WORKFLOW_SEQ)
+                        .FirstOrDefault(x => GetUser(x.APPROVER)?.POSITION_ID == boxPositionId);
+                }
+
+                return approval == null ? null : Fill(GetUser(approval.APPROVER), "1".Equals(approval.STATUS));
+            }
+
+            Services.TemplateMarkerService.Write(workbook, sheet, documentMaintenance, Resolve);
+        }
+
         private void DxAddPicture(DevExpress.Spreadsheet.Worksheet sheet, string imagePath, int rowStart, int colStart, int mergeCellCol, int mergeCellRow)
         {
             DevExpress.Spreadsheet.CellRange targetRange = sheet.Range.FromLTRB(colStart, rowStart, colStart + mergeCellCol - 1, rowStart + mergeCellRow - 1);
@@ -2950,9 +3012,7 @@ namespace DMS.Controllers
         // Overload dipakai jalur marker (Named Range) - area gambar sudah didapat
         // langsung dari range marker-nya, tidak perlu dihitung dari rowStart/mergeCell.
         private void DxAddPicture(DevExpress.Spreadsheet.Worksheet sheet, string imagePath, DevExpress.Spreadsheet.CellRange targetRange)
-        {
-            sheet.Pictures.AddPicture(DevExpress.Spreadsheet.SpreadsheetImageSource.FromFile(imagePath), targetRange, false);
-        }
+            => Services.TemplateMarkerService.AddPicture(sheet, imagePath, targetRange);
 
         /// <summary>
         /// Validasi file Excel yang di-upload terhadap konfigurasi TB_M_EXCEL_TEMPLATE.
@@ -2967,6 +3027,7 @@ namespace DMS.Controllers
             if (documentId == null) return null;
 
             ISheet coverSheet;
+            bool hasDcsMarkers = false;
             try
             {
                 using (var stream = file.OpenReadStream())
@@ -2975,12 +3036,21 @@ namespace DMS.Controllers
                         ? new XSSFWorkbook(stream)
                         : (IWorkbook)new HSSFWorkbook(stream);
                     coverSheet = workbook.GetSheetAt(0);
+                    for (int i = 0; i < workbook.NumberOfNames && !hasDcsMarkers; i++)
+                    {
+                        hasDcsMarkers = workbook.GetNameAt(i).NameName?.StartsWith(Services.TemplateMarkerService.Prefix, StringComparison.OrdinalIgnoreCase) == true;
+                    }
                 }
             }
             catch (Exception)
             {
                 return "File Excel tidak dapat dibaca. Pastikan file tidak rusak dan formatnya sesuai (" + extension + ").";
             }
+
+            // File berpenanda DCS_ tidak bergantung pada TB_M_EXCEL_TEMPLATE (posisi
+            // dibaca dari file-nya sendiri saat generate PDF). Pemeriksaan kelengkapan
+            // penanda menyusul (langkah 2 - cek saat upload template).
+            if (hasDcsMarkers) return null;
 
             int orientation = coverSheet.PrintSetup.Landscape ? 1 : 0;
             string orientationName = orientation == 1 ? "Landscape" : "Portrait";

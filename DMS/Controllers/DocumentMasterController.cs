@@ -4,6 +4,7 @@ using DMS.Models;
 using DMS.Models.DB;
 using DMS.Models.DB.Commons;
 using DMS.Models.Repo;
+using DMS.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Data;
 using System.Text;
@@ -157,6 +158,14 @@ namespace DMS.Controllers
                         return Json(new { status = false, message = "Invalid document code." });
                     }
 
+                    // Pemeriksaan penanda pengesahan (DCS_) - error menolak simpan, peringatan
+                    // tidak (lihat CheckTemplate untuk cek langsung saat file dipilih di form).
+                    TemplateMarkerService.Report report = AnalyzeTemplateFile(file, data.DOCUMENT_ID);
+                    if (!report.IsValid)
+                    {
+                        return Json(new { status = false, message = "Template tidak bisa disimpan: " + string.Join(" ", report.Errors) });
+                    }
+
                     string templateFolder = Path.Combine(webRootPath, "document", "Template");
                     if (!Directory.Exists(templateFolder))
                     {
@@ -198,6 +207,160 @@ namespace DMS.Controllers
             catch (Exception ex)
             {
                 return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        // ---------------------------------------------------------------------
+        // Pemeriksaan & preview penanda pengesahan DCS_ (langkah 2 opsi B, 2026-11-06)
+        // ---------------------------------------------------------------------
+
+        static DevExpress.Spreadsheet.DocumentFormat FormatOf(string fileName) =>
+            Path.GetExtension(fileName).ToLower() == ".xlsx"
+                ? DevExpress.Spreadsheet.DocumentFormat.Xlsx
+                : DevExpress.Spreadsheet.DocumentFormat.Xls;
+
+        static DevExpress.Spreadsheet.Workbook LoadWorkbook(IFormFile file)
+        {
+            var workbook = new DevExpress.Spreadsheet.Workbook();
+            using (Stream stream = file.OpenReadStream())
+            {
+                workbook.LoadDocument(stream, FormatOf(file.FileName));
+            }
+            return workbook;
+        }
+
+        // Template tanpa penanda DCS_ masih boleh, ASAL jenis dokumennya sudah punya
+        // konfigurasi baris/kolom lama (TB_M_EXCEL_TEMPLATE) - dokumen dari template itu
+        // jatuh ke jalur lama. Tanpa keduanya, tanda tangan tidak akan pernah tercetak.
+        private TemplateMarkerService.Report AnalyzeTemplateFile(IFormFile file, int? documentId)
+            => AnalyzeTemplate(() => LoadWorkbook(file), documentId);
+
+        private TemplateMarkerService.Report AnalyzeTemplate(Func<DevExpress.Spreadsheet.Workbook> load, int? documentId)
+        {
+            TemplateMarkerService.Report report;
+            try
+            {
+                using (DevExpress.Spreadsheet.Workbook workbook = load())
+                {
+                    report = TemplateMarkerService.Analyze(workbook);
+                }
+            }
+            catch (Exception)
+            {
+                report = new TemplateMarkerService.Report();
+                report.Errors.Add("File Excel tidak dapat dibaca. Pastikan file tidak rusak dan formatnya .xls/.xlsx.");
+                return report;
+            }
+
+            if (!report.HasMarkers)
+            {
+                bool hasLegacyConfig = documentId != null && documentMasterRepo
+                    .SearchTemplate(new ExcelTemplateMaster { DOCUMENT_ID = documentId }, db).Count > 0;
+
+                if (hasLegacyConfig)
+                {
+                    report.Warnings.Add("Template belum berpenanda DCS_. Sistem memakai konfigurasi baris/kolom lama, jadi tata letak kotak pengesahan HARUS sama persis dengan template sebelumnya. Disarankan memasang penanda DCS_.");
+                }
+                else
+                {
+                    report.Errors.Add("Template belum berpenanda DCS_ dan jenis dokumen ini belum punya konfigurasi pengesahan, sehingga tanda tangan & data dokumen tidak akan tercetak. Pasang penanda DCS_ di template terlebih dahulu.");
+                }
+            }
+
+            return report;
+        }
+
+        // Path template pengesahan tersimpan ({CODE}.xls dicek dulu, lalu .xlsx - sama seperti
+        // DownloadTemplate/GeneratePengesahanPdf). null kalau kode tidak valid / file tidak ada.
+        private string FindSavedTemplate(string code)
+        {
+            if (string.IsNullOrWhiteSpace(code) || !System.Text.RegularExpressions.Regex.IsMatch(code, "^[A-Za-z0-9]+$")) return null;
+            string folder = Path.Combine(Environment.WebRootPath, "document", "Template");
+            return new[] { ".xls", ".xlsx" }
+                .Select(ext => Path.Combine(folder, code + ext))
+                .FirstOrDefault(System.IO.File.Exists);
+        }
+
+        [HttpPost]
+        public JsonResult CheckTemplate(int? documentId, string code)
+        {
+            if (HttpContext.Session.GetString("USERNAME") == null)
+                return Json(new { status = false, message = "Session expired." });
+
+            try
+            {
+                TemplateMarkerService.Report report;
+                if (Request.HasFormContentType && Request.Form.Files.Count > 0)
+                {
+                    report = AnalyzeTemplateFile(Request.Form.Files[0], documentId);
+                }
+                else
+                {
+                    // Tanpa file = periksa template yang sudah tersimpan (dibuka saat Edit).
+                    string path = FindSavedTemplate(code);
+                    if (path == null) return Json(new { status = false, message = "Template file not found." });
+                    report = AnalyzeTemplate(() => { var wb = new DevExpress.Spreadsheet.Workbook(); wb.LoadDocument(path); return wb; }, documentId);
+                }
+                return Json(new
+                {
+                    status = true,
+                    hasMarkers = report.HasMarkers,
+                    isValid = report.IsValid,
+                    errors = report.Errors,
+                    warnings = report.Warnings,
+                    fields = report.Fields,
+                    boxes = report.Boxes,
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        // Preview lembar pengesahan dengan data & tanda tangan contoh. POST + file = file
+        // yang baru dipilih di form (belum disimpan); GET + code = template yang tersimpan.
+        public IActionResult PreviewTemplate(string code)
+        {
+            if (HttpContext.Session.GetString("USERNAME") == null)
+                return Unauthorized();
+
+            string tempPdf = Path.Combine(Path.GetTempPath(), "dcs_template_preview_" + Guid.NewGuid().ToString("N") + ".pdf");
+            try
+            {
+                DevExpress.Spreadsheet.Workbook workbook;
+                if (Request.HasFormContentType && Request.Form.Files.Count > 0)
+                {
+                    workbook = LoadWorkbook(Request.Form.Files[0]);
+                }
+                else
+                {
+                    string path = FindSavedTemplate(code);
+                    if (path == null) return NotFound("Template file not found.");
+
+                    workbook = new DevExpress.Spreadsheet.Workbook();
+                    workbook.LoadDocument(path);
+                }
+
+                using (workbook)
+                {
+                    if (!TemplateMarkerService.HasMarkers(workbook))
+                        return BadRequest("Template belum berpenanda DCS_, preview hanya tersedia untuk template berpenanda.");
+
+                    TemplateMarkerService.RenderPreviewPdf(workbook, tempPdf, positionId =>
+                        PositionMasterRepo.Instance.GetByKey(new PositionMaster { POSITION_ID = positionId }, db)?.POSITION_NAME);
+                }
+
+                byte[] bytes = System.IO.File.ReadAllBytes(tempPdf);
+                return File(bytes, "application/pdf");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+            finally
+            {
+                if (System.IO.File.Exists(tempPdf)) System.IO.File.Delete(tempPdf);
             }
         }
 

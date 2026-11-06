@@ -108,6 +108,7 @@
                         if ("@ViewData["Delete-FilePath"]" != "False") {
                             $('#btn_delete_filepath').show();
                         }
+                        runTemplateCheck(null, data.DOCUMENT_CODE);
                     }
 
                     $('#addEditDocumentCode').prop('disabled', true);
@@ -143,6 +144,10 @@
     }
 
     function confirmAddEditData() {
+        if (gTemplateCheckBlocking) {
+            showErrorMesgGrowl("The selected template has signing-marker errors. Fix the template (see the check result below the upload box) or choose another file before saving.");
+            return;
+        }
         showConfirmMesg("Are you sure you want to continue process?", addEditData, "Confirmation");
     }
 
@@ -157,7 +162,116 @@
         $('#dmfUploadFilename').text("No file selected");
         $('#dmfUploadHint').text("Choose a template file to upload");
         $('#btn_delete_filepath').hide();
+        resetTemplateCheck();
     }
+
+    // ---------- Cek penanda pengesahan DCS_ (opsi B) ----------
+    // gTemplateCheckBlocking: hasil cek file BARU yang dipilih punya error -> Save ditahan
+    // di sisi client (server tetap menolak juga di AddEdit).
+    var gTemplateCheckBlocking = false;
+    var gTemplateCheckXhr = null;
+
+    function resetTemplateCheck() {
+        if (gTemplateCheckXhr) { gTemplateCheckXhr.abort(); gTemplateCheckXhr = null; }
+        gTemplateCheckBlocking = false;
+        $('#dmfTemplateCheck').hide().empty().removeClass("ok warn err");
+        $('#btn_previewTemplate').hide();
+    }
+
+    function escapeHtmlText(text) {
+        return $('<div>').text(text == null ? "" : text).html();
+    }
+
+    function renderTemplateCheck(r, isNewFile) {
+        var $box = $('#dmfTemplateCheck').empty().removeClass("ok warn err");
+        var level = r.errors.length > 0 ? "err" : (r.warnings.length > 0 ? "warn" : "ok");
+        var title = level === "err" ? "Template cannot be used yet"
+            : level === "warn" ? "Template can be used, with notes"
+            : "Signing markers are complete";
+
+        var html = '<div class="dmf-check-title"><i class="fa ' +
+            (level === "err" ? "fa-times-circle" : level === "warn" ? "fa-exclamation-triangle" : "fa-check-circle") +
+            '"></i> ' + title + '</div>';
+
+        function list(label, items) {
+            if (!items || items.length === 0) return "";
+            return '<div class="dmf-check-sub">' + label + '</div><ul>' +
+                items.map(function (x) { return "<li>" + escapeHtmlText(x) + "</li>"; }).join("") + "</ul>";
+        }
+
+        html += list("Errors", r.errors);
+        html += list("Warnings", r.warnings);
+        if (r.hasMarkers) {
+            html += list("Signature boxes found", r.boxes);
+            html += list("Document fields found", r.fields);
+        }
+
+        $box.html(html).addClass(level).show();
+        gTemplateCheckBlocking = isNewFile && r.errors.length > 0;
+        $('#btn_previewTemplate').toggle(r.hasMarkers && r.errors.length === 0);
+    }
+
+    function runTemplateCheck(file, code) {
+        resetTemplateCheck();
+        var data = new FormData();
+        if (gScreenMode === 'EDIT' && gDocumentId != null) data.append("documentId", gDocumentId);
+        if (file) data.append("file0", file); else data.append("code", code);
+
+        $('#dmfTemplateCheck').removeClass("ok warn err")
+            .html('<span class="dmf-check-muted"><i class="fa fa-spinner fa-spin"></i> Checking signing markers...</span>')
+            .addClass("ok").show();
+
+        gTemplateCheckXhr = $.ajax({
+            type: "POST",
+            url: "@Url.Action("CheckTemplate", "DocumentMaster")",
+            contentType: false,
+            processData: false,
+            data: data,
+            success: function (r) {
+                gTemplateCheckXhr = null;
+                if (r.status === true) {
+                    renderTemplateCheck(r, !!file);
+                } else {
+                    $('#dmfTemplateCheck').removeClass("ok").addClass("err").text(r.message);
+                }
+            },
+            error: function (xhr, textStatus) {
+                gTemplateCheckXhr = null;
+                if (textStatus !== "abort") {
+                    $('#dmfTemplateCheck').removeClass("ok").addClass("err").text("Failed to check the template.");
+                }
+            }
+        });
+    }
+
+    $(document).on('click', '#btn_previewTemplate', function () {
+        var files = $('#attachmentPath')[0].files;
+        var code = $('#addEditDocumentCode').val();
+        var previewWindow = window.open("", "_blank"); // dibuka dulu supaya tidak diblok popup blocker
+        popUpProgressShow();
+
+        var data = new FormData();
+        if (files.length > 0) data.append("file0", files[0]); else data.append("code", code);
+
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", "@Url.Action("PreviewTemplate", "DocumentMaster")" + (files.length > 0 ? "" : "?code=" + encodeURIComponent(code)));
+        xhr.responseType = "blob";
+        xhr.onload = function () {
+            popUpProgressHide();
+            if (xhr.status === 200) {
+                previewWindow.location.href = URL.createObjectURL(xhr.response);
+            } else {
+                previewWindow.close();
+                xhr.response.text().then(function (msg) { showErrorMesgGrowl(msg || "Failed to generate preview."); });
+            }
+        };
+        xhr.onerror = function () {
+            popUpProgressHide();
+            previewWindow.close();
+            showErrorMesgGrowl("Failed to generate preview.");
+        };
+        xhr.send(data);
+    });
 
     function showUploadBoxFile(fileName, hint) {
         $('#dmfUploadBox').addClass("has-file");
@@ -181,6 +295,7 @@
         }
 
         showUploadBoxFile(file.name, "(" + Math.ceil(file.size / 1024) + " KB) - will be uploaded on Save");
+        runTemplateCheck(file, null);
     });
 
     function addEditData() {
