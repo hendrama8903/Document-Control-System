@@ -74,6 +74,21 @@
                     <i class="fa fa-bars"></i>
                 </button>
                 <div class="adm-crumb">DCS &nbsp;/&nbsp; <b>@ViewData["Title"]</b></div>
+                @* Pencarian dokumen global - nomor, judul & ISI dokumen (full-text search, 2026-11-06) *@
+                <form class="adm-docsearch" method="get" action="@Url.Action("Index", "Search")" role="search">
+                    <i class="fa fa-search"></i>
+                    <input type="search" name="q" id="admDocSearch" placeholder="Search documents..." autocomplete="off"
+                           value="@(Context.Request.Path.StartsWithSegments("/Search") ? Context.Request.Query["q"].ToString() : "")"
+                           aria-label="Search documents by number, title or content" maxlength="200">
+                </form>
+                <style>
+                    .adm-docsearch { position: relative; flex: 1 1 auto; max-width: 420px; margin: 0 16px 0 auto; }
+                    .adm-docsearch i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #98A2B3; font-size: 13px; pointer-events: none; }
+                    .adm-docsearch input { width: 100%; height: 36px; border: 1px solid #E3E8EF; border-radius: 10px; background: #F9FAFB; padding: 0 12px 0 34px; font-size: 13px; color: #101828; outline: none; transition: border-color .15s, background .15s, box-shadow .15s; }
+                    .adm-docsearch input:focus { background: #fff; border-color: #2450D8; box-shadow: 0 0 0 3px rgba(36,80,216,.12); }
+                    .adm-docsearch + .adm-top-right { margin-left: 0; }
+                    @@media (max-width: 768px) { .adm-docsearch { max-width: none; margin: 0 8px; } .adm-crumb { display: none; } }
+                </style>
                 <div class="adm-top-right">
                     <div class="dropdown adm-notif" id="notificationHeader">
                         <button type="button" class="adm-topbtn dropdown-toggle" data-toggle="dropdown" aria-expanded="false" onclick="GetListNotif()">

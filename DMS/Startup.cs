@@ -134,6 +134,12 @@ namespace DMS
                 x => x.SendRemindersAsync(),
                 Cron.Daily);
 
+            // Full-text search: ekstrak teks isi dokumen baru / yang berganti file (2026-11-06)
+            RecurringJob.AddOrUpdate<DMS.Services.DocumentContentIndexer>(
+                "document-content-index",
+                x => x.IndexPending(),
+                "*/5 * * * *");
+
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapHub<NotificationsHub>("/notificationsHub");

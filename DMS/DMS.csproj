@@ -19,6 +19,7 @@
     <PackageReference Include="NPOI" Version="2.5.6" />
     <PackageReference Include="PDFsharp" Version="6.0.0" />
     <PackageReference Include="System.DirectoryServices.AccountManagement" Version="8.0.0" />
+    <PackageReference Include="Tesseract" Version="5.2.0" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="wwwroot\Document\CopyRequest\" />
@@ -42,5 +43,12 @@
     <PackageReference Include="DevExtreme.AspNet.Data" Version="2.9.2" />
     <PackageReference Include="DevExpress.Document.Processor" Version="22.2.11" />
     <PackageReference Include="DevExpress.AspNetCore.Spreadsheet" Version="22.2.11" />
+  </ItemGroup>
+  <!-- Data bahasa OCR Tesseract (Indonesia + Inggris, tessdata_fast) - ikut ke output & publish (2026-11-06) -->
+  <ItemGroup>
+    <None Update="tessdata\*.traineddata">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
   </ItemGroup>
 </Project>
