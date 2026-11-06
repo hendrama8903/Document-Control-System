@@ -183,6 +183,24 @@
   .btn-login:hover{transform:translateY(-2px); box-shadow:0 18px 30px -10px rgba(14,63,165,.6); background-position:100% 50%;}
   .btn-login:active{transform:translateY(0); box-shadow:0 10px 16px -8px rgba(14,63,165,.55);}
   .btn-login svg{width:15px; height:15px;}
+  /* status loading saat proses login: tombol nonaktif + spinner */
+  .btn-login:disabled,
+  .btn-login.is-loading{
+    cursor:wait;
+    opacity:.85;
+    transform:none;
+    box-shadow:0 8px 14px -8px rgba(14,63,165,.45);
+    background-position:100% 50%;
+  }
+  .btn-login .spinner{
+    width:16px; height:16px;
+    border:2px solid rgba(255,255,255,.35);
+    border-top-color:#fff;
+    border-radius:50%;
+    animation:login-spin .7s linear infinite;
+  }
+  @@keyframes login-spin{ to{ transform:rotate(360deg); } }
+  input:disabled{ opacity:.7; cursor:not-allowed; }
 
   /* growl notification (login failed/success/info) */
   .bootstrap-growl{
@@ -290,23 +308,38 @@
 
   document.getElementById('loginForm').addEventListener('submit', function (e) {
     e.preventDefault();
+    if ($("#btn_login").prop("disabled")) return; // cegah klik/Enter ganda selama proses
     Validate();
   });
 
+  // Tombol login nonaktif + spinner selama proses. Dulu memakai $.fn.button("loading")
+  // milik Bootstrap 3 yang tidak ada di Bootstrap versi ini, jadi tombol tidak pernah
+  // berubah dan bisa diklik berkali-kali.
+  var gLoginButtonHtml = $("#btn_login").html();
+  function setLoginLoading(loading) {
+    var $btn = $("#btn_login");
+    $btn.prop("disabled", loading).toggleClass("is-loading", loading).attr("aria-busy", loading);
+    $("#username, #password").prop("disabled", loading);
+    $btn.html(loading ? '<span class="spinner" aria-hidden="true"></span> Signing in...' : gLoginButtonHtml);
+  }
+
   function Validate() {
-    $("#btn_login").button("loading");
+    // Nilai dibaca sebelum input dinonaktifkan
+    var username = $('#username').val();
+    var password = $('#password').val();
+    setLoginLoading(true);
     $('.bootstrap-growl').remove();
 
     $.ajax({
       type: "POST",
       url: '@Url.Action("Validate", "Auth")',
       data: {
-        USERNAME: $('#username').val(),
-        PASSWORD: $('#password').val(),
+        USERNAME: username,
+        PASSWORD: password,
         param: '@ViewData["ParamURL"]'
       },
       error: function (result) {
-        $("#btn_login").button("reset");
+        setLoginLoading(false);
 
         if (result.responseText) {
           $.bootstrapGrowl(result.responseText, {
@@ -327,10 +360,10 @@
             delay: 1200
           });
           setTimeout(function () {
-            window.location.href = redirectUrl;
+            window.location.href = redirectUrl; // tombol tetap loading sampai halaman berpindah
           }, 600);
         } else {
-          $("#btn_login").button("reset");
+          setLoginLoading(false);
           showErrorMesgGrowl(result.message);
         }
       }
