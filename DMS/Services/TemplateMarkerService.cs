@@ -329,8 +329,8 @@ namespace DMS.Services
                 SECTION_NAME = "Contoh Section",
             };
 
-            string signaturePath = Path.Combine(Path.GetTempPath(), "dcs_sample_signature.png");
-            CreateSampleSignature(signaturePath);
+            // Kotak tanda tangan berisi tanda tangan elektronik (2026-11-06) - preview memakai contoh ketik.
+            string signaturePath = SignatureService.RenderPng(SignatureService.MethodType, "Contoh TTD", SignatureService.TypeFonts[0]);
 
             BoxFill Resolve(string boxKey)
             {
@@ -364,22 +364,6 @@ namespace DMS.Services
 
             workbook.Calculate();
             workbook.ExportToPdf(outputPdfPath);
-        }
-
-        static void CreateSampleSignature(string path)
-        {
-            using (var bmp = new Bitmap(360, 120))
-            using (var g = Graphics.FromImage(bmp))
-            using (var pen = new Pen(Color.FromArgb(30, 60, 160), 3))
-            using (var font = new Font("Segoe Script", 26, FontStyle.Italic))
-            using (var brush = new SolidBrush(Color.FromArgb(30, 60, 160)))
-            {
-                g.Clear(Color.Transparent);
-                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                g.DrawString("Contoh TTD", font, brush, 10, 25);
-                g.DrawBezier(pen, 15, 95, 120, 70, 220, 115, 340, 80);
-                bmp.Save(path, ImageFormat.Png);
-            }
         }
 
         // ===================================================================
@@ -435,9 +419,28 @@ namespace DMS.Services
             }
         }
 
+        // Gambar dimuat di dalam kotak dengan rasio asli (tidak diregangkan) dan
+        // diletakkan di tengah, sedikit lebih kecil dari kotak - tanda tangan elektronik
+        // (2026-11-06) tidak boleh gepeng/melar mengikuti bentuk kotak.
         public static void AddPicture(Worksheet sheet, string imagePath, CellRange targetRange)
         {
-            sheet.Pictures.AddPicture(SpreadsheetImageSource.FromFile(imagePath), targetRange, false);
+            Picture picture = sheet.Pictures.AddPicture(SpreadsheetImageSource.FromFile(imagePath), targetRange, true);
+
+            float rangeWidth = 0, rangeHeight = 0;
+            for (int c = targetRange.LeftColumnIndex; c <= targetRange.RightColumnIndex; c++)
+                if (sheet.Columns[c].Visible) rangeWidth += (float)sheet.Columns[c].Width;
+            for (int r = targetRange.TopRowIndex; r <= targetRange.BottomRowIndex; r++)
+                if (sheet.Rows[r].Visible) rangeHeight += (float)sheet.Rows[r].Height;
+            if (rangeWidth <= 0 || rangeHeight <= 0) return;
+
+            float left = picture.Left, top = picture.Top;
+            float scale = Math.Min(rangeWidth / picture.Width, rangeHeight / picture.Height) * 0.9f;
+            float width = picture.Width * scale, height = picture.Height * scale;
+            picture.LockAspectRatio = false;  // Width & Height diset eksplisit (rasio sudah dijaga lewat scale)
+            picture.Width = width;
+            picture.Height = height;
+            picture.Left = left + (rangeWidth - picture.Width) / 2;
+            picture.Top = top + (rangeHeight - picture.Height) / 2;
         }
     }
 }

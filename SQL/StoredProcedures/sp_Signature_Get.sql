@@ -1,0 +1,19 @@
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- Tanda tangan elektronik untuk dirender di lembar pengesahan
+-- (lihat SQL/ElectronicSignature_Migration.sql). Kosong = belum ditandatangani.
+CREATE OR ALTER PROCEDURE [dbo].[sp_Signature_Get]
+	@KIND                     VARCHAR(10),
+	@DOCUMENT_TRANSACTION_ID  INT,
+	@REF_KEY                  VARCHAR(50)
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	SELECT SIGNATURE_ID, SIGNER, SIGNER_NAME, SIGN_METHOD, SIGN_DATA, SIGN_FONT, SIGNED_DT
+	FROM dbo.TB_R_SIGNATURE
+	WHERE KIND = @KIND AND DOCUMENT_TRANSACTION_ID = @DOCUMENT_TRANSACTION_ID AND REF_KEY = ISNULL(@REF_KEY, '');
+END
+GO

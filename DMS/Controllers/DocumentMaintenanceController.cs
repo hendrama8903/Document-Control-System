@@ -821,6 +821,17 @@ namespace DMS.Controllers
                 }
             }
 
+            // Tanda tangan elektronik pembuat (2026-11-06): wajib saat dokumen baru disimpan
+            // oleh pembuatnya sendiri. Kalau yang menyimpan bukan pembuat (dibuatkan orang
+            // lain), kotak pembuat dibiarkan kosong - tanda tangan tidak boleh diwakilkan.
+            Services.SignatureService.Input creatorSignature = null;
+            if (screenMode == "ADD" && string.Equals(GetLoginUsername(), data.DOCUMENT_CREATOR, StringComparison.OrdinalIgnoreCase))
+            {
+                creatorSignature = SignatureFromRequest();
+                string signatureError = Services.SignatureService.Validate(creatorSignature);
+                if (signatureError != null) return Json(new { status = false, message = signatureError });
+            }
+
             db.Database.BeginTransaction();
 
             try
@@ -874,6 +885,16 @@ namespace DMS.Controllers
                     if (!result.status)
                     {
                         return Json(new { status = false, message = result.message });
+                    }
+
+                    if (creatorSignature != null && result.returnId != 0)
+                    {
+                        string signatureError = SaveSignature(creatorSignature, Services.SignatureService.KindCreator, result.returnId, "");
+                        if (signatureError != null)
+                        {
+                            db.Database.RollbackTransaction();
+                            return Json(new { status = false, message = signatureError });
+                        }
                     }
 
                     if (result.returnId != 0)
@@ -2337,9 +2358,10 @@ namespace DMS.Controllers
                                         }
                                     }
 
-                                    if (!string.IsNullOrEmpty(creator.SIGNATURE_PATH))
+                                    // Tanda tangan elektronik pembuat (2026-11-06), menggantikan gambar SIGNATURE_PATH
+                                    string creatorSignPath = SignatureImage(documentMaintenance.DOCUMENT_TRANSACTION_ID, Services.SignatureService.KindCreator, "");
+                                    if (creatorSignPath != null)
                                     {
-                                        string creatorSignPath = webRootPath + creator.SIGNATURE_PATH;
                                         if (System.IO.File.Exists(creatorSignPath))
                                         {
                                             if (creatorSignMarker != null)
@@ -2445,8 +2467,10 @@ namespace DMS.Controllers
 
                                     if ("1".Equals(approvalDetail.STATUS))
                                     {
-                                        string signFullPath = webRootPath + user.SIGNATURE_PATH;
-                                        if (System.IO.File.Exists(signFullPath))
+                                        // Tanda tangan elektronik approver (2026-11-06), menggantikan gambar SIGNATURE_PATH
+                                        string signFullPath = SignatureImage(documentMaintenance.DOCUMENT_TRANSACTION_ID,
+                                            Services.SignatureService.KindApproval, approvalDetail.APPROVAL_DETAIL_ID?.ToString());
+                                        if (signFullPath != null && System.IO.File.Exists(signFullPath))
                                         {
                                             if (approverSignMarker != null)
                                             {
@@ -2515,7 +2539,7 @@ namespace DMS.Controllers
                         // signature section menyusul 2026-08-21).
                         if (documentMaintenance.DOCUMENT_ID == 15 && sheetPosition == 0)
                         {
-                            WriteSprSignatureSection(sheet, approvalDetails, creator, webRootPath);
+                            WriteSprSignatureSection(sheet, approvalDetails, creator, webRootPath, documentMaintenance.DOCUMENT_TRANSACTION_ID);
                             WriteRelatedDivisionSection(sheet, documentMaintenance, webRootPath);
                         }
 
@@ -2654,7 +2678,7 @@ namespace DMS.Controllers
         // BUKAN urutan WORKFLOW_SEQ tetap, supaya tetap benar walau urutan
         // approval berbeda-beda per Document Level. Kalau template SPR diganti
         // lagi, petakan ulang koordinat ini dari nol, jangan asumsikan sama.
-        private void WriteSprSignatureSection(DevExpress.Spreadsheet.Worksheet sheet, IList<ApprovalDetail> approvalDetails, User creator, string webRootPath)
+        private void WriteSprSignatureSection(DevExpress.Spreadsheet.Worksheet sheet, IList<ApprovalDetail> approvalDetails, User creator, string webRootPath, int? documentTransactionId)
         {
             const int signRowStart = 35; // Excel row 36 (0-indexed) - atas area gambar tanda tangan
             const int signRowSpan = 3;   // baris 36-38 (baris 39 = caption EO/Div.Head/dst, jangan ikut)
@@ -2664,10 +2688,10 @@ namespace DMS.Controllers
             const int dibuatDeptCol = 17; // Excel col R - Dept. Head (bagian kiri "Dibuat")
             const int dibuatStaffCol = 19; // Excel col T - Staff/Section Head/pembuat (bagian kanan "Dibuat")
 
-            void PlaceSignature(int col, string signaturePath)
+            // fullSignPath = PNG tanda tangan elektronik (2026-11-06), null = belum ditandatangani
+            void PlaceSignature(int col, string fullSignPath)
             {
-                if (string.IsNullOrEmpty(signaturePath)) return;
-                string fullSignPath = webRootPath + signaturePath;
+                if (string.IsNullOrEmpty(fullSignPath)) return;
                 if (System.IO.File.Exists(fullSignPath))
                 {
                     DxAddPicture(sheet, fullSignPath, signRowStart, col, signColSpan, signRowSpan);
@@ -2684,29 +2708,26 @@ namespace DMS.Controllers
             ApprovalDetail eoApproval = FindApprovedByPosition(5);
             if (eoApproval != null)
             {
-                User eoUser = UserRepo.Instance.GetByKey(new User { USERNAME = eoApproval.APPROVER }, db);
-                PlaceSignature(disetujuiCol, eoUser?.SIGNATURE_PATH);
+                PlaceSignature(disetujuiCol, SignatureImage(documentTransactionId, Services.SignatureService.KindApproval, eoApproval.APPROVAL_DETAIL_ID?.ToString()));
             }
 
             ApprovalDetail divHeadApproval = FindApprovedByPosition(4);
             if (divHeadApproval != null)
             {
-                User divHeadUser = UserRepo.Instance.GetByKey(new User { USERNAME = divHeadApproval.APPROVER }, db);
-                PlaceSignature(diperiksaCol, divHeadUser?.SIGNATURE_PATH);
+                PlaceSignature(diperiksaCol, SignatureImage(documentTransactionId, Services.SignatureService.KindApproval, divHeadApproval.APPROVAL_DETAIL_ID?.ToString()));
             }
 
             ApprovalDetail deptHeadApproval = FindApprovedByPosition(3);
             if (deptHeadApproval != null)
             {
-                User deptHeadUser = UserRepo.Instance.GetByKey(new User { USERNAME = deptHeadApproval.APPROVER }, db);
-                PlaceSignature(dibuatDeptCol, deptHeadUser?.SIGNATURE_PATH);
+                PlaceSignature(dibuatDeptCol, SignatureImage(documentTransactionId, Services.SignatureService.KindApproval, deptHeadApproval.APPROVAL_DETAIL_ID?.ToString()));
             }
 
             // Pembuat dokumen SELALU tanda tangan tanpa syarat status approval -
             // box "Staff/Section Head" ini bukan approver TB_R_APPROVAL_D sama
             // sekali (sama seperti WriteCreatorIntoBox() di mekanisme generik di
             // atas).
-            PlaceSignature(dibuatStaffCol, creator?.SIGNATURE_PATH);
+            if (creator != null) PlaceSignature(dibuatStaffCol, SignatureImage(documentTransactionId, Services.SignatureService.KindCreator, ""));
         }
 
         // Fitur "Divisi Terkait" - khusus SPR (SIPOCOR) Level 2 (request Hendra
@@ -2838,9 +2859,12 @@ namespace DMS.Controllers
 
                     bool acknowledged = acknowledgedByDivision.TryGetValue(divisionCode, out bool ackFlag) && ackFlag;
 
-                    if (acknowledged && !string.IsNullOrEmpty(headSignaturePath))
+                    // Tanda tangan elektronik "Mengetahui" (2026-11-06), menggantikan gambar SIGNATURE_PATH
+                    string signPath = acknowledged
+                        ? SignatureImage(documentMaintenance.DOCUMENT_TRANSACTION_ID, Services.SignatureService.KindAcknowledge, divisionCode)
+                        : null;
+                    if (signPath != null)
                     {
-                        string signPath = webRootPath + headSignaturePath;
                         if (System.IO.File.Exists(signPath))
                         {
                             DxAddPicture(sheet, signPath, tableRow, tandaTanganCol, 2, signRowSpan);
@@ -2929,9 +2953,12 @@ namespace DMS.Controllers
                 {
                     DxSetCellValueBlackFontLeftMiddleAligned(sheet[tableRow, namaCol], division.HeadFullName);
 
-                    if (division.Acknowledged && !string.IsNullOrEmpty(division.HeadSignaturePath))
+                    // Tanda tangan elektronik "Mengetahui" (2026-11-06), menggantikan gambar SIGNATURE_PATH
+                    string signPath = division.Acknowledged
+                        ? SignatureImage(documentMaintenance.DOCUMENT_TRANSACTION_ID, Services.SignatureService.KindAcknowledge, division.Code)
+                        : null;
+                    if (signPath != null)
                     {
-                        string signPath = webRootPath + division.HeadSignaturePath;
                         if (System.IO.File.Exists(signPath))
                         {
                             // Kolom Tanda Tangan sudah di-merge di template (mis.
@@ -2992,20 +3019,23 @@ namespace DMS.Controllers
                 .ToHashSet();
             bool creatorHasPositionBox = creator?.POSITION_ID != null && boxPositionIds.Contains(creator.POSITION_ID);
 
-            Services.TemplateMarkerService.BoxFill Fill(User person, bool showSignature) => person == null ? null : new Services.TemplateMarkerService.BoxFill
+            // Kotak SIGN berisi tanda tangan elektronik (2026-11-06), bukan gambar SIGNATURE_PATH.
+            // signKind/signRef menunjuk tanda tangan itu; signKind null = belum ditandatangani.
+            Services.TemplateMarkerService.BoxFill Fill(User person, string signKind, string signRef) => person == null ? null : new Services.TemplateMarkerService.BoxFill
             {
                 FullName = person.FULL_NAME,
                 PositionName = person.POSITION_NAME,
-                SignatureFullPath = showSignature && !string.IsNullOrEmpty(person.SIGNATURE_PATH) ? webRootPath + person.SIGNATURE_PATH : null,
+                SignatureFullPath = signKind == null ? null : SignatureImage(documentMaintenance.DOCUMENT_TRANSACTION_ID, signKind, signRef),
             };
+            Services.TemplateMarkerService.BoxFill FillCreator() => Fill(creator, Services.SignatureService.KindCreator, "");
 
             Services.TemplateMarkerService.BoxFill Resolve(string boxKey)
             {
                 int? boxPositionId = Services.TemplateMarkerService.PositionIdOfBox(boxKey);
 
                 // Tanda tangan pembuat selalu tampil; approver hanya kalau langkahnya sudah Approved.
-                if (boxKey == "DIBUAT") return creatorHasPositionBox ? null : Fill(creator, true);
-                if (boxPositionId != null && creatorHasPositionBox && creator.POSITION_ID == boxPositionId) return Fill(creator, true);
+                if (boxKey == "DIBUAT") return creatorHasPositionBox ? null : FillCreator();
+                if (boxPositionId != null && creatorHasPositionBox && creator.POSITION_ID == boxPositionId) return FillCreator();
 
                 ApprovalDetail approval = null;
                 if (boxKey == "DIPERIKSA") approval = ApproverAtStep(1);
@@ -3019,10 +3049,53 @@ namespace DMS.Controllers
                         .FirstOrDefault(x => GetUser(x.APPROVER)?.POSITION_ID == boxPositionId);
                 }
 
-                return approval == null ? null : Fill(GetUser(approval.APPROVER), "1".Equals(approval.STATUS));
+                return approval == null ? null : Fill(GetUser(approval.APPROVER),
+                    "1".Equals(approval.STATUS) ? Services.SignatureService.KindApproval : null,
+                    approval.APPROVAL_DETAIL_ID?.ToString());
             }
 
             Services.TemplateMarkerService.Write(workbook, sheet, documentMaintenance, Resolve);
+        }
+
+        // ---------- Tanda tangan elektronik (request Hendra 2026-11-06) ----------
+        // Pengganti gambar tanda tangan upload: tanda tangan digambar / diketik saat
+        // Save (pembuat), Approve, dan Mengetahui, disimpan per dokumen + langkah di
+        // TB_R_SIGNATURE (Services/SignatureService), lalu dirender ke kotak tanda
+        // tangan di sini. Kotak tetap kosong kalau belum ditandatangani.
+
+        /// <summary>Path PNG tanda tangan elektronik, atau null kalau belum ditandatangani.</summary>
+        private string SignatureImage(int? documentTransactionId, string kind, string refKey)
+        {
+            if (documentTransactionId == null) return null;
+            Services.SignatureService.Record signature = Services.SignatureService.Load(db, kind, documentTransactionId.Value, refKey);
+            return signature == null ? null : Services.SignatureService.RenderPng(signature.Method, signature.Data, signature.Font);
+        }
+
+        private Services.SignatureService.Input SignatureFromRequest() => !Request.HasFormContentType ? null : new Services.SignatureService.Input
+        {
+            Method = Request.Form["SIGN_METHOD"],
+            Data = Request.Form["SIGN_DATA"],
+            Font = Request.Form["SIGN_FONT"],
+        };
+
+        /// <summary>
+        /// Simpan tanda tangan dari form untuk user yang sedang login. null = berhasil,
+        /// selain itu pesan kesalahan (pemanggil membatalkan transaksinya).
+        /// </summary>
+        private string SaveSignature(Services.SignatureService.Input input, string kind, int documentTransactionId, string refKey)
+        {
+            string error = Services.SignatureService.Validate(input);
+            if (error != null) return error;
+
+            DocumentMaintenance document = documentMaintenanceRepo
+                .Search(new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = documentTransactionId }, null, db, 1, 1)
+                .FirstOrDefault();
+            string fileHash = document?.FILE_PATH == null ? null
+                : Services.SignatureService.FileHash(Environment.WebRootPath + document.FILE_PATH.Trim());
+
+            var (ok, message) = Services.SignatureService.Save(db, kind, documentTransactionId, refKey, GetLoginUsername(), input,
+                HttpContext.Connection.RemoteIpAddress?.ToString(), Request.Headers["User-Agent"].ToString(), fileHash);
+            return ok ? null : message;
         }
 
         private void DxAddPicture(DevExpress.Spreadsheet.Worksheet sheet, string imagePath, int rowStart, int colStart, int mergeCellCol, int mergeCellRow)
@@ -3534,6 +3607,20 @@ namespace DMS.Controllers
 
                     if (approvalDetails.Count > 0)
                     {
+                        // Tanda tangan elektronik approver (2026-11-06) - wajib, disimpan
+                        // dalam transaksi yang sama dengan approve-nya.
+                        ApprovalDetail signedStep = approvalDetails.FirstOrDefault(x => x.WORKFLOW_SEQ == workflowSeq);
+                        string signatureError = signedStep?.APPROVAL_DETAIL_ID == null || documentMaintenance.DOCUMENT_TRANSACTION_ID == null
+                            ? "Approval step not found."
+                            : SaveSignature(SignatureFromRequest(), Services.SignatureService.KindApproval,
+                                (int)documentMaintenance.DOCUMENT_TRANSACTION_ID, signedStep.APPROVAL_DETAIL_ID.ToString());
+                        if (signatureError != null)
+                        {
+                            db.Database.RollbackTransaction();
+                            logRepo.WriteLog(processid, "3", "ERR", signatureError, location, GetLoginUsername(), db);
+                            return Json(new { status = false, message = signatureError });
+                        }
+
                         var max_seq = approvalDetails.Where(x => x.APPROVAL_ID == approvalId).Max(x => x.WORKFLOW_SEQ);
 
                         if (max_seq == workflowSeq)
@@ -3724,6 +3811,15 @@ namespace DMS.Controllers
             try
             {
                 db.Database.BeginTransaction();
+
+                // Tanda tangan elektronik "Mengetahui" (2026-11-06) - wajib
+                string signatureError = SaveSignature(SignatureFromRequest(), Services.SignatureService.KindAcknowledge, documentTransactionId, divisionCode);
+                if (signatureError != null)
+                {
+                    db.Database.RollbackTransaction();
+                    logRepo.WriteLog(processid, "3", "ERR", signatureError, location, GetLoginUsername(), db);
+                    return Json(new { status = false, message = signatureError });
+                }
 
                 DBResult result = documentMaintenanceRepo.AcknowledgeRelatedDivision(documentTransactionId, divisionCode, GetLoginUsername(), db, out bool promotedToApproved);
 

@@ -548,13 +548,17 @@
         });
     }
 
+    // "Mengetahui" wajib tanda tangan elektronik (2026-11-06)
     function onAcknowledgeRelatedDivisionPrepare(divisionCode) {
-        showConfirmMesg("Are you sure you want to acknowledge this document on behalf of your division?", function () {
-            onAcknowledgeRelatedDivision(divisionCode);
-        }, "Confirmation");
+        openSignaturePad({
+            title: "Sign to acknowledge",
+            subtitle: "Acknowledge this document on behalf of division " + divisionCode + ".",
+            confirmText: "Sign & Acknowledge",
+            onSigned: function (sig) { onAcknowledgeRelatedDivision(divisionCode, sig); }
+        });
     }
 
-    function onAcknowledgeRelatedDivision(divisionCode) {
+    function onAcknowledgeRelatedDivision(divisionCode, signature) {
         popUpProgressShow();
         $.ajax({
             type: "POST",
@@ -562,7 +566,10 @@
             data: {
                 documentTransactionId: gId,
                 divisionCode: divisionCode,
-                remark: ""
+                remark: "",
+                SIGN_METHOD: signature ? signature.SIGN_METHOD : "",
+                SIGN_DATA: signature ? signature.SIGN_DATA : "",
+                SIGN_FONT: signature ? (signature.SIGN_FONT || "") : ""
             },
             success: function (result) {
                 popUpProgressHide();
@@ -1544,13 +1551,33 @@
             }
         }
 
+        // Dokumen baru yang disimpan oleh pembuatnya sendiri wajib ditandatangani
+        // (Draw/Type, 2026-11-06) - dialog tanda tangan sekaligus jadi konfirmasi.
+        // Kalau dibuatkan orang lain, kotak pembuat dibiarkan kosong (tidak diwakilkan).
+        gCreatorSignature = null;
+        var creator = $('#addEditDocumentCreator').val();
+        if (gScreenMode == "ADD" && creator && String(creator).toLowerCase() == String(gCurrentUsername).toLowerCase()) {
+            openSignaturePad({
+                title: "Sign as document creator",
+                subtitle: "Your signature will appear in the creator box of the approval sheet.",
+                confirmText: "Sign & Save",
+                onSigned: function (sig) { gCreatorSignature = sig; addEditData(); }
+            });
+            return;
+        }
+
         showConfirmMesg("Are you sure you want to continue process?", addEditData, "Confirmation");
     }
+
+    var gCreatorSignature = null;
 
     function addEditData() {
         popUpProgressShow();
         var data = new FormData();
         data.append("screenMode", gScreenMode);
+        if (gScreenMode == "ADD" && gCreatorSignature) {
+            appendSignature(data, gCreatorSignature);
+        }
 
         if (gScreenMode == "ADD") {
             var documentId = $('#addEditDocumentId').val();
@@ -2240,11 +2267,22 @@
         $("#modalDistribution").modal();
     }
 
+    // Approve wajib tanda tangan elektronik (Draw/Type, 2026-11-06) - dialognya
+    // sekaligus jadi konfirmasi; Reject tetap pakai konfirmasi biasa.
     function onApproveRejectPrepare() {
-        showConfirmMesg("Are you sure you want to continue process?", onApproveReject, "Confirmation");
+        if (gApprovalMode == "approve") {
+            openSignaturePad({
+                title: "Sign to approve",
+                subtitle: "Your signature will appear on the approval sheet of this document.",
+                confirmText: "Sign & Approve",
+                onSigned: function (sig) { onApproveReject(sig); }
+            });
+            return;
+        }
+        showConfirmMesg("Are you sure you want to continue process?", function () { onApproveReject(null); }, "Confirmation");
     }
 
-    function onApproveReject() {
+    function onApproveReject(signature) {
         popUpProgressShow();
         $.ajax({
             type: "POST",
@@ -2257,6 +2295,9 @@
                 remark: $('#approvalRemark').val(),
                 mode: gApprovalMode,
                 DOCUMENT_TRANSACTION_ID: gId,
+                SIGN_METHOD: signature ? signature.SIGN_METHOD : "",
+                SIGN_DATA: signature ? signature.SIGN_DATA : "",
+                SIGN_FONT: signature ? (signature.SIGN_FONT || "") : "",
             },
             success: function (result) {
                 if (result.status == true) {
