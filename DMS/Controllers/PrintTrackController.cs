@@ -84,6 +84,10 @@ namespace DMS.Controllers
             byte[] bytes = System.IO.File.ReadAllBytes(fullPath);
             string fileName = Path.GetFileName(fullPath);
 
+            // Audit trail akses (2026-11-06) - salinan cetak Copy Request lewat PrintTrack
+            Services.DocumentAccessLogService.Log(db, HttpContext, Services.DocumentAccessLogService.Print,
+                detail.DOCUMENT_TRANSACTION_ID, detail.FILE_PATH, copies: detail.COPY_QTY);
+
             return File(bytes, "application/octet-stream", fileName);
         }
 

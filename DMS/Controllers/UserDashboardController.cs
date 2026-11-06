@@ -442,6 +442,9 @@ namespace DMS.Controllers
 
             byte[] bytes = System.IO.File.ReadAllBytes(fullPath);
 
+            // Audit trail akses (2026-11-06)
+            Services.DocumentAccessLogService.Log(db, HttpContext, Services.DocumentAccessLogService.Download, filePath: path);
+
             return File(bytes, "application/force-download", fileName);
         }
 

@@ -1438,6 +1438,10 @@ namespace DMS.Controllers
 
                 byte[] bytes = System.IO.File.ReadAllBytes(fullPath);
 
+                // Audit trail akses (2026-11-06)
+                Services.DocumentAccessLogService.Log(db, HttpContext, Services.DocumentAccessLogService.Download,
+                    documentMaintenance.DOCUMENT_TRANSACTION_ID, documentMaintenance.FILE_PATH);
+
                 return File(bytes, "application/force-download", fileName);
             }
             catch (Exception ex)
@@ -1598,6 +1602,10 @@ namespace DMS.Controllers
                     ViewBag.ErrorMessage = "File Not Found";
                     return View("Error500");
                 }
+
+                // Audit trail akses (2026-11-06)
+                Services.DocumentAccessLogService.Log(db, HttpContext, Services.DocumentAccessLogService.View,
+                    documentMaintenance.DOCUMENT_TRANSACTION_ID, documentMaintenance.FILE_PATH);
 
                 // Obsolete-control (Jul 2026): dokumen yang sudah disupersede tidak lagi
                 // punya baris live di TB_R_DOCUMENT (lihat sp_DocumentMaintenance_SupersedeRevision) -
@@ -4081,6 +4089,10 @@ namespace DMS.Controllers
 
                 if (!System.IO.File.Exists(fullPath))
                     return Json(new { status = false, message = "File Not Found" });
+
+                // Audit trail akses (2026-11-06)
+                Services.DocumentAccessLogService.Log(db, HttpContext, Services.DocumentAccessLogService.Print,
+                    documentMaintenance.DOCUMENT_TRANSACTION_ID, documentMaintenance.FILE_PATH, copies: printCopy);
 
                 // Obsolete-control (Aug 2026): sama seperti ViewAttachment - dokumen yang
                 // sudah disupersede tidak lagi punya baris live di TB_R_DOCUMENT, jadi kalau
