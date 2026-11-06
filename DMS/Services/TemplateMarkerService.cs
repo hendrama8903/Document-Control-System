@@ -325,6 +325,7 @@ namespace DMS.Services
                 DOCUMENT_DATE = DateTime.Today,
                 DOCUMENT_REVISION_0_DATE = DateTime.Today.AddYears(-1),
                 DEPARTMENT_CODE = "DEPT",
+                DEPARTMENT_NAME = "Contoh Department",
                 SECTION_NAME = "Contoh Section",
             };
 
