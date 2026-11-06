@@ -218,6 +218,7 @@ namespace DMS.Models.Repo
                             int id = Convert.ToInt32(r["POSITION_ID"]);
                             result.Positions[id] = r["POSITION_NAME"] == DBNull.Value ? "Position " + id : Convert.ToString(r["POSITION_NAME"]);
                             if (r["MAX_STEPS"] != DBNull.Value) result.MaxSteps = Convert.ToInt32(r["MAX_STEPS"]);
+                            if (Convert.ToBoolean(r["NEEDS_BOX"])) result.ApproverPositions[id] = result.Positions[id];
                         }
                     }
                 }

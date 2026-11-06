@@ -50,6 +50,8 @@ namespace DMS.Models.DB
     public class WorkflowCategoryPositions
     {
         public Dictionary<int, string> Positions { get; } = new Dictionary<int, string>();
+        /// <summary>Bagian dari Positions yang jadi approver di alur dan butuh kotak tanda tangan (tanpa jabatan setingkat pembuat).</summary>
+        public Dictionary<int, string> ApproverPositions { get; } = new Dictionary<int, string>();
         public int MaxSteps { get; set; }
         public bool HasWorkflow => Positions.Count > 0;
     }

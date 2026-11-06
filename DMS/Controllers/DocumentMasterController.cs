@@ -284,6 +284,9 @@ namespace DMS.Controllers
         // Kotak POS<id> di template yang jabatannya tidak pernah ada di alur approval
         // kategori ini (alur khusus kategori, atau default level) akan selalu kosong -
         // diperingatkan, tidak diblokir (request Hendra 2026-11-06).
+        //
+        // Sebaliknya, approver di alur yang tidak punya kotak tetap bisa approve tetapi
+        // tanda tangannya tidak tercetak - juga diperingatkan (request Hendra 2026-11-07).
         private void AddWorkflowWarnings(TemplateMarkerService.Report report, int? level, int? documentId)
         {
             if (!report.HasMarkers || level == null) return;
@@ -305,6 +308,28 @@ namespace DMS.Controllers
 
                 string name = PositionMasterRepo.Instance.GetByKey(new PositionMaster { POSITION_ID = positionId }, db)?.POSITION_NAME ?? "jabatan " + positionId;
                 report.Warnings.Add($"Kotak {key} ({name}) tidak ada di alur approval {(documentId == null ? "level ini" : "jenis dokumen ini")}, jadi kotak itu akan selalu kosong. Tambahkan {name} di Approval Workflow Setup, atau periksa kode POS-nya. Alur saat ini memuat: {string.Join(", ", flow.Positions.Values)}.");
+            }
+
+            string scope = documentId == null ? "level ini" : "jenis dokumen ini";
+            var withoutPositionBox = flow.ApproverPositions
+                .Where(p => !boxKeys.Any(k => TemplateMarkerService.PositionIdOfBox(k) == p.Key))
+                .ToList();
+
+            // Kotak urutan (DIPERIKSA, DISETUJUI, STEPn, LAST) bisa menampung approver jabatan
+            // apa pun, jadi yang bisa dicek hanya apakah jumlah kotaknya cukup.
+            int orderedBoxCount = boxKeys.Count(k =>
+                TemplateMarkerService.PositionIdOfBox(k) == null && !string.Equals(k, "DIBUAT", StringComparison.OrdinalIgnoreCase));
+
+            if (orderedBoxCount == 0)
+            {
+                foreach (KeyValuePair<int, string> position in withoutPositionBox)
+                {
+                    report.Warnings.Add($"{position.Value} ada di alur approval {scope} tetapi tidak punya kotak tanda tangan (DCS_SIGN_POS{position.Key}). Approval tetap berjalan, namun tanda tangannya tidak akan tercetak.");
+                }
+            }
+            else if (withoutPositionBox.Count > orderedBoxCount)
+            {
+                report.Warnings.Add($"Alur approval {scope} memuat {withoutPositionBox.Count} jabatan tanpa kotak POS ({string.Join(", ", withoutPositionBox.Select(p => p.Value))}), tetapi template hanya punya {orderedBoxCount} kotak urutan. Sebagian tanda tangan mungkin tidak tercetak.");
             }
         }
 
