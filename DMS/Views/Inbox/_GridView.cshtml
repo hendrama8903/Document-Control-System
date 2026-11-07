@@ -258,7 +258,7 @@
 
         // ---------- toolbar: clear all notifications (permanent, not soft delete) ----------
         $("#btn_clearAll").on("click", function () {
-            showConfirmMesg("Are you sure you want to clear all notifications? This cannot be undone.", function () {
+            showDangerConfirm("Are you sure you want to clear all notifications? This cannot be undone.", function () {
                 $.ajax({
                     type: "POST",
                     url: "@Url.Action("ClearAll", "Inbox")"
@@ -270,7 +270,7 @@
                         showErrorMesgGrowl(result.message);
                     }
                 });
-            }, "Confirmation");
+            }, "Clear");
         });
 
         $(window).on("resize", function () {

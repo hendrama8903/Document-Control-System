@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="~/lib/Ionicons/css/ionicons.min.css">
     <link rel="Stylesheet" href="~/lib/select2/dist/css/select2.css" />
     <link rel="Stylesheet" href="~/lib/jquery-message-box-3.2.2/dist/messagebox.css" />
-    <link rel="stylesheet" href="~/css/site.css">
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true">
     <!-- jQuery 3 -->
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <!-- Google Font -->
@@ -36,7 +36,7 @@
     <!-- print.js -->
     <link rel="stylesheet" href="~/lib/print-js/print.min.css">
     <!-- Tema admin (harus paling akhir agar menimpa style di atas) -->
-    <link rel="stylesheet" href="~/css/admin-theme.css">
+    <link rel="stylesheet" href="~/css/admin-theme.css" asp-append-version="true">
     <style type="text/css">
         div.dataTables_wrapper div.dataTables_processing {
             position: fixed;
@@ -46,6 +46,14 @@
 <body class="adm-body">
     <div class="adm-scrim" id="admScrim" onclick="admToggleNav(false)"></div>
     <div class="adm-app" id="admApp">
+        <script>
+            // Sebelum sidebar digambar, supaya tidak berkedip terbuka lalu menciut.
+            try {
+                if (localStorage.getItem('dms.sidebarCollapsed') === '1') {
+                    document.getElementById('admApp').classList.add('collapsed');
+                }
+            } catch (e) { }
+        </script>
 
         <!-- ===== SIDEBAR: rail + panel menu ===== -->
         <aside class="adm-sidebar" id="admSidebar">
@@ -54,7 +62,7 @@
                     <img src="~/images/logo.png" alt="Document Control System">
                 </a>
                 <div class="adm-rail-vtext">DOCUMENT <em>CONTROL</em> SYSTEM</div>
-                <button type="button" class="adm-rail-collapse" onclick="admToggleCollapse()" title="Show / hide menu">
+                <button type="button" class="adm-rail-collapse" onclick="admToggleCollapse()" title="Hide menu" aria-expanded="true">
                     <i class="fa fa-angle-double-left"></i>
                 </button>
             </div>
@@ -137,8 +145,8 @@
     <script src="~/lib/jquery-message-box-3.2.2/dist/messagebox.js"></script>
     <script src="~/lib/blockUI/jquery.blockUI.js"></script>
     <script src="~/lib/bootstrap-filestyle-2.1.0/src/bootstrap-filestyle.js"></script>
-    <script src="~/js/site.js"></script>
-    <script src="~/js/admin-theme.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/admin-theme.js" asp-append-version="true"></script>
     <script src="~/lib/moment/min/moment.min.js"></script>
     <script src="~/dist/js/daterangepicker.js"></script>
     <script src="~/dist/js/bootstrap-datepicker.js"></script>
@@ -218,7 +226,7 @@
     }
 
     function onClearAllNotif() {
-        showConfirmMesg("Are you sure you want to clear all notifications? This cannot be undone.", function () {
+        showDangerConfirm("Are you sure you want to clear all notifications? This cannot be undone.", function () {
             $.ajax({
                 type: "POST",
                 url: "@Url.Action("ClearAll", "Inbox")"
@@ -231,7 +239,7 @@
             }).fail(function (result) {
                 showErrorMesgGrowl(result);
             });
-        }, "Confirmation");
+        }, "Clear");
     }
 
     function onClickNotif(path, notificationId) {

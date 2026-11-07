@@ -179,7 +179,7 @@
         gPartId = row.PART_ID;
         gAttachmentPath = row.ATTACHMENT_PATH;
 
-        showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
+        showDangerConfirm("Are you sure you want to delete the record?", deleteData, "Delete");
     }
 
     function confirmAddEditData() {
@@ -331,7 +331,7 @@
     }
 
     function confirmDeleteAttachment() {
-        showConfirmMesg("Are you sure you want to continue process?", deleteAttachment, "Confirmation");
+        showDangerConfirm("Are you sure you want to continue process?", deleteAttachment, "Delete");
     }
 
     function deleteAttachment() {

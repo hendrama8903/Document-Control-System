@@ -106,8 +106,14 @@
                 popUpProgressHide();
                 if (result.status == true) {
                     var lines = result.lines.concat([question]).map(function (line) { return $("<div>").text(line).html(); });
-                    showConfirmMesg(lines.join("<br><br>"), onYes, result.warning ? "Warning" : "Confirmation",
-                        undefined, undefined, undefined, result.warning ? "msg-warning" : undefined);
+                    var message = lines.join("<br><br>");
+                    if (action == "DELETE") {
+                        showDangerConfirm(message, onYes, "Delete");
+                    } else if (result.warning) {
+                        showWarningConfirm(message, onYes, "Deactivate");
+                    } else {
+                        showConfirmMesg(message, onYes, "Confirmation");
+                    }
                 } else {
                     showErrorMesgGrowl(result.message);
                 }

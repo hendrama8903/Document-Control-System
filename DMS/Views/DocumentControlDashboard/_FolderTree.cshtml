@@ -339,7 +339,7 @@
 
         $("<li>").append($("<button>").attr("type", "button").html('<i class="fa fa-trash-o"></i> Delete').on("click", function (e) {
             e.stopPropagation(); dcdCloseFolderMenu();
-            showConfirmMesg("Are you sure you want to delete folder \"" + folder.FOLDER_NAME + "\"?", function () { dcdConfirmDeleteFolder(folder.FOLDER_ID); }, "Confirmation");
+            showDangerConfirm("Are you sure you want to delete folder \"" + folder.FOLDER_NAME + "\"?", function () { dcdConfirmDeleteFolder(folder.FOLDER_ID); }, "Delete");
         })).appendTo($menu);
 
         $menu.appendTo("body");

@@ -686,7 +686,7 @@
 
         gDocumentCtrlId = row.DOCUMENT_CTRL_ID;
 
-        showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
+        showDangerConfirm("Are you sure you want to delete the record?", deleteData, "Delete");
     }
 
     function onDeleteDistributionPrepare() {
@@ -699,7 +699,7 @@
             }
         });
 
-        showConfirmMesg("Are you sure you want to delete the record?", deleteDistributionData, "Confirmation");
+        showDangerConfirm("Are you sure you want to delete the record?", deleteDistributionData, "Delete");
     }
 
     function onSendDistributionPrepare() {
@@ -946,9 +946,9 @@
         gDocumentCtrlId = row.DOCUMENT_CTRL_ID;
         gDocumentNo = row.DOCUMENT_CODE;
 
-        showConfirmMesg("Are you sure you want to un-receive Document No " + gDocumentNo
+        showWarningConfirm("Are you sure you want to un-receive Document No " + gDocumentNo
             + "? This will revert the registration back to Draft. Only possible if no distribution has been assigned yet.",
-            unReceiveData, "Confirmation");
+            unReceiveData, "Un-receive");
     }
 
     function unReceiveData() {

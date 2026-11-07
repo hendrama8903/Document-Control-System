@@ -319,12 +319,14 @@ function showConfirmMesg(mesg, funcYes, title, ButtonYes, ButtonNo, funcNo, cust
     ButtonYes = ButtonYes == undefined ? "Yes" : ButtonYes;
     ButtonNo = ButtonNo == undefined ? "No" : ButtonNo;
     title = title == undefined ? "Are You Sure" : title;
+    var isDanger = customClass === "msg-danger";
     $.MessageBox({
         title: title,
         message: mesg,
-        buttonDone: ButtonYes,
+        // Tanpa keyCode: Enter tidak boleh langsung menjalankan tindakan berbahaya.
+        buttonDone: isDanger ? { confirm: { text: ButtonYes } } : ButtonYes,
         buttonFail: ButtonNo,
-        customClass: customClass == undefined ? "msg-danger" : customClass
+        customClass: customClass == undefined ? "msg-confirm" : customClass
     }).done(function () {
         if (funcYes && (typeof funcYes == "function")) {
             funcYes();
@@ -335,6 +337,19 @@ function showConfirmMesg(mesg, funcYes, title, ButtonYes, ButtonNo, funcNo, cust
         }
     });
 
+    if (isDanger) {
+        $(".messagebox_button_fail").last().trigger("focus");
+    }
+}
+
+// Merah: data hilang atau tidak bisa dibatalkan. actionLabel = kata kerja, mis. "Delete".
+function showDangerConfirm(mesg, funcYes, actionLabel) {
+    showConfirmMesg(mesg, funcYes, actionLabel, actionLabel, "Cancel", undefined, "msg-danger");
+}
+
+// Oranye: bisa dilanjutkan, tapi ada dampak yang perlu diperhatikan.
+function showWarningConfirm(mesg, funcYes, actionLabel) {
+    showConfirmMesg(mesg, funcYes, "Warning", actionLabel, "Cancel", undefined, "msg-warning");
 }
 
 function resizeGrid(hheader) {

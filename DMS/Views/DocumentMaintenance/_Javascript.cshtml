@@ -2040,7 +2040,7 @@
         gDocumentId = row.DOCUMENT_TRANSACTION_ID;
         gFilePath = row.FILE_PATH;
 
-        showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
+        showDangerConfirm("Are you sure you want to delete the record?", deleteData, "Delete");
 
     }
 
@@ -2279,7 +2279,7 @@
             });
             return;
         }
-        showConfirmMesg("Are you sure you want to continue process?", function () { onApproveReject(null); }, "Confirmation");
+        showWarningConfirm("Are you sure you want to continue process?", function () { onApproveReject(null); }, "Reject");
     }
 
     function onApproveReject(signature) {

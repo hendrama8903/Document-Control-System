@@ -83,7 +83,7 @@
 
     function onDeletePrepare(row) {
         gId = row.ROLE_ID;
-        showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
+        showDangerConfirm("Are you sure you want to delete the record?", deleteData, "Delete");
     }
 
     function confirmAddEditData() {
@@ -441,11 +441,11 @@
     });
 
     $(document).on("click", "#btn_auth_clearall", function () {
-        showConfirmMesg("Are you sure you want to clear all menus and permissions for this role?", function () {
+        showWarningConfirm("Are you sure you want to clear all menus and permissions for this role?", function () {
             gAuthCheckedMenus.clear();
             gAuthCheckedFunctions.clear();
             renderAuthModal();
-        }, "Confirmation");
+        }, "Clear");
     });
 
     function confirmAddEditAuthorization() {

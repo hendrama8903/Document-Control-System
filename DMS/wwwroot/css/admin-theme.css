@@ -41,7 +41,7 @@ body.adm-body {
 /* ---------- Shell ---------- */
 .adm-app {
     display: grid;
-    grid-template-columns: 320px 1fr;
+    grid-template-columns: 304px 1fr;
     min-height: 100vh;
     transition: grid-template-columns .26s cubic-bezier(.4,0,.2,1);
 }
@@ -151,10 +151,10 @@ body.adm-body {
     border-right: 1px solid var(--line);
     display: flex;
     flex-direction: column;
-    padding: 0 14px 16px;
+    padding: 0 10px 16px;
     overflow-y: auto;
     overflow-x: hidden;
-    transition: padding .26s cubic-bezier(.4,0,.2,1), opacity .2s;
+    transition: padding .26s cubic-bezier(.4,0,.2,1), opacity .2s, visibility 0s;
 }
 
 /* tinggi 62px = tinggi topbar (12px padding x2 + tombol 38px),
@@ -214,9 +214,124 @@ body.adm-body {
         padding-right: 0;
         opacity: 0;
         pointer-events: none;
+        /* visibility: keluar dari urutan Tab, setelah fade selesai */
+        visibility: hidden;
+        transition: padding .26s cubic-bezier(.4,0,.2,1), opacity .2s, visibility 0s linear .2s;
     }
 
     .adm-app.collapsed .adm-rail-collapse .fa { transform: rotate(180deg); }
+
+    .adm-app.collapsed .adm-rail-vtext { display: none; }
+
+    .adm-app.collapsed .adm-rail-nav { display: flex; }
+}
+
+/* Ikon menu di rail + submenu melayang, hanya saat sidebar diciutkan. Isinya
+   dibangun admin-theme.js dari menu sidepanel. */
+.adm-rail-nav {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-top: 10px;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+
+.adm-rail-item {
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 10px;
+    background: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #C7E0F4;
+    font-size: 15px;
+    cursor: pointer;
+    transition: .13s;
+}
+
+.adm-rail-item:hover,
+.adm-rail-item:focus,
+.adm-rail-item.flyout-open {
+    background: rgba(255,255,255,.14);
+    color: #fff;
+    text-decoration: none;
+    outline: none;
+}
+
+.adm-rail-item.active,
+.adm-rail-item.active:hover,
+.adm-rail-item.active:focus,
+.adm-rail-item.active.flyout-open {
+    background: #fff;
+    color: #1C3FA6;
+}
+
+.adm-rail-flyout {
+    display: none;
+    position: fixed;
+    left: 54px;
+    z-index: 40;
+    min-width: 230px;
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
+    padding: 6px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 14px 40px -14px rgba(13,28,42,.45);
+}
+
+.adm-rail-flyout.show { display: block; }
+
+.adm-rail-flyout-title {
+    padding: 6px 10px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+}
+
+.adm-rail-flyout a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.adm-rail-flyout a:hover,
+.adm-rail-flyout a:focus {
+    background: var(--paper-2);
+    color: var(--ink);
+    outline: none;
+}
+
+.adm-rail-flyout a.active {
+    background: var(--accent-soft);
+    color: #0B1F5C;
+}
+
+.adm-rail-flyout a > .fa {
+    width: 15px;
+    flex: 0 0 15px;
+    text-align: center;
+    font-size: 12px;
+    color: #93a5b5;
+}
+
+@media (max-width: 920px) {
+    /* Layar kecil memakai drawer, jadi tombol ciutkan tidak berlaku. */
+    .adm-rail-collapse { display: none; }
 }
 
 /* ---------- Menu tree (markup AdminLTE dari session menuString) ---------- */
@@ -283,7 +398,7 @@ body.adm-body {
     list-style: none;
     display: none;
     padding: 0 0 0 8px;
-    margin: 2px 0 4px 12px;
+    margin: 2px 0 4px 10px;
     border-left: 1.5px solid var(--line);
 }
 
@@ -1244,7 +1359,38 @@ body.adm-body {
     border: 1px solid var(--line-2);
 }
 
-/* varian peringatan: showConfirmMesg(..., "msg-warning") */
+.adm-body .messagebox_buttons_button:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(36,80,216,.35);
+}
+
+/* ikon judul; warna tidak boleh jadi satu-satunya penanda */
+.adm-body .messagebox .messagebox_title::before {
+    font-family: FontAwesome;
+    font-weight: normal;
+    margin-right: 7px;
+}
+
+.adm-body .messagebox.msg-confirm .messagebox_title::before { content: "\f059"; }
+.adm-body .messagebox.msg-warning .messagebox_title::before { content: "\f071"; }
+.adm-body .messagebox.msg-danger .messagebox_title::before { content: "\f1f8"; }
+
+/* varian bahaya: showDangerConfirm */
+.adm-body .messagebox.msg-danger { border-color: #dc2626; }
+
+.adm-body .messagebox.msg-danger .messagebox_title { background: #dc2626; }
+
+.adm-body .messagebox.msg-danger .messagebox_content { background: #fef2f2; }
+
+.adm-body .messagebox.msg-danger .messagebox_button_done { background: #dc2626; }
+
+.adm-body .messagebox.msg-danger .messagebox_button_done:hover,
+.adm-body .messagebox.msg-danger .messagebox_button_done:focus {
+    background: #b91c1c;
+    box-shadow: 0 0 0 3px rgba(220,38,38,.35);
+}
+
+/* varian peringatan: showWarningConfirm */
 .adm-body .messagebox.msg-warning { border-color: #f59e0b; }
 
 .adm-body .messagebox.msg-warning .messagebox_title {

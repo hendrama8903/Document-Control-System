@@ -452,7 +452,7 @@
     $(document).on('click', '#btn_delete_signature', function () {
         if (gSignaturePath) {
             // an already-saved signature exists server-side - remove it for real
-            showConfirmMesg('Are you sure you want to remove this signature?', function () {
+            showDangerConfirm('Are you sure you want to remove this signature?', function () {
                 popUpProgressShow();
                 $.ajax({
                     type: 'POST',
@@ -473,7 +473,7 @@
                         showErrorMesgGrowl(result);
                     }
                 });
-            }, 'Confirmation');
+            }, "Remove");
         } else {
             // only a staged, not-yet-saved file - just clear it client-side
             gSignatureFile = null;

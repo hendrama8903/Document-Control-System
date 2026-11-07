@@ -453,7 +453,8 @@
     function onToggleMenuStatus(menu) {
         var newFlag = menu.DELETE_FLAG === 1 ? 0 : 1;
         var verb = newFlag === 1 ? "deactivate" : "activate";
-        showConfirmMesg("Are you sure you want to " + verb + " this menu?", function () {
+        var confirmFn = newFlag === 1 ? showWarningConfirm : showConfirmMesg;
+        confirmFn("Are you sure you want to " + verb + " this menu?", function () {
             popUpProgressShow();
             $.ajax({
                 type: "POST",
@@ -471,7 +472,7 @@
                 },
                 error: function (result) { popUpProgressHide(); showErrorMesgGrowl(result); }
             });
-        }, "Confirmation");
+        }, newFlag === 1 ? "Deactivate" : "Confirmation");
     }
 
     function onToggleFunctionStatus(func, deactivate) {
@@ -636,7 +637,7 @@
 
     function onDeletePrepare(menu) {
         gId = menu.MENU_ID;
-        showConfirmMesg("Are you sure you want to delete this menu?", deleteData, "Confirmation");
+        showDangerConfirm("Are you sure you want to delete this menu?", deleteData, "Delete");
     }
 
     function deleteData() {
@@ -697,7 +698,7 @@
     }
 
     function onDeleteFunctionPrepare(func) {
-        showConfirmMesg("Are you sure you want to delete this function?", function () { deleteFunction(func); }, "Confirmation");
+        showDangerConfirm("Are you sure you want to delete this function?", function () { deleteFunction(func); }, "Delete");
     }
 
     function confirmSaveFunction() {

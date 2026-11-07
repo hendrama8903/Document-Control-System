@@ -182,11 +182,11 @@
 
     function confirmResetData() {
         var newSeqNo = $('#resetSeqNoNew').val();
-        showConfirmMesg(
+        showWarningConfirm(
             "You are about to force the number \"" + gResetSeqCode + "\" from " + gResetCurrentSeqNo + " to " + newSeqNo +
             ". If this number is lower than the highest number already used, the system may generate a duplicate document code. Continue?",
             resetData,
-            "Confirmation"
+            "Reset"
         );
     }
 

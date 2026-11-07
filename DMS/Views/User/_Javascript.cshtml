@@ -439,7 +439,7 @@
     function onDeletePrepare(row) {
         gId = row.USERNAME;
 
-        showConfirmMesg("Are you sure you want to delete user " + gId + "?", deleteData, "Confirmation");
+        showDangerConfirm("Are you sure you want to delete user " + gId + "?", deleteData, "Delete");
     }
 
     function deleteData() {
@@ -640,7 +640,7 @@
     }
 
     function confirmDeleteAttachment() {
-        showConfirmMesg("Are you sure you want to continue process?", deleteAttachment, "Confirmation");
+        showDangerConfirm("Are you sure you want to continue process?", deleteAttachment, "Delete");
     }
 
     function deleteAttachment() {
