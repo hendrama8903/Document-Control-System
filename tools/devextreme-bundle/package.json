@@ -1,0 +1,12 @@
+{
+  "name": "dms-devextreme-bundle",
+  "private": true,
+  "scripts": {
+    "build": "devextreme-bundler && node -e \"require('fs').copyFileSync('dx.custom.js','../../DMS/wwwroot/js/devextreme/dx.custom.js')\""
+  },
+  "devDependencies": {
+    "devextreme": "22.2.11",
+    "terser-webpack-plugin": "5.3.10",
+    "webpack": "5.76.0"
+  }
+}

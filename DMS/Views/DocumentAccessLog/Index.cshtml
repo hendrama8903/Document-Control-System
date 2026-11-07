@@ -1,7 +1,7 @@
 @* Administration > Document Access Log - audit trail siapa membuka / mengunduh /
    mencetak dokumen apa (request Hendra 2026-11-06). *@
 <link rel="stylesheet" href="~/css/devextreme/dx.light.css" asp-append-version="true" />
-<script src="~/js/devextreme/dx.web.js" asp-append-version="true"></script>
+<script src="~/js/devextreme/dx.custom.js" asp-append-version="true"></script>
 
 <style>
     .dal-pill { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 700; }
@@ -61,8 +61,8 @@
 </section>
 
 <script type="text/javascript">
-    var dalStart = moment().subtract(29, 'days').format("YYYY-MM-DD");
-    var dalEnd = moment().format("YYYY-MM-DD");
+    // moment dimuat di akhir layout, jadi baru tersedia saat document ready.
+    var dalStart, dalEnd;
 
     function dalFilters() {
         return {
@@ -88,6 +88,9 @@
     }
 
     $(document).ready(function () {
+        dalStart = moment().subtract(29, 'days').format("YYYY-MM-DD");
+        dalEnd = moment().format("YYYY-MM-DD");
+
         $('#dalDate').daterangepicker({
             startDate: moment(dalStart), endDate: moment(dalEnd), autoUpdateInput: true,
             locale: { cancelLabel: 'Clear', format: 'DD-MM-YYYY' }
