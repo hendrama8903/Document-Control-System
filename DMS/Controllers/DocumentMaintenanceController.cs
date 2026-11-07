@@ -724,6 +724,54 @@ namespace DMS.Controllers
             }
         }
 
+        /// <summary>
+        /// Analisis dampak revisi (OCR tahap 2, 2026-11-06): dokumen lain yang menyebut
+        /// nomor dokumen yang sedang direvisi, dari indeks teks isi dokumen.
+        /// </summary>
+        public JsonResult GetDocumentReferences(string documentCode)
+        {
+            if (HttpContext.Session.GetString("USERNAME") == null)
+                return Json(new { status = false, message = "Session expired." });
+            try
+            {
+                var references = Services.DocumentInsightService.GetReferences(db, documentCode);
+                return Json(new { status = true, data = references });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Cek file sebelum disimpan (OCR tahap 2, 2026-11-06): identik dengan revisi
+        /// sebelumnya, memuat nomor dokumen lain, atau tidak memuat judul. Hanya
+        /// peringatan - tidak memblokir Save.
+        /// </summary>
+        [HttpPost]
+        [RequestSizeLimit(25 * 1024 * 1024)]
+        public JsonResult CheckUploadFile(string revisedDocumentCode, string title)
+        {
+            if (HttpContext.Session.GetString("USERNAME") == null)
+                return Json(new { status = false, message = "Session expired." });
+            try
+            {
+                if (!Request.HasFormContentType || Request.Form.Files.Count == 0)
+                    return Json(new { status = false, message = "No file." });
+                IFormFile file = Request.Form.Files[0];
+                string extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                if (extension != ".xls" && extension != ".xlsx")
+                    return Json(new { status = true, warnings = new string[0], notes = new string[0] });
+
+                var check = Services.DocumentInsightService.CheckUpload(db, Environment.WebRootPath, file, revisedDocumentCode, title);
+                return Json(new { status = true, warnings = check.Warnings, notes = check.Notes, textLength = check.TextLength });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
         public JsonResult GetLevelByDocumentCode(DocumentMaster data)
         {
             try

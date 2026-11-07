@@ -44,6 +44,9 @@
         line-height: 1;
     }
     .dcd-folder-add-btn:hover { background: #E7F1FB; }
+    .dcd-folder-head-actions { display: flex; gap: 6px; }
+    /* tombol "Show Folders" di toolbar grid - hanya tampil saat panel tersembunyi */
+    #btn_toggleFolders.dcd-hidden { display: none; }
     .dcd-folder-tree { flex: 1 1 auto; overflow-y: auto; padding: 8px; min-height: 120px; }
     .dcd-folder-row {
         display: flex;
@@ -141,7 +144,12 @@
 <aside class="dcd-folder-panel" id="dcdFolderPanel">
     <div class="dcd-folder-head">
         <span>Folders</span>
-        <button type="button" class="dcd-folder-add-btn" id="btn_addRootFolder" title="New Folder"><i class="fa fa-plus"></i></button>
+        <div class="dcd-folder-head-actions">
+            <button type="button" class="dcd-folder-add-btn" id="btn_addRootFolder" title="New Folder"><i class="fa fa-plus"></i></button>
+            @* Hide panel dari header-nya sendiri (request Hendra 2026-11-05); tombol
+               "Show Folders" di toolbar grid baru muncul setelah panel disembunyikan *@
+            <button type="button" class="dcd-folder-add-btn" id="btn_hideFolders" title="Hide Folders"><i class="fa fa-angle-double-left"></i></button>
+        </div>
     </div>
     <div class="dcd-folder-tree" id="dcdFolderTree"></div>
     <div class="dcd-folder-foot">
@@ -445,6 +453,12 @@
     $("#btn_addRootFolder").on("click", function () {
         gFolderAddingUnder = null;
         renderFolderTree();
+    });
+
+    // setFoldersPanelCollapsed ada di _GridView masing-masing halaman
+    // (DocumentControlDashboard & UserDashboard)
+    $("#btn_hideFolders").on("click", function () {
+        setFoldersPanelCollapsed(true);
     });
 
     $(document).ready(function () {

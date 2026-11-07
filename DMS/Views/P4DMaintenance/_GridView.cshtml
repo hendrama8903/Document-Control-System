@@ -25,6 +25,40 @@
     // dokumen departemennya sendiri (request Hendra 2026-08-14).
     var gIsQms = @(((bool)ViewData["DocumentControlAccess"]) ? "true" : "false");
 
+    // ---------- "My Action": dokumen yang menunggu tindakan QMS user login, ditandai
+    // seperti "My Approval" di Document Preparation (request Hendra 2026-11-05).
+    // P4D tidak punya approver per orang - siapa pun di tim QMS boleh memproses,
+    // jadi "milik saya" = status yang bisa ditindaklanjuti dengan izin user ini. ----------
+    var dpMyApprovalOnly = false;
+
+    function getMyAction(row) {
+        if (row == null) return null;
+        if (gCanReceive && row.STATUS == 0) {
+            return { label: "To Receive", hint: "Waiting to be received", run: onReceivePrepare };
+        }
+        if (gCanReceive && row.STATUS == 1) {
+            return { label: "To Accept", hint: "Received, waiting to be accepted", run: onAcceptPrepare };
+        }
+        if (gCanSend && (row.STATUS == 2 || row.STATUS == 6) && (row.PENDING_DISTRIBUTION_COUNT || 0) > 0) {
+            return { label: "To Send", hint: row.PENDING_DISTRIBUTION_COUNT + " department(s) not sent yet", run: onSendDistributionAllPrepare };
+        }
+        if (gCanDistribution && row.STATUS == 2) {
+            return { label: "To Distribute", hint: "Accepted, distribution targets not set yet", run: onDistributionPrepare };
+        }
+        return null;
+    }
+
+    function updateMyApprovalButton(count) {
+        $("#dpMyApprovalCount").text(count);
+        $("#btn_myApproval").toggle(count > 0 || dpMyApprovalOnly);
+    }
+
+    function setMyApprovalOnly(enabled) {
+        dpMyApprovalOnly = enabled;
+        $("#btn_myApproval").toggleClass("active", enabled);
+        $("#datagrid").dxDataGrid("instance").columnOption("MY_APPROVAL", "filterValue", enabled ? "Y" : undefined);
+    }
+
     function getSelectedRowData() {
         var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
         return rows.length > 0 ? rows[0] : null;
@@ -108,7 +142,11 @@
                 }).done(function (result) {
                     var rows = result.data == "" ? [] : result.data;
                     updateHeaderStats(rows);
-                    d.resolve(rows);
+                    // dokumen yang menunggu tindakan user login ditaruh paling atas
+                    var mine = rows.filter(function (r) { return getMyAction(r) != null; });
+                    var others = rows.filter(function (r) { return getMyAction(r) == null; });
+                    updateMyApprovalButton(mine.length);
+                    d.resolve(mine.concat(others));
                 }).fail(function () {
                     d.reject("Data loading error");
                 });
@@ -149,6 +187,11 @@
                 mode: "select"
             },
             columnFixing: { enabled: true },
+            onRowPrepared: function (e) {
+                if (e.rowType === "data" && getMyAction(e.data) != null) {
+                    e.rowElement.addClass("dp-row-my-approval");
+                }
+            },
             onSelectionChanged: function (e) {
                 if (e.selectedRowKeys.length > 1) {
                     e.component.selectRows(e.currentSelectedRowKeys, false);
@@ -211,6 +254,21 @@
                         } else if (row.STATUS == 2) {
                             pillClass = "dms-pill dms-pill-success";
                             icon = "fa-check-circle";
+                        }
+
+                        // Menunggu tindakan user login: pill oranye + lonceng berisi aksi
+                        // yang dibutuhkan, klik langsung buka aksinya (request Hendra 2026-11-05)
+                        var myAction = getMyAction(row);
+                        if (myAction != null) {
+                            $("<span>").addClass("dms-pill dp-pill-my-approval")
+                                .attr("title", row.STATUS_VAL + " - " + myAction.hint + " (click to process)")
+                                .html('<i class="fa fa-bell"></i> ' + myAction.label)
+                                .on("click", function (e) {
+                                    e.stopPropagation();
+                                    selectRowThen(row, myAction.run);
+                                })
+                                .appendTo(container);
+                            return;
                         }
 
                         $("<span>").addClass(pillClass).html('<i class="fa ' + icon + '"></i> ' + row.STATUS_VAL).appendTo(container);
@@ -364,6 +422,15 @@
                 },
                 { dataField: "CHANGED_BY", caption: "Changed By", visible: false },
                 {
+                    // kolom bantu filter tombol "My Action" - tidak ditampilkan
+                    name: "MY_APPROVAL",
+                    visible: false,
+                    showInColumnChooser: false,
+                    calculateCellValue: function (row) {
+                        return getMyAction(row) != null ? "Y" : "N";
+                    }
+                },
+                {
                     dataField: "CHANGED_DT",
                     caption: "Changed Date",
                     alignment: "right",
@@ -437,7 +504,18 @@
             var grid = $("#datagrid").dxDataGrid("instance");
             grid.clearFilter();
             grid.clearSelection();
+            setMyApprovalOnly(false);
         });
+
+        // ---------- toolbar: My Action (tampilkan hanya dokumen yang menunggu tindakan saya) ----------
+        $("#btn_myApproval").on("click", function () {
+            setMyApprovalOnly(!dpMyApprovalOnly);
+        });
+
+        // link dari Dashboard: ?myAction=1
+        if (new URLSearchParams(window.location.search).get("myAction") === "1") {
+            setMyApprovalOnly(true);
+        }
 
         // ---------- toolbar: refresh ----------
         $("#btn_refresh").on("click", function () {

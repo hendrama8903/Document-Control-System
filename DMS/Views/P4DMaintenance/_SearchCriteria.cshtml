@@ -44,6 +44,13 @@
                 }
             </ul>
         </div>
+        @if ((bool)ViewData["DocumentControlAccess"])
+        {
+            @* Muncul hanya kalau ada dokumen yang menunggu tindakan user login (diatur di _GridView) *@
+            <button type="button" class="dp-btn dp-btn-my-approval" id="btn_myApproval" style="display:none;" title="Show only documents waiting for your action (Receive / Accept / Send)">
+                <i class="fa fa-bell"></i> My Action <span class="dp-my-approval-count" id="dpMyApprovalCount">0</span>
+            </button>
+        }
         <button type="button" class="dp-btn dp-btn-outline" id="btn_toggleFilters"><i class="fa fa-filter"></i> More Filters</button>
         <button type="button" class="dp-btn dp-btn-outline" id="btn_resetFilters"><i class="fa fa-undo"></i> Reset</button>
         <button type="button" class="dp-btn dp-btn-outline" id="btn_refresh"><i class="fa fa-refresh"></i> Refresh</button>

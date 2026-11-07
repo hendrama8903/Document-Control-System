@@ -105,6 +105,14 @@
             onApprovalPrepare();
         });
 
+        // Tombol di banner status popup Approval List (hanya tampil saat giliran user login)
+        $("#btn_approvalReview").on("click", function () {
+            var currentRow = getCurrentApprovalRow();
+            if (currentRow != null) {
+                onApprovalForm(currentRow["WORKFLOW_SEQ"], currentRow["APPROVER"]);
+            }
+        });
+
         $("#btn_approve").on("click", function () {
             gApprovalMode = "approve";
             onApproveRejectPrepare();
@@ -217,13 +225,9 @@
                     $('#approvalDocumentDepartment').html(gDocumentDepartment);
                     $('#approvalDocumentClassified').html(gDocumentClassified);
                     $('#approvalCreator').html(approvalHeaderData["CREATOR_NAME"]);
-                    $('#approvalCreatedDate').html(gDocumentCreatedDate ? moment(gDocumentCreatedDate).format("DD-MM-YYYY HH:mm:ss") : "-");
+                    $('#approvalCreatedDate').html(gDocumentCreatedDate ? moment(gDocumentCreatedDate).format("DD MMM YYYY HH:mm") : "-");
 
-                    if (approvalHeaderData["APPROVAL_STATUS"] == 1) {
-                        $('#pengesahanLayout').show();
-                    } else {
-                        $('#pengesahanLayout').hide();
-                    }
+                    $('#btn_download_pengesahan').toggle(approvalHeaderData["APPROVAL_STATUS"] == 1);
                 } else {
                     showErrorMesgGrowl(result.message);
                 }
@@ -264,38 +268,62 @@
         return '<span class="dms-pill ' + cls + '"><i class="fa ' + icon + '"></i> ' + text + '</span>';
     }
 
-    // Kotak "APPROVAL STATUS" di sebelah Document Information - dipanggil
-    // setelah approvalHeaderData & approvalDetailData dua-duanya siap.
+    // Baris approval yang sedang aktif (null kalau approval sudah selesai/ditolak)
+    function getCurrentApprovalRow() {
+        if (approvalHeaderData == null || approvalHeaderData["APPROVAL_STATUS"] != 0) return null;
+        return (approvalDetailData || []).filter(function (r) {
+            return r["WORKFLOW_SEQ"] == approvalHeaderData["CURRENT_SEQ"];
+        })[0] || null;
+    }
+
+    function isMyApprovalTurn() {
+        var currentRow = getCurrentApprovalRow();
+        return currentRow != null && currentRow["APPROVER"] === gCurrentUsername;
+    }
+
+    function escapeApprovalHtml(value) {
+        return $("<div>").text(value == null ? "" : value).html();
+    }
+
+    // Banner status di atas popup Approval List - dipanggil setelah
+    // approvalHeaderData & approvalDetailData dua-duanya siap. Tombol
+    // Approve/Reject hanya muncul kalau sekarang giliran user login.
     function updateApprovalStatusPanel() {
         if (approvalHeaderData == null) return;
 
         var $panel = $('#approvalStatusPanel');
-        $panel.removeClass('adf-status-info adf-status-success adf-status-warning adf-status-danger');
+        $panel.removeClass('adf-status-info adf-status-success adf-status-mine adf-status-danger');
+        $('#btn_approvalReview').hide();
 
         var status = approvalHeaderData["APPROVAL_STATUS"];
+        var total = (approvalDetailData || []).length;
 
         if (status == 1) {
             $panel.addClass('adf-status-success');
             $('#approvalStatusIcon').attr('class', 'fa fa-check');
-            $('#approvalStatusPre').text('STATUS');
-            $('#approvalStatusText').text('APPROVED');
-            $('#approvalStatusHint').text('This document has completed the approval process.');
+            $('#approvalStatusText').text('Approved');
+            $('#approvalStatusHint').text('All ' + total + ' approval steps have been completed.');
         } else if (status == 0) {
-            var currentRow = (approvalDetailData || []).filter(function (r) {
-                return r["WORKFLOW_SEQ"] == approvalHeaderData["CURRENT_SEQ"];
-            })[0];
+            var currentRow = getCurrentApprovalRow();
+            var stepText = 'Step ' + approvalHeaderData["CURRENT_SEQ"] + ' of ' + total;
 
-            $panel.addClass('adf-status-warning');
-            $('#approvalStatusIcon').attr('class', 'fa fa-clock-o');
-            $('#approvalStatusPre').text('WAITING FOR');
-            $('#approvalStatusText').text(currentRow ? currentRow["APPROVER_NAME"].toUpperCase() : "-");
-            $('#approvalStatusHint').text('Please review and take action.');
+            if (isMyApprovalTurn()) {
+                $panel.addClass('adf-status-mine');
+                $('#approvalStatusIcon').attr('class', 'fa fa-bell');
+                $('#approvalStatusText').text('Waiting for your approval');
+                $('#approvalStatusHint').text(stepText + ' - please review this document and approve or reject it.');
+                $('#btn_approvalReview').show();
+            } else {
+                $panel.addClass('adf-status-info');
+                $('#approvalStatusIcon').attr('class', 'fa fa-clock-o');
+                $('#approvalStatusText').text('Waiting for ' + (currentRow ? currentRow["APPROVER_NAME"] : '-'));
+                $('#approvalStatusHint').text(stepText + (currentRow && currentRow["LABEL"] ? ' - ' + currentRow["LABEL"] : ''));
+            }
         } else {
             $panel.addClass('adf-status-danger');
             $('#approvalStatusIcon').attr('class', 'fa fa-times');
-            $('#approvalStatusPre').text('STATUS');
-            $('#approvalStatusText').text('REJECTED');
-            $('#approvalStatusHint').text('This document was rejected. See remarks below.');
+            $('#approvalStatusText').text('Rejected');
+            $('#approvalStatusHint').text('This document was rejected. See the remark in the approval flow below.');
         }
     }
 
@@ -313,77 +341,6 @@
                     approvalDetailData = data;
                     renderApprovalStepper();
                     updateApprovalStatusPanel();
-
-                    $("#approvalgrid").dataTable().fnDestroy();
-                    $('#approvalgrid').DataTable({
-                        "ordering": false,
-                        "oLanguage": { "sEmptyTable": "Data not found." },
-                        "scrollCollapse": false,
-                        "paging": false,
-                        "info": false,
-                        "searching": false,
-                        "data": data,
-                        "columns": [
-                            {
-                                render: function (data, type, row, meta) {
-                                    return meta.row + 1;
-                                }
-                            },
-                            {
-                                render: function (data, type, row) {
-                                    return '<span class="approver-name">' + row["APPROVER_NAME"] + '</span>';
-                                }
-                            },
-                            {
-                                data: 'LABEL',
-                                defaultContent: '<span class="cell-muted">&ndash;</span>'
-                            },
-                            {
-                                render: function (data, type, row) {
-                                    return approvalStatusPillHtml(getApprovalStepState(row));
-                                }
-                            },
-                            {
-                                render: function (data, type, row) {
-                                    return row["CHANGED_DT"]
-                                        ? moment(row["CHANGED_DT"]).format("DD-MM-YYYY HH:mm:ss")
-                                        : '<span class="cell-muted">&ndash;</span>';
-                                }
-                            },
-                            {
-                                render: function (data, type, row) {
-                                    return row["REMARK"] ? row["REMARK"] : '<span class="cell-muted">&ndash;</span>';
-                                }
-                            },
-                            {
-                                render: function (data, type, row) {
-                                    if (approvalHeaderData != null) {
-                                        if (approvalHeaderData["CURRENT_SEQ"] == row["WORKFLOW_SEQ"] &&
-                                            row["APPROVER"] === '@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("USERNAME"))'
-                                            && approvalHeaderData["APPROVAL_STATUS"] == 0) {
-                                            return '<button class="btn-review" id="btn_approval_form" onClick="onApprovalForm(' + row["WORKFLOW_SEQ"] + ', \'' + row["APPROVER"] + '\')"><i class="fa fa-eye"></i> Review</button>';
-                                        }
-                                    }
-                                    return '<span class="cell-muted">&ndash;</span>';
-                                }
-                            }
-                        ],
-                        "columnDefs": [
-                            { "width": "36px", "targets": 0, "className": "text-center" },
-                            { "targets": [3], "className": "text-center" },
-                            { "width": "150px", "targets": 4 },
-                            { "width": "110px", "targets": 6, "className": "text-center" }
-                        ],
-                        "createdRow": function (rowEl, rowData) {
-                            if (getApprovalStepState(rowData) === "current") {
-                                $(rowEl).addClass("current-row");
-                            }
-                        }
-                    });
-
-                    $('#modalApproval').on('shown.bs.modal', function () {
-                        $("#approvalgrid").DataTable().columns.adjust().draw();
-                    });
                 } else {
                     showErrorMesgGrowl(result.message);
                 }
@@ -407,6 +364,7 @@
             success: function (result) {
                 if (result.status == true) {
                     var data = result.data;
+                    $("#approvalHistoryCount").text(data && data.length ? "(" + data.length + ")" : "");
 
                     $("#historyGrid").dataTable().fnDestroy();
                     $('#historyGrid').DataTable({
@@ -591,12 +549,10 @@
         });
     }
 
-    // Visual progression Created -> Approved/Waiting per approver, dibangun dari
-    // approvalHeaderData (langkah "Created") + approvalDetailData (satu langkah
-    // per approver). Dipanggil setelah getApprovalDetail() selesai, karena
-    // getApprovalHeader() sudah dipanggil lebih dulu secara sinkron di
-    // onApprovalPrepare(). Warna & state sama persis dengan getApprovalStepState()
-    // supaya konsisten dengan tabel Approval Route.
+    // Timeline vertikal "Approval Flow" (request Hendra 2026-11-05) - gabungan
+    // stepper + tabel Approval Route yang dulu terpisah: satu baris per langkah
+    // (Created + tiap approver) berisi posisi, nama, status, tanggal & remark.
+    // State per langkah dari getApprovalStepState() supaya sama dengan side panel.
     function renderApprovalStepper() {
         if (approvalHeaderData == null || approvalDetailData == null) {
             return;
@@ -604,10 +560,11 @@
 
         var steps = [];
         steps.push({
-            title: "Created",
-            sub: approvalHeaderData["CREATOR_NAME"] || "",
+            stepLabel: "Created",
+            name: approvalHeaderData["CREATOR_NAME"] || "-",
             date: gDocumentCreatedDate,
-            state: "done"
+            state: "done",
+            pill: '<span class="dms-pill dms-pill-default"><i class="fa fa-pencil"></i> Submitted</span>'
         });
 
         var sortedDetail = approvalDetailData.slice().sort(function (a, b) {
@@ -616,47 +573,53 @@
 
         sortedDetail.forEach(function (row) {
             var state = getApprovalStepState(row);
-            var title = state === "done" ? "Approved"
-                : state === "current" ? "Waiting"
-                : state === "rejected" ? "Rejected"
-                : "Pending";
+            var mine = state === "current" && row["APPROVER"] === gCurrentUsername;
 
             steps.push({
-                title: title,
-                sub: row["APPROVER_NAME"],
-                date: row["CHANGED_DT"],
-                state: state
+                stepLabel: "Step " + row["WORKFLOW_SEQ"] + (row["LABEL"] ? " · " + row["LABEL"] : ""),
+                name: row["APPROVER_NAME"] + (mine ? " (You)" : ""),
+                date: state === "done" || state === "rejected" ? row["CHANGED_DT"] : null,
+                remark: row["REMARK"],
+                state: state,
+                mine: mine,
+                seq: row["WORKFLOW_SEQ"],
+                pill: mine
+                    ? '<span class="dms-pill dp-pill-my-approval"><i class="fa fa-bell"></i> My Approval</span>'
+                    : approvalStatusPillHtml(state)
             });
         });
 
         var iconByState = {
-            done: "fa-check",
-            current: "fa-clock-o",
-            rejected: "fa-times",
-            upcoming: ""
+            done: '<i class="fa fa-check"></i>',
+            current: '<i class="fa fa-clock-o"></i>',
+            rejected: '<i class="fa fa-times"></i>'
         };
 
         var html = "";
         steps.forEach(function (step, idx) {
-            var dateHtml = step.date ? '<div class="stepper-date">' + moment(step.date).format("DD-MM-YYYY HH:mm") + "</div>" : "";
-            var iconHtml = iconByState[step.state] ? '<i class="fa ' + iconByState[step.state] + '"></i>' : "";
-            var badgeHtml = step.state === "current" ? '<div class="stepper-current-badge">CURRENT STEP</div>' : "";
+            var dot = step.mine ? '<i class="fa fa-bell"></i>'
+                : (iconByState[step.state] || idx);
+            var dateHtml = step.date ? '<div class="adf-flow-date">' + moment(step.date).format("DD MMM YYYY HH:mm") + '</div>' : '';
+            var remarkHtml = step.remark
+                ? '<div class="adf-flow-remark"><i class="fa fa-comment-o"></i>' + escapeApprovalHtml(step.remark) + '</div>'
+                : '';
 
-            html += '<div class="stepper-step stepper-' + step.state + '">' +
-                        '<div class="stepper-icon">' + iconHtml + '</div>' +
-                        '<div class="stepper-title">' + (idx + 1) + ". " + step.title + "</div>" +
-                        '<div class="stepper-sub">' + step.sub + "</div>" +
-                        dateHtml +
-                        badgeHtml +
-                    "</div>";
-
-            if (idx < steps.length - 1) {
-                var connectorState = (step.state == "done" || step.state == "rejected") ? step.state : "upcoming";
-                html += '<div class="stepper-connector stepper-connector-' + connectorState + '"></div>';
-            }
+            html += '<div class="adf-flow-item ' + step.state + (step.mine ? ' mine' : '') + '">' +
+                        '<div class="adf-flow-dot">' + dot + '</div>' +
+                        '<div class="adf-flow-main">' +
+                            '<div class="adf-flow-head">' +
+                                '<div class="adf-flow-who">' +
+                                    '<div class="adf-flow-step">' + escapeApprovalHtml(step.stepLabel) + '</div>' +
+                                    '<div class="adf-flow-name">' + escapeApprovalHtml(step.name) + '</div>' +
+                                '</div>' +
+                                '<div class="adf-flow-right">' + step.pill + dateHtml + '</div>' +
+                            '</div>' +
+                            remarkHtml +
+                        '</div>' +
+                    '</div>';
         });
 
-        $("#approvalStepper").html(html);
+        $("#approvalFlow").html(html);
     }
 
     function onApprovalForm(approval_seq, approver_name) {
@@ -768,6 +731,7 @@
 
         reset();
         $('#addEditApprovalPreview').hide().empty();
+        $('#addEditImpactPanel, #addEditFileCheck').hide().empty();
 
         gFilePath = null;
 
@@ -1064,6 +1028,83 @@
 
     var gManualNoPrefixRequestSeq = 0;
 
+    // ---------- OCR tahap 2 (2026-11-06): dampak revisi & cek file upload ----------
+    function insightEsc(s) { return $('<div>').text(s == null ? "" : s).html(); }
+
+    // Dokumen lain (termasuk dokumen scan yang dibaca OCR) yang menyebut nomor
+    // dokumen yang sedang direvisi - bahan pertimbangan dokumen mana yang ikut ditinjau.
+    function loadDocumentReferences(documentCode) {
+        var $panel = $('#addEditImpactPanel').removeClass('has-refs').hide().empty();
+        if (!documentCode) return;
+        $.ajax({
+            type: "GET",
+            url: "@Url.Action("GetDocumentReferences", "DocumentMaintenance")",
+            data: { documentCode: documentCode },
+            success: function (result) {
+                if (result.status !== true) return;
+                var refs = result.data || [];
+                var $title = $('<div class="adf-insight-title"><i class="fa fa-link"></i> Documents that refer to ' + insightEsc(documentCode) + '</div>');
+                $panel.append($title);
+                if (refs.length === 0) {
+                    $panel.append('<div class="adf-insight-sub">No other approved document mentions this document number. Revising it should not affect other documents.</div>');
+                    $panel.show();
+                    return;
+                }
+                $panel.addClass('has-refs');
+                $title.append('<span class="adf-tag" style="background:#FEF0C7;color:#93370D;">' + refs.length + '</span>');
+                $panel.append('<div class="adf-insight-sub">These documents mention this number in their title or content. Check whether they need to be revised together with this document.</div>');
+                var codeRe = new RegExp(documentCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+                refs.forEach(function (r) {
+                    var open = r.SourceType === "EXTERNAL"
+                        ? '@Url.Action("DownloadAttachment", "ExternalDocument")?path=' + encodeURIComponent(r.FilePath || "")
+                        : '@Html.Raw(Url.Action("ViewAttachment", "DocumentMaintenance"))?FILE_PATH=' + encodeURIComponent(r.FilePath || "") + '&DOCUMENT_TRANSACTION_ID=' + r.SourceId + '&type=1';
+                    var name = (r.DocumentCode ? r.DocumentCode + ' - ' : '') + (r.Title || '');
+                    var meta = [r.SourceType === "EXTERNAL" ? "External" : (r.Revision != null ? "Rev. " + r.Revision : null), r.StatusName, r.DepartmentName].filter(Boolean).join(' · ');
+                    var snippet = r.Snippet ? '<div class="adf-ref-snip">… ' + insightEsc(r.Snippet).replace(codeRe, function (m) { return '<mark>' + m + '</mark>'; }) + ' …</div>' : '';
+                    $panel.append('<div class="adf-ref"><div class="adf-ref-main"><a onclick="window.open(\'' + open.replace(/'/g, "%27") + '\', \'_blank\')">' + insightEsc(name) + '</a> <span>' + insightEsc(meta) + '</span>' +
+                        (r.ByOcr ? ' <span class="adf-tag">OCR</span>' : '') + snippet + '</div></div>');
+                });
+                $panel.show();
+            }
+        });
+    }
+
+    // Cek isi file sebelum disimpan: identik dengan revisi sebelumnya, memuat nomor
+    // dokumen lain, atau tidak memuat judul. Hanya peringatan, Save tetap bisa.
+    var gFileCheckSeq = 0;
+    $(document).on('change', '#addEditDocumentUpload', function () {
+        var $box = $('#addEditFileCheck').hide().empty();
+        var files = this.files;
+        if (gScreenMode !== "ADD" || !files || files.length === 0) return;
+        var ext = (files[0].name.split('.').pop() || "").toLowerCase();
+        if (ext !== "xls" && ext !== "xlsx") return;
+
+        var data = new FormData();
+        data.append("file", files[0]);
+        data.append("revisedDocumentCode", $('#addEditDocumentType').val() == "02" ? ($('#addEditDocumentNo').val() || "") : "");
+        data.append("title", $('#addEditDocumentName').val() || "");
+        $box.html('<div class="note"><i class="fa fa-spinner fa-spin"></i> Checking file content...</div>').show();
+
+        var seq = ++gFileCheckSeq;
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("CheckUploadFile", "DocumentMaintenance")",
+            data: data, contentType: false, processData: false,
+            success: function (r) {
+                if (seq !== gFileCheckSeq) return;
+                $box.empty();
+                if (r.status !== true) { $box.hide(); return; }
+                (r.warnings || []).forEach(function (w) { $box.append('<div class="warn"><i class="fa fa-exclamation-triangle"></i><span>' + insightEsc(w) + '</span></div>'); });
+                (r.notes || []).forEach(function (n) { $box.append('<div class="note"><i class="fa fa-info-circle"></i><span>' + insightEsc(n) + '</span></div>'); });
+                if ((r.warnings || []).length === 0 && (r.notes || []).length === 0) {
+                    $box.append('<div class="ok"><i class="fa fa-check-circle"></i><span>File content checked - no issues found.</span></div>');
+                }
+                $box.show();
+            },
+            error: function () { if (seq === gFileCheckSeq) $box.hide(); }
+        });
+    });
+
     // ---------- Pratinjau approval chain (2026-11-06) ----------
     var gApprovalPreviewTimer = null;
     var gApprovalPreviewSeq = 0;
@@ -1188,6 +1229,7 @@
 
     function onChangeDocumentType() {
         reset();
+        $('#addEditImpactPanel, #addEditFileCheck').hide().empty();  // OCR tahap 2
 
         if ($('#addEditDocumentType').val() == "01") //NEW
         {
@@ -1337,6 +1379,9 @@
 
                         $('#addEditReferenceNo').val(data.REFERENCE_NO);
                         $('#addEditSource').val(data.SOURCE);
+
+                        // Analisis dampak revisi (OCR tahap 2, 2026-11-06)
+                        loadDocumentReferences(data.DOCUMENT_CODE);
                     } else {
                         showErrorMesgGrowl(result.message);
                     }

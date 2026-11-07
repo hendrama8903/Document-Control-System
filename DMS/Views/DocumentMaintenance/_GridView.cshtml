@@ -9,6 +9,38 @@
 <script type="text/javascript">
     var gCanDelete = @(((bool)ViewData["Delete"]) ? "true" : "false");
 
+    // ---------- "My Approval": dokumen yang sedang menunggu approval user login
+    // (request Hendra 2026-11-05 - approver dengan banyak dokumen susah menemukan
+    // mana yang gilirannya). Baris di-highlight, dinaikkan ke atas, dan bisa
+    // difilter lewat tombol "My Approval" di toolbar. ----------
+    var gLoginUser = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Microsoft.AspNetCore.Http.SessionExtensions.GetString(Context.Session, "USERNAME") ?? ""));
+    var dpMyApprovalOnly = false;
+
+    function isMyApproval(row) {
+        return row != null && row.STATUS == 0 && gLoginUser !== ""
+            && (row.CURRENT_APPROVER || "").toLowerCase() === gLoginUser.toLowerCase();
+    }
+
+    function updateMyApprovalButton(count) {
+        $("#dpMyApprovalCount").text(count);
+        $("#btn_myApproval").toggle(count > 0 || dpMyApprovalOnly);
+    }
+
+    function setMyApprovalOnly(enabled) {
+        dpMyApprovalOnly = enabled;
+        $("#btn_myApproval").toggleClass("active", enabled);
+        $("#datagrid").dxDataGrid("instance").columnOption("MY_APPROVAL", "filterValue", enabled ? "Y" : undefined);
+    }
+
+    // Shortcut dari pill Status (giliran user login): pilih baris lalu buka form Approval yang sama
+    // dengan Actions > Approval
+    function openMyApproval(row) {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        grid.selectRows([row.DOCUMENT_TRANSACTION_ID], false).then(function () {
+            onApprovalPrepare();
+        });
+    }
+
     function getSelectedRowData() {
         var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
         return rows.length > 0 ? rows[0] : null;
@@ -99,7 +131,13 @@
                 }).done(function (result) {
                     var rows = result.data == "" ? [] : result.data;
                     updateHeaderStats(rows);
-                    d.resolve(rows);
+
+                    // Dokumen giliran approval user login dinaikkan ke atas; urutan
+                    // asli dari server tetap dipertahankan di dalam masing-masing kelompok
+                    var mine = rows.filter(isMyApproval);
+                    var others = rows.filter(function (r) { return !isMyApproval(r); });
+                    updateMyApprovalButton(mine.length);
+                    d.resolve(mine.concat(others));
                 }).fail(function () {
                     d.reject("Data loading error");
                 });
@@ -147,6 +185,11 @@
                 mode: "select"
             },
             columnFixing: { enabled: true },
+            onRowPrepared: function (e) {
+                if (e.rowType === "data" && isMyApproval(e.data)) {
+                    e.rowElement.addClass("dp-row-my-approval");
+                }
+            },
             onSelectionChanged: function (e) {
                 if (e.selectedRowKeys.length > 1) {
                     e.component.selectRows(e.currentSelectedRowKeys, false);
@@ -187,6 +230,12 @@
                         if (row.STATUS == 0) {
                             pillClass = "dms-pill dms-pill-info";
                             icon = "fa-clock-o";
+                            // Giliran user login: jam diganti lonceng + pill oranye sebagai
+                            // penanda (pengganti tag "Your Turn", request Hendra 2026-11-05)
+                            if (isMyApproval(row)) {
+                                pillClass = "dms-pill dp-pill-my-approval";
+                                icon = "fa-bell";
+                            }
                         } else if (row.STATUS == 1) {
                             pillClass = "dms-pill dms-pill-success";
                             icon = "fa-check-circle";
@@ -209,9 +258,25 @@
                         // Tampilan khusus grid ini saja - "Published" tanpa "(Effective)",
                         // master data TB_M_SYSTEM tidak diubah (request Hendra 2026-08-15).
                         var statusText = (row.STATUS_DISPLAY || "").replace(" (Effective)", "");
+                        // Giliran user login tampil "My Approval" - sama dengan tombol di toolbar
+                        // (request Hendra 2026-11-05); filter/export tetap pakai STATUS_DISPLAY asli
+                        if (isMyApproval(row)) {
+                            statusText = "My Approval";
+                        }
                         var $pill = $("<span>").addClass(pillClass).css("cursor", "pointer");
                         $("<i>").addClass("fa " + icon).css("fontSize", "11px").appendTo($pill);
-                        $pill.append(" " + statusText);
+                        $pill.append(document.createTextNode(" " + statusText));
+
+                        // Posisi approval berjenjang dibuat ringkas di dalam pill ("2/3") +
+                        // nama approver via tooltip - sengaja tidak jadi baris tambahan supaya
+                        // tinggi baris grid tetap seragam (request Hendra 2026-11-05)
+                        if (row.STATUS == 0 && row.CURRENT_APPROVAL_SEQ && row.TOTAL_APPROVAL_SEQ) {
+                            $("<span>").addClass("dp-pill-step")
+                                .text(row.CURRENT_APPROVAL_SEQ + "/" + row.TOTAL_APPROVAL_SEQ)
+                                .appendTo($pill);
+                            $pill.attr("title", "Step " + row.CURRENT_APPROVAL_SEQ + " of " + row.TOTAL_APPROVAL_SEQ
+                                + " - waiting for " + (isMyApproval(row) ? "you (click to open Approval)" : (row.CURRENT_APPROVER_NAME || "-")));
+                        }
 
                         // Ikon panah kecil menandakan pill ini bisa diklik untuk buka
                         // side panel (request Hendra 2026-08-15).
@@ -220,9 +285,14 @@
                         // Klik untuk lihat state approval-nya saja (badge + stepper) lewat
                         // side panel - beda dari modal "Approval List" lengkap yang dibuka
                         // lewat menu Actions > Approval (request Hendra 2026-08-15).
+                        // Kalau giliran user login, klik langsung buka form Approval.
                         $pill.on("click", function (e) {
                             e.stopPropagation();
-                            dmOpenApprovalState(row);
+                            if (isMyApproval(row)) {
+                                openMyApproval(row);
+                            } else {
+                                dmOpenApprovalState(row);
+                            }
                         });
 
                         $pill.appendTo(container);
@@ -328,6 +398,19 @@
                     }
                 },
                 {
+                    // Tanggal dokumen dibuat di sistem (bukan Document Date isian form) -
+                    // tampil default sejak 2026-11-04; dataType date supaya sort/filter per tanggal
+                    dataField: "CREATED_DT",
+                    caption: "Created Date",
+                    dataType: "date",
+                    alignment: "center",
+                    width: 150,
+                    cellTemplate: function (container, options) {
+                        var value = options.data.CREATED_DT;
+                        container.text(value != null ? moment(value).format("DD MMM YYYY HH:mm") : "-");
+                    }
+                },
+                {
                     dataField: "DIVISION_NAME",
                     caption: "Division",
                     width: 220,
@@ -361,17 +444,28 @@
                 { dataField: "REASON", caption: "Reason", visible: false },
                 { dataField: "REFERENCE_NO", caption: "Reference No", visible: false },
                 { dataField: "SOURCE", caption: "Source", visible: false },
-                { dataField: "CREATED_BY", caption: "Created By", visible: false },
                 {
-                    dataField: "CREATED_DT",
-                    caption: "Created Date",
-                    alignment: "right",
+                    // Approver yang sedang ditunggu - disembunyikan default, bisa ditampilkan
+                    // lewat Show/Hide Columns untuk follow-up / filter per approver
+                    name: "CURRENT_APPROVER_NAME",
+                    caption: "Current Approver",
                     visible: false,
+                    calculateCellValue: function (row) {
+                        return row.STATUS == 0 ? (row.CURRENT_APPROVER_NAME || "") : "";
+                    },
                     cellTemplate: function (container, options) {
-                        var value = options.data.CREATED_DT;
-                        container.text(value != null ? moment(value).format("DD-MM-YYYY hh:mm:ss") : "");
+                        container.text(options.value || "-");
                     }
                 },
+                {
+                    // Kolom bantu untuk filter tombol "My Approval" - tidak ditampilkan
+                    name: "MY_APPROVAL",
+                    caption: "My Approval",
+                    visible: false,
+                    showInColumnChooser: false,
+                    calculateCellValue: function (row) { return isMyApproval(row) ? "Y" : "N"; }
+                },
+                { dataField: "CREATED_BY", caption: "Created By", visible: false },
                 { dataField: "CHANGED_BY", caption: "Changed By", visible: false },
                 {
                     dataField: "CHANGED_DT",
@@ -380,7 +474,7 @@
                     visible: false,
                     cellTemplate: function (container, options) {
                         var value = options.data.CHANGED_DT;
-                        container.text(value != null ? moment(value).format("DD-MM-YYYY hh:mm:ss") : "");
+                        container.text(value != null ? moment(value).format("DD-MM-YYYY HH:mm:ss") : "");
                     }
                 },
                 {
@@ -444,7 +538,23 @@
             var grid = $("#datagrid").dxDataGrid("instance");
             grid.clearFilter();
             grid.clearSelection();
+            setMyApprovalOnly(false);
         });
+
+        // ---------- toolbar: My Approval (filter dokumen giliran user login) ----------
+        $("#btn_myApproval").on("click", function () {
+            setMyApprovalOnly(!dpMyApprovalOnly);
+        });
+
+        // ---------- link dari Dashboard / email: ?myApproval=1 atau ?DOCUMENT_CODE=xxx ----------
+        var urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get("myApproval") === "1") {
+            setMyApprovalOnly(true);
+        }
+        var linkedCode = urlParams.get("DOCUMENT_CODE");
+        if (linkedCode && linkedCode !== "null") {
+            $("#datagrid").dxDataGrid("instance").columnOption("DOCUMENT_CODE", "filterValue", linkedCode);
+        }
 
         // ---------- toolbar: refresh ----------
         $("#btn_refresh").on("click", function () {

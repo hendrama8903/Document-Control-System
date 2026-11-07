@@ -435,9 +435,7 @@ namespace DMS.Controllers
                 IList<UserPosition> userPositions = UserRepo.Instance.SearchPosition(new UserPosition { DOCUMENT_CONTROL_ACCESS = "1" }, db, null, null);
                 if (userPositions.Count > 0)
                 {
-                    CultureInfo cultureInfo = new CultureInfo("id-ID"); // Budaya Indonesia
-                    DateTime date = (DateTime)documentControlMaintenance.DOCUMENT_DATE;
-                    string dateString = date.ToString("dddd, d MMMM yyyy", cultureInfo);
+                    string dateString = documentControlMaintenance.DOCUMENT_DATE?.ToString("dd MMM yyyy", CultureInfo.InvariantCulture) ?? "-";
 
                     List<string> toAddresses = new List<string>();
                     List<string> toUsernames = new List<string>();
@@ -462,13 +460,16 @@ namespace DMS.Controllers
                          .Replace("{DOCUMENT_CODE}", documentControlMaintenance.DOCUMENT_CODE);
                     string title = emailTemplate.Where(x => x.SYSTEM_CODE == "TITLE").First().SYSTEM_VALUE;
                     string body = emailTemplate.Where(x => x.SYSTEM_CODE == "BODY").First().SYSTEM_VALUE
-                        .Replace("{DOCUMENT_CODE}", documentControlMaintenance.DOCUMENT_CODE)
-                        .Replace("{DOCUMENT_NAME}", documentControlMaintenance.DOCUMENT_NAME)
+                        .Replace("{DOCUMENT_CODE}", EncodeHtml(documentControlMaintenance.DOCUMENT_CODE))
+                        .Replace("{DOCUMENT_NAME}", EncodeHtml(documentControlMaintenance.DOCUMENT_NAME))
                         .Replace("{DOCUMENT_DATE}", dateString)
                         .Replace("{REVISION}", documentControlMaintenance.REVISION.ToString())
-                        .Replace("{CREATOR}", creator.FULL_NAME)
-                        .Replace("{DIVISION}", documentControlMaintenance.DIVISION + " - " + documentControlMaintenance.DIVISION_NAME)
-                        .Replace("{DEPARTMENT}", documentControlMaintenance.DEPARTMENT_CODE + " - " + documentControlMaintenance.DEPARTMENT_NAME);
+                        .Replace("{CREATOR}", EncodeHtml(creator?.FULL_NAME ?? documentControlMaintenance.CREATED_BY))
+                        .Replace("{DOCUMENT_TYPE}", EncodeHtml(GetDocumentTypeText(documentControlMaintenance.DOCUMENT_TYPE)))
+                        .Replace("{CLASSIFICATION}", EncodeHtml(string.IsNullOrEmpty(documentControlMaintenance.CLASSIFIED_VAL)
+                            ? "-" : documentControlMaintenance.CLASSIFIED + " - " + documentControlMaintenance.CLASSIFIED_VAL))
+                        .Replace("{DIVISION}", EncodeHtml(documentControlMaintenance.DIVISION + " - " + documentControlMaintenance.DIVISION_NAME))
+                        .Replace("{DEPARTMENT}", EncodeHtml(documentControlMaintenance.DEPARTMENT_CODE + " - " + documentControlMaintenance.DEPARTMENT_NAME));
                     string buttonLink = $"{scheme}://{hostString}{pathBase}" + emailTemplate.Where(x => x.SYSTEM_CODE == "BUTTON_LINK").First().SYSTEM_VALUE
                         .Replace("{DOCUMENT_CODE}", documentControlMaintenance.DOCUMENT_CODE);
 
@@ -500,63 +501,187 @@ namespace DMS.Controllers
             }
         }
 
-        public void SendApproveRejectEmail(int documentTransactionId, string loginUsername, string judgement, string scheme, string hostString, string pathBase, string remark)
+        // Email progres registrasi P4D ke pendaftar (request Hendra 2026-11-05), satu
+        // email per tahap QAD: "receive" (Draft -> Checking), "reject", "distributed"
+        // (Send Distribution All). Accept sengaja tidak kirim email - biasanya langsung
+        // disusul distribusi oleh QAD, jadi cukup email "distributed".
+        // Penerima: pendaftar P4D (TB_R_CTRL_DOCUMENT.CREATED_BY) + penginput dokumen
+        // sumbernya (TB_R_DOCUMENT.CREATED_BY) kalau orangnya beda.
+        public void SendP4DStatusEmail(int documentCtrlId, string loginUsername, string mode, string scheme, string hostString, string pathBase, string remark)
         {
-            DocumentMaintenance documentMaintenance = documentMaintenanceRepo.Search(new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = documentTransactionId }, null, db, 1, 1).FirstOrDefault();
-
-            if (documentMaintenance != null)
+            DocumentControlMaintenance p4d = P4DMaintenanceRepo.Search(new DocumentControlMaintenance { DOCUMENT_CTRL_ID = documentCtrlId }, null, db, 1, 1).FirstOrDefault();
+            if (p4d == null)
             {
-                User user = UserRepo.Instance.GetByKey(new User { USERNAME = documentMaintenance.CREATED_BY }, db);
-                if (user != null)
+                return;
+            }
+
+            DocumentMaintenance sourceDocument = p4d.DOCUMENT_TRANSACTION_ID == null ? null : documentMaintenanceRepo
+                .Search(new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = p4d.DOCUMENT_TRANSACTION_ID }, null, db, 1, 1).FirstOrDefault();
+
+            User actor = UserRepo.Instance.GetByKey(new User { USERNAME = loginUsername }, db);
+            string actorName = actor?.FULL_NAME ?? loginUsername;
+            User registrant = UserRepo.Instance.GetByKey(new User { USERNAME = p4d.CREATED_BY }, db);
+
+            string heading, message, statusText, statusColor, subjectStatus, judgement, actionLabel, nextStep;
+            if (mode == "reject")
+            {
+                heading = "Registration Rejected";
+                message = "Your document registration has been <strong>rejected by " + EncodeHtml(actorName) + "</strong> (Document Control). Please review the remark below, revise the document if needed and register it again.";
+                statusText = "Rejected";
+                statusColor = "#B91C1C";
+                subjectStatus = "Document Registration Rejected";
+                judgement = "DITOLAK oleh " + actorName;
+                actionLabel = "Rejected By";
+                nextStep = "-";
+            }
+            else if (mode == "distributed")
+            {
+                heading = "Document Distributed";
+                message = "Your document registration is <strong>complete</strong>. The document has been distributed by " + EncodeHtml(actorName) + " (Document Control) to the target departments.";
+                statusText = "Distributed";
+                statusColor = "#15803D";
+                subjectStatus = "Document Distributed";
+                judgement = "DIDISTRIBUSIKAN oleh " + actorName;
+                actionLabel = "Distributed By";
+                nextStep = "Acknowledgment by the receiving departments";
+            }
+            else
+            {
+                heading = "Registration Received";
+                message = "Your document registration has been <strong>received by " + EncodeHtml(actorName) + "</strong> (Document Control) and is now being checked.";
+                statusText = "Checking";
+                statusColor = "#C2410C";
+                subjectStatus = "Document Registration Received";
+                judgement = "DITERIMA oleh " + actorName + " dan sedang diperiksa";
+                actionLabel = "Received By";
+                nextStep = "Accept & distribution by Document Control";
+            }
+
+            string dateString = p4d.DOCUMENT_DATE?.ToString("dd MMM yyyy", CultureInfo.InvariantCulture) ?? "-";
+            string classification = string.IsNullOrEmpty(p4d.CLASSIFIED_VAL) ? "-" : p4d.CLASSIFIED + " - " + p4d.CLASSIFIED_VAL;
+            string flowHtml = BuildP4DFlowHtml(mode, registrant?.FULL_NAME ?? p4d.CREATED_BY, p4d.CREATED_DT, actorName);
+
+            List<User> recipients = new[] { p4d.CREATED_BY, sourceDocument?.CREATED_BY }
+                .Where(x => !string.IsNullOrEmpty(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(x => UserRepo.Instance.GetByKey(new User { USERNAME = x }, db))
+                .Where(x => x != null)
+                .ToList();
+
+            IList<MSystem> emailTemplate = MSystemRepo.Instance.Search(new MSystem { SYSTEM_TYPE = "P4D_APPROVE_REJECT_EMAIL_TEMPLATE" }, db, null, null);
+            IList<MSystem> notificationTemplate = MSystemRepo.Instance.Search(new MSystem { SYSTEM_TYPE = "P4D_APPROVE_REJECT_NOTIFICATION" }, db, null, null);
+            bool emailEnabled = NotificationSettingRepo.Instance.IsEmailEnabled("P4D_APPROVE_REJECT", db);
+
+            string subject = emailTemplate.Where(x => x.SYSTEM_CODE == "SUBJECT").First().SYSTEM_VALUE
+                .Replace("{SUBJECT_STATUS}", subjectStatus)
+                .Replace("{DOCUMENT_CODE}", p4d.DOCUMENT_CODE);
+            string title = emailTemplate.Where(x => x.SYSTEM_CODE == "TITLE").First().SYSTEM_VALUE;
+            string buttonLink = $"{scheme}://{hostString}{pathBase}" + emailTemplate.Where(x => x.SYSTEM_CODE == "BUTTON_LINK").First().SYSTEM_VALUE
+                .Replace("{DOCUMENT_CODE}", p4d.DOCUMENT_CODE);
+
+            foreach (User user in recipients)
+            {
+                if (emailEnabled && !string.IsNullOrEmpty(user.EMAIL))
                 {
-                    CultureInfo cultureInfo = new CultureInfo("id-ID"); // Budaya Indonesia
-                    DateTime date = (DateTime)documentMaintenance.DOCUMENT_DATE;
-                    string dateString = date.ToString("dddd, d MMMM yyyy", cultureInfo);
-
-                    List<string> toAddresses = new List<string>();
-                    toAddresses.Add(user.EMAIL);
-
-                    IList<MSystem> emailTemplate = MSystemRepo.Instance.Search(new MSystem { SYSTEM_TYPE = "P4D_APPROVE_REJECT_EMAIL_TEMPLATE" }, db, null, null);
-                    string subject = emailTemplate.Where(x => x.SYSTEM_CODE == "SUBJECT").First().SYSTEM_VALUE
-                         .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE);
-                    string title = emailTemplate.Where(x => x.SYSTEM_CODE == "TITLE").First().SYSTEM_VALUE;
+                    List<string> toAddresses = new List<string> { user.EMAIL };
                     string body = emailTemplate.Where(x => x.SYSTEM_CODE == "BODY").First().SYSTEM_VALUE
-                        .Replace("{FULL_NAME}", user.FULL_NAME)
-                        .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE)
-                        .Replace("{DOCUMENT_NAME}", documentMaintenance.DOCUMENT_TRANSACTION_NAME)
+                        .Replace("{HEADING}", heading)
+                        .Replace("{MESSAGE}", message)
+                        .Replace("{FULL_NAME}", EncodeHtml(user.FULL_NAME))
+                        .Replace("{DOCUMENT_CODE}", EncodeHtml(p4d.DOCUMENT_CODE))
+                        .Replace("{DOCUMENT_NAME}", EncodeHtml(p4d.DOCUMENT_NAME))
+                        .Replace("{DOCUMENT_TYPE}", EncodeHtml(GetDocumentTypeText(p4d.DOCUMENT_TYPE)))
+                        .Replace("{CLASSIFICATION}", EncodeHtml(classification))
+                        .Replace("{DEPARTMENT}", EncodeHtml(p4d.DEPARTMENT_CODE + " - " + p4d.DEPARTMENT_NAME))
+                        .Replace("{REVISION}", p4d.REVISION.ToString())
                         .Replace("{DOCUMENT_DATE}", dateString)
-                        .Replace("{REVISION}", documentMaintenance.REVISION.ToString())
-                        .Replace("{JUDGEMENT}", judgement)
-                        .Replace("{REMARK}", remark);
-                    string buttonLink = $"{scheme}://{hostString}{pathBase}" + emailTemplate.Where(x => x.SYSTEM_CODE == "BUTTON_LINK").First().SYSTEM_VALUE
-                        .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE);
+                        .Replace("{ACTION_LABEL}", actionLabel)
+                        .Replace("{ACTION_BY}", EncodeHtml(actorName))
+                        .Replace("{NEXT_STEP}", EncodeHtml(nextStep))
+                        .Replace("{REMARK}", string.IsNullOrWhiteSpace(remark) ? "-" : EncodeHtml(remark))
+                        .Replace("{STATUS}", statusText)
+                        .Replace("{STATUS_COLOR}", statusColor)
+                        .Replace("{P4D_FLOW}", flowHtml);
 
-                    if (NotificationSettingRepo.Instance.IsEmailEnabled("P4D_APPROVE_REJECT", db))
-                        backgroundJobClient.Enqueue(() => EmailService.SendEmailAsync(toAddresses, subject, title, body, buttonLink));
+                    backgroundJobClient.Enqueue(() => EmailService.SendEmailAsync(toAddresses, subject, title, body, buttonLink));
+                }
 
-                    IList<MSystem> notificationTemplate = MSystemRepo.Instance.Search(new MSystem { SYSTEM_TYPE = "P4D_APPROVE_REJECT_NOTIFICATION" }, db, null, null);
+                Notification notification = new Notification
+                {
+                    NOTIFICATION_TEXT = notificationTemplate.Where(x => x.SYSTEM_CODE == "TEXT").First().SYSTEM_VALUE
+                    .Replace("{DOCUMENT_CODE}", p4d.DOCUMENT_CODE)
+                    .Replace("{JUDGEMENT}", judgement),
+                    NOTIFICATION_TITLE = notificationTemplate.Where(x => x.SYSTEM_CODE == "TITLE").First().SYSTEM_VALUE
+                    .Replace("{DOCUMENT_CODE}", p4d.DOCUMENT_CODE),
+                    NOTIFICATION_URL = notificationTemplate.Where(x => x.SYSTEM_CODE == "URL").First().SYSTEM_VALUE
+                    .Replace("{DOCUMENT_CODE}", p4d.DOCUMENT_CODE),
+                    USERNAME = user.USERNAME,
+                };
 
-                    Notification notification = new Notification
-                    {
-                        NOTIFICATION_TEXT = notificationTemplate.Where(x => x.SYSTEM_CODE == "TEXT").First().SYSTEM_VALUE
-                        .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE)
-                        .Replace("{JUDGEMENT}", judgement),
-                        NOTIFICATION_TITLE = notificationTemplate.Where(x => x.SYSTEM_CODE == "TITLE").First().SYSTEM_VALUE
-                        .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE),
-                        NOTIFICATION_URL = notificationTemplate.Where(x => x.SYSTEM_CODE == "URL").First().SYSTEM_VALUE
-                        .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE),
-                        USERNAME = user.USERNAME,
-                    };
-
-                    DBResult result = NotificationRepo.Instance.Insert(notification, loginUsername, db);
-                    if (result.status)
-                    {
-
-                        _hubContext.Clients.Group(user.USERNAME).SendAsync("ReceiveMessage", "Document approval update, check notification!");
-                    }
+                DBResult result = NotificationRepo.Instance.Insert(notification, loginUsername, db);
+                if (result.status)
+                {
+                    _hubContext.Clients.Group(user.USERNAME).SendAsync("ReceiveMessage", "Document registration update, check notification!");
                 }
             }
         }
+
+        // Tahapan registrasi P4D untuk placeholder {P4D_FLOW}: Registered -> Checking
+        // (Receive) -> Accepted -> Distributed. Tanggal per tahap tidak disimpan di
+        // TB_R_CTRL_DOCUMENT, jadi hanya tahap Registered yang bertanggal.
+        private static string BuildP4DFlowHtml(string mode, string registrantName, DateTime? registeredDate, string actorName)
+        {
+            // state: done / current / rejected / pending / skipped
+            bool rejected = mode == "reject";
+            bool distributed = mode == "distributed";
+            var steps = new List<(string Label, string Who, string State)>
+            {
+                ("Registered", registrantName, "done"),
+                ("Received & Checked", distributed ? "Document Control" : actorName, rejected ? "rejected" : "done"),
+                ("Accepted", "Document Control", distributed ? "done" : rejected ? "skipped" : "current"),
+                ("Distributed", distributed ? actorName : "Document Control", distributed ? "done" : rejected ? "skipped" : "pending"),
+            };
+
+            StringBuilder html = new StringBuilder();
+            for (int i = 0; i < steps.Count; i++)
+            {
+                var step = steps[i];
+                string icon, color, status;
+                switch (step.State)
+                {
+                    case "done": icon = "&#10003;"; color = "#15803D"; status = "Done"; break;
+                    case "rejected": icon = "&#10007;"; color = "#B91C1C"; status = "Rejected"; break;
+                    case "current": icon = "&#9679;"; color = "#C2410C"; status = "In Progress"; break;
+                    case "skipped": icon = "&#9675;"; color = "#9CA3AF"; status = "Not Processed"; break;
+                    default: icon = "&#9675;"; color = "#9CA3AF"; status = "Pending"; break;
+                }
+                string date = i == 0 ? registeredDate?.ToString("dd MMM yyyy, HH:mm", CultureInfo.InvariantCulture) : null;
+                string border = i < steps.Count - 1 ? "border-bottom:1px solid #E3E7ED;" : "";
+
+                html.Append("<tr>")
+                    .Append($"<td width=\"24\" valign=\"top\" style=\"padding:10px 0;{border}font-size:14px;line-height:20px;color:{color}\">{icon}</td>")
+                    .Append($"<td valign=\"top\" style=\"padding:10px 8px 10px 0;{border}\"><div style=\"font-size:11px;line-height:14px;color:#6B7280\">Step {i + 1} &middot; {System.Net.WebUtility.HtmlEncode(step.Label)}</div>")
+                    .Append($"<div style=\"font-size:14px;line-height:20px;font-weight:600;color:#1F2A37\">{System.Net.WebUtility.HtmlEncode(step.Who ?? "-")}</div></td>")
+                    .Append($"<td align=\"right\" valign=\"top\" style=\"padding:10px 0;{border}white-space:nowrap\"><div style=\"font-size:12px;line-height:16px;font-weight:600;color:{color}\">{status}</div>")
+                    .Append(date != null ? $"<div style=\"font-size:11px;line-height:16px;color:#6B7280\">{date}</div>" : "")
+                    .Append("</td></tr>");
+            }
+
+            return "<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" role=\"presentation\" style=\"border-collapse:separate;border:1px solid #E3E7ED;border-radius:10px;margin-top:16px\">"
+                + "<tr><td style=\"padding:16px 16px 6px 16px\"><div style=\"font-size:12px;line-height:16px;font-weight:600;letter-spacing:0.3px;color:#4B5563;padding-bottom:4px\">REGISTRATION PROGRESS</div>"
+                + "<table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" role=\"presentation\" style=\"border-collapse:collapse\">"
+                + html
+                + "</table></td></tr></table>";
+        }
+
+        private string GetDocumentTypeText(string documentType)
+        {
+            if (string.IsNullOrEmpty(documentType)) return "-";
+            MSystem system = MSystemRepo.Instance.GetByKey(new MSystem { SYSTEM_TYPE = "DOCUMENT_TYPE", SYSTEM_CODE = documentType }, db);
+            return system != null ? documentType + " - " + system.SYSTEM_VALUE : documentType;
+        }
+
+        private static string EncodeHtml(string value) => System.Net.WebUtility.HtmlEncode(value ?? "-");
 
         public void SendDistributionEmail(int documentTransactionId, string loginUsername, string scheme, string hostString, string pathBase)
         {
@@ -757,18 +882,12 @@ namespace DMS.Controllers
             try
             {
                 result = P4DMaintenanceRepo.ApproveReject(data, GetLoginUsername(), db);
-                if (result.status)
+                // Receive (Y) maupun Reject (N) dikabari ke pendaftar (request Hendra 2026-11-05)
+                if (result.status && data.DOCUMENT_CTRL_ID != null)
                 {
-                    if (data.IS_APPROVED.Equals("N"))
-                    {
-                        DocumentControlMaintenance documentControlMaintenance = P4DMaintenanceRepo.Search(data, null, db, 1, 1).FirstOrDefault();
-
-                        if (documentControlMaintenance != null)
-                        {
-                            backgroundJobClient.Enqueue(() => SendApproveRejectEmail((int)documentControlMaintenance.DOCUMENT_TRANSACTION_ID, GetLoginUsername(),
-                                "DITOLAK", this.Request.Scheme, this.Request.Host.ToString(), this.Request.PathBase.ToString(), data.REMARKS));
-                        }
-                    }
+                    string mode = "Y".Equals(data.IS_APPROVED) ? "receive" : "reject";
+                    backgroundJobClient.Enqueue(() => SendP4DStatusEmail((int)data.DOCUMENT_CTRL_ID, GetLoginUsername(), mode,
+                        this.Request.Scheme, this.Request.Host.ToString(), this.Request.PathBase.ToString(), mode == "reject" ? data.REMARKS : null));
                 }
 
                 return Json(result);
@@ -1118,8 +1237,12 @@ namespace DMS.Controllers
                 result = P4DMaintenanceRepo.SendDistributionAll(data, GetLoginUsername(), db);
                 if (result.status)
                 {
-                    backgroundJobClient.Enqueue(() => SendApproveRejectEmail((int)data.DOCUMENT_TRANSACTION_ID, GetLoginUsername(),
-                        "DITERIMA", this.Request.Scheme, this.Request.Host.ToString(), this.Request.PathBase.ToString(), null));
+                    DocumentControlMaintenance p4d = P4DMaintenanceRepo.Search(new DocumentControlMaintenance { DOCUMENT_TRANSACTION_ID = data.DOCUMENT_TRANSACTION_ID }, null, db, 1, 1).FirstOrDefault();
+                    if (p4d?.DOCUMENT_CTRL_ID != null)
+                    {
+                        backgroundJobClient.Enqueue(() => SendP4DStatusEmail((int)p4d.DOCUMENT_CTRL_ID, GetLoginUsername(), "distributed",
+                            this.Request.Scheme, this.Request.Host.ToString(), this.Request.PathBase.ToString(), null));
+                    }
 
                     backgroundJobClient.Enqueue(() => SendDistributionEmail((int)data.DOCUMENT_TRANSACTION_ID, GetLoginUsername(),
                         this.Request.Scheme, this.Request.Host.ToString(), this.Request.PathBase.ToString()));

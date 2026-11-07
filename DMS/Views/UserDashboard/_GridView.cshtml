@@ -150,11 +150,11 @@
     // toggle above, defaults shown. ----------
     function setFoldersPanelCollapsed(collapsed) {
         var $row = $("#dpLayoutRow");
-        var $icon = $("#btn_toggleFolders i");
 
         $row.toggleClass("folders-collapsed", collapsed);
-        $icon.toggleClass("fa-angle-double-left", !collapsed).toggleClass("fa-angle-double-right", collapsed);
-        $("#btn_toggleFolders").attr("title", collapsed ? "Show Folders" : "Hide Folders");
+        // tombol hide ada di header panel Folders; tombol toolbar cuma untuk show
+        // (request Hendra 2026-11-05)
+        $("#btn_toggleFolders").toggleClass("dcd-hidden", !collapsed);
 
         setTimeout(function () {
             $("#datagrid").dxDataGrid("instance").updateDimensions();

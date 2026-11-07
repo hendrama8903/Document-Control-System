@@ -1,356 +1,429 @@
 <style>
-    /* ---- KPI row ---- */
-    .kpi-row {
-        display: flex;
-        flex-wrap: nowrap;
-        align-items: stretch;
-        gap: 10px;
-        margin: 20px 0;
-        overflow-x: auto;
-        padding-bottom: 2px;
-    }
-
-    .kpi-card {
-        position: relative;
-        flex: 1 1 0;
-        min-width: 170px;
-        min-height: 130px;
+    /* Dashboard redesign (request Hendra 2026-11-05): urutan dibuat dari "apa yang
+       harus saya kerjakan" (Needs Your Action, daftar approval) ke "bagaimana
+       kondisinya" (Overview sesuai scope jabatan, review, Document Control).
+       Data & aturan kepemilikan per bagian: HomeController.GetDashboardSummary. */
+    .hd { padding: 8px 4px 28px; }
+    .hd-card {
         background: var(--surface);
-        border: 1px solid var(--line);
-        border-left: 4px solid var(--accent);
-        border-radius: 14px;
-        box-shadow: 0 2px 4px rgba(20,35,50,.06), 0 12px 28px -14px rgba(20,35,50,.28);
-        padding: 22px 24px;
+        border: 1px solid #E3E8EF;
+        border-radius: 16px;
+        box-shadow: 0 4px 14px rgba(16,24,40,.04);
+        padding: 14px 16px;
+        min-width: 0;
+    }
+
+    .hd-card-head {
         display: flex;
-        flex-direction: column;
-        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+
+    .hd-card-title {
+        font-size: 12px;
+        font-weight: 700;
+        color: #5A6472;
+    }
+
+    .hd-card-title i { color: var(--accent); margin-right: 6px; }
+
+    .hd-card-badge {
+        font-size: 11px;
+        font-weight: 700;
+        color: #475467;
+        background: #EEF1F5;
+        border-radius: 999px;
+        padding: 1px 8px;
+    }
+
+    .hd-card-link {
+        margin-left: auto;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--accent);
+        white-space: nowrap;
+    }
+
+    .hd-card-link:hover { text-decoration: none; color: #1C3FA6; }
+
+    .hd-section-label {
+        display: flex;
+        align-items: baseline;
         gap: 10px;
-        transition: transform .15s ease, box-shadow .15s ease;
-    }
-
-        .kpi-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(20,35,50,.08), 0 16px 32px -14px rgba(20,35,50,.32);
-        }
-
-        .kpi-card.blue { border-left-color: var(--accent); }
-        .kpi-card.amber { border-left-color: var(--emas); }
-        .kpi-card.red { border-left-color: var(--merah); }
-        .kpi-card.teal { border-left-color: #0E8A8A; }
-        .kpi-card.green { border-left-color: #2E7D3B; }
-        .kpi-card.purple { border-left-color: #6C3FB5; }
-
-    .kpi-more-detail {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--paper-2);
-        color: var(--muted);
-        font-size: 10px;
-    }
-
-        .kpi-more-detail:hover {
-            background: var(--accent-soft);
-            color: var(--accent);
-            text-decoration: none;
-        }
-
-    .kpi-top {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .kpi-icon {
-        width: 46px;
-        height: 46px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex: none;
-        font-size: 19px;
-    }
-
-        .kpi-icon.blue { background: var(--accent-soft); color: var(--accent); }
-        .kpi-icon.amber { background: var(--emas-soft); color: var(--emas); }
-        .kpi-icon.red { background: var(--merah-soft); color: var(--merah); }
-        .kpi-icon.teal { background: #E0F5F5; color: #0E8A8A; }
-        .kpi-icon.green { background: #E3F3E7; color: #2E7D3B; }
-        .kpi-icon.purple { background: #EEE7F8; color: #6C3FB5; }
-
-    .kpi-value {
-        font-size: 30px;
+        margin: 26px 0 12px;
+        font-size: 15px;
         font-weight: 700;
         color: var(--ink);
-        line-height: 1.15;
-        font-variant-numeric: tabular-nums;
     }
 
-    .kpi-label {
-        font-size: 13px;
-        color: var(--muted);
+    .hd-section-label small { font-size: 12px; font-weight: 600; color: var(--muted); }
+
+    .hd-grid { display: grid; gap: 16px; }
+    .hd-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hd-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .hd-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    /* ---- strip ringkas: Needs Your Action | Overview dalam satu baris ---- */
+    .hd-strip { display: flex; gap: 16px; align-items: stretch; }
+    .hd-strip-group {
+        flex: 1 1 0;
+        min-width: 0;
+        background: var(--surface);
+        border: 1px solid #E3E8EF;
+        border-radius: 16px;
+        box-shadow: 0 4px 14px rgba(16,24,40,.04);
+        padding: 12px 14px;
+    }
+    .hd-strip-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        font-size: 11.5px;
+        font-weight: 700;
+        color: #5A6472;
+    }
+    .hd-strip-tiles { display: flex; gap: 8px; }
+
+    .hd-scope-chip {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0;
+        text-transform: none;
+        color: #2450D8;
+        background: #E7F1FB;
+        border-radius: 999px;
+        padding: 1px 9px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        max-width: 260px;
     }
 
-    /* ---- Panel header action link (on box-primary blue header) ---- */
-    .box-header-action {
-        color: rgba(255,255,255,.85);
-        font-size: 12px;
-        white-space: nowrap;
-    }
-
-        .box-header-action:hover { color: #fff; text-decoration: none; }
-
-    /* ---- Donut chart (CSS conic-gradient murni, tanpa library) ---- */
-    .dash-donut-wrap {
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        height: 100%;
-        flex-wrap: wrap;
-    }
-
-    .dash-donut {
-        position: relative;
-        width: 230px;
-        height: 230px;
-        border-radius: 50%;
+    .hd-refresh {
+        margin-left: auto;
+        border: 1px solid #D5DDE8;
+        background: #fff;
+        border-radius: 8px;
+        width: 26px;
+        height: 26px;
+        font-size: 11.5px;
+        color: #475467;
         flex: none;
     }
+    .hd-refresh:hover { background: #F4F6F8; }
 
-    .dash-donut-hole {
-        position: absolute;
-        inset: 22%;
-        background: var(--surface);
-        border-radius: 50%;
+    .hd-tile {
+        flex: 1 1 0;
+        min-width: 0;
         display: flex;
-        flex-direction: column;
+        align-items: center;
+        gap: 9px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        background: #F7F9FB;
+        color: inherit;
+        transition: background .15s ease;
+    }
+    a.hd-tile:hover { text-decoration: none; color: inherit; background: #EEF2F7; }
+    .hd-tile > span:last-child { min-width: 0; }
+    .hd-tile-icon {
+        flex: none;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        display: flex;
         align-items: center;
         justify-content: center;
-        text-align: center;
-    }
-
-    .dash-donut-value { font-size: 26px; font-weight: 700; color: var(--ink); }
-    .dash-donut-caption { font-size: 12px; color: var(--muted); }
-
-    .dash-donut-legend {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-        flex: 1;
-        min-width: 140px;
-    }
-
-        .dash-donut-legend li {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 0;
-            font-size: 14px;
-            color: var(--ink);
-        }
-
-    .dash-donut-swatch {
-        width: 12px;
-        height: 12px;
-        border-radius: 3px;
-        flex: none;
-    }
-
-    .dash-donut-label {
-        flex: 1;
-        min-width: 0;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .dash-donut-count {
-        flex: none;
-        color: var(--muted);
         font-size: 13px;
-        white-space: nowrap;
     }
+    .hd-tile-value { display: block; font-size: 20px; font-weight: 800; line-height: 1.1; color: var(--ink); font-variant-numeric: tabular-nums; }
+    .hd-tile-label { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hd-tile-label b { font-weight: 700; color: #98A2B3; }
 
-    /* ---- Division / Department view toggle ---- */
-    .dash-panel-toolbar {
+    .hd-tile.orange .hd-tile-icon { background: #FFEDD5; color: #EA580C; }
+    .hd-tile.blue .hd-tile-icon { background: #E7F1FB; color: #2450D8; }
+    .hd-tile.red .hd-tile-icon { background: #FDECEA; color: #C62828; }
+    .hd-tile.green .hd-tile-icon { background: #E3F3E7; color: #2E7D3B; }
+    /* ada pekerjaan -> aksen kiri; kosong -> diredupkan */
+    .hd-tile.has-items.orange { background: #FFF7ED; box-shadow: inset 3px 0 0 #EA580C; }
+    .hd-tile.has-items.blue { box-shadow: inset 3px 0 0 #2450D8; }
+    .hd-tile.has-items.red { box-shadow: inset 3px 0 0 #C62828; }
+    .hd-tile.has-items.green { box-shadow: inset 3px 0 0 #2E7D3B; }
+    .hd-tile.is-empty .hd-tile-icon { background: #EEF1F5; color: #98A2B3; }
+    .hd-tile.is-empty .hd-tile-value { color: #98A2B3; }
+
+    /* ---- daftar (My Approval / My Documents / Review): baris 1 garis, scroll kalau banyak ---- */
+    .hd-list { list-style: none; margin: 0 -6px; padding: 0 6px; max-height: 286px; overflow-y: auto; }
+
+    .hd-list li {
         display: flex;
-        justify-content: flex-end;
-        margin-bottom: 6px;
+        align-items: center;
+        gap: 10px;
+        padding: 7px 0;
+        border-bottom: 1px solid #EEF1F4;
     }
 
-    .dash-toggle {
-        display: inline-flex;
-        border-radius: 999px;
-        overflow: hidden;
-        border: 1px solid var(--line);
-    }
+    .hd-list li:last-child { border-bottom: none; }
+    .hd-list-main { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+    .hd-list-code { flex: none; font-size: 12px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+    .hd-list-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hd-list-meta { flex: none; font-size: 11px; color: var(--muted); white-space: nowrap; }
+    .hd-list-right { flex: none; text-align: right; }
 
-    .dash-toggle-btn {
-        border: none;
-        background: var(--paper-2);
-        color: var(--muted);
+    .hd-open {
+        display: inline-block;
         font-size: 11.5px;
         font-weight: 600;
-        padding: 5px 14px;
-        cursor: pointer;
+        color: #fff;
+        background: #EA580C;
+        border-radius: 8px;
+        padding: 3px 10px;
     }
 
-        .dash-toggle-btn.active {
-            background: var(--primary);
-            color: #fff;
-        }
+    .hd-open:hover { background: #C2410C; color: #fff; text-decoration: none; }
 
-        .dash-toggle-btn:focus { outline: none; }
+    .hd-due { font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+    .hd-due.overdue { background: #FDECEA; color: #C62828; }
+    .hd-due.soon { background: #FFF3E0; color: #B36B00; }
+    .hd-due.later { background: #EEF1F5; color: #475467; }
 
-    .dash-empty-text {
-        color: var(--muted);
+    .hd-empty {
         text-align: center;
-        padding: 24px 0;
+        color: var(--muted);
         font-size: 12.5px;
+        padding: 22px 0;
     }
 
-    /* ---- Tinggi panel menyesuaikan konten (proporsional), halaman boleh scroll ---- */
-    .dash-viewport .box {
-        display: flex;
-        flex-direction: column;
+    .hd-empty i { display: block; font-size: 22px; color: #C0C6CE; margin-bottom: 6px; }
+
+    /* ---- trend bar chart (CSS murni) ---- */
+    .hd-trend { display: flex; align-items: flex-end; gap: 10px; height: 190px; padding-top: 18px; }
+    .hd-trend-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+    .hd-trend-bar { width: 100%; max-width: 38px; background: #C7D9F7; border-radius: 6px 6px 0 0; min-height: 2px; transition: height .3s ease; }
+    .hd-trend-col.current .hd-trend-bar { background: #2450D8; }
+    .hd-trend-value { font-size: 11.5px; font-weight: 700; color: #344054; margin-bottom: 4px; }
+    .hd-trend-label { font-size: 11px; color: var(--muted); margin-top: 6px; white-space: nowrap; }
+
+    /* ---- donut (CSS conic-gradient, tanpa library) ---- */
+    .dash-donut-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+    .dash-donut { position: relative; width: 150px; height: 150px; border-radius: 50%; flex: none; }
+    .dash-donut-hole { position: absolute; inset: 20%; background: var(--surface); border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+    .dash-donut-value { font-size: 22px; font-weight: 800; color: var(--ink); }
+    .dash-donut-caption { font-size: 11px; color: var(--muted); }
+    .dash-donut-legend { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 130px; }
+    .dash-donut-legend li { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12.5px; color: var(--ink); }
+    .dash-donut-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+    .dash-donut-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dash-donut-count { flex: none; color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+    /* ---- breakdown table ---- */
+    .hd-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .hd-table th { font-size: 10.5px; font-weight: 700; color: #8A94A3; padding: 8px 10px; border-bottom: 1px solid #E3E8EE; text-align: right; white-space: nowrap; }
+    .hd-table th:first-child, .hd-table td:first-child { text-align: left; }
+    .hd-table td { padding: 9px 10px; border-bottom: 1px solid #EEF1F4; text-align: right; font-variant-numeric: tabular-nums; }
+    .hd-table tbody tr:last-child td { border-bottom: none; }
+    .hd-table td:first-child { font-weight: 600; color: var(--ink); }
+    .hd-table .num-progress { color: #C2410C; font-weight: 700; }
+    .hd-table .num-rejected { color: #C62828; font-weight: 700; }
+    .hd-table .num-zero { color: #C0C6CE; font-weight: 400; }
+
+    /* ---- toggle Division / Department (chart Document Control) ---- */
+    .dash-toggle { display: inline-flex; border-radius: 999px; overflow: hidden; border: 1px solid var(--line); margin-left: auto; }
+    .dash-toggle-btn { border: none; background: var(--paper-2, #F4F6F8); color: var(--muted); font-size: 11px; font-weight: 600; padding: 4px 12px; cursor: pointer; }
+    .dash-toggle-btn.active { background: var(--primary); color: #fff; }
+    .dash-toggle-btn:focus { outline: none; }
+
+    .hd-loading { opacity: .45; pointer-events: none; transition: opacity .2s ease; }
+
+    /* Satu layar di desktop (request Hendra 2026-11-07): baris daftar dan grafik berbagi
+       sisa tinggi layar, dan isi yang panjang di-scroll di dalam kartunya. Di layar pendek
+       atau sempit halaman kembali di-scroll seperti biasa. */
+    @@media (min-width: 1201px) and (min-height: 600px) {
+        .adm-content:has(#hdRoot) { padding: 10px 16px; }
+        .adm-main:has(#hdRoot) .adm-footer { display: none; }
+        .hd { padding: 0; display: flex; flex-direction: column; height: calc(100vh - 86px); overflow: hidden; }
+        .hd > * { margin-top: 10px !important; }
+        .hd > :first-child { margin-top: 0 !important; }
+        .hd .hd-grid, .hd .hd-strip { gap: 10px; }
+        .hd-row { flex: 1 1 0; min-height: 0; }
+        .hd-row-lists { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+        .hd-row .hd-card { display: flex; flex-direction: column; min-height: 0; overflow: hidden; padding: 10px 14px; }
+        .hd-row .hd-card > :not(.hd-card-head) { flex: 1; min-height: 0; overflow: auto; }
+        .hd-row-charts .hd-card > :not(.hd-card-head) { overflow: hidden; }
+        .hd-row .hd-card-head { flex: none; margin-bottom: 6px; }
+        .hd-row .hd-list { max-height: none; }
+        .hd-row .hd-empty { padding: 6px 0; }
+        .hd-row-charts { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+        .hd-row-charts > .hd-span-full { grid-column: auto; }
+        .hd-row .hd-trend { height: auto; padding-top: 4px; overflow: hidden; }
+        .hd-row .dash-donut-wrap { flex-wrap: nowrap; height: 100%; gap: 14px; }
+        .hd-row .dash-donut { width: auto; height: 100%; max-height: 120px; aspect-ratio: 1; }
+        .hd-row .dash-donut-legend { min-width: 0; max-height: 100%; overflow-y: auto; }
+        .hd-row .dash-donut-value { font-size: 18px; }
+        .hd-row .dash-donut-caption { font-size: 9px; }
+        .hd-row-charts .dash-toggle { flex: none; }
+        .hd-row-charts .dash-toggle-btn { padding: 2px 7px; font-size: 11px; }
+        #qmsSection { flex: none; }
+        #qmsSection .hd-row { display: none; }
     }
 
-    .dash-viewport .box-body {
-        display: flex;
-        flex-direction: column;
+    @@media (max-width: 1200px) {
+        .hd-strip { flex-direction: column; }
+        .hd-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .hd-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .hd-grid-3 > .hd-span-full { grid-column: 1 / -1; }
     }
 
-    #chartCategory, #chartStatus {
-        min-height: 300px;
-    }
-
-    #chartDistribution, #chartReceived {
-        min-height: 260px;
+    @@media (max-width: 768px) {
+        .hd-grid-2, .hd-grid-3, .hd-grid-4 { grid-template-columns: minmax(0, 1fr); }
+        .hd-date { text-align: left; }
     }
 </style>
 
-<section class="content">
-    <div class="kpi-row">
-        <div class="kpi-card blue">
-            <a class="kpi-more-detail" href="@Url.Action("Index", "DocumentReport")" title="More Detail"><i class="fa fa-external-link"></i></a>
-            <div class="kpi-top">
-                <div class="kpi-icon blue"><i class="fa fa-file-text-o"></i></div>
-                <div class="kpi-value" id="kpiTotalDocuments">0</div>
+<section class="content hd" id="hdRoot">
+    <!-- Satu baris ringkas: Needs Your Action | Overview (scope jabatan) -->
+    <div class="hd-strip">
+        <div class="hd-strip-group">
+            <div class="hd-strip-head">
+                <span><i class="fa fa-bell" style="color:#EA580C;"></i> Needs Your Action</span>
             </div>
-            <div class="kpi-label" id="lblTotalDocuments">Total Documents</div>
+            <div class="hd-strip-tiles">
+                <a class="hd-tile orange" id="actMyApproval" href="@Url.Action("Index", "DocumentMaintenance")?myApproval=1" title="Documents waiting for your approval">
+                    <span class="hd-tile-icon"><i class="fa fa-bell"></i></span>
+                    <span><span class="hd-tile-value" id="actMyApprovalValue">0</span><span class="hd-tile-label">My Approval</span></span>
+                </a>
+                <a class="hd-tile blue" id="actP4D" href="@Url.Action("Index", "P4DMaintenance")?myAction=1" title="P4D to receive, accept or send" style="display:none;">
+                    <span class="hd-tile-icon"><i class="fa fa-inbox"></i></span>
+                    <span><span class="hd-tile-value" id="actP4DValue">0</span><span class="hd-tile-label">Registration</span></span>
+                </a>
+                <a class="hd-tile red" id="actRejected" href="@Url.Action("Index", "DocumentMaintenance")" title="My Documents that were rejected and need revision">
+                    <span class="hd-tile-icon"><i class="fa fa-undo"></i></span>
+                    <span><span class="hd-tile-value" id="actRejectedValue">0</span><span class="hd-tile-label">Rejected</span></span>
+                </a>
+                <a class="hd-tile green" id="actReview" href="@Url.Action("Index", "DocumentReport")" title="Review due within the next 30 days">
+                    <span class="hd-tile-icon"><i class="fa fa-calendar-check-o"></i></span>
+                    <span><span class="hd-tile-value" id="actReviewValue">0</span><span class="hd-tile-label">Review Due</span></span>
+                </a>
+            </div>
         </div>
-        <div class="kpi-card amber">
-            <a class="kpi-more-detail" id="lnkPendingApprovals" href="@Url.Action("Index", "DocumentMaintenance")" title="More Detail"><i class="fa fa-external-link"></i></a>
-            <div class="kpi-top">
-                <div class="kpi-icon amber"><i class="fa fa-clock-o"></i></div>
-                <div class="kpi-value" id="kpiPendingApprovals">0</div>
+        <div class="hd-strip-group">
+            <div class="hd-strip-head">
+                <span><i class="fa fa-pie-chart" style="color:#2450D8;"></i> Overview</span>
+                <span class="hd-scope-chip" id="hdOverviewScope"></span>
+                <button type="button" class="hd-refresh" id="btn_refreshDashboard" title="Refresh"><i class="fa fa-refresh"></i></button>
             </div>
-            <div class="kpi-label" id="lblPendingApprovals">Pending Approvals</div>
-        </div>
-        <div class="kpi-card red">
-            <a class="kpi-more-detail" id="lnkRejected" href="@Url.Action("Index", "DocumentMaintenance")" title="More Detail"><i class="fa fa-external-link"></i></a>
-            <div class="kpi-top">
-                <div class="kpi-icon red"><i class="fa fa-times-circle"></i></div>
-                <div class="kpi-value" id="kpiRejected">0</div>
+            <div class="hd-strip-tiles">
+                <div class="hd-tile neutral">
+                    <span><span class="hd-tile-value" id="kpiTotal">0</span><span class="hd-tile-label">Total</span></span>
+                </div>
+                <div class="hd-tile neutral">
+                    <span><span class="hd-tile-value" id="kpiInProgress" style="color:#C2410C;">0</span><span class="hd-tile-label">In Approval <b id="kpiInProgressPct"></b></span></span>
+                </div>
+                <div class="hd-tile neutral">
+                    <span><span class="hd-tile-value" id="kpiEffective" style="color:#2E7D3B;">0</span><span class="hd-tile-label" title="Approved or Published">Approved <b id="kpiEffectivePct"></b></span></span>
+                </div>
+                <div class="hd-tile neutral">
+                    <span><span class="hd-tile-value" id="kpiRejected" style="color:#C62828;">0</span><span class="hd-tile-label">Rejected <b id="kpiRejectedPct"></b></span></span>
+                </div>
             </div>
-            <div class="kpi-label" id="lblRejected">Rejected Documents</div>
-        </div>
-        <div class="kpi-card teal">
-            <a class="kpi-more-detail" id="lnkUploadedToday" href="@Url.Action("Index", "DocumentMaintenance")" title="More Detail"><i class="fa fa-external-link"></i></a>
-            <div class="kpi-top">
-                <div class="kpi-icon teal"><i class="fa fa-cloud-upload"></i></div>
-                <div class="kpi-value" id="kpiUploadedToday">0</div>
-            </div>
-            <div class="kpi-label" id="lblUploadedToday">Uploaded Today</div>
-        </div>
-        <div class="kpi-card purple">
-            <a class="kpi-more-detail" id="lnkPublished" href="@Url.Action("Index", "P4DMaintenance")" title="More Detail"><i class="fa fa-external-link"></i></a>
-            <div class="kpi-top">
-                <div class="kpi-icon purple"><i class="fa fa-share-alt"></i></div>
-                <div class="kpi-value" id="kpiPublished">0</div>
-            </div>
-            <div class="kpi-label" id="lblPublished">Published Documents</div>
-        </div>
-        <div class="kpi-card green">
-            <a class="kpi-more-detail" id="lnkDueForReview" href="@Url.Action("Index", "DocumentReport")" title="More Detail"><i class="fa fa-external-link"></i></a>
-            <div class="kpi-top">
-                <div class="kpi-icon green"><i class="fa fa-calendar-check-o"></i></div>
-                <div class="kpi-value" id="kpiDueForReview">0</div>
-            </div>
-            <div class="kpi-label" id="lblDueForReview">Due for Review</div>
         </div>
     </div>
 
-    <div class="dash-viewport">
-        <div class="row">
-            <div class="col-md-6">
-                <div class="box box-primary">
-                    <div class="box-header with-border">
-                        <h3 class="box-title" id="titleCategoryChart">Documents by Category</h3>
-                        <a class="box-header-action" id="lnkCategoryChart" href="@Url.Action("Index", "DocumentReport")">View Full Report <i class="fa fa-angle-right"></i></a>
-                    </div>
-                    <div class="box-body">
-                        <div id="chartCategory"></div>
-                    </div>
-                </div>
+    <!-- Lists -->
+    <div class="hd-grid hd-grid-3 hd-row hd-row-lists" style="margin-top:16px;">
+        <div class="hd-card">
+            <div class="hd-card-head">
+                <span class="hd-card-title"><i class="fa fa-bell"></i>Waiting for My Approval</span>
+                <span class="hd-card-badge" id="myApprovalBadge">0</span>
+                <a class="hd-card-link" href="@Url.Action("Index", "DocumentMaintenance")?myApproval=1">View All <i class="fa fa-angle-right"></i></a>
             </div>
-            <div class="col-md-6">
-                <div class="box box-primary">
-                    <div class="box-header with-border">
-                        <h3 class="box-title" id="titleStatusChart">Documents by Status</h3>
-                        <a class="box-header-action" href="@Url.Action("Index", "DocumentReport")">View Full Report <i class="fa fa-angle-right"></i></a>
-                    </div>
-                    <div class="box-body">
-                        <div id="chartStatus"></div>
-                    </div>
+            <ul class="hd-list" id="myApprovalList"></ul>
+        </div>
+        <div class="hd-card">
+            <div class="hd-card-head">
+                <span class="hd-card-title"><i class="fa fa-paper-plane-o"></i>My Documents in Progress</span>
+                <a class="hd-card-link" href="@Url.Action("Index", "DocumentMaintenance")">Document Preparation <i class="fa fa-angle-right"></i></a>
+            </div>
+            <ul class="hd-list" id="myInProgressList"></ul>
+        </div>
+        <div class="hd-card" id="breakdownCard" style="display:none;">
+            <div class="hd-card-head"><span class="hd-card-title"><i class="fa fa-sitemap"></i><span id="breakdownTitle">By Department</span></span></div>
+            <div style="overflow-x:auto;">
+                <table class="hd-table">
+                    <thead>
+                        <tr><th id="breakdownUnit">Department</th><th>Total</th><th>In Approval</th><th>Approved / Published</th><th>Rejected</th></tr>
+                    </thead>
+                    <tbody id="breakdownBody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="hd-card" id="reviewCard">
+            <div class="hd-card-head">
+                <span class="hd-card-title"><i class="fa fa-calendar"></i>Upcoming Review</span>
+                <a class="hd-card-link" href="@Url.Action("Index", "DocumentReport")">View All <i class="fa fa-angle-right"></i></a>
+            </div>
+            <ul class="hd-list" id="reviewList"></ul>
+        </div>
+    </div>
+
+    <div class="hd-grid hd-grid-3 hd-row hd-row-charts" style="margin-top:16px;">
+        <div class="hd-card hd-span-full">
+            <div class="hd-card-head"><span class="hd-card-title"><i class="fa fa-bar-chart"></i>New Documents per Month</span></div>
+            <div class="hd-trend" id="chartTrend"></div>
+        </div>
+        <div class="hd-card">
+            <div class="hd-card-head"><span class="hd-card-title"><i class="fa fa-pie-chart"></i>By Status</span></div>
+            <div id="chartStatus"></div>
+        </div>
+        <div class="hd-card">
+            <div class="hd-card-head">
+                <span class="hd-card-title"><i class="fa fa-tags"></i>By Category</span>
+                <a class="hd-card-link" href="@Url.Action("Index", "DocumentReport")">Full Report <i class="fa fa-angle-right"></i></a>
+            </div>
+            <div id="chartCategory"></div>
+        </div>
+    </div>
+
+
+    <!-- Document Control (QMS saja) -->
+    <div id="qmsSection" style="display:none; margin-top:16px;">
+        <div class="hd-strip">
+            <div class="hd-strip-group">
+                <div class="hd-strip-head">
+                    <span><i class="fa fa-folder-open-o" style="color:#2450D8;"></i> Document Control</span>
+                    <span class="hd-scope-chip">All registrations (P4D)</span>
+                </div>
+                <div class="hd-strip-tiles">
+                    <div class="hd-tile"><span><span class="hd-tile-value" id="qmsTotal">0</span><span class="hd-tile-label">Total Registrations</span></span></div>
+                    <div class="hd-tile"><span><span class="hd-tile-value" id="qmsToReceive" style="color:#2E75B6;">0</span><span class="hd-tile-label">To Receive</span></span></div>
+                    <div class="hd-tile"><span><span class="hd-tile-value" id="qmsChecking" style="color:#B36B00;">0</span><span class="hd-tile-label">Checking</span></span></div>
+                    <div class="hd-tile"><span><span class="hd-tile-value" id="qmsSent" style="color:#3949AB;">0</span><span class="hd-tile-label">Sent</span></span></div>
+                    <div class="hd-tile"><span><span class="hd-tile-value" id="qmsRejected" style="color:#C62828;">0</span><span class="hd-tile-label">Rejected</span></span></div>
                 </div>
             </div>
         </div>
-
-        <div class="row" id="rowP4DCharts">
-            <div class="col-md-6">
-                <div class="box box-primary">
-                    <div class="box-header with-border">
-                        <h3 class="box-title">Distributed Document By Department</h3>
-                        <a class="box-header-action" href="@Url.Action("Index", "P4DMaintenance")"><i class="fa fa-external-link"></i> More Detail</a>
-                    </div>
-                    <div class="box-body">
-                        <div class="dash-panel-toolbar">
-                            <div class="dash-toggle" id="distributionToggle">
-                                <button type="button" class="dash-toggle-btn" data-view="division">Division</button>
-                                <button type="button" class="dash-toggle-btn active" data-view="department">Department</button>
-                            </div>
-                        </div>
-                        <div id="chartDistribution"></div>
+        <div class="hd-grid hd-grid-2 hd-row" style="margin-top:16px;">
+            <div class="hd-card">
+                <div class="hd-card-head">
+                    <span class="hd-card-title"><i class="fa fa-share-alt"></i>Distributed Documents</span>
+                    <div class="dash-toggle" id="distributionToggle">
+                        <button type="button" class="dash-toggle-btn" data-view="division">Division</button>
+                        <button type="button" class="dash-toggle-btn active" data-view="department">Department</button>
                     </div>
                 </div>
+                <div id="chartDistribution"></div>
             </div>
-            <div class="col-md-6">
-                <div class="box box-primary">
-                    <div class="box-header with-border">
-                        <h3 class="box-title">Received Document</h3>
-                        <a class="box-header-action" href="@Url.Action("Index", "P4DMaintenance")"><i class="fa fa-external-link"></i> More Detail</a>
-                    </div>
-                    <div class="box-body">
-                        <div class="dash-panel-toolbar">
-                            <div class="dash-toggle" id="receivedToggle">
-                                <button type="button" class="dash-toggle-btn active" data-view="division">Division</button>
-                                <button type="button" class="dash-toggle-btn" data-view="department">Department</button>
-                            </div>
-                        </div>
-                        <div id="chartReceived"></div>
+            <div class="hd-card">
+                <div class="hd-card-head">
+                    <span class="hd-card-title"><i class="fa fa-check-square-o"></i>Accepted Registrations</span>
+                    <div class="dash-toggle" id="receivedToggle">
+                        <button type="button" class="dash-toggle-btn active" data-view="division">Division</button>
+                        <button type="button" class="dash-toggle-btn" data-view="department">Department</button>
                     </div>
                 </div>
+                <div id="chartReceived"></div>
             </div>
         </div>
     </div>

@@ -47,7 +47,11 @@ namespace MDC.Models.Repo
             };
 
             string query = "EXEC [dbo].[sp_Approval_GetDetail] @APPROVAL_ID";
-            IList<ApprovalDetail> Result = db.ApprovalDetail.FromSqlRaw<ApprovalDetail>(query, param.ToArray()).ToList();
+            // AsNoTracking: tanpa ini EF mengembalikan entity yang sudah ter-track dari
+            // panggilan sebelumnya di request yang sama (identity resolution), jadi status
+            // hasil sp_Approval_Approve/Reject tidak terbaca - email progres sempat
+            // menampilkan tahap yang baru di-approve masih "Waiting for Approval".
+            IList<ApprovalDetail> Result = db.ApprovalDetail.FromSqlRaw<ApprovalDetail>(query, param.ToArray()).AsNoTracking().ToList();
 
             return Result;
         }

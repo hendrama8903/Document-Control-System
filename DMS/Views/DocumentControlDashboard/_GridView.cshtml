@@ -140,11 +140,11 @@
 
     function setFoldersPanelCollapsed(collapsed) {
         var $row = $("#dpLayoutRow");
-        var $icon = $("#btn_toggleFolders i");
 
         $row.toggleClass("folders-collapsed", collapsed);
-        $icon.toggleClass("fa-angle-double-left", !collapsed).toggleClass("fa-angle-double-right", collapsed);
-        $("#btn_toggleFolders").attr("title", collapsed ? "Show Folders" : "Hide Folders");
+        // tombol hide ada di header panel Folders; tombol toolbar cuma untuk show
+        // (request Hendra 2026-11-05)
+        $("#btn_toggleFolders").toggleClass("dcd-hidden", !collapsed);
 
         // width-only change (grid height is unaffected), but DevExtreme needs a nudge
         // to reflow column widths into the space freed/reclaimed by the transition.
