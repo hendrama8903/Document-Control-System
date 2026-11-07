@@ -26,7 +26,7 @@ BEGIN TRY
 	DECLARE @PROCESS_ID BIGINT
 	, @LOCATION VARCHAR(255) = 'sp_P4DMaintenance_UnReceive'
 	, @cur_STATUS char(1)
-	, @cur_DOCUMENT_NO varchar(5)
+	, @cur_DOCUMENT_NO varchar(50)
 	, @cur_DOCUMENT_TRANSACTION_ID int
 
 	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'P4D Maintenance', 'UnReceive', @LOCATION, @LOGIN_USER

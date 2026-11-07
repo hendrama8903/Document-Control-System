@@ -23,7 +23,7 @@ BEGIN TRY
 	DECLARE @PROCESS_ID BIGINT
 	, @LOCATION VARCHAR(255) = 'sp_P4DMaintenance_Accept'
 	, @cur_STATUS char(1)
-	, @cur_DOCUMENT_NO varchar(5)
+	, @cur_DOCUMENT_NO varchar(50)
 
 	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'P4D Maintenance', 'Accept', @LOCATION, @LOGIN_USER
 

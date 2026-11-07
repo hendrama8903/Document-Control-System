@@ -150,6 +150,11 @@ function admScheduleFlyoutClose() {
 function admBuildRailNav() {
     var $nav = $('<nav class="adm-rail-nav" aria-label="Main menu">');
 
+    $('<button type="button" class="adm-rail-item adm-rail-tool" title="Search menu" aria-label="Search menu">')
+        .append('<i class="fa fa-search"></i>')
+        .on('click', admOpenMenuPalette)
+        .appendTo($nav);
+
     $('.adm-sidepanel .sidebar-menu > li').each(function () {
         var $li = $(this);
         var $link = $li.children('a');
@@ -164,20 +169,20 @@ function admBuildRailNav() {
             .appendTo($nav);
     });
 
-    $nav.insertAfter('.adm-rail-ic');
+    $nav.insertAfter('.adm-rail-collapse');
     var $flyout = $('<div class="adm-rail-flyout" id="admRailFlyout">').appendTo('body');
 
-    $nav.on('mouseenter', 'button.adm-rail-item', function () {
+    $nav.on('mouseenter', 'button.adm-rail-item:not(.adm-rail-tool)', function () {
         admOpenRailFlyout($(this));
     });
-    $nav.on('mouseleave', 'button.adm-rail-item', admScheduleFlyoutClose);
+    $nav.on('mouseleave', 'button.adm-rail-item:not(.adm-rail-tool)', admScheduleFlyoutClose);
     $flyout.on('mouseenter', function () {
         clearTimeout(admFlyoutCloseTimer);
     });
     $flyout.on('mouseleave', admScheduleFlyoutClose);
 
     // Mouse sudah terbuka lewat hover, jadi klik tidak menutupnya. e.detail 0 = keyboard.
-    $nav.on('click', 'button.adm-rail-item', function (e) {
+    $nav.on('click', 'button.adm-rail-item:not(.adm-rail-tool)', function (e) {
         var $item = $(this);
         if (e.detail === 0 && $item.hasClass('flyout-open')) {
             admCloseRailFlyout();
@@ -211,4 +216,100 @@ function admBuildRailNav() {
         }
     });
     $(window).on('resize', admCloseRailFlyout);
+}
+
+// Pencarian menu saat sidebar tersembunyi. Isinya dibaca dari menu sidepanel, jadi
+// hanya menampilkan menu yang boleh diakses role user.
+function admMenuEntries() {
+    var entries = [];
+    $('.adm-sidepanel .sidebar-menu > li').each(function () {
+        var $top = $(this);
+        var group = $.trim($top.children('a').find('span').first().text());
+        if ($top.hasClass('treeview')) {
+            $top.find('.treeview-menu a').each(function () {
+                var $a = $(this);
+                entries.push({ label: $.trim($a.find('span').first().text()), group: group, href: $a.attr('href'), icon: $a.children('.fa').first().attr('class') });
+            });
+        } else {
+            var $link = $top.children('a');
+            entries.push({ label: group, group: '', href: $link.attr('href'), icon: $link.children('.fa').first().attr('class') });
+        }
+    });
+    return entries;
+}
+
+function admRenderMenuPalette() {
+    var query = $('#admPaletteInput').val().trim().toLowerCase();
+    var $list = $('#admPaletteList').empty();
+    admMenuEntries().filter(function (e) {
+        return (e.label + ' ' + e.group).toLowerCase().indexOf(query) !== -1;
+    }).forEach(function (e, i) {
+        var $item = $('<a class="adm-palette-item">').attr('href', e.href).toggleClass('is-current', i === 0);
+        $('<i>').attr('class', e.icon).appendTo($item);
+        $('<span class="adm-palette-label">').text(e.label).appendTo($item);
+        if (e.group) {
+            $('<span class="adm-palette-group">').text(e.group).appendTo($item);
+        }
+        $item.appendTo($list);
+    });
+    if (!$list.children().length) {
+        $('<div class="adm-palette-empty">').text('No menu found.').appendTo($list);
+    }
+}
+
+function admMoveMenuPalette(step) {
+    var $items = $('#admPaletteList .adm-palette-item');
+    if (!$items.length) {
+        return;
+    }
+    var next = ($items.index($items.filter('.is-current')) + step + $items.length) % $items.length;
+    $items.removeClass('is-current');
+    $items.eq(next).addClass('is-current')[0].scrollIntoView({ block: 'nearest' });
+}
+
+function admCloseMenuPalette() {
+    $('#admPalette').remove();
+    $('.adm-rail-tool').trigger('focus');
+}
+
+function admOpenMenuPalette() {
+    admCloseRailFlyout();
+    if ($('#admPalette').length) {
+        return;
+    }
+    var $palette = $('<div class="adm-palette-overlay" id="admPalette" role="dialog" aria-modal="true" aria-label="Search menu">').html(
+        '<div class="adm-palette">' +
+        '<div class="adm-palette-head"><i class="fa fa-search"></i>' +
+        '<input type="text" id="admPaletteInput" placeholder="Search menu..." autocomplete="off" aria-label="Search menu">' +
+        '<button type="button" class="adm-palette-close">Close <kbd>Esc</kbd></button></div>' +
+        '<div class="adm-palette-list" id="admPaletteList"></div>' +
+        '<div class="adm-palette-foot"><kbd>&uarr;</kbd><kbd>&darr;</kbd> Navigate <kbd>Enter</kbd> Open</div>' +
+        '</div>').appendTo('body');
+
+    $palette.on('mousedown', function (e) {
+        if (e.target === this) {
+            admCloseMenuPalette();
+        }
+    });
+    $palette.on('click', '.adm-palette-close', admCloseMenuPalette);
+    $palette.on('mousemove', '.adm-palette-item', function () {
+        $('#admPaletteList .adm-palette-item').removeClass('is-current');
+        $(this).addClass('is-current');
+    });
+    $('#admPaletteInput').on('input', admRenderMenuPalette).on('keydown', function (e) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            admMoveMenuPalette(e.key === 'ArrowDown' ? 1 : -1);
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            var $selected = $('#admPaletteList .adm-palette-item.is-current');
+            if ($selected.length) {
+                window.location.href = $selected.attr('href');
+            }
+        } else if (e.key === 'Escape') {
+            admCloseMenuPalette();
+        }
+    }).trigger('focus');
+
+    admRenderMenuPalette();
 }

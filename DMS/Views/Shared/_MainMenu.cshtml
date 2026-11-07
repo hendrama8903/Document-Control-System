@@ -6,7 +6,13 @@
 </ul>
 <script type="text/javascript">
     $(document).ready(function() {
-        var currentUrl = "@HttpContextAccessor.HttpContext.Request.Path.Value";
+        var requestPath = "@HttpContextAccessor.HttpContext.Request.Path.Value";
+        // Profile ada di controller User, tapi bukan bagian dari menu User Management.
+        if (requestPath.toLowerCase() === "/user/profile") {
+            return;
+        }
+
+        var currentUrl = requestPath;
         var currentUrl = currentUrl.split('/');
         var currentUrl = '/' + currentUrl[1] + '/Index';
         var parentId = $('li[id="sidebarMenu' + currentUrl + '"]').attr('data-parentId');

@@ -4,7 +4,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_P4DMaintenance_ApproveReject]
 		@DOCUMENT_CTRL_ID int,
-		@DOCUMENT_CODE varchar(5),
+		@DOCUMENT_CODE varchar(50),
 		@IS_APPROVED varchar(1),
 		@REMARKS varchar(200),
 		@LOGIN_USER varchar(50),
@@ -17,7 +17,7 @@ BEGIN TRY
 	, @rev_DOCUMENT_CTRL_ID int
 	, @rev_REVISION int
 	, @cur_STATUS char(1)
-	, @cur_DOCUMENT_NO varchar(5)
+	, @cur_DOCUMENT_NO varchar(50)
 					
 	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'P4D Maintenance', 'ApproveReject', @LOCATION, @LOGIN_USER
 	

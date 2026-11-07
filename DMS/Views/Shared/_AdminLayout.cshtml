@@ -45,12 +45,15 @@
     <div class="adm-scrim" id="admScrim" onclick="admToggleNav(false)"></div>
     <div class="adm-app" id="admApp">
         <script>
-            // Sebelum sidebar digambar, supaya tidak berkedip terbuka lalu menciut.
+            // Sebelum sidebar digambar, supaya tidak berkedip. Default-nya menu tersembunyi;
+            // terbuka hanya kalau user pernah memilih membukanya di browser ini.
+            var admCollapsed = true;
             try {
-                if (localStorage.getItem('dms.sidebarCollapsed') === '1') {
-                    document.getElementById('admApp').classList.add('collapsed');
-                }
+                admCollapsed = localStorage.getItem('dms.sidebarCollapsed') !== '0';
             } catch (e) { }
+            if (admCollapsed) {
+                document.getElementById('admApp').classList.add('collapsed');
+            }
         </script>
 
         <!-- ===== SIDEBAR: rail + panel menu ===== -->
@@ -59,10 +62,10 @@
                 <a class="adm-rail-ic" href="~/" title="Home">
                     <img src="~/images/logo.png" alt="Document Control System">
                 </a>
-                <div class="adm-rail-vtext">DOCUMENT <em>CONTROL</em> SYSTEM</div>
                 <button type="button" class="adm-rail-collapse" onclick="admToggleCollapse()" title="Hide menu" aria-expanded="true">
                     <i class="fa fa-angle-double-left"></i>
                 </button>
+                <div class="adm-rail-vtext">DOCUMENT <em>CONTROL</em> SYSTEM</div>
             </div>
             <div class="adm-sidepanel">
                 <div class="adm-menu-search">

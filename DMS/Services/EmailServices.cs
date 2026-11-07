@@ -17,6 +17,12 @@ public class EmailService
 
     public async Task SendEmailAsync(List<string> toAddresses, string subject, string title, string body, string buttonLink)
     {
+        if (Config.enabled == false)
+        {
+            Console.WriteLine($"Email disabled, not sent: {subject}");
+            return;
+        }
+
         using (var client = new SmtpClient(Config.smtpServer))
         {
             client.Port = (int)Config.port;
@@ -27,7 +33,7 @@ public class EmailService
 
             var message = new MailMessage
             {
-                From = new MailAddress(Config.username),
+                From = new MailAddress(string.IsNullOrWhiteSpace(Config.fromAddress) ? Config.username : Config.fromAddress, Config.displayName),
                 Subject = subject,
                 Body = GetBodyTemplate(title, body, buttonLink),
                 IsBodyHtml = true

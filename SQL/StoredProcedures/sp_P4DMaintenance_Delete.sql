@@ -4,7 +4,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_P4DMaintenance_Delete]
 		@DOCUMENT_CTRL_ID int,
-		@DOCUMENT_NO varchar(5),
+		@DOCUMENT_NO varchar(50),
 		@LOGIN_USER varchar(50),
 	@RETURN_MSG 				VARCHAR(MAX) OUTPUT
 

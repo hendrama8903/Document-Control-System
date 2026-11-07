@@ -9,6 +9,9 @@
     "region": "ap-southeast-1"
   },
   "EmailConfiguration": {
+    "enabled": true,
+    "fromAddress": "",
+    "displayName": "DCS Notification",
     "username": "REPLACE_WITH_SMTP_USERNAME",
     "password": "REPLACE_WITH_SMTP_PASSWORD",
     "smtpServer": "smtp.office365.com",

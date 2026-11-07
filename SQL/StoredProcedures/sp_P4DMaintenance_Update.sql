@@ -4,7 +4,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 CREATE OR ALTER PROCEDURE [dbo].[sp_P4DMaintenance_Update]
 		@DOCUMENT_CTRL_ID int,
-		@DOCUMENT_CODE varchar(5),
+		@DOCUMENT_CODE varchar(50),
 		@LOCATION_DOC varchar(200),
 		@CREATED_BY varchar(50),
 		@CHANGED_BY varchar(50),
