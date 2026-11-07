@@ -32,7 +32,7 @@ BEGIN TRY
 	IF NOT EXISTS (
 		SELECT 1 FROM TB_R_CTRL_DOCUMENT
 		WHERE DOCUMENT_TRANSACTION_ID = @DOCUMENT_TRANSACTION_ID
-		AND DELETE_FLAG != '1' AND [STATUS] IN ('2', '6')
+		AND ISNULL(DELETE_FLAG, 0) = 0 AND ISNULL(OPERATION_TYPE, 1) = 1 AND [STATUS] IN ('2', '6')
 	)
 	BEGIN
 		SET @RETURN_MSG = 'ERROR: Only documents with status Accepted or Partially Sent can be sent. Refresh the page to see the current status.';

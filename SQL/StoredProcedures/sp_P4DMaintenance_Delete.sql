@@ -19,7 +19,7 @@ BEGIN TRY
 
 	-- Checking (1) SENGAJA tidak boleh dihapus - QMS sudah mulai Receive/review
 	-- dokumen ini, dan Delete di bawah menghapus PERMANEN (bukan soft-delete)
-	-- log aktivitas & data distribusinya, jadi kalau dibolehkan di tengah
+	-- data distribusi & Publish-nya, jadi kalau dibolehkan di tengah
 	-- proses QMS jejaknya hilang tanpa audit trail dan tanpa QMS tahu. Department
 	-- harus Un-Receive dulu (balik ke Draft) baru bisa Delete (request Hendra
 	-- 2026-08-14).
@@ -47,7 +47,9 @@ BEGIN TRY
 		, CHANGED_DT = GETDATE()
 	WHERE DOCUMENT_CTRL_ID = @DOCUMENT_CTRL_ID
 	
-	DELETE FROM TB_R_DOCUMENT_LOG WHERE DOCUMENT_TRANSACTION_ID = (SELECT DOCUMENT_TRANSACTION_ID FROM TB_R_CTRL_DOCUMENT WHERE DOCUMENT_CTRL_ID = @DOCUMENT_CTRL_ID)
+	-- Hanya Publish, yang terikat distribusi yang ikut dihapus. Log View, Print, dan
+	-- Download milik dokumen sumber dan harus tetap ada (2026-11-07).
+	DELETE FROM TB_R_DOCUMENT_LOG WHERE LOG_TYPE = '4' AND DOCUMENT_TRANSACTION_ID = (SELECT DOCUMENT_TRANSACTION_ID FROM TB_R_CTRL_DOCUMENT WHERE DOCUMENT_CTRL_ID = @DOCUMENT_CTRL_ID)
 	DELETE FROM TB_R_DOCUMENT_DISTRIBUTION WHERE DOCUMENT_TRANSACTION_ID = (SELECT DOCUMENT_TRANSACTION_ID FROM TB_R_CTRL_DOCUMENT WHERE DOCUMENT_CTRL_ID = @DOCUMENT_CTRL_ID)
 
 	SET @RETURN_MSG = 'Successfully Delete Data'

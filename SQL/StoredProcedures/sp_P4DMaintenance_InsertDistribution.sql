@@ -97,7 +97,8 @@ BEGIN TRY
            ,@snap_DEPARTMENT_NAME
 
 	DECLARE @CURRENT_STATUS INT;
-	SET @CURRENT_STATUS = (SELECT STATUS FROM TB_R_CTRL_DOCUMENT WHERE DOCUMENT_TRANSACTION_ID = @DOCUMENT_TRANSACTION_ID)
+	-- Hanya registrasi aktif: dokumen yang pernah didaftarkan lalu dihapus punya lebih dari satu baris.
+	SET @CURRENT_STATUS = (SELECT STATUS FROM TB_R_CTRL_DOCUMENT WHERE DOCUMENT_TRANSACTION_ID = @DOCUMENT_TRANSACTION_ID AND ISNULL(DELETE_FLAG, 0) = 0 AND ISNULL(OPERATION_TYPE, 1) = 1)
 
 	-- STATUS 6 = "Partially Sent": flags that a new distribution was added after
 	-- the document was already Sent, so the Send button re-enables (front-end
