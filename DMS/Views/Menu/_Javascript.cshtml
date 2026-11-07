@@ -454,7 +454,7 @@
         var newFlag = menu.DELETE_FLAG === 1 ? 0 : 1;
         var verb = newFlag === 1 ? "deactivate" : "activate";
         var confirmFn = newFlag === 1 ? showWarningConfirm : showConfirmMesg;
-        confirmFn("Are you sure you want to " + verb + " this menu?", function () {
+        confirmFn("Are you sure you want to " + verb + " menu \"" + confirmText(menu.MENU_NAME) + "\"?", function () {
             popUpProgressShow();
             $.ajax({
                 type: "POST",
@@ -637,7 +637,7 @@
 
     function onDeletePrepare(menu) {
         gId = menu.MENU_ID;
-        showDangerConfirm("Are you sure you want to delete this menu?", deleteData, "Delete");
+        showDangerConfirm(deleteMessage("menu", menu.MENU_NAME), deleteData, "Delete");
     }
 
     function deleteData() {
@@ -698,7 +698,7 @@
     }
 
     function onDeleteFunctionPrepare(func) {
-        showDangerConfirm("Are you sure you want to delete this function?", function () { deleteFunction(func); }, "Delete");
+        showDangerConfirm(deleteMessage("function", func.FUNCTION_NAME), function () { deleteFunction(func); }, "Delete");
     }
 
     function confirmSaveFunction() {

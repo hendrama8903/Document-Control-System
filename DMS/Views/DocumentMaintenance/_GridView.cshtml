@@ -235,6 +235,7 @@
                     cellTemplate: function (container, options) {
                         var row = options.data;
                         var value = row.P4D_STATUS_VAL;
+                        var key = (value || "").toUpperCase();
 
                         if (value == null || value == "") {
                             container.text("-");
@@ -244,19 +245,19 @@
                         var pillClass = "dms-pill dms-pill-danger";
                         var icon = "fa-times-circle";
 
-                        if (value == "DRAFT") {
+                        if (key == "DRAFT") {
                             pillClass = "dms-pill dms-pill-info";
                             icon = "fa-clock-o";
-                        } else if (value == "CHECKING" || value == "PARTIALLY SENT") {
+                        } else if (key == "CHECKING" || key == "PARTIALLY SENT") {
                             pillClass = "dms-pill dms-pill-warning";
                             icon = "fa-hourglass-half";
-                        } else if (value == "SENT") {
+                        } else if (key == "SENT") {
                             pillClass = "dms-pill dms-pill-primary";
                             icon = "fa-paper-plane";
-                        } else if (value == "ACCEPTED") {
+                        } else if (key == "ACCEPTED") {
                             pillClass = "dms-pill dms-pill-success";
                             icon = "fa-check-circle";
-                        } else if (value == "DELETED") {
+                        } else if (key == "DELETED") {
                             pillClass = "dms-pill dms-pill-default";
                             icon = "fa-archive";
                         }

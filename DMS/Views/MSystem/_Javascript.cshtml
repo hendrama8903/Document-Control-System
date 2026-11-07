@@ -133,7 +133,7 @@
         gSystemType = row.SYSTEM_TYPE;
         gSystemCode = row.SYSTEM_CODE;
 
-        showDangerConfirm("Are you sure you want to delete the record?", deleteData, "Delete");
+        showDangerConfirm(deleteMessage("System Parameter", row.SYSTEM_TYPE + " / " + row.SYSTEM_CODE), deleteData, "Delete");
     }
 
     function confirmAddEditData() {

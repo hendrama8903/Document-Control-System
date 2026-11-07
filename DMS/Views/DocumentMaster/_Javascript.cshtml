@@ -140,7 +140,7 @@
         gDocumentId = row.DOCUMENT_ID;
         gFilePath = row.FILE_PATH;
 
-        showDangerConfirm("Are you sure you want to delete the record?", deleteData, "Delete");
+        showDangerConfirm(deleteMessage("Document Category", row.DOCUMENT_CODE), deleteData, "Delete");
     }
 
     function confirmAddEditData() {
@@ -426,7 +426,7 @@
     }
 
     function confirmDeleteAttachment() {
-        showDangerConfirm("Are you sure you want to continue process?", deleteAttachment, "Delete");
+        showDangerConfirm("Delete this attachment? The file will be removed from the record. This cannot be undone.", deleteAttachment, "Delete");
     }
 
     function deleteAttachment() {

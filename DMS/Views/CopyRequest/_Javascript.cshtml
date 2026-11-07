@@ -35,7 +35,7 @@
 
         $("#btn_reject").on("click", function () {
             gApprovalMode = "reject";
-            showWarningConfirm("Are you sure you want to reject this request?", onApproveReject, "Reject");
+            showWarningConfirm("Reject Print Request \"" + confirmText(gRequestNo) + "\"?", onApproveReject, "Reject");
         });
     });
 
@@ -260,7 +260,7 @@
             return;
         }
 
-        showDangerConfirm("Are you sure you want to delete the record?", function () { deleteHeader(row); }, "Delete");
+        showDangerConfirm(deleteMessage("Print Request", row.REQUEST_NO), function () { deleteHeader(row); }, "Delete");
     }
 
     function deleteHeader(row) {
@@ -406,7 +406,7 @@
 
         $('#detailGrid').off('click', '.detail-delete-btn').on('click', '.detail-delete-btn', function () {
             var index = $(this).data('index');
-            showDangerConfirm("Are you sure you want to delete this document row?", function () { deleteDetailRow(index); }, "Delete");
+            showDangerConfirm(deleteMessage("document row", (gDetailRows[index] || {}).DOCUMENT_NAME), function () { deleteDetailRow(index); }, "Delete");
         });
     }
 
@@ -572,10 +572,10 @@
     // ---------- Approval (single step by QMS) ----------
 
     var STATUS_PANEL_BY_STATUS = {
-        "1": { cls: "adf-status-warning", icon: "fa-clock-o", pre: "STATUS", text: "WAITING APPROVAL", hint: "Please review the documents and take action." },
-        "2": { cls: "adf-status-success", icon: "fa-check", pre: "STATUS", text: "APPROVED", hint: "This request has been approved." },
-        "3": { cls: "adf-status-danger", icon: "fa-times", pre: "STATUS", text: "REJECTED", hint: "This request was rejected. See remark below." },
-        "4": { cls: "adf-status-info", icon: "fa-ban", pre: "STATUS", text: "CANCELLED", hint: "This request was cancelled." }
+        "1": { cls: "adf-status-warning", icon: "fa-clock-o", pre: "Status", text: "Waiting Approval", hint: "Please review the documents and take action." },
+        "2": { cls: "adf-status-success", icon: "fa-check", pre: "Status", text: "Approved", hint: "This request has been approved." },
+        "3": { cls: "adf-status-danger", icon: "fa-times", pre: "Status", text: "Rejected", hint: "This request was rejected. See remark below." },
+        "4": { cls: "adf-status-info", icon: "fa-ban", pre: "Status", text: "Cancelled", hint: "This request was cancelled." }
     };
 
     function onApprovalPrepare(row) {

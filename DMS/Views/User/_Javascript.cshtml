@@ -439,7 +439,7 @@
     function onDeletePrepare(row) {
         gId = row.USERNAME;
 
-        showDangerConfirm("Are you sure you want to delete user " + gId + "?", deleteData, "Delete");
+        showDangerConfirm("Delete user \"" + confirmText(gId) + "\"? You can restore this user later.", deleteData, "Delete");
     }
 
     function deleteData() {
@@ -640,7 +640,7 @@
     }
 
     function confirmDeleteAttachment() {
-        showDangerConfirm("Are you sure you want to continue process?", deleteAttachment, "Delete");
+        showDangerConfirm("Delete this attachment? The file will be removed from the record. This cannot be undone.", deleteAttachment, "Delete");
     }
 
     function deleteAttachment() {

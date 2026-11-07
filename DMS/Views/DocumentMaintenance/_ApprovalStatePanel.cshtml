@@ -91,7 +91,7 @@
 
     /* Vertical stepper - lebih pas untuk panel sempit dibanding horizontal */
     #approvalStatePanel .asp-section-title {
-        font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+        font-size: 11px; font-weight: 700;
         color: #8A94A3; margin-bottom: 14px;
     }
 
@@ -155,11 +155,11 @@
     </div>
     <div class="panel-body">
         <div class="asp-status-panel" id="aspStatusPanel">
-            <div class="asp-status-label">APPROVAL STATUS</div>
+            <div class="asp-status-label">Approval Status</div>
             <div class="asp-status-row">
                 <div class="asp-status-icon"><i class="fa fa-clock-o" id="aspStatusIcon"></i></div>
                 <div>
-                    <div class="asp-status-pre" id="aspStatusPre">WAITING FOR</div>
+                    <div class="asp-status-pre" id="aspStatusPre">Waiting For</div>
                     <div class="asp-status-text" id="aspStatusText">-</div>
                     <div class="asp-status-position" id="aspStatusPosition"></div>
                 </div>
@@ -207,8 +207,8 @@
             $("#aspStepper").html('<div style="color:#98A2B3; font-size:12.5px;">No approval workflow has been started for this document yet.</div>');
             $("#aspStatusPanel").attr("class", "asp-status-panel asp-status-info");
             $("#aspStatusIcon").attr("class", "fa fa-info-circle");
-            $("#aspStatusPre").text("STATUS");
-            $("#aspStatusText").text("NOT STARTED");
+            $("#aspStatusPre").text("Status");
+            $("#aspStatusText").text("Not Started");
             $("#aspStatusHint").text("");
             return;
         }
@@ -280,15 +280,15 @@
         if (status == 1 && waitingAck) {
             $panel.addClass("asp-status-warning");
             $("#aspStatusIcon").attr("class", "fa fa-users");
-            $("#aspStatusPre").text("STATUS");
-            $("#aspStatusText").text("WAITING ACKNOWLEDGMENT");
+            $("#aspStatusPre").text("Status");
+            $("#aspStatusText").text("Waiting Acknowledgment");
             $("#aspStatusPosition").text("");
             $("#aspStatusHint").text("Approval is complete - waiting for related division(s) to acknowledge (\"Mengetahui\") before this document is fully approved. See Related Division Acknowledgment below.");
         } else if (status == 1) {
             $panel.addClass("asp-status-success");
             $("#aspStatusIcon").attr("class", "fa fa-check");
-            $("#aspStatusPre").text("STATUS");
-            $("#aspStatusText").text("APPROVED");
+            $("#aspStatusPre").text("Status");
+            $("#aspStatusText").text("Approved");
             $("#aspStatusPosition").text("");
             $("#aspStatusHint").text("This document has completed the approval process.");
         } else if (status == 0) {
@@ -298,15 +298,15 @@
 
             $panel.addClass("asp-status-warning");
             $("#aspStatusIcon").attr("class", "fa fa-clock-o");
-            $("#aspStatusPre").text("WAITING FOR");
+            $("#aspStatusPre").text("Waiting For");
             $("#aspStatusText").text(currentRow ? (currentRow["APPROVER_NAME"] || "").toUpperCase() : "-");
             $("#aspStatusPosition").text(currentRow ? (currentRow["APPROVER_POSITION"] || "") : "");
             $("#aspStatusHint").text("Please review and take action.");
         } else {
             $panel.addClass("asp-status-danger");
             $("#aspStatusIcon").attr("class", "fa fa-times");
-            $("#aspStatusPre").text("STATUS");
-            $("#aspStatusText").text("REJECTED");
+            $("#aspStatusPre").text("Status");
+            $("#aspStatusText").text("Rejected");
             $("#aspStatusPosition").text("");
             $("#aspStatusHint").text("This document was rejected.");
         }
@@ -374,7 +374,7 @@
             var dateHtml = step.date ? '<div class="stepper-date">' + moment(step.date).format("DD-MM-YYYY HH:mm") + "</div>" : "";
             var positionHtml = step.position ? '<div class="stepper-position">' + step.position + "</div>" : "";
             var iconHtml = iconByState[step.state] ? '<i class="fa ' + iconByState[step.state] + '"></i>' : "";
-            var badgeHtml = step.state === "current" ? '<div class="stepper-current-badge">CURRENT STEP</div>' : "";
+            var badgeHtml = step.state === "current" ? '<div class="stepper-current-badge">Current Step</div>' : "";
             var connectorState = (step.state == "done" || step.state == "rejected") ? step.state : "upcoming";
 
             html += '<div class="stepper-step stepper-' + step.state + '">' +

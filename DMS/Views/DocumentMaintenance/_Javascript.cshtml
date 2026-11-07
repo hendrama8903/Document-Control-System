@@ -255,11 +255,11 @@
     }
 
     function approvalStatusPillHtml(state) {
-        var cls = "dms-pill-info", icon = "fa-hourglass-half", text = "PENDING";
+        var cls = "dms-pill-info", icon = "fa-hourglass-half", text = "Pending";
 
-        if (state === "done") { cls = "dms-pill-success"; icon = "fa-check"; text = "APPROVED"; }
-        else if (state === "current") { cls = "dms-pill-warning"; icon = "fa-clock-o"; text = "WAITING"; }
-        else if (state === "rejected") { cls = "dms-pill-danger"; icon = "fa-times"; text = "REJECTED"; }
+        if (state === "done") { cls = "dms-pill-success"; icon = "fa-check"; text = "Approved"; }
+        else if (state === "current") { cls = "dms-pill-warning"; icon = "fa-clock-o"; text = "Waiting"; }
+        else if (state === "rejected") { cls = "dms-pill-danger"; icon = "fa-times"; text = "Rejected"; }
 
         return '<span class="dms-pill ' + cls + '"><i class="fa ' + icon + '"></i> ' + text + '</span>';
     }
@@ -433,7 +433,7 @@
                                     var approved = row["STATUS"] == 1;
                                     var cls = approved ? "dms-pill-success" : "dms-pill-danger";
                                     var icon = approved ? "fa-check" : "fa-times";
-                                    return '<span class="dms-pill ' + cls + '"><i class="fa ' + icon + '"></i> ' + (approved ? "APPROVED" : "REJECTED") + '</span>';
+                                    return '<span class="dms-pill ' + cls + '"><i class="fa ' + icon + '"></i> ' + (approved ? "Approved" : "Rejected") + '</span>';
                                 }
                             },
                             {
@@ -516,8 +516,8 @@
                 {
                     render: function (data, type, row) {
                         return row["ACKNOWLEDGED_FLAG"] == 1
-                            ? '<span class="dms-pill dms-pill-success"><i class="fa fa-check"></i> ACKNOWLEDGED</span>'
-                            : '<span class="dms-pill dms-pill-warning"><i class="fa fa-clock-o"></i> PENDING</span>';
+                            ? '<span class="dms-pill dms-pill-success"><i class="fa fa-check"></i> Acknowledged</span>'
+                            : '<span class="dms-pill dms-pill-warning"><i class="fa fa-clock-o"></i> Pending</span>';
                     }
                 },
                 {
@@ -2040,7 +2040,7 @@
         gDocumentId = row.DOCUMENT_TRANSACTION_ID;
         gFilePath = row.FILE_PATH;
 
-        showDangerConfirm("Are you sure you want to delete the record?", deleteData, "Delete");
+        showDangerConfirm(deleteMessage("Document", row.DOCUMENT_CODE || row.DOCUMENT_TRANSACTION_NAME), deleteData, "Delete");
 
     }
 
@@ -2279,7 +2279,7 @@
             });
             return;
         }
-        showWarningConfirm("Are you sure you want to continue process?", function () { onApproveReject(null); }, "Reject");
+        showWarningConfirm("Reject Document \"" + confirmText(gDocumentNo) + "\"?", function () { onApproveReject(null); }, "Reject");
     }
 
     function onApproveReject(signature) {

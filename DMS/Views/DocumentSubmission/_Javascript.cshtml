@@ -331,7 +331,7 @@
             return;
         }
 
-        showDangerConfirm("Are you sure you want to delete the record?", function () { deleteHeader(row); }, "Delete");
+        showDangerConfirm(deleteMessage("Document Submission", row.SUBMISSION_NO), function () { deleteHeader(row); }, "Delete");
     }
 
     function deleteHeader(row) {
@@ -446,7 +446,7 @@
 
         $('#detailGrid').off('click', '.detail-delete-btn').on('click', '.detail-delete-btn', function () {
             var index = $(this).data('index');
-            showDangerConfirm("Are you sure you want to delete this document row?", function () { deleteDetailRow(index); }, "Delete");
+            showDangerConfirm(deleteMessage("document row", (gDetailRows[index] || {}).DOCUMENT_NAME), function () { deleteDetailRow(index); }, "Delete");
         });
     }
 
@@ -744,11 +744,11 @@
     }
 
     function approvalStatusPillHtml(state) {
-        var cls = "dms-pill-info", icon = "fa-hourglass-half", text = "PENDING";
+        var cls = "dms-pill-info", icon = "fa-hourglass-half", text = "Pending";
 
-        if (state === "done") { cls = "dms-pill-success"; icon = "fa-check"; text = "APPROVED"; }
-        else if (state === "current") { cls = "dms-pill-warning"; icon = "fa-clock-o"; text = "WAITING"; }
-        else if (state === "rejected") { cls = "dms-pill-danger"; icon = "fa-times"; text = "REJECTED"; }
+        if (state === "done") { cls = "dms-pill-success"; icon = "fa-check"; text = "Approved"; }
+        else if (state === "current") { cls = "dms-pill-warning"; icon = "fa-clock-o"; text = "Waiting"; }
+        else if (state === "rejected") { cls = "dms-pill-danger"; icon = "fa-times"; text = "Rejected"; }
 
         return '<span class="dms-pill ' + cls + '"><i class="fa ' + icon + '"></i> ' + text + '</span>';
     }
@@ -764,8 +764,8 @@
         if (status == 1) {
             $panel.addClass('adf-status-success');
             $('#approvalStatusIcon').attr('class', 'fa fa-check');
-            $('#approvalStatusPre').text('STATUS');
-            $('#approvalStatusText').text('APPROVED');
+            $('#approvalStatusPre').text('Status');
+            $('#approvalStatusText').text('Approved');
             $('#approvalStatusHint').text('This submission has completed the approval process.');
         } else if (status == 0) {
             var currentRow = (approvalDetailData || []).filter(function (r) {
@@ -774,14 +774,14 @@
 
             $panel.addClass('adf-status-warning');
             $('#approvalStatusIcon').attr('class', 'fa fa-clock-o');
-            $('#approvalStatusPre').text('WAITING FOR');
+            $('#approvalStatusPre').text('Waiting For');
             $('#approvalStatusText').text(currentRow ? currentRow["APPROVER_NAME"].toUpperCase() : "-");
             $('#approvalStatusHint').text('Please review and take action.');
         } else {
             $panel.addClass('adf-status-danger');
             $('#approvalStatusIcon').attr('class', 'fa fa-times');
-            $('#approvalStatusPre').text('STATUS');
-            $('#approvalStatusText').text('REJECTED');
+            $('#approvalStatusPre').text('Status');
+            $('#approvalStatusText').text('Rejected');
             $('#approvalStatusHint').text('This submission was rejected. See remarks below.');
         }
     }
@@ -943,7 +943,7 @@
                                     var approved = row["STATUS"] == 1;
                                     var cls = approved ? "dms-pill-success" : "dms-pill-danger";
                                     var icon = approved ? "fa-check" : "fa-times";
-                                    return '<span class="dms-pill ' + cls + '"><i class="fa ' + icon + '"></i> ' + (approved ? "APPROVED" : "REJECTED") + '</span>';
+                                    return '<span class="dms-pill ' + cls + '"><i class="fa ' + icon + '"></i> ' + (approved ? "Approved" : "Rejected") + '</span>';
                                 }
                             },
                             {
@@ -1025,7 +1025,7 @@
         steps.forEach(function (step, idx) {
             var dateHtml = step.date ? '<div class="stepper-date">' + moment(step.date).format("DD-MM-YYYY HH:mm") + "</div>" : "";
             var iconHtml = iconByState[step.state] ? '<i class="fa ' + iconByState[step.state] + '"></i>' : "";
-            var badgeHtml = step.state === "current" ? '<div class="stepper-current-badge">CURRENT STEP</div>' : "";
+            var badgeHtml = step.state === "current" ? '<div class="stepper-current-badge">Current Step</div>' : "";
 
             html += '<div class="stepper-step stepper-' + step.state + '">' +
                         '<div class="stepper-icon">' + iconHtml + '</div>' +
@@ -1053,7 +1053,7 @@
 
     function onApproveRejectPrepare() {
         if (gApprovalMode == "reject") {
-            showWarningConfirm("Are you sure you want to reject this form?", onApproveReject, "Reject");
+            showWarningConfirm("Reject Document Submission \"" + confirmText(gSubmissionNo) + "\"?", onApproveReject, "Reject");
             return;
         }
         showConfirmMesg("Are you sure you want to continue process?", onApproveReject, "Confirmation");

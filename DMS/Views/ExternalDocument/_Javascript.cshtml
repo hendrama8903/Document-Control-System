@@ -173,7 +173,7 @@
         gExternalDocumentId = row.EXTERNAL_DOCUMENT_ID;
         gFilePath = row.FILE_PATH;
 
-        showDangerConfirm("Are you sure you want to delete the record?", deleteData, "Delete");
+        showDangerConfirm(deleteMessage("External Document", row.DOCUMENT_NAME), deleteData, "Delete");
     }
 
     function confirmAddEditData() {
@@ -291,7 +291,7 @@
     }
 
     function confirmDeleteAttachment() {
-        showDangerConfirm("Are you sure you want to continue process?", deleteAttachment, "Delete");
+        showDangerConfirm("Delete this attachment? The file will be removed from the record. This cannot be undone.", deleteAttachment, "Delete");
     }
 
     function deleteAttachment() {

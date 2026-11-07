@@ -83,7 +83,7 @@
 
     function onDeletePrepare(row) {
         gId = row.ROLE_ID;
-        showDangerConfirm("Are you sure you want to delete the record?", deleteData, "Delete");
+        showDangerConfirm(deleteMessage("Role", row.ROLE_NAME), deleteData, "Delete");
     }
 
     function confirmAddEditData() {

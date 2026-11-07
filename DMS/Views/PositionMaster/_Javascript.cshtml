@@ -115,7 +115,7 @@
         if (getSelectedRowsData().length < 1) {
             return;
         }
-        showDangerConfirm("Are you sure you want to delete the record?", deleteData, "Delete");
+        showDangerConfirm(deleteMessage("Position", getSelectedRowsData().map(function (r) { return r.POSITION_NAME; }), "positions"), deleteData, "Delete");
     }
 
     function confirmAddEditData() {

@@ -342,6 +342,20 @@ function showConfirmMesg(mesg, funcYes, title, ButtonYes, ButtonNo, funcNo, cust
     }
 }
 
+// Pesan dialog dirender sebagai HTML, jadi teks dari data harus di-escape dulu.
+function confirmText(value) {
+    return $("<div>").text(value == null ? "" : value).html();
+}
+
+// Satu nama: Delete Department "Finance"? Beberapa: Delete 3 departments?
+function deleteMessage(label, names, pluralLabel) {
+    var list = Array.isArray(names) ? names : [names];
+    var subject = list.length > 1
+        ? list.length + " " + pluralLabel
+        : label + (list[0] ? ' "' + confirmText(list[0]) + '"' : "");
+    return "Delete " + subject + "? This cannot be undone.";
+}
+
 // Merah: data hilang atau tidak bisa dibatalkan. actionLabel = kata kerja, mis. "Delete".
 function showDangerConfirm(mesg, funcYes, actionLabel) {
     showConfirmMesg(mesg, funcYes, actionLabel, actionLabel, "Cancel", undefined, "msg-danger");
@@ -361,7 +375,7 @@ function resizeGrid(hheader) {
 
 function popUpProgressShow() {
     $.blockUI({
-        message: '</br><div style="font-weight: bold;font-size: 110%;font-family: Sans-Serif;">Loading</div><div style="font-weight: bold;font-size: 110%;font-family: Sans-Serif;">Please wait...</div></br></br><img src="/images/loading.gif" /></br></br>',
+        message: '</br><div style="font-weight: bold;font-size: 110%;">Loading</div><div style="font-weight: bold;font-size: 110%;">Please wait...</div></br></br><img src="/images/loading.gif" /></br></br>',
         css: {
             padding: 0,
             margin: 0,

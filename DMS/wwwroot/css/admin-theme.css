@@ -26,13 +26,27 @@
 }
 
 body.adm-body {
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
     background: var(--paper);
     color: var(--ink);
     font-size: 13.5px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
 }
+
+/* Library yang menetapkan font sendiri. Ikon punya aturan font sendiri, jadi tidak terpengaruh. */
+.adm-body .dx-widget,
+.adm-body .dx-widget input,
+.adm-body .dx-widget textarea,
+.adm-body .tooltip,
+.adm-body .popover,
+.adm-body .daterangepicker,
+.adm-body .printModal {
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+}
+
+/* Angka selebar sama supaya nomor dan tanggal di grid sejajar. */
+.adm-body .dx-datagrid { font-variant-numeric: tabular-nums; }
 
 .adm-body h1, .adm-body h2, .adm-body h3, .adm-body h4 {
     font-family: inherit;
@@ -676,8 +690,6 @@ body.adm-body {
     align-items: center;
     gap: 7px;
     font-size: 11px;
-    letter-spacing: .14em;
-    text-transform: uppercase;
     color: var(--accent);
     font-weight: 700;
     margin-bottom: 6px;
@@ -1093,8 +1105,6 @@ body.adm-body {
     border-bottom: 1px solid var(--line);
     color: #4E5E6E;
     font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: .05em;
     font-weight: 700;
     padding: 9px 10px;
 }
@@ -1875,8 +1885,6 @@ body.adm-body {
     background: #F9FAFB;
     color: #667085;
     font-size: 11.5px;
-    text-transform: uppercase;
-    letter-spacing: .03em;
     font-weight: 700;
 }
 
@@ -2575,8 +2583,6 @@ body.adm-body {
     padding: 10px 10px;
     font-size: 11px;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .03em;
     color: #667085;
     background: #F9FAFB;
     border-bottom: 1px solid #E3E8EE;

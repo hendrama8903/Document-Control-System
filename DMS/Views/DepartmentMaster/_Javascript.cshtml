@@ -128,7 +128,7 @@
             return;
         }
 
-        showDangerConfirm("Are you sure you want to delete the record?", deleteData, "Delete");
+        showDangerConfirm(deleteMessage("Department", getSelectedRowsData().map(function (r) { return r.DEPARTMENT_NAME; }), "departments"), deleteData, "Delete");
     }
 
     function confirmAddEditData() {
