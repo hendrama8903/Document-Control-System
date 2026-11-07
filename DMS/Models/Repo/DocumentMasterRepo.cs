@@ -25,6 +25,41 @@ namespace DMS.Models.Repo
         }
         #endregion
 
+        // Dibaca manual: DELETE_FLAG bukan properti DocumentMaster, dan menambahkannya
+        // mewajibkan semua SP yang di-FromSqlRaw ke entity itu ikut mengembalikannya.
+        public List<Dictionary<string, object>> SearchWithStatus(DBContext db)
+        {
+            var rows = new List<Dictionary<string, object>>();
+            var connection = db.Database.GetDbConnection();
+            bool wasClosed = connection.State != System.Data.ConnectionState.Open;
+            if (wasClosed) connection.Open();
+            try
+            {
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "[dbo].[sp_DocumentMaster_SearchWithStatus]";
+                    command.CommandType = System.Data.CommandType.StoredProcedure;
+                    using (var r = command.ExecuteReader())
+                    {
+                        while (r.Read())
+                        {
+                            var row = new Dictionary<string, object>();
+                            for (int i = 0; i < r.FieldCount; i++)
+                            {
+                                row[r.GetName(i)] = r.IsDBNull(i) ? null : r.GetValue(i);
+                            }
+                            rows.Add(row);
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                if (wasClosed) connection.Close();
+            }
+            return rows;
+        }
+
         public IList<DocumentMaster> Search(DocumentMaster data, DBContext db, int? PageNumber, int? PageSize)
         {
             List<SqlParameter> param = new List<SqlParameter>

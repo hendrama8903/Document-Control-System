@@ -16,7 +16,7 @@ BEGIN TRY
 
 	IF EXISTS (SELECT TOP 1 1 FROM [dbo].[TB_M_USER_POS] WHERE POSITION_ID = @POSITION_ID)
 	BEGIN
-		SET @RETURN_MSG = 'ERROR: Position is still assigned to one or more users, cannot be deleted';
+		SET @RETURN_MSG = 'ERROR: Position is still assigned to one or more users, cannot be deactivated';
 		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
 		RETURN 0;
 	END
@@ -27,7 +27,7 @@ BEGIN TRY
 			CHANGED_BY 		= @LOGIN_USER
 	WHERE [POSITION_ID] = @POSITION_ID
 
-	SET @RETURN_MSG = 'Successfully Delete Data'
+	SET @RETURN_MSG = 'Successfully deactivated'
 	EXEC sp_WriteLog @PROCESS_ID, '2', 'INF', @RETURN_MSG, @LOCATION, @LOGIN_USER
 	RETURN 1;
 END TRY

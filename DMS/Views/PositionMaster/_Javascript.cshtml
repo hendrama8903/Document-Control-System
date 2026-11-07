@@ -115,7 +115,10 @@
         if (getSelectedRowsData().length < 1) {
             return;
         }
-        showDangerConfirm(deleteMessage("Position", getSelectedRowsData().map(function (r) { return r.POSITION_NAME; }), "positions"), deleteData, "Delete");
+        confirmMasterStatus(getSelectedRowsData(), {
+            entity: "POSITION", idField: "POSITION_ID", nameField: "POSITION_NAME", label: "Position", plural: "positions",
+            activateUrl: "@Url.Action("Activate", "MasterStatus")", onDeactivate: deleteData
+        });
     }
 
     function confirmAddEditData() {

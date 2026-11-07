@@ -180,8 +180,15 @@ namespace DMS.Controllers
         //        return Json(new { status = false, message = ex.Message });
         //    }
         //}
+        [HttpPost]
         public JsonResult Delete(List<int> divisionIds)
         {
+            JsonResult denied = DenyWithoutFunction("DIVISIONMASTER-DELETE");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DBResult result = divisionMasterRepo.Delete(divisionIds, GetLoginUsername(), db);

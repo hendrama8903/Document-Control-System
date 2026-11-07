@@ -128,7 +128,10 @@
             return;
         }
 
-        showDangerConfirm(deleteMessage("Department", getSelectedRowsData().map(function (r) { return r.DEPARTMENT_NAME; }), "departments"), deleteData, "Delete");
+        confirmMasterStatus(getSelectedRowsData(), {
+            entity: "DEPARTMENT", idField: "DEPARTMENT_ID", nameField: "DEPARTMENT_NAME", label: "Department", plural: "departments",
+            activateUrl: "@Url.Action("Activate", "MasterStatus")", onDeactivate: deleteData
+        });
     }
 
     function confirmAddEditData() {

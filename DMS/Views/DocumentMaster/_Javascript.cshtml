@@ -140,7 +140,10 @@
         gDocumentId = row.DOCUMENT_ID;
         gFilePath = row.FILE_PATH;
 
-        showDangerConfirm(deleteMessage("Document Category", row.DOCUMENT_CODE), deleteData, "Delete");
+        confirmMasterStatus([row], {
+            entity: "DOCUMENT", idField: "DOCUMENT_ID", nameField: "DOCUMENT_CODE", label: "Document Category", plural: "document categories",
+            activateUrl: "@Url.Action("Activate", "MasterStatus")", onDeactivate: deleteData
+        });
     }
 
     function confirmAddEditData() {
@@ -383,8 +386,7 @@
             dataType: 'json',
             traditional: true,
             data: {
-                DOCUMENT_ID: gDocumentId,
-                FILE_PATH: gFilePath
+                DOCUMENT_ID: gDocumentId
             },
             success: function(result) {
                 //popUpProgressHide();

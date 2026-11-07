@@ -178,8 +178,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult Delete(DepartmentMaster data)
         {
+            JsonResult denied = DenyWithoutFunction("DEPARTMENTMASTER-DELETE");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             try
             {
@@ -192,8 +199,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult DeleteMultiple(List<int> selectedIds)
         {
+            JsonResult denied = DenyWithoutFunction("DEPARTMENTMASTER-DELETE");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             try
             {
@@ -206,7 +220,7 @@ namespace DMS.Controllers
                     }
                 }
 
-                return Json(new { status = true, message = "Data Deleted Successfully" });
+                return Json(new { status = true, message = "Successfully deactivated" });
             }
             catch (Exception ex)
             {

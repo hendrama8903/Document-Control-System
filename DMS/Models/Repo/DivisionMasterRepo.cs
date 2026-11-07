@@ -143,7 +143,7 @@ namespace DMS.Models.Repo
             }
 
             // Assuming the result should reflect the overall success or failure of the operation
-            return new DBResult(true, "Delete operation completed successfully");
+            return new DBResult(true, "Successfully deactivated");
         }
 
 

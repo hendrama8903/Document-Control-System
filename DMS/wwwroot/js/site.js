@@ -349,11 +349,58 @@ function confirmText(value) {
 
 // Satu nama: Delete Department "Finance"? Beberapa: Delete 3 departments?
 function deleteMessage(label, names, pluralLabel) {
+    return "Delete " + confirmSubject(label, names, pluralLabel) + "? This cannot be undone.";
+}
+
+function confirmSubject(label, names, pluralLabel) {
     var list = Array.isArray(names) ? names : [names];
-    var subject = list.length > 1
+    return list.length > 1
         ? list.length + " " + pluralLabel
         : label + (list[0] ? ' "' + confirmText(list[0]) + '"' : "");
-    return "Delete " + subject + "? This cannot be undone.";
+}
+
+// Toolbar data master: satu tombol, Activate atau Deactivate sesuai baris terpilih.
+function syncMasterStatusButton(rows) {
+    var inactive = rows.filter(function (r) { return r.DELETE_FLAG == 1; }).length;
+    var mixed = inactive > 0 && inactive < rows.length;
+    $("#btn_delete").prop("disabled", rows.length < 1 || mixed);
+    $("#btn_delete span").text(rows.length > 0 && inactive === rows.length ? "Activate" : "Deactivate");
+}
+
+function confirmMasterStatus(rows, options) {
+    var names = rows.map(function (r) { return r[options.nameField]; });
+    var subject = confirmSubject(options.label, names, options.plural);
+    var inactive = rows.filter(function (r) { return r.DELETE_FLAG == 1; }).length;
+
+    if (rows.length < 1 || (inactive > 0 && inactive < rows.length)) {
+        return;
+    }
+    if (inactive === 0) {
+        showWarningConfirm("Deactivate " + subject + "? It stays in the list and can be activated again.", options.onDeactivate, "Deactivate");
+        return;
+    }
+    showConfirmMesg("Activate " + subject + "?", function () {
+        popUpProgressShow();
+        $.ajax({
+            type: "POST",
+            url: options.activateUrl,
+            traditional: true,
+            data: { entity: options.entity, ids: rows.map(function (r) { return r[options.idField]; }) },
+            success: function (result) {
+                popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+                onSearch();
+            },
+            error: function (result) {
+                popUpProgressHide();
+                showErrorMesgGrowl("Could not activate the data.");
+            }
+        });
+    }, "Confirmation");
 }
 
 // Merah: data hilang atau tidak bisa dibatalkan. actionLabel = kata kerja, mis. "Delete".

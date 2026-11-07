@@ -108,6 +108,18 @@ namespace DMS.Common.Controllers
             HttpContext.Session.Clear();
         }
 
+        // Dicek di server: menyembunyikan tombol di tampilan tidak mencegah permintaan
+        // langsung ke action-nya. Null berarti diizinkan.
+        protected JsonResult DenyWithoutFunction(string functionId)
+        {
+            string functionList = HttpContext.Session.GetString("functionList");
+            if (GetLoginUsername() != null && functionList != null && functionList.Contains(functionId))
+            {
+                return null;
+            }
+            return Json(new { status = false, message = "You are not authorized to perform this action." });
+        }
+
         public string GetLoginUsername()
         {
             return HttpContext.Session.GetString("USERNAME");

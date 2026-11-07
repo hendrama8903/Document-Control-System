@@ -51,7 +51,7 @@
         var selected = row != null;
 
         $("#btn_edit").prop("disabled", !selected);
-        $("#btn_delete").prop("disabled", !selected);
+        syncMasterStatusButton(selected ? [row] : []);
     }
 
     function computeGridHeight() {
@@ -62,6 +62,7 @@
     }
 
     function dmRenderStats(data) {
+        data = data.filter(function (r) { return r.DELETE_FLAG != 1; });
         var total = data.length;
         var levels = new Set(data.map(function (r) { return r.LEVEL_VAL; }).filter(function (v) { return v != null; })).size;
         var withTemplate = data.filter(function (r) { return gTemplateCodes.indexOf(r.DOCUMENT_CODE) !== -1; }).length;
@@ -95,7 +96,7 @@
 
                 $.ajax({
                     type: "POST",
-                    url: "@Url.Action("Search", "DocumentMaster")",
+                    url: "@Url.Action("SearchWithStatus", "DocumentMaster")",
                     data: {
                         draw: 1,
                         start: 0,
@@ -173,6 +174,24 @@
                 { dataField: "DOCUMENT_CODE", caption: "Document Code", fixed: true, fixedPosition: "left" },
                 { dataField: "DOCUMENT_NAME", caption: "Document Name" },
                 { dataField: "LEVEL_VAL", caption: "Level", alignment: "center" },
+                {
+                    dataField: "DELETE_FLAG",
+                    caption: "Status",
+                    alignment: "center",
+                    width: 130,
+                    calculateCellValue: function (row) {
+                        return row.DELETE_FLAG == 1 ? "Inactive" : "Active";
+                    },
+                    lookup: {
+                        dataSource: [{ v: "Active" }, { v: "Inactive" }],
+                        valueExpr: "v",
+                        displayExpr: "v"
+                    },
+                    cellTemplate: function (container, options) {
+                        var inactive = options.data.DELETE_FLAG == 1;
+                        $("<span>").css("color", inactive ? "#C62828" : "#1E9E63").css("font-weight", 600).text(inactive ? "Inactive" : "Active").appendTo(container);
+                    }
+                },
                 {
                     dataField: "REVIEW_CYCLE_MONTHS",
                     caption: "Review Cycle",
@@ -335,7 +354,7 @@
 
         if (gCanDelete) {
             $menu.append('<li class="divider"></li>');
-            $menu.append(menuItem("dp-menu-delete", "fa-trash-o", "Delete", function () {
+            $menu.append(menuItem("dp-menu-edit", "fa-power-off", row.DELETE_FLAG == 1 ? "Activate" : "Deactivate", function () {
                 grid.selectRows([row.DOCUMENT_ID], false);
                 onDeletePrepare();
             }));

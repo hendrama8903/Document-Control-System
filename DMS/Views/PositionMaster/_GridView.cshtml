@@ -54,7 +54,7 @@
         var count = getSelectedRowsData().length;
 
         $("#btn_edit").prop("disabled", count != 1);
-        $("#btn_delete").prop("disabled", count < 1);
+        syncMasterStatusButton(getSelectedRowsData());
     }
 
     function computeGridHeight() {
@@ -317,7 +317,7 @@
 
         if (gCanDelete) {
             $menu.append('<li class="divider"></li>');
-            $menu.append(menuItem("dp-menu-delete", "fa-trash-o", "Delete", function () {
+            $menu.append(menuItem("dp-menu-edit", "fa-power-off", row.DELETE_FLAG == 1 ? "Activate" : "Deactivate", function () {
                 grid.selectRows([row.POSITION_ID], false);
                 onDeletePrepare();
             }));

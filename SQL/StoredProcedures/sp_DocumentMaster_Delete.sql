@@ -21,7 +21,7 @@ BEGIN TRY
 			CHANGED_BY = @LOGIN_USER
 	WHERE DOCUMENT_ID = @DOCUMENT_ID	
 	
-	SET @RETURN_MSG = 'Successfully Delete Data'
+	SET @RETURN_MSG = 'Successfully deactivated'
 	EXEC sp_WriteLog @PROCESS_ID, '2', 'INF', @RETURN_MSG, @LOCATION, @LOGIN_USER
 	END
 	RETURN 1;

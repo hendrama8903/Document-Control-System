@@ -98,6 +98,18 @@ namespace DMS.Controllers
             }
         }
 
+        public JsonResult SearchWithStatus()
+        {
+            try
+            {
+                return Json(new { data = documentMasterRepo.SearchWithStatus(db) });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
         public ActionResult Search(DocumentMaster data, bool initialMode)
         {
             try
@@ -449,27 +461,21 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult Delete(DocumentMaster data, string path)
         {
+            JsonResult denied = DenyWithoutFunction("DOCUMENTMASTER-DELETE");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
-            string webRootPath = Environment.WebRootPath;
 
             try
             {
+                // Hanya menonaktifkan, jadi file lampiran disimpan untuk saat diaktifkan lagi.
                 result = documentMasterRepo.Delete(data, GetLoginUsername(), db);
-
-                if (result.status)
-                {
-                    if (data.FILE_PATH != null)
-                    {
-                        string pathCheck = Services.UploadPath.Resolve(webRootPath, data.FILE_PATH);
-                        //Delete File
-                        if (System.IO.File.Exists(pathCheck))
-                        {
-                            System.IO.File.Delete(pathCheck);
-                        }
-                    }
-                }
 
                 return Json(result);
             }

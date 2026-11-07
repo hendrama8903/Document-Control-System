@@ -117,7 +117,10 @@
         if (getSelectedRowsData().length < 1) {
             return;
         }
-        showDangerConfirm(deleteMessage("Division", getSelectedRowsData().map(function (r) { return r.DIVISION_NAME; }), "divisions"), deleteData, "Delete");
+        confirmMasterStatus(getSelectedRowsData(), {
+            entity: "DIVISION", idField: "DIVISION_ID", nameField: "DIVISION_NAME", label: "Division", plural: "divisions",
+            activateUrl: "@Url.Action("Activate", "MasterStatus")", onDeactivate: deleteData
+        });
     }
 
     function confirmAddEditData() {
