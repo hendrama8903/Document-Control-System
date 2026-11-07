@@ -27,6 +27,19 @@ BEGIN TRY
 		RETURN 0;
 	END
 
+	-- Sama dengan syarat tombol Send: hanya status Accepted atau Partially Sent. Tanpa ini
+	-- tab yang masih menampilkan status lama bisa mengirim dokumen yang sudah ditolak.
+	IF NOT EXISTS (
+		SELECT 1 FROM TB_R_CTRL_DOCUMENT
+		WHERE DOCUMENT_TRANSACTION_ID = @DOCUMENT_TRANSACTION_ID
+		AND DELETE_FLAG != '1' AND [STATUS] IN ('2', '6')
+	)
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Only documents with status Accepted or Partially Sent can be sent. Refresh the page to see the current status.';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER;
+		RETURN 0;
+	END
+
 	update TB_R_DOCUMENT_DISTRIBUTION
 	SET DISTRIBUTION_DATE = GETDATE()
 		, STATUS = '1'
@@ -41,7 +54,7 @@ BEGIN TRY
 		, CHANGED_DT = GETDATE()
 	WHERE DOCUMENT_TRANSACTION_ID = @DOCUMENT_TRANSACTION_ID AND DELETE_FLAG != '1'
 
-	SET @RETURN_MSG = 'Successfully Send Data'
+	SET @RETURN_MSG = 'Successfully sent'
 	EXEC sp_WriteLog @PROCESS_ID, '2', 'INF', @RETURN_MSG, @LOCATION, @LOGIN_USER
 	RETURN 1;
 END TRY

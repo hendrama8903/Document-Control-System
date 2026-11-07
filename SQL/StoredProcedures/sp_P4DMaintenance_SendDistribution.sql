@@ -35,7 +35,7 @@ BEGIN TRY
 			--AND [STATUS] NOT IN ('0', '1', '3')
 	) <> '0'
 	BEGIN
-		SET @RETURN_MSG = 'ERROR: Send is not allowed for Document with status Send';
+		SET @RETURN_MSG = 'ERROR: This distribution has already been sent';
 		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
 		RETURN 0;
 	END
@@ -47,7 +47,7 @@ BEGIN TRY
 		, CHANGED_DT = GETDATE()
 	WHERE DISTRIBUTION_ID = @DISTRIBUTION_ID
 
-	SET @RETURN_MSG = 'Successfully Send Data'
+	SET @RETURN_MSG = 'Successfully sent'
 	EXEC sp_WriteLog @PROCESS_ID, '2', 'INF', @RETURN_MSG, @LOCATION, @LOGIN_USER
 	RETURN 1;
 END TRY

@@ -10,7 +10,6 @@
     var gStatus = null;
     var gDepartmentId = null;
     var gDocumentDistributionId = null;
-    var gDocumentDistributionStatus = null
     var gDocumentNo = null;
     var gIsApproved = null;
     var gFilePath = null;
@@ -96,10 +95,6 @@
 
         $("#btn_deleteDistribution").on("click", function () {
             onDeleteDistributionPrepare();
-        });
-
-        $("#btn_sendDistribution").on("click", function () {
-            onSendDistributionPrepare();
         });
 
         $("#btn_cancelDistribution").on("click", function () {
@@ -306,7 +301,6 @@
         $("#datagridDistribution").DataTable().ajax.reload();
         $("#btn_editDistribution").prop("disabled", true);
         $("#btn_deleteDistribution").prop("disabled", true);
-        $("#btn_sendDistribution").prop("disabled", true);
     }
 
     function onAddPrepare() {
@@ -702,20 +696,6 @@
         showDangerConfirm("Delete " + selectedDistributionIds.length + " selected distribution(s)? This cannot be undone.", deleteDistributionData, "Delete");
     }
 
-    function onSendDistributionPrepare() {
-
-        var mainRow = getSelectedRowData();
-
-        $("input[name='chkRowDistribution']").each(function () {
-            if ($(this).prop('checked')) {
-                gDocumentDistributionId = $(".grid-checkbox-dist:checked").attr('data-id');
-                gDocumentDistributionStatus = mainRow != null ? mainRow.STATUS : null;
-
-            }
-        });
-        showConfirmMesg("Are you sure you want to send the record?", sendDistributionData, "Confirmation");
-    }
-
     function onSendDistributionAllPrepare() {
         var row = getSelectedRowData();
         if (row == null) {
@@ -785,70 +765,33 @@
         });
     }
 
-    function sendDistributionData() {
-        popUpProgressHide();
-        if (gDocumentDistributionStatus == "Send") {
-            showErrorMesgGrowl("ERROR: Send is not allowed for Document with status Send");
-        } else {
-            $.ajax({
-                type: "POST",
-                url: "@Url.Action("SendDistribution", "P4DMaintenance")",
-                dataType: 'json',
-                traditional: true,
-                data: {
-                    DISTRIBUTION_ID: gDocumentDistributionId
-                },
-                success: function (result) {
-                    //popUpProgressHide();
-                    if (result.status == true) {
-                        showSuccessMesgGrowl(result.message);
-                        onSearchDistribution();
-                        popUpProgressHide();
-                    } else {
-                        showErrorMesgGrowl(result.message);
-                        popUpProgressHide();
-                    }
-                },
-                error: function (result) {
-                    //popUpProgressHide();
-                    showErrorMesgGrowl(result);
-                    popUpProgressHide();
-                }
-            });
-        }
-    }
-
     function sendDistributionAllData() {
         popUpProgressHide();
-        if (gDocumentDistributionStatus == "Send") {
-            showErrorMesgGrowl("ERROR: Send is not allowed for Document with status Send");
-        } else {
-            $.ajax({
-                type: "POST",
-                url: "@Url.Action("SendDistributionAll", "P4DMaintenance")",
-                dataType: 'json',
-                traditional: true,
-                data: {
-                    DOCUMENT_TRANSACTION_ID: gDocumentTransactionId
-                },
-                success: function (result) {
-                    //popUpProgressHide();
-                    if (result.status == true) {
-                        showSuccessMesgGrowl(result.message);
-                        onSearch();
-                        popUpProgressHide();
-                    } else {
-                        showErrorMesgGrowl(result.message);
-                        popUpProgressHide();
-                    }
-                },
-                error: function (result) {
-                    //popUpProgressHide();
-                    showErrorMesgGrowl(result);
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("SendDistributionAll", "P4DMaintenance")",
+            dataType: 'json',
+            traditional: true,
+            data: {
+                DOCUMENT_TRANSACTION_ID: gDocumentTransactionId
+            },
+            success: function (result) {
+                //popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                    popUpProgressHide();
+                } else {
+                    showErrorMesgGrowl(result.message);
                     popUpProgressHide();
                 }
-            });
-        }
+            },
+            error: function (result) {
+                //popUpProgressHide();
+                showErrorMesgGrowl(result);
+                popUpProgressHide();
+            }
+        });
     }
 
     function onReceivePrepare() {

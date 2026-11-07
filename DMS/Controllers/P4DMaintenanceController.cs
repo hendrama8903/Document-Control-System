@@ -353,8 +353,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public async Task<JsonResult> AddEditAsync(string screenMode, DocumentControlMaintenance data)
         {
+            JsonResult denied = screenMode == "ADD" ? DenyP4D("P4D-ADD", false) : DenyP4D("P4D-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             //string folderName = "/Upload/";
             //string webRootPath = Environment.WebRootPath;
@@ -687,8 +694,27 @@ namespace DMS.Controllers
             }
         }
 
+        // Sama dengan syarat tombolnya di _GridView: selain izin fungsi, sebagian aksi hanya
+        // untuk jabatan Document Control. Null berarti diizinkan.
+        JsonResult DenyP4D(string functionId, bool documentControlOnly = true)
+        {
+            JsonResult denied = DenyWithoutFunction(functionId);
+            if (denied != null || !documentControlOnly || GetDocumentAccessControl() == true)
+            {
+                return denied;
+            }
+            return Json(new { status = false, message = "You are not authorized to perform this action." });
+        }
+
+        [HttpPost]
         public JsonResult Delete(DocumentControlMaintenance data, string path)
         {
+            JsonResult denied = DenyP4D("P4D-DELETE", false);
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
 
             try
@@ -717,8 +743,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult ApproveReject(DocumentControlMaintenance data)
         {
+            JsonResult denied = DenyP4D("Y".Equals(data.IS_APPROVED) ? "P4D-RECEIVE" : "P4D-REJECT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
 
             try
@@ -746,8 +779,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult UnReceive(DocumentControlMaintenance data)
         {
+            JsonResult denied = DenyP4D("P4D-UNRECEIVE");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
 
             try
@@ -761,8 +801,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult Accept(DocumentControlMaintenance data)
         {
+            JsonResult denied = DenyP4D("P4D-RECEIVE");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
 
             try
@@ -882,6 +929,12 @@ namespace DMS.Controllers
         [HttpPost]
         public async Task<JsonResult> AddEditDistributionAsync([FromBody] IList<DocumentDistribution> newDistributions)
         {
+            JsonResult denied = DenyP4D("P4D-DISTRIBUTION", false);
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             //string folderName = "/Upload/";
             //string webRootPath = Environment.WebRootPath;
@@ -947,8 +1000,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult DeleteDistribution(DocumentDistribution data, string path)
         {
+            JsonResult denied = DenyP4D("P4D-DISTRIBUTION", false);
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             string webRootPath = Environment.WebRootPath;
 
@@ -977,8 +1037,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult DeleteDistributionMultiple(List<int> distributionIds)
         {
+            JsonResult denied = DenyP4D("P4D-DISTRIBUTION", false);
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             string webRootPath = Environment.WebRootPath;
 
@@ -997,8 +1064,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult SendDistribution(DocumentDistribution data, string path)
         {
+            JsonResult denied = DenyP4D("P4D-SEND");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             string webRootPath = Environment.WebRootPath;
 
@@ -1027,8 +1101,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult SendDistributionAll(DocumentDistribution data, string path)
         {
+            JsonResult denied = DenyP4D("P4D-SEND");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             string webRootPath = Environment.WebRootPath;
 

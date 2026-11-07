@@ -38,9 +38,9 @@ BEGIN TRY
 
 	IF @IS_APPROVED = 'N'
 	BEGIN
-		IF @cur_STATUS = '2'
+		IF @cur_STATUS <> '0'
 		BEGIN
-			SET @RETURN_MSG = 'ERROR: Document No ' + IIF(ISNULL(@DOCUMENT_CODE, '') = '', @cur_DOCUMENT_NO, @DOCUMENT_CODE) + ' is already received';
+			SET @RETURN_MSG = 'ERROR: Document No ' + IIF(ISNULL(@DOCUMENT_CODE, '') = '', @cur_DOCUMENT_NO, @DOCUMENT_CODE) + ' is not in Draft status, reject is not allowed.';
 			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
 			RETURN 0;
 		END
