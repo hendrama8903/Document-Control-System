@@ -1,0 +1,60 @@
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- Aktifkan/nonaktifkan alur. Mengaktifkan ditolak kalau kombinasi (level, level
+-- pembuat, kategori) yang sama sudah punya alur aktif. Request Hendra 2026-11-07.
+CREATE OR ALTER PROCEDURE [dbo].[sp_Workflow_DocSetActive]
+	@WORKFLOW_DOC_ID INT,
+	@IS_ACTIVE			 BIT,
+	@LOGIN_USER 		 VARCHAR(255),
+	@RETURN_MSG 		 VARCHAR(MAX) OUTPUT
+AS
+BEGIN TRY
+	SET NOCOUNT ON;
+
+	DECLARE @PROCESS_ID BIGINT,
+					@LOCATION VARCHAR(255) = 'sp_Workflow_DocSetActive';
+
+	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'Workflow Document Master', 'Set Active', @LOCATION, @LOGIN_USER
+
+	IF NOT EXISTS (SELECT 1 FROM [dbo].[TB_M_WORKFLOW_DOC_H] WHERE WORKFLOW_DOC_ID = @WORKFLOW_DOC_ID)
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Workflow not found. It may have been deleted - refresh the page.';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+		RETURN 0;
+	END
+
+	IF @IS_ACTIVE = 1 AND EXISTS (
+		SELECT 1
+		FROM [dbo].[TB_M_WORKFLOW_DOC_H] T
+		JOIN [dbo].[TB_M_WORKFLOW_DOC_H] O
+			ON O.DOCUMENT_LEVEL = T.DOCUMENT_LEVEL
+			AND O.CREATOR_LEVEL = T.CREATOR_LEVEL
+			AND ISNULL(O.DOCUMENT_ID, 0) = ISNULL(T.DOCUMENT_ID, 0)
+			AND O.WORKFLOW_DOC_ID <> T.WORKFLOW_DOC_ID
+			AND O.IS_ACTIVE = 1
+		WHERE T.WORKFLOW_DOC_ID = @WORKFLOW_DOC_ID)
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Another active workflow already exists for this combination. Deactivate it first.';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+		RETURN 0;
+	END
+
+	UPDATE [dbo].[TB_M_WORKFLOW_DOC_H]
+	SET IS_ACTIVE = @IS_ACTIVE,
+		CHANGED_BY = @LOGIN_USER,
+		CHANGED_DT = GETDATE()
+	WHERE WORKFLOW_DOC_ID = @WORKFLOW_DOC_ID;
+
+	SET @RETURN_MSG = CASE WHEN @IS_ACTIVE = 1 THEN 'Workflow activated' ELSE 'Workflow deactivated' END;
+	EXEC sp_WriteLog @PROCESS_ID, '2', 'INF', @RETURN_MSG, @LOCATION, @LOGIN_USER
+	RETURN 1;
+
+END TRY
+BEGIN CATCH
+	SET @RETURN_MSG = 'ERROR: ' + ERROR_PROCEDURE() +': '+ ERROR_MESSAGE() + ', at line = ' +  CAST(ERROR_LINE() AS VARCHAR);
+	EXEC sp_WriteLog @PROCESS_ID, '4', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+	RETURN 0;
+END CATCH
+GO

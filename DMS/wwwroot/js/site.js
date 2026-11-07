@@ -315,7 +315,7 @@ function showSuccessCopyToClipboard(mesg) {
     });
 }
 
-function showConfirmMesg(mesg, funcYes, title, ButtonYes, ButtonNo, funcNo) {
+function showConfirmMesg(mesg, funcYes, title, ButtonYes, ButtonNo, funcNo, customClass) {
     ButtonYes = ButtonYes == undefined ? "Yes" : ButtonYes;
     ButtonNo = ButtonNo == undefined ? "No" : ButtonNo;
     title = title == undefined ? "Are You Sure" : title;
@@ -324,7 +324,7 @@ function showConfirmMesg(mesg, funcYes, title, ButtonYes, ButtonNo, funcNo) {
         message: mesg,
         buttonDone: ButtonYes,
         buttonFail: ButtonNo,
-        customClass: "msg-danger"
+        customClass: customClass == undefined ? "msg-danger" : customClass
     }).done(function () {
         if (funcYes && (typeof funcYes == "function")) {
             funcYes();

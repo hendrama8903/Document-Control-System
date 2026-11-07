@@ -86,10 +86,11 @@ namespace DMS.Models.Repo
                 new SqlParameter ( "@LOGIN_USER", loginUser ),
                 returnMsg,
                 returnId,
-                new SqlParameter ( "@DOCUMENT_ID", CheckNullValue(data.DOCUMENT_ID) )
+                new SqlParameter ( "@DOCUMENT_ID", CheckNullValue(data.DOCUMENT_ID) ),
+                new SqlParameter ( "@IS_ACTIVE", data.IS_ACTIVE != false )
             };
 
-            string query = "EXEC @RETURN_VAL = [dbo].[sp_Workflow_DocInsertHeader] @DOCUMENT_LEVEL, @CREATOR_LEVEL, @LOGIN_USER, @RETURN_MSG OUTPUT, @RETURN_ID OUTPUT, @DOCUMENT_ID = @DOCUMENT_ID";
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_Workflow_DocInsertHeader] @DOCUMENT_LEVEL, @CREATOR_LEVEL, @LOGIN_USER, @RETURN_MSG OUTPUT, @RETURN_ID OUTPUT, @DOCUMENT_ID = @DOCUMENT_ID, @IS_ACTIVE = @IS_ACTIVE";
             int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString(), Convert.ToInt32(returnId.Value));
@@ -138,6 +139,65 @@ namespace DMS.Models.Repo
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
             return result;
+        }
+
+        public DBResult SetActive(int workflowDocId, bool isActive, string loginUser, DBContext db)
+        {
+            SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
+            SqlParameter returnMsg = CreateSqlParameterOutputString("@RETURN_MSG");
+
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                returnVal,
+                new SqlParameter ( "@WORKFLOW_DOC_ID", workflowDocId ),
+                new SqlParameter ( "@IS_ACTIVE", isActive ),
+                new SqlParameter ( "@LOGIN_USER", loginUser ),
+                returnMsg
+            };
+
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_Workflow_DocSetActive] @WORKFLOW_DOC_ID, @IS_ACTIVE, @LOGIN_USER, @RETURN_MSG OUTPUT";
+            db.Database.ExecuteSqlRaw(query, param.ToArray());
+
+            return new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
+        }
+
+        /// <summary>Bahan peringatan dampak sebelum alur diubah; null kalau alurnya tidak ada lagi.</summary>
+        public WorkflowImpact Impact(int workflowDocId, DBContext db)
+        {
+            var connection = db.Database.GetDbConnection();
+            bool wasClosed = connection.State != System.Data.ConnectionState.Open;
+            if (wasClosed) connection.Open();
+            try
+            {
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "[dbo].[sp_Workflow_DocImpact]";
+                    command.CommandType = System.Data.CommandType.StoredProcedure;
+                    command.Parameters.Add(new SqlParameter("@WORKFLOW_DOC_ID", workflowDocId));
+
+                    using (var r = command.ExecuteReader())
+                    {
+                        if (!r.Read()) return null;
+                        return new WorkflowImpact
+                        {
+                            IS_ACTIVE = Convert.ToBoolean(r["IS_ACTIVE"]),
+                            DOCUMENT_LEVEL = Convert.ToInt32(r["DOCUMENT_LEVEL"]),
+                            CREATOR_LEVEL = Convert.ToInt32(r["CREATOR_LEVEL"]),
+                            IS_CATEGORY_WORKFLOW = r["DOCUMENT_ID"] != DBNull.Value,
+                            DOCUMENT_CODE = r["DOCUMENT_CODE"] == DBNull.Value ? null : Convert.ToString(r["DOCUMENT_CODE"]),
+                            HAS_DEFAULT_WORKFLOW = Convert.ToBoolean(r["HAS_DEFAULT_WORKFLOW"]),
+                            DEPENDENT_CATEGORIES = r["DEPENDENT_CATEGORIES"] == DBNull.Value ? null : Convert.ToString(r["DEPENDENT_CATEGORIES"]),
+                            CREATOR_USERS = Convert.ToInt32(r["CREATOR_USERS"]),
+                            IN_PROGRESS_DOCS = Convert.ToInt32(r["IN_PROGRESS_DOCS"]),
+                            REJECTED_DOCS = Convert.ToInt32(r["REJECTED_DOCS"]),
+                        };
+                    }
+                }
+            }
+            finally
+            {
+                if (wasClosed) connection.Close();
+            }
         }
 
         /// <summary>

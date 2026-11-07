@@ -110,6 +110,10 @@ namespace DMS.Controllers
             {
                 return Json(new { status = false, message = "Detail Workflow cannot be empty" });
             }
+            if (!HasFunction(data[0].WORKFLOW_DOC_ID == null ? "WORKFLOWDOC-ADD" : "WORKFLOWDOC-EDIT"))
+            {
+                return NotAuthorized();
+            }
 
             // Hapus alur lama + simpan ulang dalam SATU transaksi: dulu kalau simpan
             // header/detail gagal (mis. kombinasi dobel), alur lama sudah terlanjur
@@ -119,9 +123,25 @@ namespace DMS.Controllers
             {
                 WorkflowDoc temp = new WorkflowDoc();
                 temp.WORKFLOW_DOC_ID = data[0].WORKFLOW_DOC_ID;
+                temp.DOCUMENT_LEVEL  = data[0].DOCUMENT_LEVEL;
+                temp.CREATOR_LEVEL   = data[0].CREATOR_LEVEL;
+                temp.DOCUMENT_ID     = data[0].DOCUMENT_ID;
 
                 if (temp.WORKFLOW_DOC_ID != null)
                 {
+                    // Edit: kunci alur dan statusnya diambil dari data tersimpan, bukan
+                    // dari kiriman browser, supaya alur nonaktif tetap nonaktif.
+                    WorkflowDoc existing = workflowDocRepo.GetByCode(new WorkflowDoc { WORKFLOW_DOC_ID = temp.WORKFLOW_DOC_ID }, db).FirstOrDefault();
+                    if (existing == null)
+                    {
+                        transaction.Rollback();
+                        return Json(new { status = false, message = "Workflow not found. It may have been deleted - refresh the page." });
+                    }
+                    temp.DOCUMENT_LEVEL = existing.DOCUMENT_LEVEL;
+                    temp.CREATOR_LEVEL  = existing.CREATOR_LEVEL;
+                    temp.DOCUMENT_ID    = existing.DOCUMENT_ID;
+                    temp.IS_ACTIVE      = existing.IS_ACTIVE;
+
                     DBResult deleted = workflowDocRepo.Delete(temp, GetLoginUsername(), db);
                     if (!deleted.status)
                     {
@@ -130,9 +150,6 @@ namespace DMS.Controllers
                     }
                 }
 
-                temp.DOCUMENT_LEVEL = data[0].DOCUMENT_LEVEL;
-                temp.CREATOR_LEVEL  = data[0].CREATOR_LEVEL;
-                temp.DOCUMENT_ID    = data[0].DOCUMENT_ID;
                 DBResult resultHeader = workflowDocRepo.InsertHeader(temp, GetLoginUsername(), db);
                 if (!resultHeader.status)
                 {
@@ -221,8 +238,14 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult Delete(WorkflowDoc data)
         {
+            if (!HasFunction("WORKFLOWDOC-DELETE"))
+            {
+                return NotAuthorized();
+            }
+
             DBResult result = null;
             try
             {
@@ -234,6 +257,114 @@ namespace DMS.Controllers
                 return Json(new { status = false, message = ex.Message });
             }
         }
+
+        [HttpPost]
+        public JsonResult SetActive(int id, bool isActive)
+        {
+            if (!HasFunction("WORKFLOWDOC-EDIT"))
+            {
+                return NotAuthorized();
+            }
+
+            try
+            {
+                return Json(workflowDocRepo.SetActive(id, isActive, GetLoginUsername(), db));
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        /// <summary>Peringatan dampak sebelum alur disimpan (EDIT), diaktifkan (ACTIVATE), dinonaktifkan (DEACTIVATE), atau dihapus (DELETE).</summary>
+        [HttpPost]
+        public JsonResult GetImpact(int id, string action)
+        {
+            if (!HasFunction(action == "DELETE" ? "WORKFLOWDOC-DELETE" : "WORKFLOWDOC-EDIT"))
+            {
+                return NotAuthorized();
+            }
+
+            try
+            {
+                WorkflowImpact impact = workflowDocRepo.Impact(id, db);
+                if (impact == null)
+                {
+                    return Json(new { status = false, message = "Workflow not found. It may have been deleted - refresh the page." });
+                }
+                List<string> lines = ImpactLines(impact, action, out bool warning);
+                return Json(new { status = true, lines, warning });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        // warning = perubahan ini membuat dokumen baru ditolak; dialognya tampil kuning.
+        static List<string> ImpactLines(WorkflowImpact w, string action, out bool warning)
+        {
+            warning = false;
+            var lines = new List<string>();
+            string creator = "creator level " + w.CREATOR_LEVEL + " (" + w.CREATOR_USERS + " active user(s))";
+
+            if (action == "ACTIVATE")
+            {
+                lines.Add(w.IS_CATEGORY_WORKFLOW
+                    ? "New " + w.DOCUMENT_CODE + " documents by " + creator + " will use this workflow."
+                    : "New Level " + w.DOCUMENT_LEVEL + " documents by " + creator + " in categories without their own workflow will use this workflow.");
+            }
+            else if (!w.IS_ACTIVE)
+            {
+                lines.Add(action == "EDIT"
+                    ? "This workflow is inactive. The changes take effect after it is activated."
+                    : "This workflow is inactive, so new documents are not affected.");
+            }
+            else if (action == "EDIT")
+            {
+                lines.Add("The changes apply to new documents by " + creator + ".");
+            }
+            else if (!w.IS_CATEGORY_WORKFLOW)
+            {
+                warning = true;
+                lines.Add(char.ToUpper(creator[0]) + creator.Substring(1) + " will have no default workflow for Level " + w.DOCUMENT_LEVEL
+                    + ". New documents that rely on it will be rejected."
+                    + (string.IsNullOrEmpty(w.DEPENDENT_CATEGORIES) ? "" : " Categories affected: " + w.DEPENDENT_CATEGORIES + "."));
+            }
+            else if (w.HAS_DEFAULT_WORKFLOW)
+            {
+                lines.Add("New " + w.DOCUMENT_CODE + " documents by " + creator + " will use the default Level " + w.DOCUMENT_LEVEL + " workflow.");
+            }
+            else
+            {
+                warning = true;
+                lines.Add("New " + w.DOCUMENT_CODE + " documents by " + creator + " will be rejected, because Level " + w.DOCUMENT_LEVEL + " has no default workflow for them.");
+            }
+
+            if (w.IN_PROGRESS_DOCS > 0)
+            {
+                lines.Add(w.IN_PROGRESS_DOCS + " document(s) in approval keep their current approvers.");
+            }
+            if (w.REJECTED_DOCS > 0)
+            {
+                lines.Add(w.REJECTED_DOCS + " rejected document(s) will follow the workflow in force when resubmitted.");
+            }
+            return lines;
+        }
+
+        // Dicek di server: menyembunyikan tombol di tampilan saja tidak mencegah
+        // permintaan langsung ke action-nya.
+        bool HasFunction(string functionId)
+        {
+            string functionList = HttpContext.Session.GetString("functionList");
+            return GetLoginUsername() != null && functionList != null && functionList.Contains(functionId);
+        }
+
+        JsonResult NotAuthorized()
+        {
+            return Json(new { status = false, message = "You are not authorized to perform this action." });
+        }
+
         public JsonResult GetPositionName(string q, string pageLimit, string page)
         {
             try

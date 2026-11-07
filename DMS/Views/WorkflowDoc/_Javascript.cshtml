@@ -66,6 +66,59 @@
         });
     }
 
+    // Satu jalur untuk semua perubahan daftar langkah: seq (level berikutnya) harus
+    // sudah benar SEBELUM tabel digambar, karena kolom Action memakainya untuk
+    // menentukan baris mana yang boleh dihapus.
+    function renderDetail() {
+        detailData.sort((a, b) => parseInt(a.WORKFLOW_SEQ) - parseInt(b.WORKFLOW_SEQ));
+        seq = detailData.length > 0 ? parseInt(Math.max(...detailData.map(o => o.WORKFLOW_SEQ))) + 1 : 1;
+
+        detailTable.clear().draw();
+        detailTable.rows.add(detailData).draw(false);
+
+        $('#addEditWorkflowSeq').empty();
+        for (let i = 1; i <= seq; i++) {
+            $('#addEditWorkflowSeq').append(new Option(i, i, false, false));
+        }
+        onClearDetail();
+    }
+
+    function mapDetailRows(data) {
+        return data.map(function (d) {
+            return {
+                WORKFLOW_SEQ : d.WORKFLOW_SEQ,
+                POSITION_NAME: d.POSITION_NAME,
+                POSITION_ID  : d.POSITION_ID,
+                IS_MANDATORY : d.IS_MANDATORY === true,
+                LABEL        : d.LABEL
+            };
+        });
+    }
+
+    // Peringatan dampak dari server, lalu konfirmasi sebelum perubahan dijalankan.
+    function confirmWithImpact(id, action, question, onYes) {
+        popUpProgressShow();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetImpact", "WorkflowDoc")",
+            data: { id: id, action: action },
+            success: function (result) {
+                popUpProgressHide();
+                if (result.status == true) {
+                    var lines = result.lines.concat([question]).map(function (line) { return $("<div>").text(line).html(); });
+                    showConfirmMesg(lines.join("<br><br>"), onYes, result.warning ? "Warning" : "Confirmation",
+                        undefined, undefined, undefined, result.warning ? "msg-warning" : undefined);
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function () {
+                popUpProgressHide();
+                showErrorMesgGrowl("Could not check the impact of this change.");
+            }
+        });
+    }
+
     // Dropdown kategori bergantung pada Document Level terpilih.
     function setCategorySelect(level) {
         setDataSelect2WithParam("addEditWorkflowCategory", "@Url.Action("GetDocumentCategories", "WorkflowDoc")", "- Default workflow (all categories) -", level || "");
@@ -96,6 +149,14 @@
 
         $("#btn_delete").on("click", function() {
             onDeletePrepare();
+        });
+
+        $("#btn_duplicate").on("click", function() {
+            onDuplicatePrepare(getSelectedRowData());
+        });
+
+        $("#btn_toggle_active").on("click", function() {
+            onToggleActivePrepare(getSelectedRowData());
         });
 
         $("#btn_save").on("click", function() {
@@ -219,7 +280,7 @@
                 if (result.status == true) {
                     var data = result.data;
                     gScreenMode = 'EDIT';
-                    $('#modal-title').html("Edit Workflow Doc Master");
+                    $('#modal-title').html("Edit Workflow Doc Master" + (row.IS_ACTIVE === false ? " (Inactive)" : ""));
                     $('#addEditWorkflowDocLevel').select2("trigger", "select", { data: { id: gCode.toString(), text: gCode.toString() } });
                     $('#addEditPositionName').select2("trigger", "select", { data: { id: gName.toString(), text: result.creatorText || ("Level " + gName) } });
                     if (row.DOCUMENT_ID) {
@@ -236,26 +297,8 @@
 
                     buildDetailTable();
 
-                    seq = 1;
-                    detailData = data.map(function (d) {
-                        return {
-                            WORKFLOW_SEQ : d.WORKFLOW_SEQ,
-                            POSITION_NAME: d.POSITION_NAME,
-                            POSITION_ID  : d.POSITION_ID,
-                            IS_MANDATORY : d.IS_MANDATORY === true,
-                            LABEL        : d.LABEL
-                        };
-                    });
-
-                    detailTable.clear().draw();
-                    detailTable.rows.add(detailData).draw(false);
-
-                    $('#addEditWorkflowSeq').empty();
-                    seq = parseInt(Math.max(...detailData.map(o => o.WORKFLOW_SEQ))) + 1;
-                    for (let i = 1; i <= seq; i++) {
-                        $('#addEditWorkflowSeq').append(new Option(i, i, false, false)).trigger('change');
-                    }
-                    onClearDetail();
+                    detailData = mapDetailRows(data);
+                    renderDetail();
 
                     $("#modalAddEdit").modal({
                         backdrop: 'static',
@@ -283,7 +326,75 @@
 
         gId = row.WORKFLOW_DOC_ID;
 
-        showConfirmMesg("Are you sure you want to delete the record?", deleteData, "Confirmation");
+        confirmWithImpact(gId, "DELETE", "Are you sure you want to delete this workflow? This cannot be undone.", deleteData);
+    }
+
+    function onToggleActivePrepare(row) {
+        if (row == null) {
+            return;
+        }
+
+        var activate = row.IS_ACTIVE === false;
+        confirmWithImpact(row.WORKFLOW_DOC_ID, activate ? "ACTIVATE" : "DEACTIVATE",
+            activate ? "Activate this workflow?" : "Deactivate this workflow?",
+            function () { setActive(row.WORKFLOW_DOC_ID, activate); });
+    }
+
+    function setActive(id, isActive) {
+        popUpProgressShow();
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("SetActive", "WorkflowDoc")",
+            data: { id: id, isActive: isActive },
+            success: function (result) {
+                popUpProgressHide();
+                if (result.status == true) {
+                    showSuccessMesgGrowl(result.message);
+                    onSearch();
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            },
+            error: function (result) {
+                popUpProgressHide();
+                showErrorMesgGrowl(result);
+            }
+        });
+    }
+
+    // Duplikat = form Add yang sudah terisi dari alur sumber. Disimpan sebagai alur
+    // baru; kombinasi yang sudah punya alur aktif ditolak server saat disimpan.
+    function onDuplicatePrepare(row) {
+        if (row == null) {
+            return;
+        }
+
+        $.ajax({
+            type: "POST",
+            url: "@Url.Action("GetByCode", "WorkflowDoc")",
+            data: { WORKFLOW_DOC_ID: row.WORKFLOW_DOC_ID, DOCUMENT_LEVEL: row.DOCUMENT_LEVEL },
+            success: function (result) {
+                if (result.status != true) {
+                    showErrorMesgGrowl(result.message);
+                    return;
+                }
+
+                onAddPrepare();
+                $('#modal-title').html("Duplicate Workflow");
+                $('#addEditWorkflowDocLevel').select2("trigger", "select", { data: { id: row.DOCUMENT_LEVEL.toString(), text: row.DOCUMENT_LEVEL.toString() } });
+                $('#addEditPositionName').select2("trigger", "select", { data: { id: row.CREATOR_LEVEL.toString(), text: result.creatorText || ("Level " + row.CREATOR_LEVEL) } });
+                if (row.DOCUMENT_ID) {
+                    $('#addEditWorkflowCategory').select2("trigger", "select", { data: { id: row.DOCUMENT_ID.toString(), text: result.categoryText || row.DOCUMENT_CODE } });
+                }
+
+                detailData = mapDetailRows(result.data);
+                renderDetail();
+                showSuccessMesgGrowl("Choose a different Document Category or Creator Level, then save.");
+            },
+            error: function (result) {
+                showErrorMesgGrowl(result);
+            }
+        });
     }
 
     // Ganti tampilan tombol Add/Update sesuai gDetailEditMode.
@@ -345,16 +456,7 @@
         if ($('#addEditPositionName2').val() != null) {
 
             detailData.push(readDetailForm(null));
-            detailData.sort((a, b) => parseInt(a.WORKFLOW_SEQ) - parseInt(b.WORKFLOW_SEQ));
-
-            detailTable.clear().draw();
-            detailTable.rows.add(detailData).draw(false);
-
-            if($('#addEditWorkflowSeq').val() == seq){
-                seq++;
-                $('#addEditWorkflowSeq').append(new Option(seq, seq, false, false)).trigger('change');
-            }
-            onClearDetail();
+            renderDetail();
         }
     }
 
@@ -363,12 +465,7 @@
             var i = $('#detailgrid tr.selected').index();
 
             detailData[i] = readDetailForm(detailData[i]);
-            detailData.sort((a, b) => parseInt(a.WORKFLOW_SEQ) - parseInt(b.WORKFLOW_SEQ));
-
-            detailTable.clear().draw();
-            detailTable.rows.add(detailData).draw(false);
-
-            onClearDetail();
+            renderDetail();
         }
     }
 
@@ -377,22 +474,7 @@
             var i = $('#detailgrid tr.selected').index();
 
             detailData.splice(i, 1);
-            detailData.sort((a, b) => parseInt(a.WORKFLOW_SEQ) - parseInt(b.WORKFLOW_SEQ));
-
-            detailTable.clear().draw();
-            detailTable.rows.add(detailData).draw(false);
-
-            if(detailData.length > 0){
-                seq = parseInt(Math.max(...detailData.map(o => o.WORKFLOW_SEQ))) + 1;
-            }else{
-                seq = 1;
-            }
-
-            $('#addEditWorkflowSeq').empty();
-            for (let i = 1; i <= seq; i++) {
-                $('#addEditWorkflowSeq').append(new Option(i, i, false, false)).trigger('change');
-            }
-            onClearDetail();
+            renderDetail();
         }
     }
 
@@ -405,6 +487,10 @@
         }
         else if (detailData.length == 0) {
             showErrorMesgGrowl("Detail Workflow cannot be empty");
+        }
+        else if (gScreenMode == 'EDIT') {
+            var row = getSelectedRowData();
+            confirmWithImpact(row ? row.WORKFLOW_DOC_ID : gId, "EDIT", "Are you sure you want to continue process?", addEditData);
         }
         else {
             showConfirmMesg("Are you sure you want to continue process?", addEditData, "Confirmation");

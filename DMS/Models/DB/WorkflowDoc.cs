@@ -15,6 +15,8 @@ namespace DMS.Models.DB
         public string? LABEL { get; set; }
         // Approver wajib: kalau tidak ditemukan dokumen tidak bisa dibuat (2026-11-06)
         public bool? IS_MANDATORY { get; set; }
+        // Alur nonaktif tidak dipakai dokumen baru (2026-11-07). FromSqlRaw: wajib ada di sp_Workflow_DocGetByCode/GetByName.
+        public bool? IS_ACTIVE { get; set; }
     }
     public partial class WorkflowDocArr : BaseModel
     {
@@ -23,6 +25,7 @@ namespace DMS.Models.DB
         public int? CREATOR_LEVEL { get; set; }
         public int? DOCUMENT_ID { get; set; }
         public string? DOCUMENT_CODE { get; set; }
+        public bool? IS_ACTIVE { get; set; }
         public int? WORKFLOW_SEQ { get; set; }
         public string? POSITION_ID_ARR { get; set; }
         public string? POSITION_NAME { get; set; }
@@ -44,6 +47,21 @@ namespace DMS.Models.DB
         public bool IS_MANDATORY { get; set; }
         public string? APPROVER { get; set; }
         public string? APPROVER_NAME { get; set; }
+    }
+
+    /// <summary>Bahan peringatan dampak perubahan alur (sp_Workflow_DocImpact).</summary>
+    public class WorkflowImpact
+    {
+        public bool IS_ACTIVE { get; set; }
+        public int DOCUMENT_LEVEL { get; set; }
+        public int CREATOR_LEVEL { get; set; }
+        public bool IS_CATEGORY_WORKFLOW { get; set; }
+        public string? DOCUMENT_CODE { get; set; }
+        public bool HAS_DEFAULT_WORKFLOW { get; set; }
+        public string? DEPENDENT_CATEGORIES { get; set; }
+        public int CREATOR_USERS { get; set; }
+        public int IN_PROGRESS_DOCS { get; set; }
+        public int REJECTED_DOCS { get; set; }
     }
 
     /// <summary>Jabatan yang bisa muncul di approval chain sebuah kategori (sp_WorkflowDoc_CategoryPositions).</summary>

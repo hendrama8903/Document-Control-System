@@ -6,13 +6,16 @@ GO
 -- alur default level. Kombinasi (level, level pembuat, kategori) tidak boleh
 -- dobel - dulu cek duplikat di-comment, sehingga dua alur untuk kombinasi yang
 -- sama bisa tersimpan dan sp_WorkflowDoc_Create memilih salah satunya acak.
+-- 2026-11-07: @IS_ACTIVE; larangan dobel hanya berlaku antar alur aktif. Mengedit
+-- alur nonaktif menyimpan ulang dengan @IS_ACTIVE = 0.
 CREATE OR ALTER PROCEDURE [dbo].[sp_Workflow_DocInsertHeader]
   @DOCUMENT_LEVEL 	INT,
 	@CREATOR_LEVEL 		INT,
 	@LOGIN_USER 			VARCHAR(255),
 	@RETURN_MSG 			VARCHAR(MAX) OUTPUT,
 	@RETURN_ID				INT OUTPUT,
-	@DOCUMENT_ID			INT = NULL
+	@DOCUMENT_ID			INT = NULL,
+	@IS_ACTIVE				BIT = 1
 AS
 BEGIN TRY
 
@@ -44,12 +47,12 @@ BEGIN TRY
 		RETURN 0;
 	END
 
-	IF EXISTS (SELECT TOP 1 1 FROM [dbo].[TB_M_WORKFLOW_DOC_H]
-		WHERE DOCUMENT_LEVEL = @DOCUMENT_LEVEL AND CREATOR_LEVEL = @CREATOR_LEVEL
+	IF @IS_ACTIVE = 1 AND EXISTS (SELECT TOP 1 1 FROM [dbo].[TB_M_WORKFLOW_DOC_H]
+		WHERE IS_ACTIVE = 1 AND DOCUMENT_LEVEL = @DOCUMENT_LEVEL AND CREATOR_LEVEL = @CREATOR_LEVEL
 		AND ISNULL(DOCUMENT_ID, 0) = ISNULL(@DOCUMENT_ID, 0))
 	BEGIN
-		SET @RETURN_MSG = 'ERROR: A workflow already exists for this Document Level and Creator Level'
-			+ CASE WHEN @DOCUMENT_ID IS NULL THEN '' ELSE ' for this Document Category' END + '. Edit the existing one instead.';
+		SET @RETURN_MSG = 'ERROR: An active workflow already exists for this Document Level and Creator Level'
+			+ CASE WHEN @DOCUMENT_ID IS NULL THEN '' ELSE ' for this Document Category' END + '. Edit it, or deactivate it first.';
 		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
 		SET @RETURN_ID = 0;
 		RETURN 0;
@@ -59,6 +62,7 @@ BEGIN TRY
 		DOCUMENT_LEVEL,
 		CREATOR_LEVEL,
 		DOCUMENT_ID,
+		IS_ACTIVE,
 		CREATED_DT,
 		CREATED_BY,
 		CHANGED_DT,
@@ -67,6 +71,7 @@ BEGIN TRY
 		@DOCUMENT_LEVEL,
 		@CREATOR_LEVEL,
 		@DOCUMENT_ID,
+		@IS_ACTIVE,
 		GETDATE(),
 		@LOGIN_USER,
 		GETDATE(),

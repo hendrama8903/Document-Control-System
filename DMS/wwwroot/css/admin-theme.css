@@ -1192,35 +1192,36 @@ body.adm-body {
     overflow: hidden;
     font-family: inherit;
     padding: 0;
+    max-width: min(440px, 90%);
 }
 
 .adm-body .messagebox_title {
     background: var(--primary);
     color: #fff;
     font-weight: 700;
-    font-size: 14px;
-    padding: 13px 18px;
+    font-size: 13px;
+    padding: 8px 14px;
 }
 
 .adm-body .messagebox_content {
-    padding: 22px 18px;
+    padding: 14px;
     color: var(--ink);
-    font-size: 13.5px;
+    font-size: 13px;
 }
 
 .adm-body .messagebox_buttons {
-    padding: 12px 18px 16px;
+    padding: 8px 14px;
     background: var(--paper);
     border-top: 1px solid var(--line);
     text-align: right;
 }
 
 .adm-body .messagebox_buttons_button {
-    border-radius: 9px;
+    border-radius: 8px;
     font-weight: 600;
-    font-size: 13px;
-    padding: 7px 18px;
-    min-width: 84px;
+    font-size: 12.5px;
+    padding: 5px 14px;
+    min-width: 68px;
     border: none;
     cursor: pointer;
     transition: .13s;
@@ -1241,6 +1242,27 @@ body.adm-body {
     background: #fff;
     color: var(--ink);
     border: 1px solid var(--line-2);
+}
+
+/* varian peringatan: showConfirmMesg(..., "msg-warning") */
+.adm-body .messagebox.msg-warning { border-color: #f59e0b; }
+
+.adm-body .messagebox.msg-warning .messagebox_title {
+    background: #f59e0b;
+    color: #1f2937;
+}
+
+.adm-body .messagebox.msg-warning .messagebox_content { background: #fffbeb; }
+
+.adm-body .messagebox.msg-warning .messagebox_button_done {
+    background: #f59e0b;
+    color: #1f2937;
+}
+
+.adm-body .messagebox.msg-warning .messagebox_button_done:hover,
+.adm-body .messagebox.msg-warning .messagebox_button_done:focus {
+    background: #d97706;
+    color: #1f2937;
 }
 
 /* ---------- DevExtreme grid (semua halaman list/grid pakai id #datagrid) ---------- */

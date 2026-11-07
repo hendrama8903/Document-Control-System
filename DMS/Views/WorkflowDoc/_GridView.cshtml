@@ -43,6 +43,13 @@
     }
     .wf-cat-default { color: #98A2B3; font-size: 12px; }
     .wf-note-warn { color: #B54708; font-size: 12px; white-space: normal; }
+    .wf-status-active, .wf-status-inactive {
+        display: inline-block; padding: 3px 10px; border-radius: 20px;
+        font-size: 11.5px; font-weight: 700;
+    }
+    .wf-status-active { background: #D1FADF; color: #05603A; }
+    .wf-status-inactive { background: #EAECF0; color: #475467; }
+    #datagrid .wf-row-inactive td { color: #98A2B3; }
 
 </style>
 
@@ -53,6 +60,7 @@
 <script type="text/javascript">
     var gCanEdit = @(((bool)ViewData["Edit"]) ? "true" : "false");
     var gCanDelete = @(((bool)ViewData["Delete"]) ? "true" : "false");
+    var gCanAdd = @(((bool)ViewData["Add"]) ? "true" : "false");
 
     function getSelectedRowData() {
         var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
@@ -60,10 +68,14 @@
     }
 
     function updateActionButtons() {
-        var selected = getSelectedRowData() != null;
+        var row = getSelectedRowData();
+        var selected = row != null;
 
         $("#btn_edit").prop("disabled", !selected);
         $("#btn_delete").prop("disabled", !selected);
+        $("#btn_duplicate").prop("disabled", !selected);
+        $("#btn_toggle_active").prop("disabled", !selected);
+        $("#btn_toggle_active span").text(selected && row.IS_ACTIVE === false ? "Activate" : "Deactivate");
     }
 
     function computeGridHeight() {
@@ -98,6 +110,8 @@
         $("#btn_add").prop("disabled", false);
         $("#btn_edit").prop("disabled", true);
         $("#btn_delete").prop("disabled", true);
+        $("#btn_duplicate").prop("disabled", true);
+        $("#btn_toggle_active").prop("disabled", true);
 
         var gridStore = new DevExpress.data.CustomStore({
             key: "WORKFLOW_DOC_ID",
@@ -166,6 +180,11 @@
                 }
                 updateActionButtons();
             },
+            onRowPrepared: function (e) {
+                if (e.rowType === "data" && e.data.IS_ACTIVE === false) {
+                    e.rowElement.addClass("wf-row-inactive");
+                }
+            },
             columns: [
                 { type: "selection", width: 40, fixed: true, fixedPosition: "left" },
                 {
@@ -203,6 +222,14 @@
                         } else {
                             $("<span>").addClass("wf-cat-default").text("Default (all categories)").appendTo(container);
                         }
+                    }
+                },
+                {
+                    caption: "Status",
+                    alignment: "center",
+                    calculateCellValue: function (rowData) { return rowData.IS_ACTIVE === false ? "Inactive" : "Active"; },
+                    cellTemplate: function (container, options) {
+                        $("<span>").addClass(options.value === "Active" ? "wf-status-active" : "wf-status-inactive").text(options.value).appendTo(container);
                     }
                 },
                 { dataField: "CREATOR_NAME", caption: "Creator Level" },
@@ -344,6 +371,18 @@
             $menu.append(menuItem("dp-menu-edit", "fa-pencil-square-o", "Edit", function () {
                 grid.selectRows([row.WORKFLOW_DOC_ID], false);
                 onEditPrepare();
+            }));
+        }
+
+        if (gCanAdd) {
+            $menu.append(menuItem("dp-menu-edit", "fa-files-o", "Duplicate", function () {
+                onDuplicatePrepare(row);
+            }));
+        }
+
+        if (gCanEdit) {
+            $menu.append(menuItem("dp-menu-edit", "fa-power-off", row.IS_ACTIVE === false ? "Activate" : "Deactivate", function () {
+                onToggleActivePrepare(row);
             }));
         }
 

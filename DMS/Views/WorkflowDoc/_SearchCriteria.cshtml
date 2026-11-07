@@ -3,10 +3,12 @@
         @if ((bool)ViewData["Add"])
         {
             <button type="button" class="dp-btn dp-btn-primary" id="btn_add"><i class="fa fa-plus"></i> Add Workflow</button>
+            <button type="button" class="dp-btn dp-btn-outline" id="btn_duplicate"><i class="fa fa-files-o"></i> Duplicate</button>
         }
         @if ((bool)ViewData["Edit"])
         {
             <button type="button" class="dp-btn dp-btn-outline" id="btn_edit"><i class="fa fa-pencil-square-o"></i> Edit</button>
+            <button type="button" class="dp-btn dp-btn-outline" id="btn_toggle_active"><i class="fa fa-power-off"></i> <span>Deactivate</span></button>
         }
         @if ((bool)ViewData["Delete"])
         {
