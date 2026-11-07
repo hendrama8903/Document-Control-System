@@ -56,7 +56,7 @@
 
     function onAddPrepare() {
         gScreenMode = 'ADD';
-        $('#modal-title').html("Add Department Master");
+        $('#modal-title').html("New Department");
         $('#modal-subtitle').html("Add a new department to the system");
         $('#addEditDepartment').val("");
         $('#addEditName').val("");
@@ -92,7 +92,7 @@
                 if (result.status == true) {
                     var data = result.data;
                     gScreenMode = 'EDIT';
-                    $('#modal-title').html("Edit Department Master");
+                    $('#modal-title').html("Edit Department");
                     $('#modal-subtitle').html("Update department data");
                     $('#addEditId').val(data.DEPARTMENT_ID);
                     $('#addEditDepartment').val(data.DEPARTMENT_CODE);

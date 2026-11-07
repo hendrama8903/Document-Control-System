@@ -57,7 +57,7 @@
 
     function onAddPrepare() {
         gScreenMode = 'ADD';
-        $('#modal-title').html("Add Role");
+        $('#modal-title').html("New System Parameter");
         $('#addEditSystemType').val("");
         $('#addEditSystemValue').val("");
         $('#addEditSystemCode').val("");
@@ -97,7 +97,7 @@
                     var data = result.data;
 
                     gScreenMode = 'EDIT';
-                    $('#modal-title').html("Edit Role");
+                    $('#modal-title').html("Edit System Parameter");
                     $('#addEditSystemType').val(data.SYSTEM_TYPE);
                     $('#addEditSystemValue').val(data.SYSTEM_VALUE);
                     $('#addEditSystemCode').val(data.SYSTEM_CODE);

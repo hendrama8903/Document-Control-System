@@ -53,7 +53,7 @@
 
     function onAddPrepare() {
         gScreenMode = 'ADD';
-        $('#modal-title').html("Add Position Master");
+        $('#modal-title').html("New Position");
         $('#addEditId').val("");
         $('#addEditPositionNm').val("");
         $('#addEditPositionLvl').val("");
@@ -88,7 +88,7 @@
                 if (result.status == true) {
                     var data = result.data;
                     gScreenMode = 'EDIT';
-                    $('#modal-title').html("Edit Position Master");
+                    $('#modal-title').html("Edit Position");
                     $('#addEditId').val(data.POSITION_ID);
                     $('#addEditPositionNm').val(data.POSITION_NAME);
                     $('#addEditPositionLvl').val(data.POSITION_LEVEL);

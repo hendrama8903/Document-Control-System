@@ -131,7 +131,7 @@
         gStatus = row.STATUS;
         gDepartmentId = row.DEPARTMENT_ID;
 
-        $('#modalDistribution-title').html("Add / Edit Document Distribution");
+        $('#modalDistribution-title').html("Document Distribution");
         $('#distributionDocumentId').val(gDocumentTransactionId);
 
         $("#btn_addDistribution").show();
@@ -305,7 +305,7 @@
 
     function onAddPrepare() {
         gScreenMode = 'ADD';
-        $('#modal-title').html("Add Document");
+        $('#modal-title').html("New Registration");
         $('#addEditDocumentNo').val("").trigger("change");;
         $('#addEditDocumentId').val("");
         $('#addEditDocumentName').val("");
@@ -331,7 +331,7 @@
 
     function onAddDistributionPrepare() {
         gScreenMode = 'ADD';
-        $('#modalAddEditDistribution-title').html("Add Document Distribution");
+        $('#modalAddEditDistribution-title').html("New Distribution");
 
         getDivision();
 
@@ -979,7 +979,7 @@
                         var data = result.data;
                         //showErrorMesgGrowl(data.STATUS);
                         gScreenMode = 'EDIT';
-                        $('#modalEdit-title').html("Edit P4D Maintenance");
+                        $('#modalEdit-title').html("Edit Registration");
                         $('#addEditDocumentId').val(data.DOCUMENT_CTRL_ID);
                         $("#addEditDocumentNo").select2("trigger", "select", { data: { id: data.DOCUMENT_CODE, text: data.DOCUMENT_CODE } });
                         $('#addEditDocumentName').val(data.DOCUMENT_NAME);

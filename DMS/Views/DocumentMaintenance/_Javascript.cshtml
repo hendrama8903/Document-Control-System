@@ -763,7 +763,7 @@
 
     function onAddPrepare() {
         gScreenMode = 'ADD';
-        $('#modal-title').html("Add Document");
+        $('#modal-title').html("New Document");
         $('#addEditDocumentType').val("").trigger("change");
 
         reset();
@@ -2111,7 +2111,7 @@
                         $('#editDocumentNo').prop('disabled', true);
                         $('#editRevision').prop('disabled', true);
 
-                        $('#modalEdit-title').html("Edit Document Maintenance");
+                        $('#modalEdit-title').html("Edit Document");
                         $('#modalEdit-subtitle').text(data.DOCUMENT_CODE + " • Rev. " + data.REVISION);
                         updateEditStatusPanel(data);
                         $('#editDocumentId').val(data.DOCUMENT_TRANSACTION_ID);

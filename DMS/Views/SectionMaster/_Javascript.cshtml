@@ -81,7 +81,7 @@
     function onAddPrepare() {
         gScreenMode = 'ADD';
         gLastEditData = null;
-        $('#modal-title').html("Add Section Master");
+        $('#modal-title').html("New Section");
         $('#modal-subtitle').html("Add a new section to the system");
         resetFormFields();
 
@@ -193,7 +193,7 @@
                     gLastEditData = data;
 
                     gScreenMode = 'EDIT';
-                    $('#modal-title').html("Edit Section Master");
+                    $('#modal-title').html("Edit Section");
                     $('#modal-subtitle').html("Update section data");
                     populateFormFields(data);
 

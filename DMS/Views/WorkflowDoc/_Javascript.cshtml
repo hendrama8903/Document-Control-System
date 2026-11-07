@@ -231,7 +231,7 @@
         gScreenMode = 'ADD';
         gId = null;
         $("#datagrid").dxDataGrid("instance").clearSelection();
-        $('#modal-title').html("Add Workflow Document Master");
+        $('#modal-title').html("New Workflow");
         $("#addEditWorkflowDocLevel").val("").trigger("change");
         $("#addEditPositionName").val("").trigger("change");
         $("#addEditWorkflowCategory").val(null).trigger("change");
@@ -286,7 +286,7 @@
                 if (result.status == true) {
                     var data = result.data;
                     gScreenMode = 'EDIT';
-                    $('#modal-title').html("Edit Workflow Doc Master" + (row.IS_ACTIVE === false ? " (Inactive)" : ""));
+                    $('#modal-title').html("Edit Workflow" + (row.IS_ACTIVE === false ? " (Inactive)" : ""));
                     $('#addEditWorkflowDocLevel').select2("trigger", "select", { data: { id: gCode.toString(), text: gCode.toString() } });
                     $('#addEditPositionName').select2("trigger", "select", { data: { id: gName.toString(), text: result.creatorText || ("Level " + gName) } });
                     if (row.DOCUMENT_ID) {

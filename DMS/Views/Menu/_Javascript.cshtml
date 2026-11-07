@@ -110,7 +110,7 @@
         });
 
         // Preview "ikon + nama" langsung di bawah Menu Icon (request Hendra
-        // 2026-08-19, redesign popup Add Menu) - update tiap kali user ganti
+        // 2026-08-19, redesign popup New Menu) - update tiap kali user ganti
         // ikon (event bawaan plugin fontawesome-iconpicker) atau ngetik ulang
         // Menu Name.
         $("#addEditMenuIcon").on("change iconpickerSelected", function () {
@@ -520,7 +520,7 @@
 
     function onAddPrepare() {
         gScreenMode = 'ADD';
-        $('#modal-title').html("Add Menu");
+        $('#modal-title').html("New Menu");
         $('#radioMenuType').css('display', 'block');
 
         $("#chkMenuParent").prop('checked', true);
@@ -674,7 +674,7 @@
         if (!gSelectedMenu) { return; }
 
         gFunctionScreenMode = 'ADD';
-        $('#modal-title-function').html("Add Function");
+        $('#modal-title-function').html("New Function");
         $('#functionMenuId').val(gSelectedMenu.MENU_ID);
         $('#addEditFunctionId').val("").prop('disabled', false);
         $('#addEditFunctionName').val("");

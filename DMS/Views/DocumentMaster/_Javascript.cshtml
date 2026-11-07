@@ -56,7 +56,7 @@
 
     function onAddPrepare() {
         gScreenMode = 'ADD';
-        $('#modal-title').html("Add Document Master");
+        $('#modal-title').html("New Document Category");
         $('#addEditDocumentCode').val("");
         $('#addEditDocumentName').val("");
         $('#addEditLevel').val("").trigger("change");
@@ -95,7 +95,7 @@
                     var data = result.data;
 
                     gScreenMode = 'EDIT';
-                    $('#modal-title').html("Edit Document Master");
+                    $('#modal-title').html("Edit Document Category");
                     $('#addEditDocumentCode').val(data.DOCUMENT_CODE);
                     $('#addEditDocumentName').val(data.DOCUMENT_NAME);
                     $('#addEditLevel').select2("trigger", "select", { data: { id: data.LEVEL, text: data.LEVEL_VAL } });

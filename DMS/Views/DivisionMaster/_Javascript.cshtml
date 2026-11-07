@@ -55,7 +55,7 @@
 
     function onAddPrepare() {
         gScreenMode = 'ADD';
-        $('#modal-title').html("Add Division Master");
+        $('#modal-title').html("New Division");
         $('#modal-subtitle').html("Add new division data");
         $('#addEditDivisionNm').val("");
         $('#addEditDivisionCd').val("");
@@ -89,7 +89,7 @@
                 if (result.status == true) {
                     var data = result.data;
                     gScreenMode = 'EDIT';
-                    $('#modal-title').html("Edit Division Master");
+                    $('#modal-title').html("Edit Division");
                     $('#modal-subtitle').html("Update division data");
                     $('#addEditId').val(data.DIVISION_ID);
                     $('#addEditDivisionCd').val(data.DIVISION_CODE);

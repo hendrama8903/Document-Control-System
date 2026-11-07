@@ -55,7 +55,7 @@
 
     function onAddPrepare() {
         gScreenMode = 'ADD';
-        $('#modal-title').html("Add Part Master");
+        $('#modal-title').html("New Part");
         $('#addEditOldPartNo').val("");
         $('#addEditPartNo').val("");
         $('#addEditPartNoSfx').val("");
@@ -113,7 +113,7 @@
                 if (result.status == true) {
                     var data = result.data;
                     gScreenMode = 'EDIT';
-                    $('#modal-title').html("Edit Model PartMaster");
+                    $('#modal-title').html("Edit Part");
                     $('#addEditPartNo').val(data.PART_NO);
                     $('#addEditPartNoSfx').val(data.COLOR_SUFFIX);
                     $('#addEditPartNoMin').val(data.MIN_CHANGE);
