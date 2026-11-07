@@ -29,6 +29,17 @@ namespace DMS
             services.AddScoped<PrintingService>();
             services.AddControllersWithViews(options => options.Filters.Add<DynamicTitleFilter>());
             services.AddMemoryCache();
+            // Hanya CSS/JS/SVG statis. HTML dan JSON tidak dikompres karena bisa berisi data
+            // sesi di atas HTTPS (BREACH).
+            services.AddResponseCompression(options =>
+            {
+                options.EnableForHttps = true;
+                options.MimeTypes = new[] { "text/css", "application/javascript", "text/javascript", "image/svg+xml" };
+                options.Providers.Add<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProvider>();
+                options.Providers.Add<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProvider>();
+            });
+            services.Configure<Microsoft.AspNetCore.ResponseCompression.BrotliCompressionProviderOptions>(o => o.Level = System.IO.Compression.CompressionLevel.Fastest);
+            services.Configure<Microsoft.AspNetCore.ResponseCompression.GzipCompressionProviderOptions>(o => o.Level = System.IO.Compression.CompressionLevel.Fastest);
             services.AddSession();
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
             services.AddControllers().AddJsonOptions(opts => opts.JsonSerializerOptions.PropertyNamingPolicy = null);
@@ -113,7 +124,25 @@ namespace DMS
             });
 
             app.UseHttpsRedirection();
-            app.UseStaticFiles();
+            app.UseResponseCompression();
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                OnPrepareResponse = ctx =>
+                {
+                    // File aplikasi saja, bukan /Upload dan /Document yang berisi dokumen user.
+                    string path = ctx.Context.Request.Path.Value ?? "";
+                    bool isAsset = new[] { "/lib/", "/js/", "/css/", "/dist/", "/fonts/", "/images/" }
+                        .Any(p => path.StartsWith(p, StringComparison.OrdinalIgnoreCase));
+                    if (!isAsset)
+                    {
+                        return;
+                    }
+                    // Link dengan ?v= berubah otomatis saat isi file berubah (asp-append-version).
+                    ctx.Context.Response.Headers.CacheControl = ctx.Context.Request.Query.ContainsKey("v")
+                        ? "public, max-age=31536000, immutable"
+                        : "public, max-age=86400";
+                }
+            });
             app.UseDevExpressControls();
             app.UseSession();
             app.UseRouting();
