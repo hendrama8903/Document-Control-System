@@ -135,8 +135,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult CreateFolder(string folderName, int? parentId)
         {
+            JsonResult denied = DenyWithoutLogin();
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DBResult result = DocumentFolderRepo.Insert(new DocumentFolder { FOLDER_NAME = folderName, PARENT_ID = parentId }, GetLoginUsername(), db);
@@ -148,8 +155,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult RenameFolder(int folderId, string folderName)
         {
+            JsonResult denied = DenyWithoutLogin();
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DocumentFolder existing = DocumentFolderRepo.GetTree(db).FirstOrDefault(f => f.FOLDER_ID == folderId);
@@ -167,8 +181,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult DeleteFolder(int folderId)
         {
+            JsonResult denied = DenyWithoutLogin();
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DBResult result = DocumentFolderRepo.Delete(new DocumentFolder { FOLDER_ID = folderId }, GetLoginUsername(), db);
@@ -180,8 +201,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult MoveDocumentsToFolder(List<int> documentTransactionIds, int? folderId)
         {
+            JsonResult denied = DenyWithoutLogin();
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 foreach (var id in documentTransactionIds)

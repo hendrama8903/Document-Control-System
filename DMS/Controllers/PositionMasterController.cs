@@ -143,8 +143,15 @@ namespace DMS.Controllers
                 "POSITION-MASTER-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
 
+        [HttpPost]
         public JsonResult AddEdit(string screenMode, PositionMaster data)
         {
+            JsonResult denied = DenyWithoutFunction(string.Equals(screenMode, "ADD", StringComparison.OrdinalIgnoreCase) ? "POSITIONMASTER-ADD" : "POSITIONMASTER-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             try
             {

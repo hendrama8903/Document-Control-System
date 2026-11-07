@@ -158,8 +158,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult ReassignApprover(int approvalId, int workflowSeq, string oldApprover, string newApprover, string reason)
         {
+            JsonResult denied = DenyWithoutFunction("REASSIGN-EXECUTE");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             if (!HasMenuAccess("/Reassign/Index"))
             {
                 return Json(new { status = false, message = "You are not authorized to access this feature." });

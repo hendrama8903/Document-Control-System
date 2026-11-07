@@ -100,8 +100,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public async Task<JsonResult> AddEditAsync(string screenMode, ExternalDocument data)
         {
+            JsonResult denied = DenyWithoutFunction(string.Equals(screenMode, "ADD", StringComparison.OrdinalIgnoreCase) ? "EXTERNALDOCUMENT-ADD" : "EXTERNALDOCUMENT-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             string folderName = "/Upload/";
             string webRootPath = Environment.WebRootPath;
@@ -177,8 +184,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult Delete(ExternalDocument data, string path)
         {
+            JsonResult denied = DenyWithoutFunction("EXTERNALDOCUMENT-DELETE");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             string webRootPath = Environment.WebRootPath;
 
@@ -206,8 +220,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult RemoveAttachment(ExternalDocument data)
         {
+            JsonResult denied = DenyWithoutFunction("EXTERNALDOCUMENT-DELETE-FILEPATH");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             string webRootPath = Environment.WebRootPath;
 

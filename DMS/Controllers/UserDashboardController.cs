@@ -210,8 +210,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult AcknowledgeDocument(DocumentLog data, PublishHistory history)
         {
+            JsonResult denied = DenyWithoutFunction("USERDASHBOARD-PUBLISH");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
 
             try
@@ -365,8 +372,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult CreateFolder(string folderName, int? parentId)
         {
+            JsonResult denied = DenyWithoutLogin();
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DBResult result = DocumentFolderPersonalRepo.Insert(new DocumentFolderPersonal { FOLDER_NAME = folderName, PARENT_ID = parentId }, GetLoginUsername(), db);
@@ -378,8 +392,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult RenameFolder(int folderId, string folderName)
         {
+            JsonResult denied = DenyWithoutLogin();
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 string username = GetLoginUsername();
@@ -398,8 +419,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult DeleteFolder(int folderId)
         {
+            JsonResult denied = DenyWithoutLogin();
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DBResult result = DocumentFolderPersonalRepo.Delete(new DocumentFolderPersonal { FOLDER_ID = folderId }, GetLoginUsername(), db);
@@ -411,8 +439,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult MoveDocumentsToFolder(List<int> documentTransactionIds, int? folderId)
         {
+            JsonResult denied = DenyWithoutLogin();
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 string username = GetLoginUsername();

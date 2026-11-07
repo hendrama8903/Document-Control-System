@@ -53,8 +53,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult ToggleEmail(string notificationType, bool sendEmail)
         {
+            JsonResult denied = DenyWithoutFunction("NOTIFICATIONSETTING-TOGGLE");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DBResult result = notificationSettingRepo.ToggleEmail(notificationType, sendEmail, GetLoginUsername(), db);

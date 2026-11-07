@@ -101,8 +101,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult AddEditAsync(string screenMode, DocumentSubmission data)
         {
+            JsonResult denied = DenyWithoutFunction(string.Equals(screenMode, "ADD", StringComparison.OrdinalIgnoreCase) ? "DOCSUBMISSION-ADD" : "DOCSUBMISSION-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result;
 
             try
@@ -128,8 +135,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult Delete(DocumentSubmission data)
         {
+            JsonResult denied = DenyWithoutFunction("DOCSUBMISSION-DELETE");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DBResult result = documentSubmissionRepo.Delete(data, GetLoginUsername(), db);
@@ -141,8 +155,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult Submit(int submissionId)
         {
+            JsonResult denied = DenyWithoutFunction("DOCSUBMISSION-SUBMIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DBResult result = documentSubmissionRepo.Submit(submissionId, GetLoginUsername(), db);
@@ -154,8 +175,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult Cancel(int submissionId)
         {
+            JsonResult denied = DenyWithoutFunction("DOCSUBMISSION-SUBMIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DBResult result = documentSubmissionRepo.UpdateStatus(new DocumentSubmission { SUBMISSION_ID = submissionId, STATUS = "4" }, GetLoginUsername(), db);
@@ -296,8 +324,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult AddEditDetail(string screenMode, DocumentSubmissionDetail data)
         {
+            JsonResult denied = DenyWithoutFunction("DOCSUBMISSION-ADD", "DOCSUBMISSION-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DBResult result = screenMode == "ADD"
@@ -312,8 +347,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult DeleteDetail(DocumentSubmissionDetail data)
         {
+            JsonResult denied = DenyWithoutFunction("DOCSUBMISSION-ADD", "DOCSUBMISSION-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DBResult result = documentSubmissionRepo.DeleteDetail(data, GetLoginUsername(), db);
@@ -365,8 +407,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult ApproveRejectAsync(int approvalId, int workflowSeq, string approver, string remark, string mode, DocumentSubmission data)
         {
+            JsonResult denied = DenyUnlessApprover(approver);
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result;
 
             try

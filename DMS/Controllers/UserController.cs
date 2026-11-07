@@ -224,8 +224,41 @@ namespace DMS.Controllers
                 "USERS-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
 
+        // Profile memakai action ini untuk akunnya sendiri. Role dan jenis login tidak boleh
+        // berubah lewat Profile, jadi nilainya diambil dari data tersimpan.
+        JsonResult DenyUserEdit(string screenMode, User data)
+        {
+            if (string.Equals(screenMode, "ADD", StringComparison.OrdinalIgnoreCase))
+            {
+                return DenyWithoutFunction("USER-ADD");
+            }
+
+            if (DenyWithoutFunction("USER-EDIT") == null)
+            {
+                return null;
+            }
+
+            JsonResult denied = DenyUnlessSelfOrFunction(data.USERNAME, "USER-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
+            UserProfileDetail stored = userRepo.GetProfileDetail(new User { USERNAME = GetLoginUsername() }, db);
+            data.ROLE_ID = stored?.ROLE_ID;
+            data.AD_USER = stored?.AD_USER;
+            return null;
+        }
+
+        [HttpPost]
         public async Task<JsonResult> AddEditAsync(string screenMode, User data)
         {
+            JsonResult denied = DenyUserEdit(screenMode, data);
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             string folderName = "/Upload/";
             string webRootPath = Environment.WebRootPath;
@@ -332,8 +365,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult Delete(User data)
         {
+            JsonResult denied = DenyWithoutFunction("USER-DELETE");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 if (data.USERNAME == GetLoginUsername())
@@ -350,8 +390,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult Restore(User data)
         {
+            JsonResult denied = DenyWithoutFunction("USER-RESTORE");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DBResult result = userRepo.Restore(data, GetLoginUsername(), db);
@@ -381,8 +428,15 @@ namespace DMS.Controllers
         // Independent of AddEditAsync's own (avatar) file handling - reads the upload by
         // form field name rather than position, so it can't collide with an avatar file
         // sent in the same or a different request.
+        [HttpPost]
         public async Task<JsonResult> UploadSignatureAsync(UserProfileDetail data)
         {
+            JsonResult denied = DenyUnlessSelfOrFunction(data.USERNAME, "USER-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             string folderName = "/Upload/";
             string webRootPath = Environment.WebRootPath;
 
@@ -447,8 +501,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult DeleteSignature(UserProfileDetail data)
         {
+            JsonResult denied = DenyUnlessSelfOrFunction(data.USERNAME, "USER-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             string webRootPath = Environment.WebRootPath;
             try
             {
@@ -475,8 +536,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult DeleteAttachment(User data)
         {
+            JsonResult denied = DenyWithoutFunction("USER-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             string webRootPath = Environment.WebRootPath;
             try
@@ -665,8 +733,15 @@ namespace DMS.Controllers
         }
 
 
+        [HttpPost]
         public JsonResult AddEditPosition(string screenMode, UserPosition data, List<string> arrDivision)
         {
+            JsonResult denied = DenyWithoutFunction("USER-POSITION");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             try
             {

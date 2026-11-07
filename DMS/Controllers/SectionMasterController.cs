@@ -147,8 +147,15 @@ namespace DMS.Controllers
                 "SECTION-MASTER-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
 
+        [HttpPost]
         public JsonResult AddEdit(string screenMode, SectionMaster data)
         {
+            JsonResult denied = DenyWithoutFunction(string.Equals(screenMode, "ADD", StringComparison.OrdinalIgnoreCase) ? "SECTIONMASTER-ADD" : "SECTIONMASTER-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             try
             {

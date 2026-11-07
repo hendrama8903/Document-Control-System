@@ -78,8 +78,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult ToggleMenuStatus(string menuId, int deleteFlag)
         {
+            JsonResult denied = DenyWithoutFunction("MENU-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             try
             {
@@ -92,8 +99,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult ToggleFunctionStatus(string functionId, int deleteFlag)
         {
+            JsonResult denied = DenyWithoutFunction("MENU-FUNCTION");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             try
             {
@@ -219,8 +233,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult AddEdit(string screenMode, Menu data)
         {
+            JsonResult denied = DenyWithoutFunction(string.Equals(screenMode, "ADD", StringComparison.OrdinalIgnoreCase) ? "MENU-ADD" : "MENU-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             try
             {
@@ -240,8 +261,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult Delete(Menu data)
         {
+            JsonResult denied = DenyWithoutFunction("MENU-DELETE");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             try
             {
@@ -379,8 +407,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult AddEditFunction(string screenMode, Function data)
         {
+            JsonResult denied = DenyWithoutFunction("MENU-FUNCTION");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             try
             {
@@ -400,8 +435,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult DeleteFunction(Function data)
         {
+            JsonResult denied = DenyWithoutFunction("MENU-FUNCTION");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             try
             {

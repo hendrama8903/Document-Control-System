@@ -89,8 +89,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult Update(MSequence data, string OLD_SEQ_TYPE, string OLD_SEQ_CODE)
         {
+            JsonResult denied = DenyWithoutFunction("MSEQUENCE-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DBResult result = mSequenceRepo.Update(data, OLD_SEQ_TYPE, OLD_SEQ_CODE, GetLoginUsername(), db);
@@ -149,8 +156,15 @@ namespace DMS.Controllers
                 "DOCUMENT-NUMBERING-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
 
+        [HttpPost]
         public JsonResult Reset(MSequence data)
         {
+            JsonResult denied = DenyWithoutFunction("MSEQUENCE-RESET");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             if (!HttpContext.Session.GetString("functionList").Contains("MSEQUENCE-RESET"))
             {
                 return Json(new { status = false, message = "You are not authorized to perform this action." });

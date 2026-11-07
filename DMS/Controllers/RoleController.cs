@@ -140,8 +140,15 @@ namespace DMS.Controllers
                 "ROLE-AUTHORIZATION-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
 
+        [HttpPost]
         public JsonResult AddEdit(string screenMode, Role data)
         {
+            JsonResult denied = DenyWithoutFunction(string.Equals(screenMode, "ADD", StringComparison.OrdinalIgnoreCase) ? "ROLE-ADD" : "ROLE-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             try
             {
@@ -161,8 +168,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult Delete(Role data)
         {
+            JsonResult denied = DenyWithoutFunction("ROLE-DELETE");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             try
             {
@@ -370,8 +384,15 @@ namespace DMS.Controllers
             return Json(new { status, param });
         }
 
+        [HttpPost]
         public JsonResult AddEditMenu(List<AuthMenu> data)
         {
+            JsonResult denied = DenyWithoutFunction("ROLE-AUTHORIZATION");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             string module = "Role Authorization - Authorization";
             string location = "BOMPartMasterController/AddEditMenu";
@@ -438,8 +459,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult AddEditFunction(List<AuthFunction> data)
         {
+            JsonResult denied = DenyWithoutFunction("ROLE-AUTHORIZATION");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             string module = "Role Authorization - Authorization";
             string location = "BOMPartMasterController/AddEditFunction";

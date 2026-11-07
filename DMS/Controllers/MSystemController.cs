@@ -151,8 +151,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult AddEdit(string screenMode, MSystem data)
         {
+            JsonResult denied = DenyWithoutFunction(string.Equals(screenMode, "ADD", StringComparison.OrdinalIgnoreCase) ? "SYSTEMMASTER-ADD" : "SYSTEMMASTER-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             try
             {
@@ -172,8 +179,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult Delete(MSystem data)
         {
+            JsonResult denied = DenyWithoutFunction("SYSTEMMASTER-DELETE");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             try
             {

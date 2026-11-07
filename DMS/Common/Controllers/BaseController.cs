@@ -109,14 +109,48 @@ namespace DMS.Common.Controllers
         }
 
         // Dicek di server: menyembunyikan tombol di tampilan tidak mencegah permintaan
-        // langsung ke action-nya. Null berarti diizinkan.
-        protected JsonResult DenyWithoutFunction(string functionId)
+        // langsung ke action-nya. Null berarti diizinkan; cukup punya salah satu fungsi.
+        protected JsonResult DenyWithoutFunction(params string[] functionIds)
         {
             string functionList = HttpContext.Session.GetString("functionList");
-            if (GetLoginUsername() != null && functionList != null && functionList.Contains(functionId))
+            if (GetLoginUsername() != null && functionList != null)
             {
-                return null;
+                string[] owned = functionList.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (functionIds.Any(id => owned.Contains(id)))
+                {
+                    return null;
+                }
             }
+            return NotAuthorizedResult();
+        }
+
+        protected JsonResult DenyWithoutLogin()
+        {
+            return GetLoginUsername() != null ? null : NotAuthorizedResult();
+        }
+
+        // Akun sendiri, atau punya fungsi yang boleh mengubah akun lain.
+        protected JsonResult DenyUnlessSelfOrFunction(string username, params string[] functionIds)
+        {
+            return IsLoginUser(username) ? null : DenyWithoutFunction(functionIds);
+        }
+
+        // Approver dikirim browser dan dipakai SP untuk mencari langkah approval, jadi harus
+        // sama dengan user yang login. Mengalihkan approval lewat menu Reassign.
+        protected JsonResult DenyUnlessApprover(string approver)
+        {
+            return IsLoginUser(approver) ? null : NotAuthorizedResult();
+        }
+
+        bool IsLoginUser(string username)
+        {
+            string login = GetLoginUsername();
+            return login != null && username != null
+                && string.Equals(username.Trim(), login.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        JsonResult NotAuthorizedResult()
+        {
             return Json(new { status = false, message = "You are not authorized to perform this action." });
         }
 

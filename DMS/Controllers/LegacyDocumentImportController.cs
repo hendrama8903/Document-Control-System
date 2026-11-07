@@ -141,8 +141,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult ProcessImport(IFormFile excelFile, IFormFile zipFile, bool commitMode)
         {
+            JsonResult denied = DenyWithoutFunction("LEGACYDOCUMENTIMPORT-IMPORT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 if (!HasMenuAccess("/LegacyDocumentImport/Index"))

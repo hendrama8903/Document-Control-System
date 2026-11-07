@@ -108,8 +108,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult AddEditAsync(string screenMode, CopyRequest data)
         {
+            JsonResult denied = DenyWithoutFunction(string.Equals(screenMode, "ADD", StringComparison.OrdinalIgnoreCase) ? "COPYREQUEST-ADD" : "COPYREQUEST-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result;
 
             try
@@ -135,8 +142,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult Delete(CopyRequest data)
         {
+            JsonResult denied = DenyWithoutFunction("COPYREQUEST-DELETE");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DBResult result = copyRequestRepo.Delete(data, GetLoginUsername(), db);
@@ -148,8 +162,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult Submit(int requestId)
         {
+            JsonResult denied = DenyWithoutFunction("COPYREQUEST-SUBMIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DBResult result = copyRequestRepo.Submit(requestId, GetLoginUsername(), db);
@@ -161,8 +182,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult Cancel(int requestId)
         {
+            JsonResult denied = DenyWithoutFunction("COPYREQUEST-SUBMIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DBResult result = copyRequestRepo.UpdateStatus(new CopyRequest { REQUEST_ID = requestId, STATUS = "4" }, GetLoginUsername(), db);
@@ -244,8 +272,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult AddEditDetail(string screenMode, CopyRequestDetail data)
         {
+            JsonResult denied = DenyWithoutFunction("COPYREQUEST-ADD", "COPYREQUEST-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DBResult result = screenMode == "ADD"
@@ -260,8 +295,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult DeleteDetail(CopyRequestDetail data)
         {
+            JsonResult denied = DenyWithoutFunction("COPYREQUEST-ADD", "COPYREQUEST-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 DBResult result = copyRequestRepo.DeleteDetail(data, GetLoginUsername(), db);
@@ -282,8 +324,15 @@ namespace DMS.Controllers
         // requester sekarang cetak sendiri lewat PrintTrack begitu status
         // Approved, tidak perlu lagi acknowledge terpisah di modul lain
         // (request Hendra 2026-08-15). Lihat SQL/CopyRequest_RemoveAcceptStep.sql.
+        [HttpPost]
         public JsonResult ApproveReject(int requestId, string mode, string remark)
         {
+            JsonResult denied = DenyWithoutFunction("COPYREQUEST-APPROVE");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 bool isApproved = mode == "approve";

@@ -125,6 +125,12 @@ namespace DMS.Controllers
 
         public JsonResult UpdateNotification(string notificationId)
         {
+            JsonResult denied = DenyWithoutLogin();
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 Notification notification = new Notification();

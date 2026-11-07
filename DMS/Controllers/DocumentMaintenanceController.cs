@@ -794,8 +794,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public async Task<JsonResult> AddEditAsync(string screenMode, DocumentMaintenance data, string REMARK)
         {
+            JsonResult denied = DenyWithoutFunction(string.Equals(screenMode, "ADD", StringComparison.OrdinalIgnoreCase) ? "DOCUMENT-ADD" : "DOCUMENT-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             string folderName = "/Upload/";
             string webRootPath = Environment.WebRootPath;
@@ -1263,8 +1270,15 @@ namespace DMS.Controllers
                 + "</table></td></tr></table>";
         }
 
+        [HttpPost]
         public JsonResult Delete(DocumentMaintenance data, string path)
         {
+            JsonResult denied = DenyWithoutFunction("DOCUMENT-DELETE");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             string webRootPath = Environment.WebRootPath;
 
@@ -3585,8 +3599,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public async Task<JsonResult> ApproveRejectAsync(int approvalId, int workflowSeq, string approver, string remark, string mode, DocumentMaintenance documentMaintenance)
         {
+            JsonResult denied = DenyUnlessApprover(approver);
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result;
             string webRootPath = Environment.WebRootPath;
 
@@ -3808,8 +3829,15 @@ namespace DMS.Controllers
         // alasan lengkapnya). Kalau ini acknowledgment terakhir DAN approval
         // aslinya sudah selesai lebih dulu (STATUS=6), naikkan ke Approved (1) dan
         // jalankan efek-samping "selesai approval" yang sama seperti approval biasa.
+        [HttpPost]
         public JsonResult AcknowledgeRelatedDivisionAsync(int documentTransactionId, string divisionCode, string remark)
         {
+            JsonResult denied = DenyWithoutLogin();
+            if (denied != null)
+            {
+                return denied;
+            }
+
             string webRootPath = Environment.WebRootPath;
             string location = "DocumentMaintenance/AcknowledgeRelatedDivision";
 

@@ -141,8 +141,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public async Task<JsonResult> AddEditAsync(string screenMode, DocumentMaster data)
         {
+            JsonResult denied = DenyWithoutFunction(string.Equals(screenMode, "ADD", StringComparison.OrdinalIgnoreCase) ? "DOCUMENTMASTER-ADD" : "DOCUMENTMASTER-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             string webRootPath = Environment.WebRootPath;
 
@@ -432,8 +439,15 @@ namespace DMS.Controllers
         // Hapus file master template pengesahan (wwwroot/document/Template/{CODE}.xls atau
         // .xlsx) - dipakai tombol trash di kolom "Template" pada form Add/Edit, pasangan dari
         // upload di AddEditAsync (request Hendra 2026-08-19).
+        [HttpPost]
         public JsonResult RemoveSigningTemplate(string code)
         {
+            JsonResult denied = DenyWithoutFunction("DOCUMENTMASTER-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             try
             {
                 if (string.IsNullOrWhiteSpace(code) || !System.Text.RegularExpressions.Regex.IsMatch(code, "^[A-Za-z0-9]+$"))
@@ -485,8 +499,15 @@ namespace DMS.Controllers
             }
         }
 
+        [HttpPost]
         public JsonResult RemoveAttachment(DocumentMaster data)
         {
+            JsonResult denied = DenyWithoutFunction("DOCUMENTMASTER-DELETE-FILEPATH");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             string webRootPath = Environment.WebRootPath;
 

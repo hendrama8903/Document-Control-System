@@ -201,8 +201,15 @@ namespace DMS.Controllers
         }
 
 
+        [HttpPost]
         public JsonResult AddEdit(string screenMode, DivisionMaster data)
         {
+            JsonResult denied = DenyWithoutFunction(string.Equals(screenMode, "ADD", StringComparison.OrdinalIgnoreCase) ? "DIVISIONMASTER-ADD" : "DIVISIONMASTER-EDIT");
+            if (denied != null)
+            {
+                return denied;
+            }
+
             DBResult result = null;
             try
             {
