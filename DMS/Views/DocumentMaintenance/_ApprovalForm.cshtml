@@ -106,19 +106,6 @@
     </div>
 </div>
 
-<script type="text/javascript">
-    $(document).ready(function () {
-        $('#approvalHistoryToggle').on('click', function () {
-            $(this).toggleClass('collapsed');
-            $('#approvalHistoryBody').slideToggle(180, function () {
-                if ($(this).is(':visible')) {
-                    $("#historyGrid").DataTable().columns.adjust();
-                }
-            });
-        });
-    });
-</script>
-
 <div class="modal fade" id="modalApprovalForm" role="dialog" aria-labelledby="basicModal" aria-hidden="true">
     <div class="modal-dialog modal-md">
         <div class="modal-content">
