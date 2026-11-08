@@ -104,21 +104,3 @@
         </div>
     </div>
 </div>
-
-<script type="text/javascript">
-    $(document).ready(function () {
-        $("#btn_closeApprovalPanel").on("click", function () {
-            $("#approvalPanel").removeClass("open");
-        });
-
-        // Klik di luar panel menutup panel - klik pada elemen yang MEMBUKA
-        // panel ini (Request No/kebab "View Approval" di grid) sudah
-        // stopPropagation() masing-masing jadi tidak langsung menutup ulang
-        // panel yang baru dibuka.
-        $(document).on("click", function (e) {
-            if ($("#approvalPanel").hasClass("open") && !$(e.target).closest("#approvalPanel").length) {
-                $("#approvalPanel").removeClass("open");
-            }
-        });
-    });
-</script>

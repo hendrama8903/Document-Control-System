@@ -1,119 +1,15 @@
 ﻿<script type="text/javascript">
-    //RECOMMIT DINA
-    var gScreenMode = null;
-    var gId = null;
-    var gDocumentId = null;
-    var gDocumentTransactionId = null;
-    var gDocumentCtrlId = null;
-    var gDepartmentId = null;
-    var gDocumentNo = null;
-    var gIsApproved = null;
-    var gFilePath = null;
-
-    $(document).ready(function () {
-        $("#btn_acknowledge").on("click", function () {
-            confirmAcknowledge();
-        });
-    });
-
-    function maxLengthCheck(object) {
-        if (object.value.length > object.maxLength)
-            object.value = object.value.slice(0, object.maxLength)
-    }
-
-    function onclickDownload(element) {
-        //alert(element.getAttribute('data-doc'));
-
-        if (element.getAttribute('data-doc') !== "null" || element.getAttribute('data-doc') !== null || element.getAttribute('data-doc') !== "") {
-            //var data = new FormData();
-            //data.append("FILE_PATH", element.getAttribute('data-doc'));
-
-            var link = '@Html.Raw(Url.Action("DownloadDocument", "UserDashboard", new { path = "-1" }))';
-            link = link.replace("-1", element.getAttribute('data-doc'));
-            window.location.href = link;
-        } else {
-            showErrorMesgGrowl("This data does not have an uploaded document");
+    var userDashboardConfig = {
+        canAcknowledge: @Json.Serialize((bool)ViewData["Acknowledge"]),
+        urls: {
+            moveDocumentsToFolder: "@Url.Action("MoveDocumentsToFolder", "UserDashboard")",
+            search: "@Url.Action("Search", "UserDashboard")",
+            downloadExcel: "@Url.Action("DownloadExcel", "UserDashboard")",
+            acknowledgeDocument: "@Url.Action("AcknowledgeDocument", "UserDashboard")",
+            downloadDocument: '@Html.Raw(Url.Action("DownloadDocument", "UserDashboard", new { path = "-1" }))',
+            downloadAttachment: '@Html.Raw(Url.Action("downloadAttachment", "DocumentMaintenance", new { FILE_PATH = "-1", DOCUMENT_TRANSACTION_ID = "-2" }))',
+            viewAttachment: '@Html.Raw(Url.Action("ViewAttachment", "DocumentMaintenance", new { FILE_PATH = "-1", DOCUMENT_TRANSACTION_ID = "-2", type = "-3" }))'
         }
-        //data: {
-        //    DOCUMENT_NO: $("#addEditDocumentNo").val()
-        //},
-    }
-
-    function onDownloadAttachment(attachment, documentId) {
-        gAttachmentPath = attachment;
-        gDocumentId = documentId;
-        downloadAttachment();
-    }
-
-    function downloadAttachment() {
-        if (gAttachmentPath !== "null" && gAttachmentPath !== null) {
-            var link = '@Html.Raw(Url.Action("downloadAttachment", "DocumentMaintenance", new { FILE_PATH = "-1", DOCUMENT_TRANSACTION_ID = "-2" }))';
-            link = link.replace("-1", gAttachmentPath);
-            link = link.replace("-2", gDocumentId);
-            window.location.href = link;
-        } else {
-            showErrorMesgGrowl("This data does not have an attachment");
-        }
-    }
-
-    function onViewAttachment(attachment, documentId) {
-        gAttachmentPath = attachment;
-        gDocumentId = documentId;
-        viewAttachment();
-    }
-
-    function viewAttachment() {
-        if (gAttachmentPath !== "null" && gAttachmentPath !== null) {
-            var link = '@Html.Raw(Url.Action("ViewAttachment", "DocumentMaintenance", new { FILE_PATH = "-1", DOCUMENT_TRANSACTION_ID = "-2", type = "-3" }))';
-            link = link.replace("-1", gAttachmentPath);
-            link = link.replace("-2", gDocumentId);
-            link = link.replace("-3", "3");
-            window.open(link, '_blank');
-        } else {
-            showErrorMesgGrowl("This data does not have an attachment");
-        }
-    }
-
-    function confirmAcknowledge() {
-        showConfirmMesg("Are you sure you want to accept this document?", insertLog, "Confirmation");
-    }
-
-    function insertLog() {
-        popUpProgressShow();
-
-        var row = getSelectedRowData();
-        if (row == null) {
-            popUpProgressHide();
-            return;
-        }
-
-        gDocumentTransactionId = row.DOCUMENT_TRANSACTION_ID;
-        gDocumentCtrlId = row.DOCUMENT_CTRL_ID;
-        gDepartmentId = row.DEPARTMENT_ID;
-
-        $.ajax({
-            type: "POST",
-            url: "@Url.Action("AcknowledgeDocument", "UserDashboard")",
-            dataType: 'json',
-            traditional: true,
-            data: {
-                DOCUMENT_TRANSACTION_ID: gDocumentTransactionId,
-                DOCUMENT_CTRL_ID: gDocumentCtrlId,
-                DEPARTMENT_ID: gDepartmentId,
-            },
-            success: function (result) {
-                popUpProgressHide();
-                if (result.status == true) {
-                    showSuccessMesgGrowl(result.message);
-                    onSearch();
-                } else {
-                    showErrorMesgGrowl(result.message);
-                }
-            },
-            error: function (result) {
-                popUpProgressHide();
-                showErrorMesgGrowl(result);
-            }
-        });
-    }
+    };
 </script>
+<script src="~/js/views/user-dashboard.js" asp-append-version="true"></script>
