@@ -1,24 +1,11 @@
 <script type="text/javascript">
-    $(document).ready(function () {
-        function setStatsPanelCollapsed(collapsed) {
-            var $row = $("#dpLayoutRow");
-            var $icon = $("#btn_toggleStats i");
-
-            $row.toggleClass("stats-collapsed", collapsed);
-            $icon.toggleClass("fa-angle-double-right", !collapsed).toggleClass("fa-angle-double-left", collapsed);
-            $("#btn_toggleStats").attr("title", collapsed ? "Show Notification Summary" : "Hide Notification Summary");
-
-            setTimeout(function () {
-                $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-            }, 230);
+    var inboxConfig = {
+        urls: {
+            search: "@Url.Action("Search", "Inbox")",
+            markAllRead: "@Url.Action("MarkAllRead", "Inbox")",
+            clearAll: "@Url.Action("ClearAll", "Inbox")",
+            markRead: "@Url.Action("MarkRead", "Inbox")"
         }
-
-        $("#btn_toggleStats").on("click", function () {
-            setStatsPanelCollapsed(!$("#dpLayoutRow").hasClass("stats-collapsed"));
-        });
-
-        $("#btn_closeStatsPanel").on("click", function () {
-            setStatsPanelCollapsed(true);
-        });
-    });
+    };
 </script>
+<script src="~/js/views/inbox.js" asp-append-version="true"></script>

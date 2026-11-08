@@ -1,0 +1,183 @@
+// NotificationSetting. Server values come from notificationSettingConfig in the view.
+var gCanToggle = notificationSettingConfig.canToggle;
+
+function nsRenderStats(data) {
+    var total = data.length;
+    var enabled = data.filter(function (r) { return r.SEND_EMAIL; }).length;
+    var disabled = total - enabled;
+
+    var lastUpdated = null;
+    data.forEach(function (r) {
+        var dt = r.CHANGED_DT || r.CREATED_DT;
+        if (dt != null && (lastUpdated == null || moment(dt).isAfter(lastUpdated))) {
+            lastUpdated = dt;
+        }
+    });
+
+    $("#nsStatTotal").text(total);
+    $("#nsStatEnabled").text(enabled);
+    $("#nsStatDisabled").text(disabled);
+    $("#nsStatLastUpdated").html(lastUpdated != null
+        ? moment(lastUpdated).format("DD MMM YYYY") + "<br><span style='font-size:11px;font-weight:600;color:#66788A;'>" + moment(lastUpdated).format("HH:mm") + "</span>"
+        : "-");
+}
+
+function nsToggleEmail(notificationType, sendEmail, $checkbox) {
+    popUpProgressShow();
+    $.ajax({
+        type: "POST",
+        url: notificationSettingConfig.urls.toggleEmail,
+        dataType: "json",
+        data: {
+            notificationType: notificationType,
+            sendEmail: sendEmail
+        },
+        success: function (result) {
+            popUpProgressHide();
+            if (result.status) {
+                showSuccessMesgGrowl(result.message);
+                $("#datagrid").dxDataGrid("instance").refresh();
+            } else {
+                $checkbox.prop("checked", !sendEmail);
+                showErrorMesgGrowl(result.message);
+            }
+        },
+        error: function (result) {
+            popUpProgressHide();
+            $checkbox.prop("checked", !sendEmail);
+            showErrorMesgGrowl(result);
+        }
+    });
+}
+
+$(document).ready(function () {
+    var gridStore = new DevExpress.data.CustomStore({
+        key: "NOTIFICATION_TYPE",
+        loadMode: "raw",
+        load: function () {
+            var d = $.Deferred();
+
+            $.ajax({
+                type: "GET",
+                url: notificationSettingConfig.urls.search
+            }).done(function (result) {
+                var data = (result.status && result.data) ? result.data : [];
+                nsRenderStats(data);
+                d.resolve(data);
+            }).fail(function () {
+                d.reject("Data loading error");
+            });
+
+            return d.promise();
+        }
+    });
+
+    $("#datagrid").dxDataGrid({
+        dataSource: gridStore,
+        showBorders: true,
+        columnAutoWidth: true,
+        allowColumnResizing: true,
+        columnResizingMode: "widget",
+        wordWrapEnabled: false,
+        sorting: { mode: "none" },
+        noDataText: "No data.",
+        height: computeGridHeight(),
+        filterRow: { visible: false, applyFilter: "auto" },
+        headerFilter: { visible: true },
+        searchPanel: { visible: false, highlightCaseSensitive: false },
+        toolbar: { visible: false },
+        selection: { mode: "none" },
+        paging: { pageSize: 10 },
+        pager: {
+            visible: true,
+            displayMode: "compact",
+            showPageSizeSelector: true,
+            allowedPageSizes: [10, 25, 50, 100],
+            showInfo: true,
+            showNavigationButtons: true
+        },
+        columnChooser: {
+            enabled: true,
+            mode: "select"
+        },
+        columnFixing: { enabled: true },
+        columns: [
+            {
+                caption: "No",
+                width: 50,
+                alignment: "center",
+                allowHiding: false,
+                allowFiltering: false,
+                fixed: true,
+                fixedPosition: "left",
+                cellTemplate: function (container, options) {
+                    var pageIndex = options.component.pageIndex();
+                    var pageSize = options.component.pageSize();
+                    container.text(pageIndex * pageSize + options.row.rowIndex + 1);
+                }
+            },
+            { dataField: "MODULE_NAME", caption: "Module", fixed: true, fixedPosition: "left" },
+            { dataField: "NOTIFICATION_LABEL", caption: "Notification Type" },
+            {
+                dataField: "SEND_EMAIL",
+                caption: "Send Email",
+                alignment: "center",
+                width: 130,
+                calculateCellValue: function (row) {
+                    return row.SEND_EMAIL ? "On" : "Off";
+                },
+                lookup: {
+                    dataSource: [{ v: "On" }, { v: "Off" }],
+                    valueExpr: "v",
+                    displayExpr: "v"
+                },
+                cellTemplate: function (container, options) {
+                    var row = options.data;
+                    var checkedAttr = row.SEND_EMAIL ? "checked" : "";
+                    var disabledAttr = gCanToggle ? "" : "disabled";
+
+                    var $label = $("<label>").addClass("dms-toggle");
+                    var $checkbox = $("<input>").attr({ type: "checkbox" });
+                    if (row.SEND_EMAIL) $checkbox.prop("checked", true);
+                    if (!gCanToggle) $checkbox.prop("disabled", true);
+                    $("<span>").addClass("dms-toggle-slider").appendTo($label);
+                    $label.prepend($checkbox);
+
+                    $checkbox.on("change", function () {
+                        var sendEmail = $checkbox.is(":checked");
+                        nsToggleEmail(row.NOTIFICATION_TYPE, sendEmail, $checkbox);
+                    });
+
+                    $label.appendTo(container);
+                }
+            },
+            { dataField: "CHANGED_BY", caption: "Changed By" },
+            {
+                dataField: "CHANGED_DT",
+                caption: "Changed Date",
+                alignment: "right",
+                cellTemplate: function (container, options) {
+                    var value = options.data.CHANGED_DT;
+                    container.text(value != null ? moment(value).format("DD-MM-YYYY HH:mm") : "-");
+                }
+            }
+        ]
+    });
+
+    bindGridToolbar("columns filters resize");
+
+    $("#btn_resetFilters").on("click", function () {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        grid.clearFilter();
+    });
+
+    $("#btn_refresh").on("click", function () {
+        $("#datagrid").dxDataGrid("instance").refresh();
+    });
+
+});
+
+$(document).ready(function () {
+    bindGridToolbar("stats");
+
+});

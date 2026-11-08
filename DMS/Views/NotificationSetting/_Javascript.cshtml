@@ -1,6 +1,10 @@
 <script type="text/javascript">
-    $(document).ready(function () {
-        bindGridToolbar("stats");
-
-    });
+    var notificationSettingConfig = {
+        canToggle: @((((bool)ViewData["Toggle"])) ? "true" : "false"),
+        urls: {
+            toggleEmail: "@Url.Action("ToggleEmail", "NotificationSetting")",
+            search: "@Url.Action("Search", "NotificationSetting")"
+        }
+    };
 </script>
+<script src="~/js/views/notification-setting.js" asp-append-version="true"></script>

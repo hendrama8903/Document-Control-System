@@ -1,0 +1,273 @@
+// Inbox. Server values come from inboxConfig in the view.
+function ibRenderStats(data) {
+    var total = data.length;
+    var unread = data.filter(function (r) { return r.STATUS == "0"; }).length;
+
+    $("#ibStatTotal").text(total);
+    $("#ibStatUnread").text(unread);
+    $("#ibStatRead").text(total - unread);
+}
+
+$(document).ready(function () {
+    var gridStore = new DevExpress.data.CustomStore({
+        key: "NOTIFICATION_ID",
+        loadMode: "raw",
+        load: function () {
+            var d = $.Deferred();
+
+            $.ajax({
+                type: "POST",
+                url: inboxConfig.urls.search
+            }).done(function (result) {
+                var data = result.status == true ? result.data : [];
+                ibRenderStats(data);
+                d.resolve(data);
+            }).fail(function () {
+                d.reject("Data loading error");
+            });
+
+            return d.promise();
+        }
+    });
+
+    $("#datagrid").dxDataGrid({
+        dataSource: gridStore,
+        showBorders: true,
+        columnAutoWidth: true,
+        allowColumnResizing: true,
+        columnResizingMode: "widget",
+        wordWrapEnabled: false,
+        sorting: { mode: "none" },
+        noDataText: "No notifications yet.",
+        height: computeGridHeight(),
+        filterRow: { visible: false, applyFilter: "auto" },
+        headerFilter: { visible: true },
+        searchPanel: { visible: false, highlightCaseSensitive: false },
+        toolbar: { visible: false },
+        selection: { mode: "none" },
+        paging: { pageSize: 10 },
+        pager: {
+            visible: true,
+            displayMode: "compact",
+            showPageSizeSelector: true,
+            allowedPageSizes: [10, 25, 50, 100],
+            showInfo: true,
+            showNavigationButtons: true
+        },
+        columnChooser: {
+            enabled: true,
+            mode: "select"
+        },
+        columnFixing: { enabled: true },
+        onRowPrepared: function (e) {
+            if (e.rowType === "data" && e.data.STATUS == "0") {
+                e.rowElement.addClass("ib-unread-row");
+            }
+        },
+        columns: [
+            {
+                caption: "No",
+                width: 50,
+                alignment: "center",
+                allowHiding: false,
+                allowFiltering: false,
+                fixed: true,
+                fixedPosition: "left",
+                cellTemplate: function (container, options) {
+                    var pageIndex = options.component.pageIndex();
+                    var pageSize = options.component.pageSize();
+                    container.text(pageIndex * pageSize + options.row.rowIndex + 1);
+                }
+            },
+            {
+                caption: "Status",
+                dataField: "STATUS",
+                width: 100,
+                calculateCellValue: function (row) {
+                    return row.STATUS == "0" ? "Unread" : "Read";
+                },
+                cellTemplate: function (container, options) {
+                    var unread = options.data.STATUS == "0";
+                    $("<span>").addClass("ib-status-pill " + (unread ? "unread" : "read")).text(unread ? "Unread" : "Read").appendTo(container);
+                }
+            },
+            {
+                dataField: "NOTIFICATION_TITLE",
+                caption: "Title",
+                minWidth: 180,
+                cellTemplate: function (container, options) {
+                    var row = options.data;
+                    var unread = row.STATUS == "0";
+                    var $cell = $("<div>").addClass("ib-title-cell").toggleClass("ib-read", !unread);
+                    $("<span>").addClass("ib-unread-dot").appendTo($cell);
+                    $("<b>").text(row.NOTIFICATION_TITLE || "").appendTo($cell);
+                    $cell.on("click", function () { ibOpenNotification(row); });
+                    $cell.appendTo(container);
+                }
+            },
+            {
+                dataField: "NOTIFICATION_TEXT",
+                caption: "Message",
+                minWidth: 260,
+                cellTemplate: function (container, options) {
+                    $("<div>").addClass("ib-msg-cell").html(options.data.NOTIFICATION_TEXT || "").appendTo(container);
+                }
+            },
+            {
+                dataField: "NOTIFICATION_DATE",
+                caption: "Date",
+                alignment: "right",
+                width: 150,
+                cellTemplate: function (container, options) {
+                    var value = options.data.NOTIFICATION_DATE;
+                    container.text(value != null ? moment(value).format("DD-MM-YYYY HH:mm") : "");
+                }
+            },
+            {
+                caption: "Action",
+                alignment: "center",
+                width: 70,
+                allowHiding: false,
+                allowFiltering: false,
+                fixed: true,
+                fixedPosition: "right",
+                cellTemplate: function (container, options) {
+                    var row = options.data;
+
+                    $("<button>")
+                        .attr({ type: "button", title: "More actions" })
+                        .addClass("dp-act-kebab")
+                        .html('<i class="fa fa-ellipsis-v"></i>')
+                        .on("click", function (e) {
+                            e.stopPropagation();
+                            openRowActionMenu($(this), row);
+                        })
+                        .appendTo(container);
+                }
+            }
+        ]
+    });
+
+    bindGridToolbar("columns filters resize");
+
+    // ---------- toolbar: reset ----------
+    $("#btn_resetFilters").on("click", function () {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        grid.clearFilter();
+    });
+
+    // ---------- toolbar: refresh ----------
+    $("#btn_refresh").on("click", function () {
+        $("#datagrid").dxDataGrid("instance").refresh();
+    });
+
+    $("#btn_markAllRead").on("click", function () {
+        $.ajax({
+            type: "POST",
+            url: inboxConfig.urls.markAllRead
+        }).done(function (result) {
+            if (result.status == true) {
+                $("#datagrid").dxDataGrid("instance").refresh();
+                if (typeof GetListNotif === "function") { GetListNotif(); }
+            } else {
+                showErrorMesgGrowl(result.message);
+            }
+        });
+    });
+
+    // ---------- toolbar: clear all notifications (permanent, not soft delete) ----------
+    $("#btn_clearAll").on("click", function () {
+        showDangerConfirm("Are you sure you want to clear all notifications? This cannot be undone.", function () {
+            $.ajax({
+                type: "POST",
+                url: inboxConfig.urls.clearAll
+            }).done(function (result) {
+                if (result.status == true) {
+                    $("#datagrid").dxDataGrid("instance").refresh();
+                    if (typeof GetListNotif === "function") { GetListNotif(); }
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+            });
+        }, "Clear");
+    });
+
+    $('body').tooltip({ selector: '[data-toggle="tooltip"]' });
+});
+
+// ---------- open a notification: mark as read (if needed) then navigate ----------
+function ibOpenNotification(row) {
+    if (row.STATUS == "0") {
+        $.ajax({
+            type: "POST",
+            url: inboxConfig.urls.markRead,
+            data: { notificationId: row.NOTIFICATION_ID, status: "1" }
+        }).always(function () {
+            if (typeof GetListNotif === "function") { GetListNotif(); }
+            if (row.NOTIFICATION_URL) { window.location.href = row.NOTIFICATION_URL; }
+        });
+    } else if (row.NOTIFICATION_URL) {
+        window.location.href = row.NOTIFICATION_URL;
+    }
+}
+
+function ibSetStatus(row, status) {
+    $.ajax({
+        type: "POST",
+        url: inboxConfig.urls.markRead,
+        data: { notificationId: row.NOTIFICATION_ID, status: status }
+    }).done(function (result) {
+        if (result.status == true) {
+            $("#datagrid").dxDataGrid("instance").refresh();
+            if (typeof GetListNotif === "function") { GetListNotif(); }
+        } else {
+            showErrorMesgGrowl(result.message);
+        }
+    });
+}
+
+function openRowActionMenu($btn, row) {
+    var $menu = buildRowActionMenu();
+    $menu.empty();
+
+    $menu.append(menuItem("dp-menu-preview", "fa-external-link", "Open", function () {
+        ibOpenNotification(row);
+    }));
+
+    if (row.STATUS == "0") {
+        $menu.append(menuItem("dp-menu-edit", "fa-check-circle-o", "Mark as Read", function () {
+            ibSetStatus(row, "1");
+        }));
+    } else {
+        $menu.append(menuItem("dp-menu-edit", "fa-envelope-o", "Mark as Unread", function () {
+            ibSetStatus(row, "0");
+        }));
+    }
+
+    var offset = $btn.offset();
+    $menu.css({ top: offset.top + $btn.outerHeight() + 4, left: offset.left - $menu.outerWidth() + $btn.outerWidth() })
+        .show();
+}
+
+$(document).ready(function () {
+    function setStatsPanelCollapsed(collapsed) {
+        var $row = $("#dpLayoutRow");
+        var $icon = $("#btn_toggleStats i");
+
+        $row.toggleClass("stats-collapsed", collapsed);
+        $icon.toggleClass("fa-angle-double-right", !collapsed).toggleClass("fa-angle-double-left", collapsed);
+        $("#btn_toggleStats").attr("title", collapsed ? "Show Notification Summary" : "Hide Notification Summary");
+
+        setTimeout(function () {
+            $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
+        }, 230);
+    }
+
+    $("#btn_toggleStats").on("click", function () {
+        setStatsPanelCollapsed(!$("#dpLayoutRow").hasClass("stats-collapsed"));
+    });
+
+    $("#btn_closeStatsPanel").on("click", function () {
+        setStatsPanelCollapsed(true);
+    });
+});
