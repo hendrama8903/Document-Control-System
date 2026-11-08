@@ -77,6 +77,16 @@ BEGIN TRY
 			RETURN 0;
  	END
 	
+	-- Kode yang masih ada sebagai data nonaktif harus diaktifkan lagi, bukan dibuat ulang.
+	IF EXISTS (SELECT TOP 1 1 FROM [dbo].[TB_M_DIVISION]
+	WHERE [DIVISION_CODE] = @DIVISION_CODE
+	AND DELETE_FLAG = 1)
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Division Code ' + @DIVISION_CODE + ' already exists but is inactive. Activate it instead.';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+		RETURN 0;
+	END
+
 	INSERT INTO [dbo].[TB_M_DIVISION] (
 		DIVISION_CODE,
 		DIVISION_NAME,
