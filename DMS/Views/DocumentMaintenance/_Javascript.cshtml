@@ -53,7 +53,6 @@
         setDataSelect2WithParam("addEditDocumentCreator", "@Url.Action("GetUserNameByDepartmentId", "User")", "- Choose -", "");
         setDataSelect2("addEditSection", "@Url.Action("GetSectionCodeAndName", "SectionMaster")", "- Choose -");
 
-
         $("#btn_add").on("click", function () {
             onAddPrepare();
         });
@@ -715,13 +714,6 @@
     function onDownloadTemplate(code) {
         var link = '@Html.Raw(Url.Action("DownloadTemplate", "DocumentMaster", new { code = "-1" }))';
         window.location.href = link.replace("-1", code);
-    }
-
-
-    function onSearch() {
-        var grid = $("#datagrid").dxDataGrid("instance");
-        grid.clearSelection();
-        grid.refresh();
     }
 
     function onAddPrepare() {
@@ -1412,8 +1404,6 @@
         //showErrorMesgGrowl(myArray[0]);
         //showErrorMesgGrowl(myArray[1]);
 
-
-
         /*
         -	IF Level = 1
     -	Enable :					-	Company Code
@@ -1434,7 +1424,6 @@
                             -	Document Name
                             -	Date
                             -	Document Upload
-
 
         */
 
@@ -2204,7 +2193,6 @@
                         $('#editReferenceNo').val(data.REFERENCE_NO);
                         $('#editSource').val(data.SOURCE);
 
-
                         $("#modalEdit").modal();
                         $('#modalEdit').on('shown.bs.modal', function () {
                             $('#editDocumentName').focus();
@@ -2296,7 +2284,6 @@
                 $("th").removeClass('sorting_asc');
             }
         });
-
 
         $("#datagridDistribution").on("click", "tbody tr", function (e) {
             if (event.target.type !== 'checkbox') {
@@ -2511,7 +2498,6 @@
                 $("th").removeClass('sorting_asc');
             }
         });
-
 
         $("#datagridDocumentLog").on("click", "tbody tr", function (e) {
             if (event.target.type !== 'checkbox') {

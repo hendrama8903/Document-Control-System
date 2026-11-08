@@ -1,0 +1,29 @@
+#esignOverlay { position: fixed; inset: 0; z-index: 3000; background: rgba(16, 24, 40, .55); display: none; align-items: center; justify-content: center; padding: 16px; font-family: 'Inter', 'Segoe UI', sans-serif; }
+#esignOverlay.open { display: flex; }
+.esign-box { background: #fff; border-radius: 14px; width: 100%; max-width: 640px; box-shadow: 0 24px 48px -12px rgba(16,24,40,.35); overflow: hidden; }
+.esign-head { padding: 14px 18px; border-bottom: 1px solid #EEF1F5; display: flex; align-items: flex-start; gap: 10px; }
+.esign-head-icon { width: 34px; height: 34px; border-radius: 9px; background: #EAF1FD; color: #2450D8; display: flex; align-items: center; justify-content: center; flex: none; }
+.esign-title { font-size: 15px; font-weight: 700; color: #101828; }
+.esign-sub { font-size: 12px; color: #667085; margin-top: 2px; word-break: break-word; }
+.esign-close { margin-left: auto; background: none; border: none; font-size: 18px; color: #98A2B3; cursor: pointer; line-height: 1; }
+.esign-body { padding: 14px 18px 6px; }
+.esign-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.esign-tab { flex: 1; border: 1px solid #D5DDE8; background: #fff; border-radius: 8px; padding: 7px 10px; font-size: 13px; font-weight: 600; color: #475467; cursor: pointer; }
+.esign-tab.active { border-color: #2450D8; background: #EAF1FD; color: #1C3FA6; }
+.esign-pad-wrap { position: relative; border: 1.5px dashed #B9C4D4; border-radius: 10px; background: #FCFCFD; }
+.esign-pad-wrap canvas { display: block; width: 100%; aspect-ratio: 3 / 1; touch-action: none; cursor: crosshair; border-radius: 10px; }
+.esign-line { position: absolute; left: 7%; right: 7%; bottom: 24%; border-bottom: 1px solid #D0D5DD; pointer-events: none; }
+.esign-hint { position: absolute; left: 0; right: 0; top: 40%; text-align: center; color: #B0B8C4; font-size: 13px; pointer-events: none; }
+.esign-type input { width: 100%; border: 1px solid #D5DDE8; border-radius: 8px; padding: 9px 11px; font-size: 14px; }
+.esign-fonts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.esign-font { border: 1px solid #D5DDE8; border-radius: 8px; padding: 8px 10px; cursor: pointer; background: #fff; text-align: center; color: #142878; font-size: 26px; line-height: 1.3; min-height: 56px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.esign-font.active { border-color: #2450D8; box-shadow: 0 0 0 3px rgba(36,80,216,.15); }
+.esign-tools { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 12px; color: #667085; }
+.esign-link { background: none; border: none; color: #2450D8; font-weight: 600; cursor: pointer; padding: 0; font-size: 12px; }
+.esign-consent { font-size: 12px; color: #475467; background: #F9FAFB; border-radius: 8px; padding: 8px 10px; margin: 10px 0 4px; }
+.esign-error { color: #B42318; font-size: 12px; min-height: 16px; margin-top: 4px; }
+.esign-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid #EEF1F5; }
+.esign-btn { border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 700; border: 1px solid #D5DDE8; background: #fff; color: #475467; cursor: pointer; }
+.esign-btn.primary { background: #2450D8; border-color: #2450D8; color: #fff; }
+.esign-btn.primary:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 480px) { .esign-fonts { grid-template-columns: 1fr; } .esign-font { font-size: 22px; } }

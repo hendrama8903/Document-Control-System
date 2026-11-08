@@ -1,18 +1,7 @@
 <link rel="stylesheet" href="~/css/devextreme/dx.light.css" asp-append-version="true" />
 <script src="~/js/devextreme/dx.custom.js" asp-append-version="true"></script>
 
-<style>
-    .dp-count-chip {
-        display: inline-block;
-        min-width: 22px;
-        padding: 2px 8px;
-        border-radius: 20px;
-        background: #E7F1FB;
-        color: #2E75B6;
-        font-size: 12px;
-        font-weight: 700;
-    }
-</style>
+<link rel="stylesheet" href="~/css/views/shared/request-grid.css" asp-append-version="true" />
 
 <div class="box-body">
     <div id="datagrid"></div>
@@ -23,24 +12,12 @@
     var gCanDelete = @(((bool)ViewData["Delete"]) ? "true" : "false");
     var gCanPrint = @(((bool)ViewData["Print"]) ? "true" : "false");
 
-    function getSelectedRowData() {
-        var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
-        return rows.length > 0 ? rows[0] : null;
-    }
-
     function updateActionButtons() {
         var row = getSelectedRowData();
         var editable = row != null && row.STATUS == "0";
 
         $("#btn_edit").prop("disabled", !editable);
         $("#btn_delete").prop("disabled", !editable);
-    }
-
-    function computeGridHeight() {
-        var gridTop = $("#datagrid").offset().top;
-        var footerHeight = $("#divFooter").outerHeight(true) || 0;
-
-        return Math.max(300, $(window).height() - gridTop - footerHeight - 40);
     }
 
     $(document).ready(function () {
@@ -75,38 +52,15 @@
             }
         });
 
-        $("#datagrid").dxDataGrid({
+        $("#datagrid").dxDataGrid(dmsGridOptions({
             dataSource: gridStore,
-            showBorders: true,
-            columnAutoWidth: true,
-            allowColumnResizing: true,
-            columnResizingMode: "widget",
-            wordWrapEnabled: false,
-            sorting: { mode: "none" },
-            noDataText: "Data not found.",
             height: computeGridHeight(),
             filterRow: { visible: false, applyFilter: "auto" },
-            headerFilter: { visible: true },
-            toolbar: { visible: false },
             selection: {
                 mode: "multiple",
                 showCheckBoxesMode: "always",
                 allowSelectAll: false
             },
-            paging: { pageSize: 10 },
-            pager: {
-                visible: true,
-                displayMode: "compact",
-                showPageSizeSelector: true,
-                allowedPageSizes: [10, 25, 50, 100],
-                showInfo: true,
-                showNavigationButtons: true
-            },
-            columnChooser: {
-                enabled: true,
-                mode: "select"
-            },
-            columnFixing: { enabled: true },
             onSelectionChanged: function (e) {
                 if (e.selectedRowKeys.length > 1) {
                     e.component.selectRows(e.currentSelectedRowKeys, false);
@@ -208,24 +162,9 @@
                     }
                 }
             ]
-        });
+        }));
 
-        $("#btn_columns").on("click", function () {
-            $("#datagrid").dxDataGrid("instance").showColumnChooser();
-        });
-
-        $("#btn_refresh").on("click", function () {
-            $("#datagrid").dxDataGrid("instance").clearSelection();
-            $("#datagrid").dxDataGrid("instance").refresh();
-        });
-
-        // ---------- toolbar: show/hide column filter row ----------
-        $("#btn_toggleFilters").on("click", function () {
-            var grid = $("#datagrid").dxDataGrid("instance");
-            var visible = !grid.option("filterRow.visible");
-            grid.option("filterRow.visible", visible);
-            $(this).toggleClass("active", visible);
-        });
+        bindGridToolbar("columns filters refresh resize");
 
         // ---------- toggle summary/KPI cards, so the grid below can move up ----------
         $("#btn_toggleStats").on("click", function () {
@@ -251,10 +190,6 @@
             );
         });
 
-        $(window).on("resize", function () {
-            $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-        });
-
         $('body').tooltip({ selector: '[data-toggle="tooltip"]' });
     });
 
@@ -276,33 +211,6 @@
         $("#dsThisMonth").text(thisMonth);
         $("#dsDocumentsBundled").text(documentsBundled);
         $("#dsLatestSubmission").text(latest ? latest.format("DD MMM YYYY") : "-");
-    }
-
-    // ---------- per-row "more actions" kebab menu ----------
-    var $dsRowMenu = null;
-
-    function buildRowActionMenu() {
-        if ($dsRowMenu) return $dsRowMenu;
-
-        $dsRowMenu = $('<ul class="dropdown-menu dp-dropdown-menu" role="menu"></ul>')
-            .css({ position: "absolute", display: "none", "z-index": 2000, "min-width": "170px" })
-            .appendTo("body");
-
-        $(document).on("click", function () {
-            $dsRowMenu.hide();
-        });
-
-        return $dsRowMenu;
-    }
-
-    function menuItem(cssClass, icon, label, onClick) {
-        var $li = $('<li><a href="#" class="' + cssClass + '"><i class="fa ' + icon + '"></i> ' + label + '</a></li>');
-        $li.find("a").on("click", function (e) {
-            e.preventDefault();
-            $dsRowMenu.hide();
-            onClick();
-        });
-        return $li;
     }
 
     function openRowActionMenu($btn, row) {

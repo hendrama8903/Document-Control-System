@@ -1,0 +1,199 @@
+#modalAddEdit .modal-content.adf-modal-content,
+#modalAddEditPosition .modal-content.adf-modal-content {
+    border: none;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+#modalAddEdit .adf-header,
+#modalAddEditPosition .adf-header {
+    background: linear-gradient(135deg, #2450D8, #1C3FA6);
+    color: #fff;
+    padding: 16px 22px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#modalAddEdit .adf-header-icon,
+#modalAddEditPosition .adf-header-icon {
+    flex: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    background: rgba(255,255,255,.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+#modalAddEdit .adf-header-title,
+#modalAddEditPosition .adf-header-title { font-size: 15.5px; font-weight: 700; margin: 0; }
+#modalAddEdit .adf-header-sub { font-size: 11.5px; color: rgba(255,255,255,.85); margin: 2px 0 0; }
+
+#modalAddEdit .adf-close,
+#modalAddEditPosition .adf-close {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,.9);
+    font-size: 18px;
+    line-height: 1;
+    padding: 6px;
+    cursor: pointer;
+    align-self: flex-start;
+}
+
+#modalAddEdit .adf-close:hover,
+#modalAddEditPosition .adf-close:hover { color: #fff; }
+
+/* ---------- Add/Edit User: two-column layout ---------- */
+#modalAddEdit .modal-dialog { width: 900px; max-width: 96vw; }
+#modalAddEdit .modal-body { padding: 0; background: #F4F6F8; }
+
+#modalAddEdit .uf-layout { display: flex; align-items: stretch; }
+
+#modalAddEdit .uf-sidebar {
+    flex: none;
+    width: 220px;
+    background: #EEF1F5;
+    border-right: 1px solid #E3E8EE;
+    padding: 22px 18px;
+    text-align: center;
+}
+#modalAddEdit .uf-sidebar h5 { font-weight: 700; font-size: 13.5px; color: #1D2939; margin: 0 0 4px; }
+#modalAddEdit .uf-sidebar > p { font-size: 11px; color: #66788A; margin: 0 0 6px; }
+
+#modalAddEdit .uf-avatar-wrap { position: relative; width: 118px; height: 118px; margin: 14px auto 16px; }
+#modalAddEdit .uf-avatar {
+    width: 118px;
+    height: 118px;
+    border-radius: 50%;
+    background: #D7DCE3;
+    border: 2px dashed #C3CAD3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+#modalAddEdit .uf-avatar img { width: 100%; height: 100%; object-fit: cover; display: none; }
+#modalAddEdit .uf-avatar i { font-size: 44px; color: #98A2B3; }
+#modalAddEdit .uf-avatar-cam {
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #2450D8;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid #EEF1F5;
+    cursor: pointer;
+    font-size: 12.5px;
+}
+#modalAddEdit .uf-avatar-cam:hover { background: #1C3FA6; }
+
+#modalAddEdit .uf-sidebar .dp-btn { width: 100%; justify-content: center; }
+#modalAddEdit .uf-hint { font-size: 10.5px; color: #98A2B3; margin-top: 8px; }
+#modalAddEdit .uf-remove-photo {
+    display: none;
+    margin-top: 10px;
+    font-size: 11px;
+    color: #C62828;
+    font-weight: 600;
+    cursor: pointer;
+    background: none;
+    border: none;
+}
+#modalAddEdit .uf-remove-photo:hover { text-decoration: underline; }
+
+#modalAddEdit .uf-main { flex: 1; min-width: 0; padding: 20px 24px; max-height: 62vh; overflow-y: auto; }
+
+#modalAddEdit .uf-section { margin-bottom: 18px; }
+#modalAddEdit .uf-section:last-child { margin-bottom: 0; }
+#modalAddEdit .uf-section-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1D2939;
+    margin-bottom: 3px;
+}
+#modalAddEdit .uf-section-icon {
+    flex: none;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: #E7F1FB;
+    color: #2450D8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+#modalAddEdit .uf-section-sub { font-size: 11.5px; color: #98A2B3; margin: 0 0 14px 35px; }
+
+#modalAddEdit .uf-row { display: flex; gap: 16px; margin-bottom: 14px; }
+#modalAddEdit .uf-row:last-child { margin-bottom: 0; }
+#modalAddEdit .uf-row > div { flex: 1; min-width: 0; }
+
+#modalAddEdit .uf-field label { display: block; font-size: 12px; font-weight: 600; color: #26314f; margin-bottom: 5px; }
+#modalAddEdit .uf-input-group { position: relative; }
+#modalAddEdit .uf-input-group i.uf-leading {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    color: #98A2B3; font-size: 12.5px; pointer-events: none;
+}
+#modalAddEdit .uf-input-group i.uf-trailing {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    color: #98A2B3; font-size: 12.5px; cursor: pointer;
+}
+#modalAddEdit .uf-input-group input,
+#modalAddEdit .uf-input-group select.form-control {
+    width: 100%;
+    padding: 8px 12px 8px 34px;
+    border: 1.5px solid #D0D6DE;
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: #1D2939;
+    height: auto;
+}
+#modalAddEdit .uf-input-group input:focus { border-color: #2450D8; outline: none; box-shadow: 0 0 0 3px rgba(36,80,216,.12); }
+#modalAddEdit .uf-input-group.uf-has-trailing input { padding-right: 34px; }
+#modalAddEdit .uf-input-group .select2-container { width: 100% !important; }
+#modalAddEdit .uf-input-group .select2-container .select2-selection--single {
+    height: 35px; border: 1.5px solid #D0D6DE; border-radius: 8px; padding-left: 22px;
+}
+#modalAddEdit .uf-input-group .select2-container .select2-selection__rendered { line-height: 33px; font-size: 12.5px; }
+#modalAddEdit .uf-input-group .select2-container .select2-selection__arrow { height: 33px; }
+
+#modalAddEdit .uf-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 400; color: #344054; margin: 2px 0 0; cursor: pointer; }
+#modalAddEdit .uf-check input { width: 15px; height: 15px; cursor: pointer; margin: 0; }
+
+#modalAddEdit .uf-divider { border-top: 1px solid #E3E8EE; margin: 18px 0; }
+
+#modalAddEdit .uf-dropzone {
+    border: 1.5px dashed #C6D0DB;
+    border-radius: 10px;
+    background: #F9FAFB;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    position: relative;
+}
+#modalAddEdit .uf-dropzone-left { display: flex; align-items: center; gap: 12px; }
+#modalAddEdit .uf-dropzone i.fa-cloud-upload { font-size: 20px; color: #98A2B3; }
+#modalAddEdit .uf-dropzone-text { font-size: 12px; color: #66788A; }
+#modalAddEdit .uf-dropzone-text .uf-browse { color: #2450D8; font-weight: 600; cursor: pointer; }
+#modalAddEdit .uf-dropzone-hint { font-size: 10.5px; color: #98A2B3; margin-top: 2px; }
+#modalAddEdit .uf-dropzone-filename { font-size: 11px; color: #1E9E63; font-weight: 600; margin-top: 4px; }
+#modalAddEdit .uf-dropzone .bootstrap-filestyle { display: none; }
+
+#modalAddEdit .modal-footer { background: #fff; border-top: 1px solid #E3E8EE; padding: 14px 22px; margin: 0; }

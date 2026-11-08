@@ -1,0 +1,328 @@
+/* Approval List - versi ringkas (request Hendra 2026-11-05): stepper horizontal +
+   tabel Approval Route digabung jadi satu timeline vertikal "Approval Flow",
+   tombol aksi dipindah ke banner status di atas supaya tidak perlu scroll. */
+#modalApproval .modal-dialog {
+    width: 760px;
+    max-width: 96vw;
+}
+
+#modalApproval .modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: 92vh;
+    border: none;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+/* header */
+#modalApproval .adf-header {
+    flex: none;
+    background: linear-gradient(135deg, #2450D8, #1C3FA6);
+    color: #fff;
+    padding: 16px 22px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#modalApproval .adf-header-title {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+#modalApproval .adf-close {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,.9);
+    font-size: 18px;
+    line-height: 1;
+    padding: 6px;
+    cursor: pointer;
+}
+
+#modalApproval .adf-close:hover { color: #fff; }
+
+/* body */
+#modalApproval .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    background: #F4F6F8;
+    padding: 18px 22px;
+}
+
+#modalApproval .adf-section {
+    background: #fff;
+    border: 1px solid #E3E8EE;
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+}
+
+#modalApproval .adf-section:last-child { margin-bottom: 0; }
+
+#modalApproval .adf-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #5A6472;
+    margin-bottom: 12px;
+}
+
+#modalApproval .adf-section-title i { color: #2450D8; }
+
+/* Document summary */
+#modalApproval .adf-doc-no {
+    font-size: 12px;
+    font-weight: 700;
+    color: #2450D8;
+    letter-spacing: .02em;
+}
+
+#modalApproval .adf-doc-name {
+    font-size: 17px;
+    font-weight: 700;
+    color: #1D2939;
+    margin-top: 2px;
+    word-break: break-word;
+}
+
+#modalApproval .adf-meta {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #EEF1F4;
+}
+
+#modalApproval .adf-meta-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #8A94A3;
+}
+
+#modalApproval .adf-meta-value {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #1D2939;
+    margin-top: 2px;
+    word-break: break-word;
+}
+
+/* Status banner (+ tombol aksi kalau giliran user login) */
+#modalApproval .adf-status-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+}
+
+#modalApproval .adf-status-icon {
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: currentColor;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#modalApproval .adf-status-icon i { color: #fff; font-size: 14px; }
+#modalApproval .adf-status-body { flex: 1; min-width: 0; }
+#modalApproval .adf-status-text { font-weight: 700; font-size: 13.5px; }
+#modalApproval .adf-status-hint { font-size: 11.5px; opacity: .85; margin-top: 1px; }
+
+#modalApproval .adf-status-info { background: #E7F1FB; color: #2E75B6; }
+#modalApproval .adf-status-success { background: #E6F4EA; color: #1E7E34; }
+#modalApproval .adf-status-mine { background: #FFEDD5; color: #C2410C; box-shadow: inset 0 0 0 1px #FDBA74; }
+#modalApproval .adf-status-danger { background: #FDECEA; color: #C62828; }
+
+#modalApproval .adf-btn-action {
+    flex: none;
+    background: #EA580C;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 12.5px;
+    font-weight: 600;
+}
+
+#modalApproval .adf-btn-action:hover { background: #C2410C; color: #fff; }
+
+/* Approval Flow - timeline vertikal */
+#modalApproval .adf-flow { position: relative; }
+
+#modalApproval .adf-flow-item {
+    position: relative;
+    display: flex;
+    gap: 12px;
+    padding-bottom: 14px;
+}
+
+#modalApproval .adf-flow-item:last-child { padding-bottom: 0; }
+
+/* garis penghubung antar langkah */
+#modalApproval .adf-flow-item:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    left: 13px;
+    top: 28px;
+    bottom: 0;
+    width: 2px;
+    background: #E3E8EE;
+}
+
+#modalApproval .adf-flow-item.done:not(:last-child)::before { background: #1E9E5A; }
+
+#modalApproval .adf-flow-dot {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    position: relative;
+    z-index: 1;
+}
+
+#modalApproval .done .adf-flow-dot { background: #1E9E5A; color: #fff; }
+#modalApproval .current .adf-flow-dot { background: #F2A93B; color: #fff; box-shadow: 0 0 0 4px rgba(242,169,59,.22); }
+#modalApproval .mine .adf-flow-dot { background: #EA580C; box-shadow: 0 0 0 4px rgba(234,88,12,.18); }
+#modalApproval .rejected .adf-flow-dot { background: #D64545; color: #fff; }
+#modalApproval .upcoming .adf-flow-dot { background: #fff; border: 2px solid #D5DAE1; color: #9AA4B2; font-weight: 700; font-size: 11px; }
+
+#modalApproval .adf-flow-main { flex: 1; min-width: 0; padding-top: 1px; }
+
+#modalApproval .adf-flow-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+#modalApproval .adf-flow-who { flex: 1; min-width: 0; }
+#modalApproval .adf-flow-step { font-size: 10.5px; font-weight: 700; color: #8A94A3; }
+#modalApproval .adf-flow-name { font-size: 13px; font-weight: 700; color: #1D2939; }
+#modalApproval .upcoming .adf-flow-name { color: #667085; font-weight: 600; }
+
+#modalApproval .adf-flow-right { flex: none; text-align: right; }
+#modalApproval .adf-flow-date { font-size: 11px; color: #98A2B3; margin-top: 3px; }
+
+#modalApproval .adf-flow-remark {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #475467;
+    background: #F7F9FB;
+    border-radius: 6px;
+    padding: 6px 10px;
+    word-break: break-word;
+}
+
+#modalApproval .adf-flow-remark i { color: #98A2B3; margin-right: 4px; }
+
+/* tabel History / Related Division */
+#modalApproval .approval-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+}
+
+#modalApproval .approval-table th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #8A94A3;
+    padding: 8px 10px;
+    border-bottom: 1px solid #E3E8EE;
+    white-space: nowrap;
+}
+
+#modalApproval .approval-table td {
+    padding: 10px;
+    border-bottom: 1px solid #EEF1F4;
+    vertical-align: middle;
+}
+
+#modalApproval .approval-table tbody tr:last-child td { border-bottom: none; }
+#modalApproval .approver-name { font-weight: 700; color: #1D2939; }
+#modalApproval .cell-muted { color: #C0C6CE; }
+
+#modalApproval .btn-review {
+    background: #2450D8;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 11.5px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+#modalApproval .btn-review:hover { background: #1C3FA6; color: #fff; }
+
+#modalApproval .history-approver {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+#modalApproval .history-icon {
+    flex: none;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #1E9E5A;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    margin-top: 1px;
+}
+
+#modalApproval .history-icon.rejected { background: #D64545; }
+#modalApproval .history-name { font-weight: 700; font-size: 12.5px; color: #1D2939; }
+#modalApproval .history-role { font-size: 11px; color: #8A94A3; }
+
+/* section History bisa dilipat - default tertutup */
+#modalApproval .adf-collapsible-header {
+    cursor: pointer;
+    user-select: none;
+    margin-bottom: 0;
+}
+
+#modalApproval .adf-collapsible-header .chevron {
+    margin-left: auto;
+    transition: transform .15s ease;
+    color: #8A94A3;
+}
+
+#modalApproval .adf-collapsible-header.collapsed .chevron {
+    transform: rotate(-90deg);
+}
+
+#modalApproval .adf-collapsible-body { margin-top: 12px; }
+
+#modalApproval .modal-footer {
+    flex: none;
+    background: #fff;
+    border-top: 1px solid #E3E8EE;
+    padding: 14px 22px;
+}
+
+@media (max-width: 640px) {
+    #modalApproval .adf-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #modalApproval .adf-status-banner { flex-wrap: wrap; }
+}

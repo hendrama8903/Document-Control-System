@@ -1,0 +1,5 @@
+/* site.css forces .fa-chevron-up/-down to white globally (for a dark-background
+   use elsewhere) - override back to the normal dp-icon-btn color for this button. */
+#btn_toggleStats i {
+    color: #344054;
+}

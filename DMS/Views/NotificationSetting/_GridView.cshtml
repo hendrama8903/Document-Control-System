@@ -8,13 +8,6 @@
 <script type="text/javascript">
     var gCanToggle = @((((bool)ViewData["Toggle"])) ? "true" : "false");
 
-    function computeGridHeight() {
-        var gridTop = $("#datagrid").offset().top;
-        var footerHeight = $("#divFooter").outerHeight(true) || 0;
-
-        return Math.max(300, $(window).height() - gridTop - footerHeight - 40);
-    }
-
     function nsRenderStats(data) {
         var total = data.length;
         var enabled = data.filter(function (r) { return r.SEND_EMAIL; }).length;
@@ -178,16 +171,7 @@
             ]
         });
 
-        $("#btn_columns").on("click", function () {
-            $("#datagrid").dxDataGrid("instance").showColumnChooser();
-        });
-
-        $("#btn_toggleFilters").on("click", function () {
-            var grid = $("#datagrid").dxDataGrid("instance");
-            var visible = !grid.option("filterRow.visible");
-            grid.option("filterRow.visible", visible);
-            $(this).toggleClass("active", visible);
-        });
+        bindGridToolbar("columns filters resize");
 
         $("#btn_resetFilters").on("click", function () {
             var grid = $("#datagrid").dxDataGrid("instance");
@@ -198,8 +182,5 @@
             $("#datagrid").dxDataGrid("instance").refresh();
         });
 
-        $(window).on("resize", function () {
-            $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-        });
     });
 </script>

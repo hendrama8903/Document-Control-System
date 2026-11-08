@@ -1,0 +1,11 @@
+#modalDocumentPicker .modal-dialog { width: 760px; max-width: 96vw; }
+#modalDocumentPicker table.dataTable td { vertical-align: middle; }
+#modalDocumentPicker .picker-type-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+#modalDocumentPicker .picker-type-baru { background: #E6F4EA; color: #1E7E34; }
+#modalDocumentPicker .picker-type-revisi { background: #E7F1FB; color: #2E75B6; }

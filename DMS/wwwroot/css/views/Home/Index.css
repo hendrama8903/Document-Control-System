@@ -1,0 +1,281 @@
+/* Dashboard redesign (request Hendra 2026-11-05): urutan dibuat dari "apa yang
+   harus saya kerjakan" (Needs Your Action, daftar approval) ke "bagaimana
+   kondisinya" (Overview sesuai scope jabatan, review, Document Control).
+   Data & aturan kepemilikan per bagian: HomeController.GetDashboardSummary. */
+.hd { padding: 8px 4px 28px; }
+.hd-card {
+    background: var(--surface);
+    border: 1px solid #E3E8EF;
+    border-radius: 16px;
+    box-shadow: 0 4px 14px rgba(16,24,40,.04);
+    padding: 14px 16px;
+    min-width: 0;
+}
+
+.hd-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.hd-card-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #5A6472;
+}
+
+.hd-card-title i { color: var(--accent); margin-right: 6px; }
+
+.hd-card-badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: #475467;
+    background: #EEF1F5;
+    border-radius: 999px;
+    padding: 1px 8px;
+}
+
+.hd-card-link {
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    white-space: nowrap;
+}
+
+.hd-card-link:hover { text-decoration: none; color: #1C3FA6; }
+
+.hd-section-label {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 26px 0 12px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.hd-section-label small { font-size: 12px; font-weight: 600; color: var(--muted); }
+
+.hd-grid { display: grid; gap: 16px; }
+.hd-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.hd-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.hd-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+/* ---- strip ringkas: Needs Your Action | Overview dalam satu baris ---- */
+.hd-strip { display: flex; gap: 16px; align-items: stretch; }
+.hd-strip-group {
+    flex: 1 1 0;
+    min-width: 0;
+    background: var(--surface);
+    border: 1px solid #E3E8EF;
+    border-radius: 16px;
+    box-shadow: 0 4px 14px rgba(16,24,40,.04);
+    padding: 12px 14px;
+}
+.hd-strip-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #5A6472;
+}
+.hd-strip-tiles { display: flex; gap: 8px; }
+
+.hd-scope-chip {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    color: #2450D8;
+    background: #E7F1FB;
+    border-radius: 999px;
+    padding: 1px 9px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 260px;
+}
+
+.hd-refresh {
+    margin-left: auto;
+    border: 1px solid #D5DDE8;
+    background: #fff;
+    border-radius: 8px;
+    width: 26px;
+    height: 26px;
+    font-size: 11.5px;
+    color: #475467;
+    flex: none;
+}
+.hd-refresh:hover { background: #F4F6F8; }
+
+.hd-tile {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: #F7F9FB;
+    color: inherit;
+    transition: background .15s ease;
+}
+a.hd-tile:hover { text-decoration: none; color: inherit; background: #EEF2F7; }
+.hd-tile > span:last-child { min-width: 0; }
+.hd-tile-icon {
+    flex: none;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+}
+.hd-tile-value { display: block; font-size: 20px; font-weight: 800; line-height: 1.1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.hd-tile-label { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hd-tile-label b { font-weight: 700; color: #98A2B3; }
+
+.hd-tile.orange .hd-tile-icon { background: #FFEDD5; color: #EA580C; }
+.hd-tile.blue .hd-tile-icon { background: #E7F1FB; color: #2450D8; }
+.hd-tile.red .hd-tile-icon { background: #FDECEA; color: #C62828; }
+.hd-tile.green .hd-tile-icon { background: #E3F3E7; color: #2E7D3B; }
+/* ada pekerjaan -> aksen kiri; kosong -> diredupkan */
+.hd-tile.has-items.orange { background: #FFF7ED; box-shadow: inset 3px 0 0 #EA580C; }
+.hd-tile.has-items.blue { box-shadow: inset 3px 0 0 #2450D8; }
+.hd-tile.has-items.red { box-shadow: inset 3px 0 0 #C62828; }
+.hd-tile.has-items.green { box-shadow: inset 3px 0 0 #2E7D3B; }
+.hd-tile.is-empty .hd-tile-icon { background: #EEF1F5; color: #98A2B3; }
+.hd-tile.is-empty .hd-tile-value { color: #98A2B3; }
+
+/* ---- daftar (My Approval / My Documents / Review): baris 1 garis, scroll kalau banyak ---- */
+.hd-list { list-style: none; margin: 0 -6px; padding: 0 6px; max-height: 286px; overflow-y: auto; }
+
+.hd-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid #EEF1F4;
+}
+
+.hd-list li:last-child { border-bottom: none; }
+.hd-list-main { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+.hd-list-code { flex: none; font-size: 12px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.hd-list-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hd-list-meta { flex: none; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.hd-list-right { flex: none; text-align: right; }
+
+.hd-open {
+    display: inline-block;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #fff;
+    background: #EA580C;
+    border-radius: 8px;
+    padding: 3px 10px;
+}
+
+.hd-open:hover { background: #C2410C; color: #fff; text-decoration: none; }
+
+.hd-due { font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.hd-due.overdue { background: #FDECEA; color: #C62828; }
+.hd-due.soon { background: #FFF3E0; color: #B36B00; }
+.hd-due.later { background: #EEF1F5; color: #475467; }
+
+.hd-empty {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12.5px;
+    padding: 22px 0;
+}
+
+.hd-empty i { display: block; font-size: 22px; color: #C0C6CE; margin-bottom: 6px; }
+
+/* ---- trend bar chart (CSS murni) ---- */
+.hd-trend { display: flex; align-items: flex-end; gap: 10px; height: 190px; padding-top: 18px; }
+.hd-trend-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; min-width: 0; }
+.hd-trend-bar { width: 100%; max-width: 38px; background: #C7D9F7; border-radius: 6px 6px 0 0; min-height: 2px; transition: height .3s ease; }
+.hd-trend-col.current .hd-trend-bar { background: #2450D8; }
+.hd-trend-value { font-size: 11.5px; font-weight: 700; color: #344054; margin-bottom: 4px; }
+.hd-trend-label { font-size: 11px; color: var(--muted); margin-top: 6px; white-space: nowrap; }
+
+/* ---- donut (CSS conic-gradient, tanpa library) ---- */
+.dash-donut-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.dash-donut { position: relative; width: 150px; height: 150px; border-radius: 50%; flex: none; }
+.dash-donut-hole { position: absolute; inset: 20%; background: var(--surface); border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.dash-donut-value { font-size: 22px; font-weight: 800; color: var(--ink); }
+.dash-donut-caption { font-size: 11px; color: var(--muted); }
+.dash-donut-legend { list-style: none; margin: 0; padding: 0; flex: 1; min-width: 130px; }
+.dash-donut-legend li { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12.5px; color: var(--ink); }
+.dash-donut-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.dash-donut-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-donut-count { flex: none; color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+/* ---- breakdown table ---- */
+.hd-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.hd-table th { font-size: 10.5px; font-weight: 700; color: #8A94A3; padding: 8px 10px; border-bottom: 1px solid #E3E8EE; text-align: right; white-space: nowrap; }
+.hd-table th:first-child, .hd-table td:first-child { text-align: left; }
+.hd-table td { padding: 9px 10px; border-bottom: 1px solid #EEF1F4; text-align: right; font-variant-numeric: tabular-nums; }
+.hd-table tbody tr:last-child td { border-bottom: none; }
+.hd-table td:first-child { font-weight: 600; color: var(--ink); }
+.hd-table .num-progress { color: #C2410C; font-weight: 700; }
+.hd-table .num-rejected { color: #C62828; font-weight: 700; }
+.hd-table .num-zero { color: #C0C6CE; font-weight: 400; }
+
+/* ---- toggle Division / Department (chart Document Control) ---- */
+.dash-toggle { display: inline-flex; border-radius: 999px; overflow: hidden; border: 1px solid var(--line); margin-left: auto; }
+.dash-toggle-btn { border: none; background: var(--paper-2, #F4F6F8); color: var(--muted); font-size: 11px; font-weight: 600; padding: 4px 12px; cursor: pointer; }
+.dash-toggle-btn.active { background: var(--primary); color: #fff; }
+.dash-toggle-btn:focus { outline: none; }
+
+.hd-loading { opacity: .45; pointer-events: none; transition: opacity .2s ease; }
+
+/* Satu layar di desktop (request Hendra 2026-11-07): baris daftar dan grafik berbagi
+   sisa tinggi layar, dan isi yang panjang di-scroll di dalam kartunya. Di layar pendek
+   atau sempit halaman kembali di-scroll seperti biasa. */
+@media (min-width: 1201px) and (min-height: 600px) {
+    .adm-content:has(#hdRoot) { padding: 10px 16px; }
+    .adm-main:has(#hdRoot) .adm-footer { display: none; }
+    .hd { padding: 0; display: flex; flex-direction: column; height: calc(100vh - 86px); overflow: hidden; }
+    .hd > * { margin-top: 10px !important; }
+    .hd > :first-child { margin-top: 0 !important; }
+    .hd .hd-grid, .hd .hd-strip { gap: 10px; }
+    .hd-row { flex: 1 1 0; min-height: 0; }
+    .hd-row-lists { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+    .hd-row .hd-card { display: flex; flex-direction: column; min-height: 0; overflow: hidden; padding: 10px 14px; }
+    .hd-row .hd-card > :not(.hd-card-head) { flex: 1; min-height: 0; overflow: auto; }
+    .hd-row-charts .hd-card > :not(.hd-card-head) { overflow: hidden; }
+    .hd-row .hd-card-head { flex: none; margin-bottom: 6px; }
+    .hd-row .hd-list { max-height: none; }
+    .hd-row .hd-empty { padding: 6px 0; }
+    .hd-row-charts { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+    .hd-row-charts > .hd-span-full { grid-column: auto; }
+    .hd-row .hd-trend { height: auto; padding-top: 4px; overflow: hidden; }
+    .hd-row .dash-donut-wrap { flex-wrap: nowrap; height: 100%; gap: 14px; }
+    .hd-row .dash-donut { width: auto; height: 100%; max-height: 120px; aspect-ratio: 1; }
+    .hd-row .dash-donut-legend { min-width: 0; max-height: 100%; overflow-y: auto; }
+    .hd-row .dash-donut-value { font-size: 18px; }
+    .hd-row .dash-donut-caption { font-size: 9px; }
+    .hd-row-charts .dash-toggle { flex: none; }
+    .hd-row-charts .dash-toggle-btn { padding: 2px 7px; font-size: 11px; }
+    #qmsSection { flex: none; }
+    #qmsSection .hd-row { display: none; }
+}
+
+@media (max-width: 1200px) {
+    .hd-strip { flex-direction: column; }
+    .hd-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hd-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hd-grid-3 > .hd-span-full { grid-column: 1 / -1; }
+}
+
+@media (max-width: 768px) {
+    .hd-grid-2, .hd-grid-3, .hd-grid-4 { grid-template-columns: minmax(0, 1fr); }
+    .hd-date { text-align: left; }
+}

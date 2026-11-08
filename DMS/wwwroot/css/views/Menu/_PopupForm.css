@@ -1,0 +1,121 @@
+.adf-modal-content {
+    border: none;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.adf-header {
+    background: linear-gradient(135deg, #2450D8, #1C3FA6);
+    color: #fff;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.adf-header-icon {
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: rgba(255,255,255,.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.adf-header-title { font-size: 14.5px; font-weight: 700; }
+.adf-header-sub { font-size: 11px; color: rgba(255,255,255,.85); margin-top: 1px; }
+
+.adf-close {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,.9);
+    font-size: 18px;
+    line-height: 1;
+    padding: 6px;
+    cursor: pointer;
+}
+
+.adf-close:hover { color: #fff; }
+
+.adf-modal-content .modal-body { background: #fff; padding: 14px 22px; max-height: 82vh; overflow-y: auto; }
+
+.adf-modal-content .form-group { margin-bottom: 9px; }
+
+.adf-modal-content .form-group > .control-label {
+    display: block;
+    margin-bottom: 3px;
+    font-size: 12px;
+}
+
+.adf-modal-content .modal-footer {
+    background: #fff;
+    border-top: 1px solid #E3E8EE;
+    padding: 10px 20px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.adf-modal-content .modal-footer::before,
+.adf-modal-content .modal-footer::after {
+    content: none;
+}
+
+.btn-adf-cancel {
+    background: #fff;
+    border: 1px solid #D0D5DD;
+    color: #344054;
+}
+
+.btn-adf-cancel:hover { background: #F9FAFB; color: #344054; }
+
+#modalAddEdit .modal-dialog { width: 520px; max-width: 94vw; }
+#modalFunction .modal-dialog { width: 520px; max-width: 94vw; }
+
+/* ---------- helper text under a field ---------- */
+.adf-help { font-size: 10.5px; color: #98A2B3; margin-top: 2px; }
+.adf-label-hint { color: #98A2B3; font-size: 11px; margin-left: 3px; }
+
+/* ---------- 2-column row (Sequence | Menu Type) ---------- */
+.adf-row-2col { display: flex; gap: 16px; }
+.adf-row-2col > .form-group { flex: 1 1 0; min-width: 0; margin-bottom: 9px; }
+
+/* ---------- input with a leading icon chip ---------- */
+.adf-input-icon { position: relative; }
+.adf-input-icon > i.adf-input-icon-glyph {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    color: #2450D8; font-size: 12.5px; pointer-events: none;
+}
+.adf-input-icon > .form-control { padding-left: 30px; }
+
+/* ---------- Menu Type: card-style radios with icon ---------- */
+#modalAddEdit .radio-inline-group { display: flex; gap: 14px; align-items: center; height: 30px; }
+#modalAddEdit .adf-radio-card {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-weight: 400; font-size: 12.5px; color: #344054; cursor: pointer; margin: 0;
+}
+#modalAddEdit .adf-radio-card input[type="radio"] { accent-color: #2450D8; width: 15px; height: 15px; margin: 0; cursor: pointer; }
+#modalAddEdit .adf-radio-card i { color: #98A2B3; font-size: 12px; }
+#modalAddEdit .adf-radio-card input[type="radio"]:checked ~ i,
+#modalAddEdit .adf-radio-card:has(input[type="radio"]:checked) i { color: #2450D8; }
+
+/* ---------- Menu Icon picker: bordered wrapper + live preview line ---------- */
+.adf-icon-picker-wrap { border: 1px solid #D0D5DD; border-radius: 6px; overflow: hidden; }
+.adf-icon-picker-wrap .iconpicker-input-group { margin: 0; }
+.adf-icon-picker-wrap .form-control { border: none; box-shadow: none; }
+.adf-icon-preview {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: #667085; margin-top: 5px;
+}
+.adf-icon-preview b { font-weight: 600; }
+.adf-icon-preview .adf-icon-preview-swatch {
+    width: 22px; height: 22px; border-radius: 6px;
+    background: #FFF4DC; color: #B36B00;
+    display: flex; align-items: center; justify-content: center; font-size: 12px;
+}

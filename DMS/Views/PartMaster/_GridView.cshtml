@@ -1,44 +1,13 @@
 <link rel="stylesheet" href="~/css/devextreme/dx.light.css" asp-append-version="true" />
 <script src="~/js/devextreme/dx.custom.js" asp-append-version="true"></script>
 
-<style>
-    /* pastikan editor filter row terlihat jelas (hindari bentrok styling tema) */
-    #datagrid .dx-datagrid-filter-row .dx-texteditor {
-        border: 1px solid #d9d9d9;
-        border-radius: 6px;
-        background: #fff;
-    }
-
-    #datagrid .dx-datagrid-filter-row .dx-texteditor-input {
-        padding: 5px 8px;
-        min-height: 28px;
-    }
-
-    /* sisakan ruang untuk ikon kaca pembesar (menu operator filter) agar tidak menimpa teks */
-    #datagrid .dx-datagrid-filter-row .dx-editor-with-menu .dx-texteditor-input,
-    #datagrid .dx-datagrid-filter-row .dx-editor-with-menu .dx-placeholder::before {
-        padding-left: 32px;
-    }
-
-    /* tampilkan judul kolom penuh (wrap), jangan terpotong "..." */
-    #datagrid .dx-datagrid-headers .dx-header-row td .dx-datagrid-text-content {
-        white-space: normal;
-        overflow: visible;
-        text-overflow: unset;
-        line-height: 1.3;
-    }
-</style>
+<link rel="stylesheet" href="~/css/views/shared/grid-filter-row.css" asp-append-version="true" />
 
 <div class="box-body">
     <div id="datagrid"></div>
 </div>
 
 <script type="text/javascript">
-    function getSelectedRowData() {
-        var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
-        return rows.length > 0 ? rows[0] : null;
-    }
-
     function updateActionButtons() {
         var row = getSelectedRowData();
         var selected = row != null;
@@ -46,13 +15,6 @@
         $("#btn_edit").prop("disabled", !selected);
         $("#btn_delete").prop("disabled", !selected);
         $("#btn_download").prop("disabled", !(selected && row.ATTACHMENT_PATH != null));
-    }
-
-    function computeGridHeight() {
-        var gridTop = $("#datagrid").offset().top;
-        var footerHeight = $("#divFooter").outerHeight(true) || 0;
-
-        return Math.max(300, $(window).height() - gridTop - footerHeight - 40);
     }
 
     $(document).ready(function () {
@@ -86,38 +48,15 @@
             }
         });
 
-        $("#datagrid").dxDataGrid({
+        $("#datagrid").dxDataGrid(dmsGridOptions({
             dataSource: gridStore,
-            showBorders: true,
-            columnAutoWidth: true,
-            allowColumnResizing: true,
-            columnResizingMode: "widget",
-            wordWrapEnabled: false,
-            sorting: { mode: "none" },
-            noDataText: "Data not found.",
             height: computeGridHeight(),
             filterRow: { visible: true, applyFilter: "auto" },
-            headerFilter: { visible: true },
-            toolbar: { visible: false },
             selection: {
                 mode: "multiple",
                 showCheckBoxesMode: "always",
                 allowSelectAll: false
             },
-            paging: { pageSize: 10 },
-            pager: {
-                visible: true,
-                displayMode: "compact",
-                showPageSizeSelector: true,
-                allowedPageSizes: [10, 25, 50, 100],
-                showInfo: true,
-                showNavigationButtons: true
-            },
-            columnChooser: {
-                enabled: true,
-                mode: "select"
-            },
-            columnFixing: { enabled: true },
             onSelectionChanged: function (e) {
                 if (e.selectedRowKeys.length > 1) {
                     e.component.selectRows(e.currentSelectedRowKeys, false);
@@ -185,15 +124,9 @@
                     }
                 }
             ]
-        });
+        }));
 
-        $("#btn_columns").on("click", function () {
-            $("#datagrid").dxDataGrid("instance").showColumnChooser();
-        });
-
-        $(window).on("resize", function () {
-            $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-        });
+        bindGridToolbar("columns resize");
 
         $('body').tooltip({ selector: '[data-toggle="tooltip"]' });
     });

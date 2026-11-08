@@ -1,0 +1,25 @@
+/* pastikan editor filter row terlihat jelas (hindari bentrok styling tema) */
+#datagrid .dx-datagrid-filter-row .dx-texteditor {
+    border: 1px solid #d9d9d9;
+    border-radius: 6px;
+    background: #fff;
+}
+
+#datagrid .dx-datagrid-filter-row .dx-texteditor-input {
+    padding: 5px 8px;
+    min-height: 28px;
+}
+
+/* sisakan ruang untuk ikon kaca pembesar (menu operator filter) agar tidak menimpa teks */
+#datagrid .dx-datagrid-filter-row .dx-editor-with-menu .dx-texteditor-input,
+#datagrid .dx-datagrid-filter-row .dx-editor-with-menu .dx-placeholder::before {
+    padding-left: 32px;
+}
+
+/* tampilkan judul kolom penuh (wrap), jangan terpotong "..." */
+#datagrid .dx-datagrid-headers .dx-header-row td .dx-datagrid-text-content {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    line-height: 1.3;
+}

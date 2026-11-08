@@ -21,12 +21,6 @@
             object.value = object.value.slice(0, object.maxLength)
     }
 
-    function onSearch() {
-        var grid = $("#datagrid").dxDataGrid("instance");
-        grid.clearSelection();
-        grid.refresh();
-    }
-
     function onclickDownload(element) {
         //alert(element.getAttribute('data-doc'));
 

@@ -1,0 +1,486 @@
+#modalAddEdit .modal-dialog {
+    width: 980px;
+    max-width: 96vw;
+}
+
+#modalAddEdit .modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    border: none;
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+/* header */
+#modalAddEdit .adf-header {
+    flex: none;
+    background: linear-gradient(135deg, #2450D8, #1C3FA6);
+    color: #fff;
+    padding: 16px 22px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#modalAddEdit .adf-header-icon {
+    flex: none;
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    background: rgba(255,255,255,.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+#modalAddEdit .adf-header-title {
+    font-size: 15.5px;
+    font-weight: 700;
+}
+
+#modalAddEdit .adf-header-sub {
+    font-size: 12px;
+    color: rgba(255,255,255,.85);
+    margin-top: 1px;
+}
+
+#modalAddEdit .adf-close {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,.9);
+    font-size: 18px;
+    line-height: 1;
+    padding: 6px;
+    cursor: pointer;
+}
+
+#modalAddEdit .adf-close:hover { color: #fff; }
+
+/* body: content */
+#modalAddEdit .adf-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    background: #F4F6F8;
+}
+
+#modalAddEdit .adf-content {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-y: auto;
+    padding: 18px 22px;
+    counter-reset: adf-sec;
+}
+
+#modalAddEdit .adf-section {
+    background: #fff;
+    border: 1px solid #E3E8EE;
+    border-radius: 10px;
+    padding: 16px 18px 4px;
+    margin-bottom: 16px;
+    scroll-margin-top: 8px;
+}
+
+/* Analisis dampak revisi & cek file upload (OCR tahap 2, 2026-11-06) */
+#modalAddEdit .adf-insight { border: 1px solid #E3E8EE; border-radius: 8px; background: #F9FAFB; padding: 10px 12px; margin: 0 0 14px; }
+#modalAddEdit .adf-insight.has-refs { border-color: #FEDF89; background: #FFFCF5; }
+#modalAddEdit .adf-insight-title { font-size: 12px; font-weight: 700; color: #344054; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+#modalAddEdit .adf-insight-sub { font-size: 11.5px; color: #667085; margin: 2px 0 6px; }
+#modalAddEdit .adf-ref { display: flex; gap: 8px; padding: 6px 0; border-top: 1px solid #F2F4F7; font-size: 12px; }
+#modalAddEdit .adf-ref:first-of-type { border-top: none; }
+#modalAddEdit .adf-ref-main { flex: 1; min-width: 0; }
+#modalAddEdit .adf-ref-main a { font-weight: 700; color: #1C3FA6; cursor: pointer; }
+#modalAddEdit .adf-ref-main span { color: #667085; }
+#modalAddEdit .adf-ref-snip { color: #475467; font-size: 11.5px; margin-top: 2px; word-break: break-word; }
+#modalAddEdit .adf-ref-snip mark { background: #FEF0C7; padding: 0 1px; border-radius: 3px; }
+#modalAddEdit .adf-tag { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 10px; background: #F1EAFB; color: #6C3FB5; white-space: nowrap; }
+#modalAddEdit .adf-filecheck { margin-top: 8px; font-size: 12px; }
+#modalAddEdit .adf-filecheck div { display: flex; gap: 6px; align-items: flex-start; padding: 5px 8px; border-radius: 6px; margin-bottom: 4px; }
+#modalAddEdit .adf-filecheck .warn { background: #FFFAEB; color: #B54708; }
+#modalAddEdit .adf-filecheck .note { background: #F2F4F7; color: #475467; }
+#modalAddEdit .adf-filecheck .ok { background: #ECFDF3; color: #027A48; }
+#modalAddEdit .adf-filecheck i { margin-top: 2px; }
+
+#modalAddEdit .adf-approval-preview {
+    border: 1px solid #E3E8EE; border-radius: 8px; background: #F9FAFB;
+    padding: 10px 12px; margin: 0 0 12px;
+}
+#modalAddEdit .adf-approval-preview.has-error { border-color: #F3C6C6; background: #FFF6F5; }
+#modalAddEdit .adf-ap-title { font-size: 12px; font-weight: 700; color: #344054; margin-bottom: 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+#modalAddEdit .adf-ap-tag { font-size: 10.5px; font-weight: 700; padding: 1px 8px; border-radius: 10px; background: #E7F1FB; color: #2450D8; }
+#modalAddEdit .adf-ap-tag.cat { background: #FEF0C7; color: #93370D; }
+#modalAddEdit .adf-ap-steps { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; }
+#modalAddEdit .adf-ap-step { border: 1px solid #D5DDE8; background: #fff; border-radius: 7px; padding: 5px 9px; font-size: 11.5px; min-width: 130px; }
+#modalAddEdit .adf-ap-step b { display: block; font-size: 11px; color: #667085; font-weight: 600; }
+#modalAddEdit .adf-ap-step.auto { border-color: #A6E3C4; background: #F0FBF5; }
+#modalAddEdit .adf-ap-step.skip { border-style: dashed; color: #98A2B3; background: #F9FAFB; }
+#modalAddEdit .adf-ap-step.missing { border-color: #F04438; background: #FEF3F2; color: #B42318; }
+#modalAddEdit .adf-ap-arrow { align-self: center; color: #98A2B3; font-size: 11px; }
+#modalAddEdit .adf-ap-msg { font-size: 11.5px; margin-top: 6px; color: #B42318; }
+#modalAddEdit .adf-ap-note { font-size: 11px; margin-top: 6px; color: #667085; }
+
+#modalAddEdit .adf-section-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #1D2939;
+    margin-bottom: 14px;
+}
+
+#modalAddEdit .adf-section-num {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #2450D8;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11.5px;
+    font-weight: 700;
+    counter-increment: adf-sec;
+}
+
+#modalAddEdit .adf-section-num::before {
+    content: counter(adf-sec);
+}
+
+#modalAddEdit .form-group {
+    margin-bottom: 14px;
+}
+
+#modalAddEdit .form-group > .control-label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 12.5px;
+}
+
+#modalAddEdit .external-panel {
+    border: 1px solid #DFE5EB;
+    border-radius: 10px;
+    padding: 10px 14px 2px;
+    margin: 4px 0 8px;
+    background: #F7F9FB;
+}
+
+#modalAddEdit .external-panel .panel-title {
+    font-weight: 700;
+    font-size: 12.5px;
+    margin-bottom: 8px;
+}
+
+/* Panel External dipadatkan (request Hendra 2026-08-21) - form-group bawaan
+   Bootstrap (margin-bottom 15px) bikin jarak antar baris (External > Reference
+   No/Source > Impact To Other Document) kelihatan longgar untuk panel sekecil
+   ini. Scoped ke .external-panel saja, tidak memengaruhi form-group lain. */
+#modalAddEdit .external-panel .form-group {
+    margin-bottom: 8px;
+}
+
+#modalAddEdit .checkbox-inline-group {
+    padding-top: 26px;
+}
+
+/* Related Division - dilebur ke dalam Classification (bukan section
+   terpisah lagi), request Hendra 2026-08-20 mengikuti mockup, supaya
+   user langsung tahu begitu pilih Document Level=2 & Document Code=SPR.
+   Legend ikon "Remarks:" (main-pic/related/not-related) DIHAPUS lagi
+   (request Hendra 2026-08-22) - rd-desc di bawah header sudah cukup. */
+
+#modalAddEdit .rd-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+#modalAddEdit .rd-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2450D8;
+}
+
+#modalAddEdit .rd-desc {
+    font-size: 11.5px;
+    color: #667085;
+    margin-top: 2px;
+}
+
+#modalAddEdit .rd-search-wrap {
+    position: relative;
+    flex: none;
+}
+
+#modalAddEdit .rd-search-wrap i {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #98A2B3;
+    font-size: 11.5px;
+}
+
+#modalAddEdit .rd-search-wrap input {
+    width: 200px;
+    padding: 6px 10px 6px 28px;
+    font-size: 12px;
+    border: 1px solid #D0D5DD;
+    border-radius: 7px;
+}
+
+#modalAddEdit .rd-col {
+    margin-bottom: 6px;
+}
+
+/* Tile diringkas jadi 1 baris horizontal (kode kiri, tombol peran kanan) -
+   request Hendra 2026-08-21, supaya area ini lebih compact (dulu kode &
+   tombol ditumpuk vertikal, makan banyak tinggi per tile). */
+#modalAddEdit .rd-tile {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    border: 1px solid #E3E8EE;
+    border-radius: 7px;
+    padding: 5px 8px;
+    margin: 0;
+    font-weight: normal;
+    height: 100%;
+    text-align: left;
+}
+
+#modalAddEdit .rd-tile-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.15;
+}
+
+/* Tile sempat berupa 3 tombol ikon sekaligus, lalu 1 tombol teks+dropdown
+   (request Hendra 2026-08-20) - sekarang tombolnya jadi bulat & ICON SAJA
+   tanpa teks (request Hendra 2026-08-20 revisi ke-2, supaya lebih hemat
+   ruang). Peran "Note Related" (●) SENGAJA DIHAPUS lagi (revisi ke-3) -
+   cuma tersisa Main PIC (◎), Related (○), dan default "Not Related (-)".
+   Ikon-ikon ini SENGAJA disamakan dengan marker di export Excel
+   (DocumentMaintenanceController.WriteRelatedDivisionSection) supaya
+   konsisten. Main PIC boleh lebih dari satu divisi & dipilih manual di
+   tile lain - KECUALI tile divisi pembuat dokumen sendiri, yang dikunci
+   selalu Main PIC & read-only (lihat lockCreatorDivisionRole() di
+   _Javascript.cshtml). */
+#modalAddEdit .rd-tile.role-main_pic {
+    border-color: #2450D8;
+    background: #EFF5FF;
+}
+
+#modalAddEdit .rd-tile.role-related {
+    border-color: #1D9E6C;
+    background: #EAFAF2;
+}
+
+#modalAddEdit .rd-tile b {
+    font-size: 12px;
+    color: #1D2939;
+}
+
+/* Label "CREATOR" cuma dipasang isinya utk tile yang dikunci
+   (lockCreatorDivisionRole()) - :empty menyembunyikannya sepenuhnya
+   (termasuk ruang barisnya) di tile lain, bukan cuma teksnya, supaya
+   tile normal tidak ikut lebih tinggi gara-gara baris kosong. */
+#modalAddEdit .rd-lock-label {
+    font-size: 8.5px;
+    color: #667085;
+    font-weight: 700;
+}
+
+#modalAddEdit .rd-lock-label:empty {
+    display: none;
+}
+
+#modalAddEdit .rd-role-select {
+    position: relative;
+    flex: none;
+}
+
+#modalAddEdit .rd-role-btn {
+    width: 24px;
+    height: 24px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #D0D5DD;
+    background: #fff;
+    border-radius: 50%;
+    padding: 0;
+    font-size: 11px;
+    color: #98A2B3;
+    cursor: pointer;
+}
+
+#modalAddEdit .rd-role-btn:hover {
+    border-color: #98A2B3;
+    color: #667085;
+}
+
+#modalAddEdit .rd-role-btn:disabled {
+    cursor: not-allowed;
+}
+
+#modalAddEdit .rd-role-icon {
+    font-size: 11px;
+    line-height: 1;
+}
+
+#modalAddEdit .rd-role-btn.set[data-role="MAIN_PIC"] {
+    border-color: #2450D8;
+    background: #2450D8;
+    color: #fff;
+}
+
+#modalAddEdit .rd-role-btn.set[data-role="RELATED"] {
+    border-color: #1D9E6C;
+    background: #1D9E6C;
+    color: #fff;
+}
+
+/* Tombol sekarang di sisi kanan tile (layout horizontal, request Hendra
+   2026-08-21) - dropdown dibuka menggantung dari sisi KANAN tombol
+   (right:0, bukan center) supaya tidak gampang overflow lewat tepi kanan
+   modal/grid untuk tile di kolom paling kanan. */
+#modalAddEdit .rd-role-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    width: 140px;
+    z-index: 60;
+    background: #fff;
+    border: 1px solid #D0D5DD;
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(16,24,40,.14);
+    padding: 4px;
+    display: none;
+}
+
+#modalAddEdit .rd-role-menu.open {
+    display: block;
+}
+
+#modalAddEdit .rd-role-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #344054;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+#modalAddEdit .rd-role-menu-item:hover {
+    background: #F4F6F8;
+}
+
+#modalAddEdit .rd-role-menu-item.active {
+    font-weight: 700;
+}
+
+/* "Not Related" (peran default/kosong) sengaja dipisah dengan garis dari
+   2 peran aktif di atasnya (Main PIC/Related), tapi tetap pakai warna
+   teks & ikon yang sama - ini peran yang setara, bukan lagi aksi "Clear"
+   yang diredupkan. */
+#modalAddEdit .rd-role-menu-clear {
+    border-top: 1px solid #EEF1F5;
+    margin-top: 2px;
+    padding-top: 6px;
+}
+
+#modalAddEdit .rd-showmore {
+    margin-top: 4px;
+}
+
+#modalAddEdit .rd-showmore a {
+    font-size: 12px;
+    color: #2450D8;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+#modalAddEdit .form-control:required:focus,
+#modalAddEdit .select2-selection.required-focus {
+    border-color: #2E75B6 !important;
+    box-shadow: 0 0 0 3px rgba(46, 117, 182, 0.25) !important;
+}
+
+/* drag & drop upload */
+#modalAddEdit .adf-dropzone {
+    position: relative;
+    border: 1.5px dashed #C6D0DB;
+    border-radius: 10px;
+    background: #F9FAFB;
+    padding: 22px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+}
+
+#modalAddEdit .adf-dropzone:hover,
+#modalAddEdit .adf-dropzone.dragover {
+    border-color: #2450D8;
+    background: #E7F1FB;
+}
+
+#modalAddEdit .adf-dropzone.disabled {
+    opacity: .55;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+#modalAddEdit .adf-dropzone i.dz-icon {
+    font-size: 22px;
+    color: #98A2B3;
+    margin-bottom: 6px;
+    display: block;
+}
+
+#modalAddEdit .adf-dropzone .dz-text {
+    font-size: 12.5px;
+    color: #344054;
+}
+
+#modalAddEdit .adf-dropzone .dz-browse {
+    color: #2450D8;
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+#modalAddEdit .adf-dropzone .dz-hint {
+    font-size: 10.5px;
+    color: #98A2B3;
+    margin-top: 4px;
+}
+
+#modalAddEdit .adf-dropzone .dz-filename {
+    font-size: 12.5px;
+    color: #2450D8;
+    font-weight: 700;
+    word-break: break-all;
+}
+
+/* sticky footer */
+#modalAddEdit .modal-footer {
+    flex: none;
+    background: #fff;
+    border-top: 1px solid #E3E8EE;
+    padding: 14px 22px;
+    margin: 0;
+}

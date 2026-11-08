@@ -1,0 +1,49 @@
+/* pastikan editor filter row terlihat jelas (hindari bentrok styling tema) */
+#datagrid .dx-datagrid-filter-row .dx-texteditor {
+    border: 1px solid #d9d9d9;
+    border-radius: 6px;
+    background: #fff;
+}
+
+#datagrid .dx-datagrid-filter-row .dx-texteditor-input {
+    padding: 5px 8px;
+    min-height: 28px;
+}
+
+/* sisakan ruang untuk ikon kaca pembesar (menu operator filter) agar tidak menimpa teks */
+#datagrid .dx-datagrid-filter-row .dx-editor-with-menu .dx-texteditor-input,
+#datagrid .dx-datagrid-filter-row .dx-editor-with-menu .dx-placeholder::before {
+    padding-left: 32px;
+}
+
+/* tampilkan judul kolom penuh (wrap), jangan terpotong "..." */
+#datagrid .dx-datagrid-headers .dx-header-row td .dx-datagrid-text-content {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    line-height: 1.3;
+}
+
+#datagrid .dx-data-row.ib-unread-row { background: #F5F9FF; }
+#datagrid .dx-data-row.ib-unread-row:hover > td { background: #E7F1FB; }
+
+.ib-title-cell { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.ib-unread-dot { width: 7px; height: 7px; border-radius: 50%; background: #2450D8; flex: none; }
+.ib-title-cell.ib-read .ib-unread-dot { visibility: hidden; }
+.ib-title-cell b { color: #1D2939; }
+.ib-title-cell.ib-read b { color: #475467; font-weight: 600; }
+
+.ib-msg-cell { color: #66788A; white-space: normal; }
+
+.ib-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+.ib-status-pill.unread { background: #E7F1FB; color: #2450D8; }
+.ib-status-pill.read { background: #EEF0F2; color: #5A5F66; }

@@ -47,12 +47,6 @@
         });
     });
 
-    function onSearch() {
-        var grid = $("#datagrid").dxDataGrid("instance");
-        grid.clearSelection();
-        grid.refresh();
-    }
-
     function onAddPrepare() {
         gScreenMode = 'ADD';
         $('#modal-title').html("New Part");

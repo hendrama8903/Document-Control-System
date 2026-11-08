@@ -59,11 +59,6 @@
         $("#datagrid").dxDataGrid("instance").columnOption("MY_APPROVAL", "filterValue", enabled ? "Y" : undefined);
     }
 
-    function getSelectedRowData() {
-        var rows = $("#datagrid").dxDataGrid("instance").getSelectedRowsData();
-        return rows.length > 0 ? rows[0] : null;
-    }
-
     function updateActionButtons() {
         var row = getSelectedRowData();
         var selected = row != null;
@@ -81,13 +76,6 @@
         $("#btn_reject").prop("disabled", !(selected && row.STATUS == 0));
         $("#btn_distribution").prop("disabled", !(selected && row.STATUS != 0 && row.STATUS != 3 && row.STATUS != 4));
         $("#btn_send").prop("disabled", !(selected && (row.STATUS == 2 || row.STATUS == 6)));
-    }
-
-    function computeGridHeight() {
-        var gridTop = $("#datagrid").offset().top;
-        var footerHeight = $("#divFooter").outerHeight(true) || 0;
-
-        return Math.max(300, $(window).height() - gridTop - footerHeight - 40);
     }
 
     // ---------- docked "Document Status" panel toggle - top-level (not inside
@@ -155,38 +143,15 @@
             }
         });
 
-        $("#datagrid").dxDataGrid({
+        $("#datagrid").dxDataGrid(dmsGridOptions({
             dataSource: gridStore,
-            showBorders: true,
-            columnAutoWidth: true,
-            allowColumnResizing: true,
-            columnResizingMode: "widget",
-            wordWrapEnabled: false,
-            sorting: { mode: "none" },
-            noDataText: "Data not found.",
             height: computeGridHeight(),
             filterRow: { visible: false, applyFilter: "auto" },
-            headerFilter: { visible: true },
-            toolbar: { visible: false },
             selection: {
                 mode: "multiple",
                 showCheckBoxesMode: "always",
                 allowSelectAll: false
             },
-            paging: { pageSize: 10 },
-            pager: {
-                visible: true,
-                displayMode: "compact",
-                showPageSizeSelector: true,
-                allowedPageSizes: [10, 25, 50, 100],
-                showInfo: true,
-                showNavigationButtons: true
-            },
-            columnChooser: {
-                enabled: true,
-                mode: "select"
-            },
-            columnFixing: { enabled: true },
             onRowPrepared: function (e) {
                 if (e.rowType === "data" && getMyAction(e.data) != null) {
                     e.rowElement.addClass("dp-row-my-approval");
@@ -468,11 +433,9 @@
                     }
                 }
             ]
-        });
+        }));
 
-        $("#btn_columns").on("click", function () {
-            $("#datagrid").dxDataGrid("instance").showColumnChooser();
-        });
+        bindGridToolbar("columns filters refresh resize");
 
         // ---------- toggle the docked "Document Status" panel (collapses to the
         // right, grid reflows into the freed width via flex - no manual height
@@ -485,19 +448,7 @@
             setStatsPanelCollapsed(true);
         });
 
-        $(window).on("resize", function () {
-            $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-        });
-
         $('body').tooltip({ selector: '[data-toggle="tooltip"]' });
-
-        // ---------- toolbar: show/hide column filter row ----------
-        $("#btn_toggleFilters").on("click", function () {
-            var grid = $("#datagrid").dxDataGrid("instance");
-            var visible = !grid.option("filterRow.visible");
-            grid.option("filterRow.visible", visible);
-            $(this).toggleClass("active", visible);
-        });
 
         // ---------- toolbar: reset ----------
         $("#btn_resetFilters").on("click", function () {
@@ -517,11 +468,6 @@
             setMyApprovalOnly(true);
         }
 
-        // ---------- toolbar: refresh ----------
-        $("#btn_refresh").on("click", function () {
-            $("#datagrid").dxDataGrid("instance").clearSelection();
-            $("#datagrid").dxDataGrid("instance").refresh();
-        });
     });
 
     // ---------- header stats (Pending / Registered / Rejected / Today) ----------

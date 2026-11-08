@@ -19,7 +19,6 @@
     $(document).ready(function () {
         setDataSelect2("addEditDocumentNo", "@Url.Action("GetDocumentCodeLoginBased", "DocumentMaintenance")", "- Choose -");
 
-
         $("#btn_add").on("click", function () {
             onAddPrepare();
         });
@@ -233,7 +232,6 @@
             }
         });
 
-
         $("#datagridDistribution").on("click", "tbody tr", function (e) {
             if (event.target.type !== 'checkbox') {
                 $(':checkbox', this).trigger('click');
@@ -289,12 +287,6 @@
                 //    "@ViewData["DocumentControlAccess"]" == "True")
             )
                 ? false : true);
-    }
-
-    function onSearch() {
-        var grid = $("#datagrid").dxDataGrid("instance");
-        grid.clearSelection();
-        grid.refresh();
     }
 
     function onSearchDistribution() {
@@ -812,7 +804,6 @@
             + "(First step - status will become Checking. QMS still needs to Accept it afterwards before it can be distributed.)");
         $('#divRemarks').hide();
         $('#modalApproveReject').on('shown.bs.modal', function () {
-
         });
     }
 
@@ -875,7 +866,6 @@
         $('#labelConfirmation').html("Are you sure want to reject Document No " + gDocumentNo + "?");
         $('#divRemarks').show();
         $('#modalApproveReject').on('shown.bs.modal', function () {
-
         });
     }
 
@@ -1010,7 +1000,6 @@
                 }
             });
         }
-
 
     }
 
@@ -1176,7 +1165,6 @@
                 $("th").removeClass('sorting_asc');
             }
         });
-
 
         $("#datagridDocumentLog").on("click", "tbody tr", function (e) {
             if (event.target.type !== 'checkbox') {
@@ -1429,7 +1417,6 @@
                 resizeGrid();
             }
         });
-
 
         $("#datagridDocumentHistory").on("click", "tbody tr", function (e) {
             if (event.target.type !== 'checkbox') {
