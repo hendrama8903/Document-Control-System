@@ -179,7 +179,7 @@ namespace DMS.Controllers
 
                     // Pemeriksaan penanda pengesahan (DCS_) - error menolak simpan, peringatan
                     // tidak (lihat CheckTemplate untuk cek langsung saat file dipilih di form).
-                    TemplateMarkerService.Report report = AnalyzeTemplateFile(file, data.DOCUMENT_ID);
+                    TemplateMarkerService.Report report = AnalyzeTemplateFile(file, data.DOCUMENT_ID, data.LEVEL);
                     if (!report.IsValid)
                     {
                         return Json(new { status = false, message = "Template tidak bisa disimpan: " + string.Join(" ", report.Errors) });
@@ -248,13 +248,12 @@ namespace DMS.Controllers
             return workbook;
         }
 
-        // Template tanpa penanda DCS_ masih boleh, ASAL jenis dokumennya sudah punya
-        // konfigurasi baris/kolom lama (TB_M_EXCEL_TEMPLATE) - dokumen dari template itu
-        // jatuh ke jalur lama. Tanpa keduanya, tanda tangan tidak akan pernah tercetak.
-        private TemplateMarkerService.Report AnalyzeTemplateFile(IFormFile file, int? documentId)
-            => AnalyzeTemplate(() => LoadWorkbook(file), documentId);
+        // Template tanpa penanda DCS_ ditolak. Pengecualian hanya SPR: boleh tanpa penanda
+        // asal konfigurasi baris/kolom lama (TB_M_EXCEL_TEMPLATE) ada.
+        private TemplateMarkerService.Report AnalyzeTemplateFile(IFormFile file, int? documentId, int? level)
+            => AnalyzeTemplate(() => LoadWorkbook(file), documentId, level);
 
-        private TemplateMarkerService.Report AnalyzeTemplate(Func<DevExpress.Spreadsheet.Workbook> load, int? documentId)
+        private TemplateMarkerService.Report AnalyzeTemplate(Func<DevExpress.Spreadsheet.Workbook> load, int? documentId, int? level)
         {
             TemplateMarkerService.Report report;
             try
@@ -271,7 +270,19 @@ namespace DMS.Controllers
                 return report;
             }
 
-            if (!report.HasMarkers)
+            // Semua template wajib berpenanda DCS_ (keputusan Hendra 2026-11-09). Hanya SPR
+            // yang masih memakai tata letak khusus + konfigurasi baris/kolom lama.
+            // Level 4 (Checksheet / Form) dicetak apa adanya tanpa tanda tangan, jadi tidak
+            // butuh penanda (keputusan Hendra 2026-11-09).
+            if (!report.HasMarkers && level == DocumentMaintenanceController.UnsignedLevel)
+            {
+                return report;
+            }
+            if (!report.HasMarkers && TemplateMarkerService.RequiresMarkers(documentId))
+            {
+                report.Errors.Add(TemplateMarkerService.TemplateMissingMarkersMessage);
+            }
+            else if (!report.HasMarkers)
             {
                 bool hasLegacyConfig = documentId != null && documentMasterRepo
                     .SearchTemplate(new ExcelTemplateMaster { DOCUMENT_ID = documentId }, db).Count > 0;
@@ -363,14 +374,14 @@ namespace DMS.Controllers
                 TemplateMarkerService.Report report;
                 if (Request.HasFormContentType && Request.Form.Files.Count > 0)
                 {
-                    report = AnalyzeTemplateFile(Request.Form.Files[0], documentId);
+                    report = AnalyzeTemplateFile(Request.Form.Files[0], documentId, level);
                 }
                 else
                 {
                     // Tanpa file = periksa template yang sudah tersimpan (dibuka saat Edit).
                     string path = FindSavedTemplate(code);
                     if (path == null) return Json(new { status = false, message = "Template file not found." });
-                    report = AnalyzeTemplate(() => { var wb = new DevExpress.Spreadsheet.Workbook(); wb.LoadDocument(path); return wb; }, documentId);
+                    report = AnalyzeTemplate(() => { var wb = new DevExpress.Spreadsheet.Workbook(); wb.LoadDocument(path); return wb; }, documentId, level);
                 }
                 AddWorkflowWarnings(report, level, documentId);
                 return Json(new

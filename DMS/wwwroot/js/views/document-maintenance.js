@@ -1197,6 +1197,12 @@ var gDocumentDepartment = null;
 var gDocumentClassified = null;
 var gDocumentCreatedDate = null;
 var gApprovalMode = null;
+var gDocumentLevel = null;
+
+// Level 4 (Checksheet / Form): approval without signatures; the server applies the same rule.
+function isUnsignedLevel(level) {
+    return String(level) === "4";
+}
 var gImpactOther = null;
 var gReffNo = null;
 var gSourceNo = null;
@@ -1376,6 +1382,7 @@ function onApprovalPrepare() {
     gDocumentClassified = row.CLASSIFIED_VAL;
     gDocumentCreatedDate = row.CREATED_DT;
     gApprovalId = row.APPROVAL_ID;
+    gDocumentLevel = row.LEVEL_CODE;
 
     getApprovalHeader();
     getApprovalDetail();
@@ -1684,6 +1691,10 @@ function renderRelatedDivisionAckGrid(data) {
 
 // "Mengetahui" wajib tanda tangan elektronik (2026-11-06)
 function onAcknowledgeRelatedDivisionPrepare(divisionCode) {
+    if (isUnsignedLevel(gDocumentLevel)) {
+        showConfirmMesg("Acknowledge this document on behalf of division " + divisionCode + "?", function () { onAcknowledgeRelatedDivision(divisionCode, null); }, "Confirmation", "Acknowledge", "Cancel");
+        return;
+    }
     openSignaturePad({
         title: "Sign to acknowledge",
         subtitle: "Acknowledge this document on behalf of division " + divisionCode + ".",
@@ -2767,7 +2778,9 @@ function confirmAddEditData() {
     // Kalau dibuatkan orang lain, kotak pembuat dibiarkan kosong (tidak diwakilkan).
     gCreatorSignature = null;
     var creator = $('#addEditDocumentCreator').val();
-    if (gScreenMode == "ADD" && creator && String(creator).toLowerCase() == String(gCurrentUsername).toLowerCase()) {
+    // Level 4 (Checksheet / Form) is approved without signatures (2026-11-09).
+    if (gScreenMode == "ADD" && creator && String(creator).toLowerCase() == String(gCurrentUsername).toLowerCase()
+        && !isUnsignedLevel($("#addEditDocumentLevel").val())) {
         openSignaturePad({
             title: "Sign as document creator",
             subtitle: "Your signature will appear in the creator box of the approval sheet.",
@@ -3479,6 +3492,10 @@ function onclickDistribution(documentTransactionId) {
 // Approve wajib tanda tangan elektronik (Draw/Type, 2026-11-06) - dialognya
 // sekaligus jadi konfirmasi; Reject tetap pakai konfirmasi biasa.
 function onApproveRejectPrepare() {
+    if (gApprovalMode == "approve" && isUnsignedLevel(gDocumentLevel)) {
+        showConfirmMesg("Approve Document \"" + confirmText(gDocumentNo) + "\"?", function () { onApproveReject(null); }, "Confirmation", "Approve", "Cancel");
+        return;
+    }
     if (gApprovalMode == "approve") {
         openSignaturePad({
             title: "Sign to approve",

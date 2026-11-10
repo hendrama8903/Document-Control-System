@@ -26,6 +26,20 @@ namespace DMS.Services
     {
         public const string Prefix = "DCS_";
 
+        // SPR (SIPOCORR) keeps its own hard-coded signature layout and the ROW/COL rows in
+        // TB_M_EXCEL_TEMPLATE. Every other document type must carry DCS_ markers.
+        public const int SprDocumentId = 15;
+
+        public static bool RequiresMarkers(int? documentId) => documentId != SprDocumentId;
+
+        public const string MissingMarkersMessage =
+            "File Excel ini belum memiliki penanda pengesahan (Name berawalan DCS_), sehingga data dokumen dan tanda tangan tidak bisa dicetak. "
+            + "Unduh template terbaru dari Template Center, salin isi dokumen ke template tersebut, lalu upload ulang.";
+
+        public const string TemplateMissingMarkersMessage =
+            "Template belum memiliki penanda pengesahan (Name berawalan DCS_). Pasang penanda DCS_ di Name Manager Excel terlebih dahulu, "
+            + "minimal DCS_SIGN_... untuk kotak tanda tangan dan DCS_F_... untuk data dokumen.";
+
         static readonly string[] BoxPartPrefixes = { "SIGN_", "NAME_", "TITLE_" };
         static readonly Regex BoxKeyPattern = new Regex(@"^(DIBUAT|DIPERIKSA|DISETUJUI|LAST|STEP[1-9][0-9]?|POS[0-9]+)$", RegexOptions.IgnoreCase);
 
@@ -378,6 +392,18 @@ namespace DMS.Services
 
         // Kalau sel target ternyata bagian NON-ANCHOR dari merged region, tulis ke anchor
         // (kiri-atas) merge itu - menulis ke sel non-anchor tidak dirender.
+        /// <summary>
+        /// A name defined on a merged box often refers only to its top-left cell (Excel does
+        /// this when the merged cell is named from the Name Box). For a single-cell range
+        /// inside a merged region, return the whole merged region so the signature fills the box.
+        /// </summary>
+        public static CellRange ExpandToMergedArea(Worksheet sheet, CellRange range)
+        {
+            if (range.RowCount != 1 || range.ColumnCount != 1) return range;
+            IList<CellRange> merges = sheet[range.TopRowIndex, range.LeftColumnIndex].GetMergedRanges();
+            return merges.Count > 0 ? merges[0] : range;
+        }
+
         public static Cell ResolveMergeAnchor(Cell cell)
         {
             IList<CellRange> merges = cell.GetMergedRanges();
@@ -424,6 +450,7 @@ namespace DMS.Services
         // (2026-11-06) tidak boleh gepeng/melar mengikuti bentuk kotak.
         public static void AddPicture(Worksheet sheet, string imagePath, CellRange targetRange)
         {
+            targetRange = ExpandToMergedArea(sheet, targetRange);
             Picture picture = sheet.Pictures.AddPicture(SpreadsheetImageSource.FromFile(imagePath), targetRange, true);
 
             float rangeWidth = 0, rangeHeight = 0;

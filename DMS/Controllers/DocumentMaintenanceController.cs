@@ -880,7 +880,8 @@ namespace DMS.Controllers
             // oleh pembuatnya sendiri. Kalau yang menyimpan bukan pembuat (dibuatkan orang
             // lain), kotak pembuat dibiarkan kosong - tanda tangan tidak boleh diwakilkan.
             Services.SignatureService.Input creatorSignature = null;
-            if (screenMode == "ADD" && string.Equals(GetLoginUsername(), data.DOCUMENT_CREATOR, StringComparison.OrdinalIgnoreCase))
+            if (screenMode == "ADD" && string.Equals(GetLoginUsername(), data.DOCUMENT_CREATOR, StringComparison.OrdinalIgnoreCase)
+                && !IsUnsignedCategory(data.DOCUMENT_ID))
             {
                 creatorSignature = SignatureFromRequest();
                 string signatureError = Services.SignatureService.Validate(creatorSignature, Services.SignatureService.ActiveMethod(db));
@@ -1786,6 +1787,12 @@ namespace DMS.Controllers
                     string pengesahanPdfFullPath = webRootPath + pengesahanPdfRelative;
 
                     result = GeneratePengesahanPdf(webRootPath, documentMaintenance.FILE_PATH, documentMaintenance, pengesahanPdfFullPath);
+                    if (!result.status && result.message == Services.TemplateMarkerService.MissingMarkersMessage)
+                    {
+                        // Tanpa penanda DCS_: tampilkan alasannya, jangan diam-diam membuka
+                        // file Excel mentah tanpa pengesahan.
+                        return Content(PreviewMessagePage("Dokumen tidak dapat ditampilkan", result.message), "text/html; charset=utf-8");
+                    }
                     if (!result.status)
                     {
                         // Fallback ke Excel viewer kalau convert tetap gagal (Aug 2026).
@@ -2058,6 +2065,30 @@ namespace DMS.Controllers
 
                 if (documentMaintenance == null) return new DBResult(false, "Document not found");
 
+                // Level 4 (Checksheet / Form): dicetak persis seperti file yang diupload -
+                // tanpa isian data dokumen maupun tanda tangan (keputusan Hendra 2026-11-09).
+                if (IsUnsignedCategory(documentMaintenance.DOCUMENT_ID))
+                {
+                    string formPath = Services.UploadPath.Resolve(webRootPath, filePath);
+                    if (formPath == null || !System.IO.File.Exists(formPath)) return new DBResult(false, "File Not Found");
+
+                    using (var formWorkbook = new DevExpress.Spreadsheet.Workbook())
+                    {
+                        formWorkbook.LoadDocument(formPath);
+                        formWorkbook.Calculate();
+                        formWorkbook.ExportToPdf(outputPdfPath);
+                    }
+                    using (PdfDocument formCheck = PdfReader.Open(outputPdfPath, PdfDocumentOpenMode.InformationOnly))
+                    {
+                        if (formCheck.PageCount == 0)
+                        {
+                            System.IO.File.Delete(outputPdfPath);
+                            return new DBResult(false, "PDF conversion produced no pages.");
+                        }
+                    }
+                    return new DBResult(true, "File Converted");
+                }
+
                 IList<ApprovalDetail> approvalDetails =
                     approvalRepo.GetApprovalDetail((int)documentMaintenance.APPROVAL_ID, db, null, null);
 
@@ -2151,8 +2182,11 @@ namespace DMS.Controllers
                     // yang dibuat dari template, jadi dokumen dari template lama (tanpa
                     // penanda -> jalur ROW/COL lama di bawah) dan template baru (berpenanda)
                     // sama-sama tercetak benar walau tata letaknya berbeda. File tanpa
-                    // penanda DCS_ berperilaku persis seperti sebelumnya.
+                    // penanda DCS_ tidak lagi diam-diam memakai ROW/COL (keputusan Hendra
+                    // 2026-11-09) - hanya SPR yang masih lewat jalur ROW/COL di bawah.
                     bool dcsMarkerMode = Services.TemplateMarkerService.HasMarkers(workbook);
+                    if (!dcsMarkerMode && Services.TemplateMarkerService.RequiresMarkers(documentMaintenance.DOCUMENT_ID))
+                        return new DBResult(false, Services.TemplateMarkerService.MissingMarkersMessage);
                     if (!dcsMarkerMode && excelTemplateMasters.Count == 0)
                         return new DBResult(false, "Excel template configuration not found for this document type");
 
@@ -3174,12 +3208,17 @@ namespace DMS.Controllers
         /// </summary>
         private string SaveSignature(Services.SignatureService.Input input, string kind, int documentTransactionId, string refKey)
         {
-            string error = Services.SignatureService.Validate(input);
-            if (error != null) return error;
-
             DocumentMaintenance document = documentMaintenanceRepo
                 .Search(new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = documentTransactionId }, null, db, 1, 1)
                 .FirstOrDefault();
+
+            // Level 4 (Checksheet / Form): approval tanpa tanda tangan (keputusan Hendra 2026-11-09).
+            if (IsUnsignedCategory(document?.DOCUMENT_ID)) return null;
+
+            string error = Services.SignatureService.Validate(input, Services.SignatureService.ActiveMethod(db))
+                ?? Services.SignatureService.Prepare(db, input, GetLoginUsername(), Environment.WebRootPath);
+            if (error != null) return error;
+
             string fileHash = document?.FILE_PATH == null ? null
                 : Services.SignatureService.FileHash(Environment.WebRootPath + document.FILE_PATH.Trim());
 
@@ -3199,6 +3238,18 @@ namespace DMS.Controllers
         private void DxAddPicture(DevExpress.Spreadsheet.Worksheet sheet, string imagePath, DevExpress.Spreadsheet.CellRange targetRange)
             => Services.TemplateMarkerService.AddPicture(sheet, imagePath, targetRange);
 
+        // Halaman pesan sederhana untuk tab preview dokumen (dibuka di tab baru, tanpa layout).
+        private static string PreviewMessagePage(string title, string message)
+        {
+            string enc(string s) => System.Net.WebUtility.HtmlEncode(s);
+            return "<!doctype html><html lang=\"id\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+                + "<title>" + enc(title) + "</title>"
+                + "<style>body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:#F5F7FA;color:#1F2933;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px;box-sizing:border-box}"
+                + ".box{max-width:560px;background:#fff;border:1px solid #E4E7EB;border-left:4px solid #D64545;border-radius:8px;padding:24px}"
+                + "h1{font-size:18px;margin:0 0 8px}p{font-size:14px;line-height:1.6;margin:0}</style></head>"
+                + "<body><div class=\"box\"><h1>" + enc(title) + "</h1><p>" + enc(message) + "</p></div></body></html>";
+        }
+
         /// <summary>
         /// Validasi file Excel yang di-upload terhadap konfigurasi TB_M_EXCEL_TEMPLATE.
         /// Mengembalikan pesan error yang jelas jika konfigurasi tidak lengkap
@@ -3210,6 +3261,7 @@ namespace DMS.Controllers
             string extension = Path.GetExtension(file.FileName).ToLower();
             if (extension != ".xls" && extension != ".xlsx") return null;
             if (documentId == null) return null;
+            if (IsUnsignedCategory(documentId)) return null;   // Level 4: dicetak apa adanya
 
             ISheet coverSheet;
             bool hasDcsMarkers = false;
@@ -3232,10 +3284,12 @@ namespace DMS.Controllers
                 return "File Excel tidak dapat dibaca. Pastikan file tidak rusak dan formatnya sesuai (" + extension + ").";
             }
 
-            // File berpenanda DCS_ tidak bergantung pada TB_M_EXCEL_TEMPLATE (posisi
-            // dibaca dari file-nya sendiri saat generate PDF). Pemeriksaan kelengkapan
-            // penanda menyusul (langkah 2 - cek saat upload template).
+            // Posisi pengesahan dibaca dari penanda DCS_ di file itu sendiri. File tanpa
+            // penanda ditolak (keputusan Hendra 2026-11-09) - kecuali SPR, yang masih
+            // memakai tata letak khusus + konfigurasi ROW/COL di bawah.
             if (hasDcsMarkers) return null;
+            if (Services.TemplateMarkerService.RequiresMarkers(documentId))
+                return Services.TemplateMarkerService.MissingMarkersMessage;
 
             int orientation = coverSheet.PrintSetup.Landscape ? 1 : 0;
             string orientationName = orientation == 1 ? "Landscape" : "Portrait";
