@@ -131,59 +131,6 @@ $(document).ready(function () {
                 }
             },
             {
-                dataField: "PRINTED_COUNT",
-                caption: "Print",
-                alignment: "center",
-                cellTemplate: function (container, options) {
-                    var row = options.data;
-
-                    // Monitoring cetak fisik (PrintTrack) - cuma relevan
-                    // setelah QMS Approve, sama seperti kolom Acceptance
-                    // (request Hendra 2026-08-15).
-                    if (row.STATUS != "2") {
-                        container.text("-");
-                        return;
-                    }
-
-                    var total = row.DETAIL_COUNT || 0;
-                    var printed = row.PRINTED_COUNT || 0;
-                    var sheets = row.PRINTED_SHEETS || 0;
-                    var complete = total > 0 && printed >= total;
-
-                    container.css({ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", cursor: "pointer" });
-
-                    var $wrap = $("<div>").css({ lineHeight: 1.3 });
-
-                    $("<span>")
-                        .css({ fontWeight: 600, color: complete ? "#1E9E63" : "#B36B00" })
-                        .html('<i class="fa ' + (complete ? "fa-check-circle" : "fa-hourglass-half") + '"></i> ' + (complete ? "Printed" : "Waiting (" + printed + "/" + total + ")"))
-                        .appendTo($wrap);
-
-                    if (complete) {
-                        $("<span>")
-                            .css({ display: "block", fontSize: "10.5px", color: "#8A94A6", marginTop: "2px" })
-                            .text(sheets + " sheet" + (sheets !== 1 ? "s" : ""))
-                            .appendTo($wrap);
-                    }
-
-                    $wrap.appendTo(container);
-
-                    // Klik untuk lihat rincian eksekusi cetak per dokumen
-                    // (printer, jumlah lembar, operator, waktu) lewat side
-                    // panel - lihat _PrintLogPanel.cshtml (request Hendra
-                    // 2026-08-15).
-                    container.on("click", function (e) {
-                        e.stopPropagation();
-                        crOpenPrintLog(row);
-                    });
-
-                    $("<i>").addClass("fa fa-chevron-circle-right")
-                        .css({ flex: "none", fontSize: "11px", color: "#B0B8C4" })
-                        .attr("title", "Click for detail")
-                        .appendTo(container);
-                }
-            },
-            {
                 dataField: "REQUEST_DATE",
                 caption: "Request Date",
                 alignment: "right",
@@ -408,123 +355,6 @@ $(document).ready(function () {
         if ($("#approvalPanel").hasClass("open") && !$(e.target).closest("#approvalPanel").length) {
             $("#approvalPanel").removeClass("open");
         }
-    });
-});
-
-var plpRows = [];
-
-function crOpenPrintLog(row) {
-    $("#plpRequestNo").text(row.REQUEST_NO || "Draft");
-    $("#plpSearch").val("");
-    $("#printLogPanel").addClass("open");
-
-    $.ajax({
-        type: "POST",
-        url: copyRequestConfig.urls.searchPrintLog,
-        data: { requestId: row.REQUEST_ID },
-        success: function (result) {
-            plpRows = (result.status && result.data) ? result.data : [];
-            renderPrintLogCards(plpRows);
-        },
-        error: function () {
-            showErrorMesgGrowl("Failed to load print detail");
-        }
-    });
-}
-
-function printLogStatusPill(d) {
-    var pillClass = "plp-pill-default";
-    var pillText = "Not Printed";
-
-    if (d.PRINT_LOG_ID != null) {
-        if (d.LOG_PRINT_STATUS == "Success") {
-            pillClass = "plp-pill-success";
-            pillText = "Success";
-        } else if (d.LOG_PRINT_STATUS == "Failed") {
-            pillClass = "plp-pill-danger";
-            pillText = "Failed";
-        } else {
-            pillClass = "plp-pill-default";
-            pillText = d.LOG_PRINT_STATUS || "Cancelled";
-        }
-    }
-
-    return '<span class="plp-pill ' + pillClass + '">' + pillText + '</span>';
-}
-
-function renderPrintLogCards(rows) {
-    var $list = $("#plpCardList").empty();
-
-    if (!rows || rows.length === 0) {
-        $list.html('<div class="plp-empty"><i class="fa fa-inbox" style="font-size:24px; display:block; margin-bottom:8px; color:#C0C6CE;"></i>No documents in this request.</div>');
-        return;
-    }
-
-    rows.forEach(function (d) {
-        var $card = $('<div class="plp-card"></div>');
-
-        var $top = $('<div class="plp-card-top"></div>');
-        $('<div>')
-            .append($('<div class="plp-doc-code"></div>').text(d.DOCUMENT_CODE || "-"))
-            .append($('<div class="plp-doc-name"></div>').text(d.DOCUMENT_NAME || ""))
-            .append($('<div class="plp-qty"></div>').text("Qty " + (d.COPY_QTY != null ? d.COPY_QTY : "-")))
-            .appendTo($top);
-        $(printLogStatusPill(d)).appendTo($top);
-        $top.appendTo($card);
-
-        // Baris meta (printer/lembar/operator/waktu) cuma relevan kalau
-        // sudah pernah dicetak (punya PRINT_LOG_ID) - dokumen yang belum
-        // dicetak sama sekali cukup ditampilkan qty + pill saja.
-        if (d.PRINT_LOG_ID != null) {
-            var $meta = $('<div class="plp-card-meta"></div>');
-            if (d.PRINTER_NAME) {
-                $meta.append($('<span>').html('<i class="fa fa-print"></i> ' + d.PRINTER_NAME));
-            }
-            if (d.TOTAL_SHEETS != null) {
-                $meta.append($('<span>').html('<i class="fa fa-file-text-o"></i> ' + d.TOTAL_SHEETS + ' sheets'));
-            }
-            if (d.PRINTED_BY) {
-                $meta.append($('<span>').html('<i class="fa fa-user"></i> ' + d.PRINTED_BY));
-            }
-            if (d.PRINTED_DT) {
-                $meta.append($('<span>').html('<i class="fa fa-clock-o"></i> ' + moment(d.PRINTED_DT).format("DD MMM YYYY HH:mm")));
-            }
-            $meta.appendTo($card);
-
-            if (d.LOG_PRINT_STATUS == "Failed" && d.ERROR_DETAIL) {
-                $('<div class="plp-card-error"></div>').html('<i class="fa fa-exclamation-circle"></i> ' + d.ERROR_DETAIL).appendTo($card);
-            }
-        }
-
-        $card.appendTo($list);
-    });
-}
-
-$(document).ready(function () {
-    $("#btn_closePrintLogPanel").on("click", function () {
-        $("#printLogPanel").removeClass("open");
-    });
-
-    // Klik di luar panel menutup panel - klik pada sel Print sendiri sudah
-    // stopPropagation() jadi tidak akan langsung menutup ulang panel yang
-    // baru dibuka.
-    $(document).on("click", function (e) {
-        if ($("#printLogPanel").hasClass("open") && !$(e.target).closest("#printLogPanel").length) {
-            $("#printLogPanel").removeClass("open");
-        }
-    });
-
-    $("#plpSearch").on("input", function () {
-        var term = $(this).val().toLowerCase();
-        if (!term) {
-            renderPrintLogCards(plpRows);
-            return;
-        }
-
-        var filtered = plpRows.filter(function (d) {
-            return ((d.DOCUMENT_CODE || "") + " " + (d.DOCUMENT_NAME || "")).toLowerCase().indexOf(term) !== -1;
-        });
-        renderPrintLogCards(filtered);
     });
 });
 
@@ -877,10 +707,7 @@ function renderDetailGrid(rows) {
             { data: "DOCUMENT_NAME" },
             {
                 // Qty langsung bisa diketik di tabel (bukan cuma lewat
-                // popup edit ikon pensil) - ini yang jadi jumlah cetak
-                // sungguhan di PrintTrack (PrintLogPayload.CopyCount),
-                // jadi harus gampang diubah tanpa buka popup dulu
-                // (request Hendra 2026-08-15).
+                // popup edit ikon pensil) - request Hendra 2026-08-15.
                 render: function (data, type, row, meta) {
                     if (type !== "display") return row.COPY_QTY || 1;
                     return '<input type="number" class="form-control input-sm detail-qty-input" data-index="' + meta.row + '" min="1" step="1" style="width:70px;" value="' + (row.COPY_QTY || 1) + '">';

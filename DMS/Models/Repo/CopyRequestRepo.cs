@@ -271,52 +271,6 @@ namespace DMS.Models.Repo
             return result;
         }
 
-        // Dipakai PrintTrack (desktop) - lookup satu baris dokumen langsung by
-        // REQUEST_DETAIL_ID (beda dari SearchDetail yang butuh REQUEST_ID),
-        // sekalian bawa HEADER_STATUS & FILE_PATH untuk validasi token cetak.
-        public CopyRequestDetailForPrint GetDetailByKey(int requestDetailId, DBContext db)
-        {
-            List<SqlParameter> param = new List<SqlParameter>
-            {
-                new SqlParameter ( "@REQUEST_DETAIL_ID", requestDetailId )
-            };
-
-            string query = "EXEC [dbo].[sp_CopyRequest_GetDetailByKey] @REQUEST_DETAIL_ID";
-            CopyRequestDetailForPrint Result = db.CopyRequestDetailForPrint.FromSqlRaw<CopyRequestDetailForPrint>(query, param.ToArray()).AsEnumerable().FirstOrDefault();
-
-            return Result;
-        }
-
-        // Dipakai PrintTrack (desktop) setelah eksekusi cetak - lihat
-        // sp_CopyRequest_PrintLog_Insert untuk validasi & logika kunci token.
-        public DBResult InsertPrintLog(CopyRequestPrintLog data, string loginUser, DBContext db)
-        {
-            SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
-            SqlParameter returnMsg = CreateSqlParameterOutputString("@RETURN_MSG");
-
-            List<SqlParameter> param = new List<SqlParameter>
-            {
-                returnVal,
-                new SqlParameter ( "@REQUEST_DETAIL_ID", CheckNullValue(data.REQUEST_DETAIL_ID) ),
-                new SqlParameter ( "@COMPUTER_NAME", CheckNullValue(data.COMPUTER_NAME) ),
-                new SqlParameter ( "@PRINTER_NAME", CheckNullValue(data.PRINTER_NAME) ),
-                new SqlParameter ( "@PAGE_COUNT", CheckNullValue(data.PAGE_COUNT) ),
-                new SqlParameter ( "@COPY_COUNT", CheckNullValue(data.COPY_COUNT) ),
-                new SqlParameter ( "@PRINT_JOB_ID", CheckNullValue(data.PRINT_JOB_ID) ),
-                new SqlParameter ( "@PRINT_STATUS", CheckNullValue(data.PRINT_STATUS) ),
-                new SqlParameter ( "@ERROR_DETAIL", CheckNullValue(data.ERROR_DETAIL) ),
-                new SqlParameter ( "@LOGIN_USER", loginUser ),
-                returnMsg
-            };
-
-            string query = "EXEC @RETURN_VAL = [dbo].[sp_CopyRequest_PrintLog_Insert] @REQUEST_DETAIL_ID, @COMPUTER_NAME, @PRINTER_NAME, @PAGE_COUNT, @COPY_COUNT, " +
-                "@PRINT_JOB_ID, @PRINT_STATUS, @ERROR_DETAIL, @LOGIN_USER, @RETURN_MSG OUTPUT";
-            int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
-
-            DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
-            return result;
-        }
-
         public DBResult DeleteDetail(CopyRequestDetail data, string loginUser, DBContext db)
         {
             SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
@@ -335,39 +289,6 @@ namespace DMS.Models.Repo
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
             return result;
-        }
-
-        // Antrian cetak PrintTrack (desktop) - baris Approved yang token
-        // cetaknya belum dipakai, di-scope ke requester yang login (request
-        // Hendra 2026-08-15). Menggantikan alur lama di mana desktop
-        // menyimpan sendiri daftar requestId yang pernah dibuatnya.
-        public IList<CopyRequestPrintQueueItem> SearchPrintQueue(string username, DBContext db)
-        {
-            List<SqlParameter> param = new List<SqlParameter>
-            {
-                new SqlParameter ( "@USERNAME", CheckNullValue(username) )
-            };
-
-            string query = "EXEC [dbo].[sp_CopyRequest_PrintQueue] @USERNAME";
-            IList<CopyRequestPrintQueueItem> Result = db.CopyRequestPrintQueueItem.FromSqlRaw<CopyRequestPrintQueueItem>(query, param.ToArray()).ToList();
-
-            return Result;
-        }
-
-        // Panel monitoring "Print" di web CopyRequest/Index - satu baris per
-        // percobaan cetak (termasuk yang gagal) plus dokumen yang belum
-        // pernah dicetak sama sekali (request Hendra 2026-08-15).
-        public IList<CopyRequestPrintLogItem> SearchPrintLog(int requestId, DBContext db)
-        {
-            List<SqlParameter> param = new List<SqlParameter>
-            {
-                new SqlParameter ( "@REQUEST_ID", requestId )
-            };
-
-            string query = "EXEC [dbo].[sp_CopyRequest_PrintLogSearch] @REQUEST_ID";
-            IList<CopyRequestPrintLogItem> Result = db.CopyRequestPrintLogItem.FromSqlRaw<CopyRequestPrintLogItem>(query, param.ToArray()).ToList();
-
-            return Result;
         }
     }
 }

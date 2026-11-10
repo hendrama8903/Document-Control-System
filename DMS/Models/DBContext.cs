@@ -59,10 +59,6 @@ namespace DMS.Models
         public virtual DbSet<DocumentSubmissionDetail>? DocumentSubmissionDetail { get; set; }
         public virtual DbSet<CopyRequest>? CopyRequest { get; set; }
         public virtual DbSet<CopyRequestDetail>? CopyRequestDetail { get; set; }
-        public virtual DbSet<CopyRequestDetailForPrint>? CopyRequestDetailForPrint { get; set; }
-        public virtual DbSet<CopyRequestPrintQueueItem>? CopyRequestPrintQueueItem { get; set; }
-        public virtual DbSet<CopyRequestPrintLogItem>? CopyRequestPrintLogItem { get; set; }
-        public virtual DbSet<CopyRequestPrintLog>? CopyRequestPrintLog { get; set; }
         public virtual DbSet<MSequence>? MSequence { get; set; }
         public virtual DbSet<DocumentReceiptReport>? DocumentReceiptReport { get; set; }
         public virtual DbSet<NotificationSetting>? NotificationSetting { get; set; }
@@ -81,9 +77,6 @@ namespace DMS.Models
             builder.Entity<MenuFunctionStats>().HasNoKey().ToView(null);
             builder.Entity<UserListItem>().HasNoKey().ToView(null);
             builder.Entity<NotificationSetting>().HasNoKey().ToView(null);
-            builder.Entity<CopyRequestDetailForPrint>().HasNoKey().ToView(null);
-            builder.Entity<CopyRequestPrintQueueItem>().HasNoKey().ToView(null);
-            builder.Entity<CopyRequestPrintLogItem>().HasNoKey().ToView(null);
 
             builder.Entity<MSystem>().HasKey(table => new
             {

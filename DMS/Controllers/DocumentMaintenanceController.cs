@@ -2707,24 +2707,8 @@ namespace DMS.Controllers
         private DBResult BuildUncontrolledPdf(string webRootPath, string sourceFullPath, DocumentMaintenance documentMaintenance, out byte[] bytes)
         {
             bytes = null;
-            string fileName = System.IO.Path.GetFileName(sourceFullPath);
-            string extension = GetFileExtension(fileName);
-
-            string basePdf;
-            if (extension.Equals("pdf", StringComparison.OrdinalIgnoreCase))
-            {
-                basePdf = sourceFullPath;
-            }
-            else
-            {
-                basePdf = webRootPath + "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
-                    + System.IO.Path.GetFileNameWithoutExtension(fileName) + ".pdf";
-                if (!System.IO.File.Exists(basePdf))
-                {
-                    DBResult generated = GeneratePengesahanPdf(webRootPath, documentMaintenance.FILE_PATH, documentMaintenance, basePdf);
-                    if (!generated.status) return generated;
-                }
-            }
+            DBResult ensured = EnsureApprovalPdf(webRootPath, sourceFullPath, documentMaintenance, out string basePdf);
+            if (!ensured.status) return ensured;
 
             DocumentMaintenance currentDocument = documentMaintenanceRepo
                 .Search(new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = documentMaintenance.DOCUMENT_TRANSACTION_ID }, null, db, 1, 1)
@@ -2746,6 +2730,24 @@ namespace DMS.Controllers
             {
                 if (System.IO.File.Exists(tempPdf)) System.IO.File.Delete(tempPdf);
             }
+        }
+
+        // The approval PDF of a document file: the file itself when it is a PDF, otherwise the
+        // cached TEMP_<name>.pdf, generated (fields and signatures) when missing. Shared cache:
+        // callers stamp a copy, never this file.
+        private DBResult EnsureApprovalPdf(string webRootPath, string sourceFullPath, DocumentMaintenance documentMaintenance, out string basePdf)
+        {
+            string fileName = System.IO.Path.GetFileName(sourceFullPath);
+            if (GetFileExtension(fileName).Equals("pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                basePdf = sourceFullPath;
+                return new DBResult(true, "OK");
+            }
+
+            basePdf = webRootPath + "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
+                + System.IO.Path.GetFileNameWithoutExtension(fileName) + ".pdf";
+            if (System.IO.File.Exists(basePdf)) return new DBResult(true, "OK");
+            return GeneratePengesahanPdf(webRootPath, documentMaintenance.FILE_PATH, documentMaintenance, basePdf);
         }
 
         // The Excel previews hand the whole source file to the browser, so they follow the

@@ -851,7 +851,7 @@ namespace DMS.Controllers
                 // sendiri - sp_P4DMaintenance_Insert menyalin FILE_PATH apa
                 // adanya dari TB_R_DOCUMENT saat registrasi P4D dibuat, jadi
                 // path-nya menunjuk ke file SUMBER yang sama dengan yang dipakai
-                // DocumentMaintenance/CopyRequest/PrintTrack dkk. Delete P4D di
+                // DocumentMaintenance/CopyRequest dkk. Delete P4D di
                 // sini cuma soft-delete baris registrasi (Draft/Rejected saja,
                 // lihat sp_P4DMaintenance_Delete) - dokumen sumbernya sendiri
                 // bisa saja masih Approved/Published dan aktif dipakai di tempat

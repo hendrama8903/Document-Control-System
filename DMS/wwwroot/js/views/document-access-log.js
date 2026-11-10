@@ -21,7 +21,6 @@ function dalDevice(ua) {
     if (!ua) return "-";
     var b = /Edg\//.test(ua) ? "Edge" : /OPR\//.test(ua) ? "Opera" : /Chrome\//.test(ua) ? "Chrome" : /Firefox\//.test(ua) ? "Firefox" : /Safari\//.test(ua) ? "Safari" : "Other";
     var o = /Windows/.test(ua) ? "Windows" : /Android/.test(ua) ? "Android" : /iPhone|iPad/.test(ua) ? "iOS" : /Mac OS/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : "";
-    if (/DMS-PrintTrack|PrintTrack/i.test(ua)) { b = "PrintTrack"; }
     return b + (o ? " · " + o : "");
 }
 
@@ -113,7 +112,7 @@ $(document).ready(function () {
                     var p = (o.value || "").replace(/^\//, "").split("/")[0];
                     var names = { DocumentMaintenance: "Document Preparation", UserDashboard: "My Documents", DocumentControlDashboard: "Document Control",
                         P4DMaintenance: "Document Registration", DocumentMasterlist: "Document Masterlist", ExternalDocument: "External Document", Home: "Dashboard" };
-                    c.text(o.data.USER_AGENT && /PrintTrack/i.test(o.data.USER_AGENT) ? "PrintTrack" : (names[p] || p || "-"));
+                    c.text(names[p] || p || "-");
                 }
             },
             { dataField: "CLIENT_IP", caption: "IP Address", width: 120 },

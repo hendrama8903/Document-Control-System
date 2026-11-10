@@ -26,7 +26,7 @@ namespace DMS.Services
         {
             try
             {
-                // Web: username dari session; API PrintTrack (JWT): dari claim Name
+                // Username dari session; claim Name untuk request ber-token JWT.
                 string username = http?.Session?.GetString("USERNAME") ?? http?.User?.Identity?.Name;
                 if (string.IsNullOrEmpty(username)) return;
                 if (documentTransactionId == null && externalDocumentId == null && string.IsNullOrWhiteSpace(filePath)) return;

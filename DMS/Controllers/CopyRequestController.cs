@@ -217,22 +217,6 @@ namespace DMS.Controllers
             }
         }
 
-        // Panel monitoring "Print" - rincian eksekusi cetak per baris dokumen
-        // (PrintTrack), termasuk percobaan yang gagal, untuk kolom Print di
-        // grid CopyRequest/Index (request Hendra 2026-08-15).
-        public ActionResult SearchPrintLog(int requestId)
-        {
-            try
-            {
-                var listData = copyRequestRepo.SearchPrintLog(requestId, db);
-                return Json(new { status = true, data = listData });
-            }
-            catch (Exception ex)
-            {
-                return Json(new { status = false, message = ex.Message });
-            }
-        }
-
         // Document picker: SEMUA dokumen yang SUDAH terdaftar P4D dan sudah
         // Received/Published (STATUS 2 atau 5), lintas department - TIDAK
         // dibatasi ke department requester sendiri (request Hendra 2026-08-14,
@@ -321,9 +305,8 @@ namespace DMS.Controllers
         // dijalankan begitu status berhasil pindah ke Approved.
         // Fulfillment (dulu bikin baris TB_R_CTRL_DOCUMENT di UserDashboard
         // begitu Approved, lewat sp_UserDashboard_Request) SENGAJA dicabut -
-        // requester sekarang cetak sendiri lewat PrintTrack begitu status
-        // Approved, tidak perlu lagi acknowledge terpisah di modul lain
-        // (request Hendra 2026-08-15). Lihat SQL/CopyRequest_RemoveAcceptStep.sql.
+        // tidak ada lagi acknowledge terpisah di modul lain (request Hendra
+        // 2026-08-15). Lihat SQL/CopyRequest_RemoveAcceptStep.sql.
         [HttpPost]
         public JsonResult ApproveReject(int requestId, string mode, string remark)
         {
