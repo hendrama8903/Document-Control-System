@@ -52,6 +52,10 @@ namespace DMS.Models.DB
         public string? OPERATION_TYPE_VAL { get; set; }
         public int? PUBLISH_FLAG { get; set; }
 
+        // 1 = the login user may acknowledge this row: one of the sent distribution
+        // departments is theirs, or it is their own request (sp_UserDashboard_Search, 2026-11-10).
+        public int? ACK_ELIGIBLE { get; set; }
+
         // Document master category (e.g. SOP / IK / PRO / PDM / FR), from TB_M_DOCUMENT
         // via TB_R_DOCUMENT.DOCUMENT_ID.
         public string? CATEGORY_CODE { get; set; }

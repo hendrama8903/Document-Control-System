@@ -223,11 +223,19 @@ namespace DMS.Controllers
 
             try
             {
-                data.LOG_TYPE = "4";
+                // The department comes from the login user, not from the browser: the row
+                // only carries the creator department (bug 2026-11-10).
+                if (history?.DOCUMENT_CTRL_ID == null)
+                {
+                    return Json(new { status = false, message = "Document is not found." });
+                }
 
-                result = documentLogRepo.Insert(data, GetLoginUsername(), db);
-
-                result = P4DMaintenanceRepo.UpdateDistributionPublish(history, GetLoginUsername(), db);
+                result = UserDashboardRepo.Acknowledge(history.DOCUMENT_CTRL_ID.Value, GetLoginUsername(), db);
+                if (result.status)
+                {
+                    data.LOG_TYPE = "4";
+                    documentLogRepo.Insert(data, GetLoginUsername(), db);
+                }
                 return Json(result);
             }
             catch (Exception ex)

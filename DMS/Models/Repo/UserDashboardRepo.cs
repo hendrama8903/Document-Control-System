@@ -266,5 +266,24 @@ namespace DMS.Models.Repo
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
             return result;
         }
+
+        // Department is taken from the login user on the server, see sp_UserDashboard_Acknowledge.
+        public DBResult Acknowledge(int documentCtrlId, string loginUser, DBContext db)
+        {
+            SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
+            SqlParameter returnMsg = CreateSqlParameterOutputString("@RETURN_MSG");
+
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                returnVal,
+                new SqlParameter("@DOCUMENT_CTRL_ID", documentCtrlId),
+                new SqlParameter("@LOGIN_USER", loginUser),
+                returnMsg
+            };
+
+            db.Database.ExecuteSqlRaw("EXEC @RETURN_VAL = [dbo].[sp_UserDashboard_Acknowledge] @DOCUMENT_CTRL_ID, @LOGIN_USER, @RETURN_MSG OUTPUT", param.ToArray());
+
+            return new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
+        }
     }
 }

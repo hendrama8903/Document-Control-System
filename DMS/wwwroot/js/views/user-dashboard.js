@@ -1,6 +1,6 @@
 // UserDashboard. Server values come from userDashboardConfig in the view.
 function canAcknowledge(row) {
-    return row != null && (row.STATUS == 2 || row.STATUS == 5) && row.PUBLISH_FLAG != 1;
+    return row != null && row.ACK_ELIGIBLE == 1 && (row.STATUS == 2 || row.STATUS == 5) && row.PUBLISH_FLAG != 1;
 }
 
 function updateActionButtons() {

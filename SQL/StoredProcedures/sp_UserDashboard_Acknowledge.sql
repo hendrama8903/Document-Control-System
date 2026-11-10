@@ -1,0 +1,132 @@
+-- Acknowledge from My Documents (2026-11-10). Replaces sp_P4DMaintenance_UpdateDistributionPublish
+-- for UserDashboard: the department is no longer sent by the browser but taken from the
+-- logged-in user (dbo.fn_User_RecipientDepartments, SQL/UserDashboardAcknowledge_Migration.sql).
+--
+-- Registration row (OPERATION_TYPE 1): one TB_R_PUBLISH_HISTORY row for each sent
+-- distribution department of the user that has not acknowledged yet. When every sent
+-- department has acknowledged, an Approved document becomes Published (Effective), the same
+-- rule as before.
+-- Self-request row (OPERATION_TYPE 2): only its creator, recorded on that row as before; it
+-- does not count toward Published.
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [dbo].[sp_UserDashboard_Acknowledge]
+	@DOCUMENT_CTRL_ID	INT,
+	@LOGIN_USER			VARCHAR(255),
+	@RETURN_MSG			VARCHAR(MAX) OUTPUT
+AS
+BEGIN TRY
+	SET NOCOUNT ON;
+
+	DECLARE @PROCESS_ID BIGINT
+	, @LOCATION VARCHAR(255) = 'sp_UserDashboard_Acknowledge'
+	, @DOC_TRANSACTION_ID INT
+	, @OPERATION_TYPE INT
+	, @CTRL_CREATED_BY VARCHAR(255)
+	, @CTRL_DEPARTMENT_ID INT
+
+	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'User Dashboard', 'Acknowledge Document', @LOCATION, @LOGIN_USER
+
+	SELECT @DOC_TRANSACTION_ID = DOCUMENT_TRANSACTION_ID,
+		@OPERATION_TYPE = ISNULL(OPERATION_TYPE, 1),
+		@CTRL_CREATED_BY = CREATED_BY,
+		@CTRL_DEPARTMENT_ID = DEPARTMENT_ID
+	FROM [dbo].[TB_R_CTRL_DOCUMENT]
+	WHERE DOCUMENT_CTRL_ID = @DOCUMENT_CTRL_ID AND ISNULL(DELETE_FLAG, 0) = 0;
+
+	IF @DOC_TRANSACTION_ID IS NULL
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Document is not found. Refresh the page to see the current data.';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER;
+		RETURN 0;
+	END
+
+	BEGIN TRANSACTION;
+
+	IF @OPERATION_TYPE = 2
+	BEGIN
+		IF @CTRL_CREATED_BY <> @LOGIN_USER
+		BEGIN
+			ROLLBACK TRANSACTION;
+			SET @RETURN_MSG = 'ERROR: Only the user who requested this document can accept it.';
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER;
+			RETURN 0;
+		END
+
+		IF EXISTS (SELECT 1 FROM [dbo].[TB_R_PUBLISH_HISTORY] WHERE DOCUMENT_CTRL_ID = @DOCUMENT_CTRL_ID)
+		BEGIN
+			ROLLBACK TRANSACTION;
+			SET @RETURN_MSG = 'ERROR: This document has already been accepted.';
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER;
+			RETURN 0;
+		END
+
+		INSERT INTO [dbo].[TB_R_PUBLISH_HISTORY]
+			(DOCUMENT_CTRL_ID, DEPARTMENT_ID, DEPARTMENT_CODE, DEPARTMENT_NAME, CREATED_DT, CREATED_BY, CHANGED_DT, CHANGED_BY)
+		SELECT @DOCUMENT_CTRL_ID, D.DEPARTMENT_ID, D.DEPARTMENT_CODE, D.DEPARTMENT_NAME, GETDATE(), @LOGIN_USER, GETDATE(), @LOGIN_USER
+		FROM (SELECT @CTRL_DEPARTMENT_ID AS DEPARTMENT_ID) X
+		LEFT JOIN [dbo].[TB_M_DEPARTMENT] D ON D.DEPARTMENT_ID = X.DEPARTMENT_ID;
+	END
+	ELSE
+	BEGIN
+		DECLARE @PENDING TABLE (DEPARTMENT_ID INT PRIMARY KEY);
+
+		INSERT INTO @PENDING (DEPARTMENT_ID)
+		SELECT DISTINCT R.DEPARTMENT_ID
+		FROM [dbo].[fn_User_RecipientDepartments](@LOGIN_USER, @DOC_TRANSACTION_ID) R
+		WHERE R.ACKNOWLEDGED = 0;
+
+		IF NOT EXISTS (SELECT 1 FROM @PENDING)
+		BEGIN
+			ROLLBACK TRANSACTION;
+			IF EXISTS (SELECT 1 FROM [dbo].[fn_User_RecipientDepartments](@LOGIN_USER, @DOC_TRANSACTION_ID))
+				SET @RETURN_MSG = 'ERROR: Your department has already accepted this document.';
+			ELSE
+				SET @RETURN_MSG = 'ERROR: Your department is not a recipient of this document.';
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER;
+			RETURN 0;
+		END
+
+		-- Department name snapshot, see SQL/OrgMasterData_NameSnapshot_Migration.sql.
+		INSERT INTO [dbo].[TB_R_PUBLISH_HISTORY]
+			(DOCUMENT_CTRL_ID, DEPARTMENT_ID, DEPARTMENT_CODE, DEPARTMENT_NAME, CREATED_DT, CREATED_BY, CHANGED_DT, CHANGED_BY)
+		SELECT @DOCUMENT_CTRL_ID, P.DEPARTMENT_ID, D.DEPARTMENT_CODE, D.DEPARTMENT_NAME, GETDATE(), @LOGIN_USER, GETDATE(), @LOGIN_USER
+		FROM @PENDING P
+		LEFT JOIN [dbo].[TB_M_DEPARTMENT] D ON D.DEPARTMENT_ID = P.DEPARTMENT_ID;
+
+		-- Every sent department has acknowledged: Approved -> Published (Effective).
+		IF NOT EXISTS (
+			SELECT 1
+			FROM [dbo].[TB_R_DOCUMENT_DISTRIBUTION] DD
+			WHERE DD.DOCUMENT_TRANSACTION_ID = @DOC_TRANSACTION_ID
+			AND DD.STATUS = 1
+			AND NOT EXISTS (
+				SELECT 1
+				FROM [dbo].[TB_R_PUBLISH_HISTORY] PH
+				JOIN [dbo].[TB_R_CTRL_DOCUMENT] CT ON CT.DOCUMENT_CTRL_ID = PH.DOCUMENT_CTRL_ID
+				WHERE CT.DOCUMENT_TRANSACTION_ID = @DOC_TRANSACTION_ID
+				AND PH.DEPARTMENT_ID = DD.DEPARTMENT_ID
+			)
+		)
+		BEGIN
+			UPDATE [dbo].[TB_R_DOCUMENT]
+			SET STATUS = '5', CHANGED_BY = @LOGIN_USER, CHANGED_DT = GETDATE()
+			WHERE DOCUMENT_TRANSACTION_ID = @DOC_TRANSACTION_ID AND STATUS = '1';
+		END
+	END
+
+	COMMIT TRANSACTION;
+
+	SET @RETURN_MSG = 'Document accepted';
+	EXEC sp_WriteLog @PROCESS_ID, '2', 'INF', @RETURN_MSG, @LOCATION, @LOGIN_USER
+	RETURN 1;
+END TRY
+BEGIN CATCH
+	IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+	SET @RETURN_MSG = 'ERROR: ' + ERROR_PROCEDURE() +': '+ ERROR_MESSAGE() + ', at line = ' +  CAST(ERROR_LINE() AS VARCHAR);
+	EXEC sp_WriteLog @PROCESS_ID, '4', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+	RETURN 0;
+END CATCH
+GO
