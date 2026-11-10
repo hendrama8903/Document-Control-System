@@ -1035,6 +1035,15 @@ function renderAspAckList() {
     $("#aspAckSection").show();
 }
 
+// The first approval step is usually the creator, approved automatically on submit. The
+// "Created" step already shows that person, so that step is not listed again as "Approved"
+// (request Hendra 2026-11-10).
+function isCreatorSelfApproval(detailRow, sortedDetail, header) {
+    return header != null && sortedDetail.length > 0 && detailRow === sortedDetail[0]
+        && detailRow["STATUS"] == 1 && detailRow["APPROVER"] != null
+        && detailRow["APPROVER"] === header["CREATOR"];
+}
+
 function renderAspStepper(row) {
     if (aspHeaderData == null || aspDetailData == null) return;
 
@@ -1052,6 +1061,7 @@ function renderAspStepper(row) {
     });
 
     sortedDetail.forEach(function (d) {
+        if (isCreatorSelfApproval(d, sortedDetail, aspHeaderData)) return;
         var state = aspStepState(d);
         var title = state === "done" ? "Approved"
             : state === "current" ? "Waiting"
@@ -1759,6 +1769,7 @@ function renderApprovalStepper() {
     });
 
     sortedDetail.forEach(function (row) {
+        if (isCreatorSelfApproval(row, sortedDetail, approvalHeaderData)) return;
         var state = getApprovalStepState(row);
         var mine = state === "current" && row["APPROVER"] === gCurrentUsername;
 

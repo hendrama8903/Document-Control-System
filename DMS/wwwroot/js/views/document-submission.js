@@ -1208,6 +1208,15 @@ function getApprovalHistoryDetail() {
     });
 }
 
+// The first approval step is usually the creator, approved automatically on submit. The
+// "Created" step already shows that person, so that step is not listed again as "Approved"
+// (request Hendra 2026-11-10).
+function isCreatorSelfApproval(detailRow, sortedDetail, header) {
+    return header != null && sortedDetail.length > 0 && detailRow === sortedDetail[0]
+        && detailRow["STATUS"] == 1 && detailRow["APPROVER"] != null
+        && detailRow["APPROVER"] === header["CREATOR"];
+}
+
 // Visual progression Created -> Approved/Waiting per approver. Sama persis
 // dengan DocumentMaintenance/_Javascript.cshtml, cuma "Created" pakai
 // CREATED_DT dari header submission (bukan approval header, yang tidak
@@ -1230,6 +1239,7 @@ function renderApprovalStepper() {
     });
 
     sortedDetail.forEach(function (row) {
+        if (isCreatorSelfApproval(row, sortedDetail, approvalHeaderData)) return;
         var state = getApprovalStepState(row);
         var title = state === "done" ? "Approved"
             : state === "current" ? "Waiting"
