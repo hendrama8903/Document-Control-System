@@ -54,6 +54,26 @@ BEGIN TRY
 		RETURN 0;
 	END
 	
+	-- Pindah Parent <-> Sub Menu lewat Edit (request Hendra 2026-11-09). Menu hanya dua
+	-- tingkat: parent tujuan harus menu utama, dan menu yang masih punya submenu tidak
+	-- boleh dijadikan submenu.
+	IF LEN(ISNULL(@PARENT_ID, '')) = 0 SET @PARENT_ID = NULL;
+	IF @PARENT_ID IS NOT NULL
+	BEGIN
+		SET @RETURN_MSG = CASE
+			WHEN @PARENT_ID = @MENU_ID THEN 'ERROR: A menu cannot be its own parent.'
+			WHEN NOT EXISTS (SELECT 1 FROM [dbo].[TB_M_MENU] WHERE [MENU_ID] = @PARENT_ID AND [PARENT_ID] IS NULL)
+				THEN 'ERROR: Parent Menu must be a main menu, not a sub menu.'
+			WHEN EXISTS (SELECT 1 FROM [dbo].[TB_M_MENU] WHERE [PARENT_ID] = @MENU_ID)
+				THEN 'ERROR: This menu still has sub menus. Move or delete its sub menus first, then make it a sub menu.'
+			WHEN @MENU_URL = '#' THEN 'ERROR: A sub menu needs a page URL (for example /Report/Index), not #.'
+		END;
+		IF @RETURN_MSG IS NOT NULL
+		BEGIN
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+			RETURN 0;
+		END
+	END
 	IF @PARENT_ID IS NULL
 	BEGIN
 		IF EXISTS ( SELECT TOP 1 1 FROM [dbo].[TB_M_MENU] 
@@ -87,7 +107,16 @@ BEGIN TRY
 			CHANGED_DT = GETDATE(),
 			CHANGED_BY = @LOGIN_USER
 	WHERE MENU_ID = @MENU_ID
-	
+
+	-- Sidebar hanya menampilkan submenu kalau parent-nya juga diizinkan untuk role itu
+	-- (sp_Auth_Menu). Role yang punya akses ke menu ini ikut diberi akses ke parent barunya.
+	IF @PARENT_ID IS NOT NULL
+		INSERT INTO [dbo].[TB_M_AUTH_MENU] (ROLE_ID, MENU_ID, CREATED_BY, CREATED_DT)
+		SELECT A.ROLE_ID, @PARENT_ID, @LOGIN_USER, GETDATE()
+		FROM [dbo].[TB_M_AUTH_MENU] A
+		WHERE A.MENU_ID = @MENU_ID
+			AND NOT EXISTS (SELECT 1 FROM [dbo].[TB_M_AUTH_MENU] X WHERE X.ROLE_ID = A.ROLE_ID AND X.MENU_ID = @PARENT_ID);
+
 	SET @RETURN_MSG = 'Successfully Save Data'
 	EXEC sp_WriteLog @PROCESS_ID, '2', 'INF', @RETURN_MSG, @LOCATION, @LOGIN_USER
 	RETURN 1;

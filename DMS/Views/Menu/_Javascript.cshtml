@@ -96,6 +96,11 @@
             $("#parentMenuRow").hide();
 
             gParentID = null;
+            if (gScreenMode == 'EDIT') {
+                // Moving a sub menu to the main menu keeps its Menu ID; only the sequence changes.
+                restoreOrNextSeq();
+                return;
+            }
             GetMenuLastSeq();
             GetMenuLastID();
         });
@@ -105,6 +110,11 @@
             $("#addEditParentID").attr("disabled", false);
             $("#parentMenuRow").show();
 
+            if (gScreenMode == 'EDIT') {
+                // Sequence is set once a parent is chosen (see select2:select below).
+                if (gEditOriginal.parentId == null) $("#addEditMenuSeq").val("");
+                return;
+            }
             $("#addEditMenuID").val("");
             $("#addEditMenuSeq").val("");
         });
@@ -126,8 +136,10 @@
             if (gParentID != null) {
                 if (gScreenMode == 'ADD') {
                     GetMenuLastID();
+                    GetMenuLastSeq();
+                } else {
+                    restoreOrNextSeq();
                 }
-                GetMenuLastSeq();
             }
         });
     });
@@ -518,6 +530,17 @@
         });
     }
 
+    // Edit: parent and sequence as loaded, so switching back restores the original sequence.
+    var gEditOriginal = { parentId: null, seq: null };
+
+    function restoreOrNextSeq() {
+        if ((gParentID || null) === (gEditOriginal.parentId || null)) {
+            $("#addEditMenuSeq").val(gEditOriginal.seq);
+        } else {
+            GetMenuLastSeq();
+        }
+    }
+
     function onAddPrepare() {
         gScreenMode = 'ADD';
         $('#modal-title').html("New Menu");
@@ -555,10 +578,14 @@
                 if (result.status == true) {
                     var data = result.data;
 
-                    $('#radioMenuType').css('display', 'none');
+                    // Menu Type stays visible in Edit so a menu can be moved between
+                    // main menu and sub menu (request Hendra 2026-11-09).
+                    $('#radioMenuType').css('display', 'block');
 
                     gScreenMode = 'EDIT';
                     $('#modal-title').html("Edit Menu");
+                    gEditOriginal = { parentId: data.PARENT_ID || null, seq: data.MENU_SEQ };
+                    gParentID = data.PARENT_ID || null;
 
                     if (data.PARENT_ID != null) {
                         $("#chkMenuChild").prop('checked', true);
