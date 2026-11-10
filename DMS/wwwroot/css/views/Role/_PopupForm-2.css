@@ -107,6 +107,9 @@
 
 .ra-auth-colsearch { padding: 8px 12px; }
 .ra-auth-colsearch input { width: 100%; }
+/* .dp-search places the icon 11px from the wrapper edge; this wrapper has 12px padding,
+   so measure from the input edge instead, otherwise the icon sits on the input border. */
+.ra-auth-colsearch i { left: 23px; }
 
 .ra-auth-list {
     flex: 1 1 auto;
