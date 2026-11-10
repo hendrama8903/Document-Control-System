@@ -1470,6 +1470,10 @@ namespace DMS.Controllers
         {
             DBResult result;
 
+            IActionResult fileDenied = FileAccessDenied(db, documentMaintenance.FILE_PATH);
+            if (fileDenied != null) return fileDenied;
+
+
             try
             {
                 DocumentLog documentLog = new DocumentLog
@@ -1639,6 +1643,11 @@ namespace DMS.Controllers
         public IActionResult ViewAttachment(DocumentMaintenance documentMaintenance, string type)
         {
             DBResult result;
+
+            // Hak lihat dokumen (2026-11-10) - sebelum log atau file apa pun disentuh.
+            IActionResult fileDenied = FileAccessDenied(db, documentMaintenance.FILE_PATH);
+            if (fileDenied != null) return fileDenied;
+
 
             try
             {
@@ -1838,6 +1847,9 @@ namespace DMS.Controllers
         [HttpGet]
         public IActionResult SpreadsheetPreview(string filePath)
         {
+            IActionResult fileDenied = FileAccessDenied(db, filePath);
+            if (fileDenied != null) return fileDenied;
+
             string webRootPath = Environment.WebRootPath;
             string fullPath = Services.UploadPath.Resolve(webRootPath, filePath);  // dibatasi ke folder upload
 
@@ -1869,6 +1881,9 @@ namespace DMS.Controllers
         [HttpGet]
         public IActionResult ExcelViewerPreview(string filePath)
         {
+            IActionResult fileDenied = FileAccessDenied(db, filePath);
+            if (fileDenied != null) return fileDenied;
+
             string webRootPath = Environment.WebRootPath;
             string fullPath = Services.UploadPath.Resolve(webRootPath, filePath);  // dibatasi ke folder upload
 
@@ -4222,6 +4237,9 @@ namespace DMS.Controllers
 
         public JsonResult printAttachment(DocumentMaintenance documentMaintenance,string type, int printCopy = 1)
         {
+            JsonResult fileDeniedJson = FileAccessDeniedJson(db, documentMaintenance.FILE_PATH);
+            if (fileDeniedJson != null) return fileDeniedJson;
+
             DBResult result;
             try
             {

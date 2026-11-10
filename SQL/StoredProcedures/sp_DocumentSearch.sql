@@ -13,6 +13,8 @@ GO
 --   - User lain: dokumen Approved / Published / Obsolete (1, 5, 4), ditambah dokumen
 --     yang ia buat atau yang melewati approval-nya (draft, menunggu, ditolak)
 -- Dokumen eksternal yang tidak dihapus terlihat oleh semua user.
+-- 2026-11-10: hak lihat mengikuti dbo.fn_Document_CanView / fn_ExternalDocument_CanView
+-- (role, menu, distribusi, divisi, Rahasia) - @IS_ADMIN tidak lagi dipakai.
 CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentSearch]
 	@KEYWORD     NVARCHAR(200),
 	@USERNAME    VARCHAR(50),
@@ -47,12 +49,8 @@ BEGIN
 		LEFT JOIN dbo.TB_M_DOCUMENT M ON M.DOCUMENT_ID = D.DOCUMENT_ID
 		LEFT JOIN dbo.TB_M_SYSTEM S ON S.SYSTEM_TYPE = 'DOC_STATUS' AND S.SYSTEM_CODE = D.[STATUS]
 		WHERE ISNULL(D.DELETE_FLAG, 0) = 0 AND ISNULL(D.[STATUS], '') <> '3'
-		AND (
-			@IS_ADMIN = 1
-			OR D.[STATUS] IN ('1', '4', '5')
-			OR D.DOCUMENT_CREATOR = @USERNAME OR D.CREATED_BY = @USERNAME
-			OR EXISTS (SELECT 1 FROM dbo.TB_R_APPROVAL_D A WHERE A.APPROVAL_ID = D.APPROVAL_ID AND A.APPROVER = @USERNAME)
-		)
+		-- Hak lihat sama dengan ViewAttachment & My Documents (SQL/DocumentAccess_Migration.sql).
+		AND dbo.fn_Document_CanView(@USERNAME, D.DOCUMENT_TRANSACTION_ID) = 1
 		UNION ALL
 		SELECT 'EXTERNAL', E.EXTERNAL_DOCUMENT_ID, NULL, E.DOCUMENT_NAME, E.REVISION_EDITION,
 			E.[STATUS], ISNULL(S.SYSTEM_VALUE, E.[STATUS]), E.DEPARTMENT_NAME,
@@ -60,6 +58,7 @@ BEGIN
 		FROM dbo.TB_M_EXTERNAL_DOCUMENT E
 		LEFT JOIN dbo.TB_M_SYSTEM S ON S.SYSTEM_TYPE = 'EXT_DOC_STATUS' AND S.SYSTEM_CODE = E.[STATUS]
 		WHERE ISNULL(E.DELETE_FLAG, 0) = 0
+		AND dbo.fn_ExternalDocument_CanView(@USERNAME) = 1
 	),
 	matched AS (
 		SELECT d.*, C.CONTENT, C.INDEX_STATUS, C.EXTRACT_METHOD,

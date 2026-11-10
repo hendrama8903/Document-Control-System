@@ -231,6 +231,9 @@ namespace DMS.Controllers
 
         public IActionResult DownloadDocument(string path)
         {
+            IActionResult fileDenied = FileAccessDenied(db, path);
+            if (fileDenied != null) return fileDenied;
+
             string webRootPath = Environment.WebRootPath;
             // Hanya file di wwwroot/Upload/ATTACHMENT/ (perbaikan path traversal 2026-11-06)
             string fullPath = Services.UploadPath.Resolve(webRootPath, path);

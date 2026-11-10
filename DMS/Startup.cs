@@ -125,6 +125,31 @@ namespace DMS
 
             app.UseHttpsRedirection();
             app.UseResponseCompression();
+
+            // File di /Upload (dokumen, PDF pengesahan, tanda tangan) dan /document (template)
+            // dulu bisa diunduh tanpa login lewat URL langsung. Session dibaca sebelum file
+            // statis dilayani, lalu hak lihatnya dicek dengan aturan yang sama seperti
+            // ViewAttachment & pencarian (Services/DocumentAccessService, 2026-11-10).
+            app.UseSession();
+            app.Use(async (ctx, next) =>
+            {
+                string requestPath = ctx.Request.Path.Value ?? "";
+                if (requestPath.StartsWith("/Upload/", StringComparison.OrdinalIgnoreCase)
+                    || requestPath.StartsWith("/document/", StringComparison.OrdinalIgnoreCase))
+                {
+                    var db = ctx.RequestServices.GetRequiredService<DBContext>();
+                    var access = DocumentAccessService.CheckFile(ctx, db, requestPath);
+                    if (access != DocumentAccessService.Access.Allowed)
+                    {
+                        ctx.Response.StatusCode = access == DocumentAccessService.Access.NotLoggedIn ? 401 : 403;
+                        ctx.Response.Headers.CacheControl = "no-store";
+                        return;
+                    }
+                    ctx.Response.Headers.CacheControl = "private, no-store";
+                }
+                await next();
+            });
+
             app.UseStaticFiles(new StaticFileOptions
             {
                 OnPrepareResponse = ctx =>
@@ -144,7 +169,6 @@ namespace DMS
                 }
             });
             app.UseDevExpressControls();
-            app.UseSession();
             app.UseRouting();
             app.UseAuthentication();
             app.UseAuthorization();

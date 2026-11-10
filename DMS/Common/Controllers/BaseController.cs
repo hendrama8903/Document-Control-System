@@ -11,6 +11,38 @@ namespace DMS.Common.Controllers
 {
     public class BaseController : Controller
     {
+        /// <summary>
+        /// null when the login user may open this uploaded file; otherwise the response to
+        /// return (login page, or 403). See Services/DocumentAccessService (2026-11-10).
+        /// </summary>
+        protected IActionResult FileAccessDenied(DMS.Models.DBContext db, string relativePath)
+        {
+            switch (DMS.Services.DocumentAccessService.CheckFile(HttpContext, db, relativePath))
+            {
+                case DMS.Services.DocumentAccessService.Access.Allowed:
+                    return null;
+                case DMS.Services.DocumentAccessService.Access.NotLoggedIn:
+                    return Redirect("/Auth/Login?param=" + Uri.EscapeDataString(Request.Path + Request.QueryString));
+                default:
+                    Response.StatusCode = 403;
+                    return View("Error403");
+            }
+        }
+
+        /// <summary>Same check for endpoints that answer with JSON.</summary>
+        protected JsonResult FileAccessDeniedJson(DMS.Models.DBContext db, string relativePath)
+        {
+            var access = DMS.Services.DocumentAccessService.CheckFile(HttpContext, db, relativePath);
+            if (access == DMS.Services.DocumentAccessService.Access.Allowed) return null;
+            return Json(new
+            {
+                status = false,
+                message = access == DMS.Services.DocumentAccessService.Access.NotLoggedIn
+                    ? "Session expired. Please log in again."
+                    : DMS.Services.DocumentAccessService.DeniedMessage
+            });
+        }
+
         public string GenerateMenu(List<Menu> menus)
         {
             DataSet ds = new DataSet();
