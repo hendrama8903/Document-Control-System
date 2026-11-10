@@ -10,7 +10,12 @@ function updateActionButtons() {
     var selected = row != null;
 
     $("#btn_edit").prop("disabled", !selected);
-    syncMasterStatusButton(selected ? [row] : []);
+
+    // Delete only for a category never used; a used category stays as it is.
+    var used = selected && row.IS_USED == 1;
+    $("#btn_delete")
+        .prop("disabled", !selected || used)
+        .attr("title", used ? "This category is already used, so it cannot be deleted." : "");
 }
 
 function dmRenderStats(data) {
@@ -227,11 +232,12 @@ function openRowActionMenu($btn, row) {
         }));
     }
 
-    if (gCanDelete) {
+    // Delete only for categories never used (no documents, history, workflow or
+    // template configuration). Used categories cannot be deleted or deactivated.
+    if (gCanDelete && row.IS_USED != 1) {
         $menu.append('<li class="divider"></li>');
-        $menu.append(menuItem("dp-menu-edit", "fa-power-off", row.DELETE_FLAG == 1 ? "Activate" : "Deactivate", function () {
-            grid.selectRows([row.DOCUMENT_ID], false);
-            onDeletePrepare();
+        $menu.append(menuItem("dp-menu-delete", "fa-trash", "Delete", function () {
+            onRemovePrepare(row);
         }));
     }
 
@@ -256,7 +262,10 @@ $(document).ready(function() {
     });
 
     $("#btn_delete").on("click", function() {
-        onDeletePrepare();
+        var row = getSelectedRowData();
+        if (row != null && row.IS_USED != 1) {
+            onRemovePrepare(row);
+        }
     });
 
     $("#btn_save").on("click", function() {
@@ -344,22 +353,6 @@ function onEditPrepare() {
             //popUpProgressHide();
             showErrorMesgGrowl(result);
         }
-    });
-}
-
-function onDeletePrepare() {
-
-    var row = getSelectedRowData();
-    if (row == null) {
-        return;
-    }
-
-    gDocumentId = row.DOCUMENT_ID;
-    gFilePath = row.FILE_PATH;
-
-    confirmMasterStatus([row], {
-        entity: "DOCUMENT", idField: "DOCUMENT_ID", nameField: "DOCUMENT_CODE", label: "Document Category", plural: "document categories",
-        activateUrl: documentMasterConfig.urls.activate, onDeactivate: deleteData
     });
 }
 
@@ -595,31 +588,34 @@ function addEditData() {
     });
 }
 
-function deleteData() {
-    popUpProgressHide();
+function onRemovePrepare(row) {
+    var label = $("<div>").text(row.DOCUMENT_CODE + " - " + row.DOCUMENT_NAME).html();
+    showDangerConfirm(
+        "Delete Document Category <b>" + label + "</b>? It will no longer appear in this list or in any selection. "
+        + "This category has never been used, so no document is affected.",
+        function () { removeData(row.DOCUMENT_ID); },
+        "Delete");
+}
+
+function removeData(documentId) {
+    popUpProgressShow();
     $.ajax({
         type: "POST",
-        url: documentMasterConfig.urls.deleteData,
-        dataType: 'json',
-        traditional: true,
-        data: {
-            DOCUMENT_ID: gDocumentId
-        },
-        success: function(result) {
-            //popUpProgressHide();
+        url: documentMasterConfig.urls.remove,
+        dataType: "json",
+        data: { DOCUMENT_ID: documentId },
+        success: function (result) {
+            popUpProgressHide();
             if (result.status == true) {
                 showSuccessMesgGrowl(result.message);
                 onSearch();
-                popUpProgressHide();
             } else {
                 showErrorMesgGrowl(result.message);
-                popUpProgressHide();
             }
         },
-        error: function(result) {
-            //popUpProgressHide();
-            showErrorMesgGrowl(result);
+        error: function (result) {
             popUpProgressHide();
+            showErrorMesgGrowl(result);
         }
     });
 }

@@ -486,8 +486,12 @@ namespace DMS.Controllers
             }
         }
 
+        // Delete hanya untuk kategori yang belum pernah dipakai; tetap soft delete
+        // (DELETE_FLAG = 2) dan file template tidak dihapus. Deactivate/Activate untuk
+        // Document Category dihapus - kategori yang sudah dipakai selalu aktif.
+        // Request Hendra 2026-11-09.
         [HttpPost]
-        public JsonResult Delete(DocumentMaster data, string path)
+        public JsonResult Remove(DocumentMaster data)
         {
             JsonResult denied = DenyWithoutFunction("DOCUMENTMASTER-DELETE");
             if (denied != null)
@@ -495,14 +499,9 @@ namespace DMS.Controllers
                 return denied;
             }
 
-            DBResult result = null;
-
             try
             {
-                // Hanya menonaktifkan, jadi file lampiran disimpan untuk saat diaktifkan lagi.
-                result = documentMasterRepo.Delete(data, GetLoginUsername(), db);
-
-                return Json(result);
+                return Json(documentMasterRepo.Remove(data, GetLoginUsername(), db));
             }
             catch (Exception ex)
             {

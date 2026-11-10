@@ -10,11 +10,10 @@
             searchWithStatus: "@Url.Action("SearchWithStatus", "DocumentMaster")",
             systemValues: "@Url.Action("GetSystemCodeSystemValue", "MSystem")",
             getByKey: "@Url.Action("GetByKey", "DocumentMaster")",
-            activate: "@Url.Action("Activate", "MasterStatus")",
             checkTemplate: "@Url.Action("CheckTemplate", "DocumentMaster")",
             previewTemplate: "@Url.Action("PreviewTemplate", "DocumentMaster")",
             addEdit: "@Url.Action("AddEdit", "DocumentMaster")",
-            deleteData: "@Url.Action("Delete", "DocumentMaster")",
+            remove: "@Url.Action("Remove", "DocumentMaster")",
             removeSigningTemplate: "@Url.Action("RemoveSigningTemplate", "DocumentMaster")",
             downloadTemplate: '@Html.Raw(Url.Action("DownloadTemplate", "DocumentMaster", new { code = "-1" }))',
             downloadAttachment: '@Html.Raw(Url.Action("downloadAttachment", "DocumentMaster", new { path = "-1" }))'

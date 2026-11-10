@@ -139,7 +139,8 @@ namespace DMS.Models.Repo
             return result;
         }
 
-        public DBResult Delete(DocumentMaster data, string loginUser, DBContext db)
+        // Soft delete (DELETE_FLAG = 2) for a category that was never used; see sp_DocumentMaster_Remove.
+        public DBResult Remove(DocumentMaster data, string loginUser, DBContext db)
         {
             SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
             SqlParameter returnMsg = CreateSqlParameterOutputString("@RETURN_MSG");
@@ -152,11 +153,8 @@ namespace DMS.Models.Repo
                 returnMsg
             };
 
-            string query = "EXEC @RETURN_VAL = [dbo].[sp_DocumentMaster_Delete] @DOCUMENT_ID, @LOGIN_USER, @RETURN_MSG OUTPUT";
-            int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
-
-            DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
-            return result;
+            db.Database.ExecuteSqlRaw("EXEC @RETURN_VAL = [dbo].[sp_DocumentMaster_Remove] @DOCUMENT_ID, @LOGIN_USER, @RETURN_MSG OUTPUT", param.ToArray());
+            return new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
         }
 
         public DBResult RemoveAttachment(DocumentMaster data, string loginUser, DBContext db)
