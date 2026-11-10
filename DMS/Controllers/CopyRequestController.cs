@@ -54,6 +54,8 @@ namespace DMS.Controllers
             ViewData["Submit"] = HttpContext.Session.GetString("functionList").Contains("COPYREQUEST-SUBMIT");
             ViewData["Print"] = HttpContext.Session.GetString("functionList").Contains("COPYREQUEST-PRINT");
             ViewData["Approve"] = HttpContext.Session.GetString("functionList").Contains("COPYREQUEST-APPROVE");
+            // Print Document (web, 2026-11-10): Document Control prints the approved copies.
+            ViewData["PrintDocument"] = Services.DocumentAccessService.IsDocumentControl(db, HttpContext.Session.GetString("USERNAME"));
 
             ViewData["Title"] = "Print Request";
 

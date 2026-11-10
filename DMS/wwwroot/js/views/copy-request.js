@@ -4,6 +4,7 @@ var gCanDelete = copyRequestConfig.canDelete;
 var gCanSubmit = copyRequestConfig.canSubmit;
 var gCanPrint = copyRequestConfig.canPrint;
 var gCanApprove = copyRequestConfig.canApprove;
+var gCanPrintDocument = copyRequestConfig.canPrintDocument;
 
 function updateActionButtons() {
     var row = getSelectedRowData();
@@ -322,9 +323,11 @@ function openRowActionMenu($btn, row) {
             }));
         }
     } else {
-        $menu.append(menuItem("cr-menu-view", "fa-eye", "View Approval", function () {
-            onApprovalPrepare(row);
-        }));
+        var canPrintDocs = gCanPrintDocument && row.STATUS == "2";
+        $menu.append(menuItem(canPrintDocs ? "cr-menu-print-doc" : "cr-menu-view", canPrintDocs ? "fa-print" : "fa-eye",
+            canPrintDocs ? "Print Documents" : "View Approval", function () {
+                onApprovalPrepare(row);
+            }));
     }
 
     if (gCanPrint) {
@@ -975,20 +978,82 @@ function loadApprovalDocumentList() {
         data: { REQUEST_ID: gRequestId },
         success: function (result) {
             var rows = result.data || [];
-            var html = '';
+            var approved = gApprovalHeaderRow && gApprovalHeaderRow.STATUS == "2";
+            var $list = $('#approvalDocumentList').empty();
 
             rows.forEach(function (r, idx) {
-                html += '<div style="display:flex; gap:10px; padding:6px 0; border-bottom:1px solid #EEF1F4; font-size:12.5px;">' +
-                    '<div style="width:22px; color:#98A2B3;">' + (idx + 1) + '</div>' +
-                    '<div style="flex:1;">' + (r.DOCUMENT_CODE || '-') + ' &mdash; ' + r.DOCUMENT_NAME + '</div>' +
-                    '<div style="width:60px; text-align:right; color:#5A6472;">Qty ' + (r.COPY_QTY || '-') + '</div>' +
-                    '<div style="width:50px; text-align:right; color:#98A2B3;">' + copyTypeDisplay(r.COPY_TYPE) + '</div>' +
-                    '</div>';
+                var $row = $('<div class="adf-doc-row"></div>');
+                $('<div class="adf-doc-no"></div>').text(idx + 1).appendTo($row);
+                var $main = $('<div class="adf-doc-main"></div>')
+                    .append($('<div></div>').text((r.DOCUMENT_CODE || '-') + ' — ' + (r.DOCUMENT_NAME || '')));
+                if (approved) $main.append(printStatusHtml(r));
+                $main.appendTo($row);
+                $('<div class="adf-doc-qty"></div>').text('Qty ' + (r.COPY_QTY || '-')).appendTo($row);
+                $('<div class="adf-doc-type"></div>').text(copyTypeDisplay(r.COPY_TYPE)).appendTo($row);
+
+                // Print Document (web, 2026-11-10): Document Control prints the approved copies.
+                if (approved && gCanPrintDocument) {
+                    var printed = r.PRINT_STATUS == "1";
+                    $('<button type="button" class="adf-print-btn"></button>')
+                        .toggleClass('adf-print-btn-reprint', printed)
+                        .html(printed ? '<i class="fa fa-repeat"></i> Reprint' : '<i class="fa fa-print"></i> Print')
+                        .attr('title', printed ? 'Already printed - a reprint needs a reason' : 'Print ' + (r.COPY_QTY || 1) + ' controlled cop' + ((r.COPY_QTY || 1) > 1 ? 'ies' : 'y'))
+                        .on('click', function () { onPrintDocument(r); })
+                        .appendTo($row);
+                }
+                $row.appendTo($list);
             });
 
-            $('#approvalDocumentList').html(html || '<div class="text-muted" style="font-size:12.5px;">No documents.</div>');
+            if (rows.length === 0) $list.html('<div class="text-muted" style="font-size:12.5px;">No documents.</div>');
         }
     });
+}
+
+function printStatusHtml(r) {
+    if (r.PRINT_STATUS != "1") {
+        return $('<div class="adf-print-status adf-print-waiting"></div>').html('<i class="fa fa-hourglass-half"></i> Not printed yet');
+    }
+    var text = 'Printed by ' + (r.PRINTED_BY || '-') + (r.PRINTED_DT ? ' on ' + moment(r.PRINTED_DT).format('DD MMM YYYY HH:mm') : '');
+    if (r.REPRINT_COUNT > 0) text += ' · reprinted ' + r.REPRINT_COUNT + 'x';
+    return $('<div class="adf-print-status adf-print-done"></div>').append('<i class="fa fa-check-circle"></i> ').append(document.createTextNode(text));
+}
+
+function onPrintDocument(r) {
+    var qty = r.COPY_QTY || 1;
+    var subject = confirmText(r.DOCUMENT_CODE || r.DOCUMENT_NAME || '');
+
+    if (r.PRINT_STATUS == "1") {
+        // Reprint (paper jam, damaged copy): Document Control only, with a reason that is logged.
+        $.MessageBox({
+            title: "Reprint Document",
+            message: subject + " was already printed by " + confirmText(r.PRINTED_BY || '-') + ". Why does it need to be printed again?",
+            input: true,
+            buttonDone: "Reprint",
+            buttonFail: "Cancel",
+            customClass: "msg-warning",
+            filterDone: function (value) {
+                if (!value || !$.trim(value)) return "Enter a reason to reprint.";
+            }
+        }).done(function (value) {
+            submitPrintDocument(r, $.trim(value));
+        });
+        return;
+    }
+
+    showConfirmMesg("Print " + qty + " controlled cop" + (qty > 1 ? "ies" : "y") + " of " + subject + "? Each copy is numbered and the document can be printed only once.",
+        function () { submitPrintDocument(r, null); }, "Print Document", "Print", "Cancel");
+}
+
+// Posted as a form into a new tab so the browser opens the PDF and its print dialog.
+function submitPrintDocument(r, reason) {
+    var $form = $('<form method="post" target="_blank"></form>').attr('action', copyRequestConfig.urls.printControlledCopy);
+    $('<input type="hidden" name="requestId">').val(r.REQUEST_ID).appendTo($form);
+    $('<input type="hidden" name="requestDetailId">').val(r.REQUEST_DETAIL_ID).appendTo($form);
+    if (reason) $('<input type="hidden" name="reprintReason">').val(reason).appendTo($form);
+    $form.appendTo('body').trigger('submit').remove();
+
+    // The print is recorded on the server while the PDF is built; refresh the status shortly after.
+    setTimeout(loadApprovalDocumentList, 2500);
 }
 
 function onApproveReject() {

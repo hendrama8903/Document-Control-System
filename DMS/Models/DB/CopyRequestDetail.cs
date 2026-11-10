@@ -21,5 +21,10 @@ namespace DMS.Models.DB
         public string? REASON { get; set; }
         public string? COUNTERMEASURE { get; set; }
         public string? REMARKS { get; set; }
+        // Print Document (web) - see sp_CopyRequest_WebPrint. PRINT_STATUS '1' = printed once.
+        public string? PRINT_STATUS { get; set; }
+        public string? PRINTED_BY { get; set; }
+        public DateTime? PRINTED_DT { get; set; }
+        public int? REPRINT_COUNT { get; set; }
     }
 }

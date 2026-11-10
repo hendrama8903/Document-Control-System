@@ -2733,6 +2733,113 @@ namespace DMS.Controllers
             }
         }
 
+        /// <summary>
+        /// Print Document of an approved Print Request line (request Hendra 2026-11-10, replaces
+        /// the PrintTrack desktop app). Document Control only. Returns one PDF with COPY_QTY
+        /// copies of the approval PDF, each stamped CONTROLLED COPY with "Copy n of N", the request
+        /// number and who printed it. A line prints once; a reprint needs a reason
+        /// (sp_CopyRequest_WebPrint). Posted from a form into a new tab.
+        /// </summary>
+        [HttpPost]
+        public IActionResult PrintControlledCopy(int requestId, int requestDetailId, string reprintReason)
+        {
+            const string title = "Dokumen tidak dapat dicetak";
+            string username = GetLoginUsername();
+            if (string.IsNullOrEmpty(username)) return Redirect("/Auth/Login");
+            if (!Services.DocumentAccessService.IsDocumentControl(db, username))
+                return Content(PreviewMessagePage(title, "Print Document hanya untuk Document Control (QMS)."), "text/html; charset=utf-8");
+
+            try
+            {
+                CopyRequest header = CopyRequestRepo.Instance.GetByKey(new CopyRequest { REQUEST_ID = requestId }, db);
+                CopyRequestDetail line = header == null ? null : CopyRequestRepo.Instance
+                    .SearchDetail(new CopyRequestDetail { REQUEST_ID = requestId }, db, null, null)
+                    .FirstOrDefault(d => d.REQUEST_DETAIL_ID == requestDetailId);
+                if (line == null)
+                    return Content(PreviewMessagePage(title, "Baris Print Request tidak ditemukan."), "text/html; charset=utf-8");
+                if (header.STATUS != "2")
+                    return Content(PreviewMessagePage(title, "Print Request ini belum disetujui QMS."), "text/html; charset=utf-8");
+
+                bool isReprint = line.PRINT_STATUS == "1";
+                if (isReprint && string.IsNullOrWhiteSpace(reprintReason))
+                    return Content(PreviewMessagePage(title, "Dokumen ini sudah pernah dicetak. Isi alasan untuk mencetak ulang."), "text/html; charset=utf-8");
+
+                // Only the revision that was requested, and only while it is still current.
+                DocumentMaintenance document = documentMaintenanceRepo
+                    .Search(new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = line.DOCUMENT_TRANSACTION_ID }, null, db, 1, 1)
+                    .FirstOrDefault();
+                if (document == null || (line.REVISION_NO != null && document.REVISION != line.REVISION_NO))
+                    return Content(PreviewMessagePage(title, "Dokumen ini sudah direvisi. Ajukan Print Request baru untuk revisi terbaru."), "text/html; charset=utf-8");
+                if (document.STATUS != "1" && document.STATUS != "5")
+                    return Content(PreviewMessagePage(title, "Dokumen ini belum berstatus Approved."), "text/html; charset=utf-8");
+
+                string webRootPath = Environment.WebRootPath;
+                string fullPath = Services.UploadPath.Resolve(webRootPath, document.FILE_PATH);
+                if (!System.IO.File.Exists(fullPath))
+                    return Content(PreviewMessagePage(title, "File dokumen tidak ditemukan."), "text/html; charset=utf-8");
+
+                DBResult ensured = EnsureApprovalPdf(webRootPath, fullPath, document, out string basePdf);
+                if (!ensured.status)
+                    return Content(PreviewMessagePage(title, ensured.message), "text/html; charset=utf-8");
+
+                int copies = Math.Max(1, line.COPY_QTY ?? 1);
+                string note = (header.REQUEST_NO ?? "") + " · Printed by " + username + " on " + DateTime.Now.ToString("dd MMM yyyy HH:mm")
+                    + (isReprint ? " · REPRINT" : "");
+                byte[] bytes = BuildControlledCopies(basePdf, webRootPath + "/images/cap_controlledcopy.png", copies, note, out int pageCount);
+
+                // Recorded only once the PDF exists, so a failed render never locks the line.
+                DBResult recorded = CopyRequestRepo.Instance.WebPrint(requestDetailId, pageCount, isReprint ? reprintReason.Trim() : null, username, db);
+                if (!recorded.status)
+                    return Content(PreviewMessagePage(title, recorded.message.Replace("ERROR: ", "")), "text/html; charset=utf-8");
+
+                Services.DocumentAccessLogService.Log(db, HttpContext, Services.DocumentAccessLogService.Print,
+                    document.DOCUMENT_TRANSACTION_ID, document.FILE_PATH, copies: copies);
+
+                return File(bytes, "application/pdf");
+            }
+            catch (Exception ex)
+            {
+                return Content(PreviewMessagePage(title, ex.Message), "text/html; charset=utf-8");
+            }
+        }
+
+        // COPY_QTY copies of the approval PDF in one file. Each copy is imported from a fresh
+        // reader so the stamps of one copy never land on the pages of another.
+        private static byte[] BuildControlledCopies(string basePdf, string stampImagePath, int copies, string note, out int pageCount)
+        {
+            if (PdfSharp.Fonts.GlobalFontSettings.FontResolver is not CustomFontResolver)
+                PdfSharp.Fonts.GlobalFontSettings.FontResolver = new CustomFontResolver();
+
+            const double stampWidth = 130, margin = 20;
+            pageCount = 0;
+            using PdfDocument output = new PdfDocument();
+            output.Version = 17;
+            using XImage stamp = XImage.FromFile(stampImagePath);
+            var red = new XSolidBrush(XColor.FromArgb(220, 198, 40, 40));
+            var noteFont = new XFont("Arial", 7, XFontStyleEx.Bold);
+
+            for (int copy = 1; copy <= copies; copy++)
+            {
+                using PdfDocument source = PdfReader.Open(basePdf, PdfDocumentOpenMode.Import);
+                pageCount = source.PageCount;
+                foreach (PdfPage sourcePage in source.Pages)
+                {
+                    PdfPage page = output.AddPage(sourcePage);
+                    using XGraphics gfx = XGraphics.FromPdfPage(page);
+                    double h = stampWidth * stamp.PixelHeight / stamp.PixelWidth;
+                    double x = (page.Width - stampWidth) / 2;
+                    double y = page.Height - h - margin;
+                    gfx.DrawImage(stamp, x, y, stampWidth, h);
+                    gfx.DrawString("Copy " + copy + " of " + copies + " · " + note, noteFont, red,
+                        new XRect(0, page.Height - margin + 3, page.Width, 9), XStringFormats.Center);
+                }
+            }
+
+            using var stream = new MemoryStream();
+            output.Save(stream, false);
+            return stream.ToArray();
+        }
+
         // The approval PDF of a document file: the file itself when it is a PDF, otherwise the
         // cached TEMP_<name>.pdf, generated (fields and signatures) when missing. Shared cache:
         // callers stamp a copy, never this file.

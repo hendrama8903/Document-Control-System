@@ -30,6 +30,8 @@ BEGIN
 			D.PRINT_STATUS,
 			D.PRINTED_BY,
 			D.PRINTED_DT,
+			-- Web reprints (sp_CopyRequest_WebPrint), shown next to the first print.
+			(SELECT COUNT(*) FROM [dbo].[TB_R_COPY_REQUEST_PRINT_LOG] PL WHERE PL.REQUEST_DETAIL_ID = D.REQUEST_DETAIL_ID AND PL.PRINT_STATUS = 'Reprint') AS REPRINT_COUNT,
 			D.CREATED_BY,
 			D.CREATED_DT,
 			D.CHANGED_BY,

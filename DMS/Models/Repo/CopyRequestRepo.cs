@@ -196,6 +196,28 @@ namespace DMS.Models.Repo
             return result;
         }
 
+        /// <summary>Record a web print of one request line (sp_CopyRequest_WebPrint).</summary>
+        public DBResult WebPrint(int requestDetailId, int pageCount, string reprintReason, string loginUser, DBContext db)
+        {
+            SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
+            SqlParameter returnMsg = CreateSqlParameterOutputString("@RETURN_MSG");
+
+            List<SqlParameter> param = new List<SqlParameter>
+            {
+                returnVal,
+                new SqlParameter ( "@REQUEST_DETAIL_ID", requestDetailId ),
+                new SqlParameter ( "@PAGE_COUNT", pageCount ),
+                new SqlParameter ( "@REPRINT_REASON", CheckNullValue(reprintReason) ),
+                new SqlParameter ( "@LOGIN_USER", loginUser ),
+                returnMsg
+            };
+
+            string query = "EXEC @RETURN_VAL = [dbo].[sp_CopyRequest_WebPrint] @REQUEST_DETAIL_ID, @PAGE_COUNT, @REPRINT_REASON, @LOGIN_USER, @RETURN_MSG OUTPUT";
+            db.Database.ExecuteSqlRaw(query, param.ToArray());
+
+            return new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
+        }
+
         public IList<CopyRequestDetail> SearchDetail(CopyRequestDetail data, DBContext db, int? PageNumber, int? PageSize)
         {
             List<SqlParameter> param = new List<SqlParameter>

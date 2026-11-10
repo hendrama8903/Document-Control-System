@@ -197,3 +197,21 @@
     padding: 10px 12px;
     white-space: pre-wrap;
 }
+
+/* Requested documents + Print Document (web, 2026-11-10) */
+#approvalPanel .adf-doc-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid #EEF1F4; font-size: 12.5px; }
+#approvalPanel .adf-doc-no { width: 22px; flex: none; color: #98A2B3; }
+#approvalPanel .adf-doc-main { flex: 1; min-width: 0; color: #1D2939; }
+#approvalPanel .adf-doc-qty { width: 52px; flex: none; text-align: right; color: #5A6472; }
+#approvalPanel .adf-doc-type { width: 30px; flex: none; text-align: right; color: #98A2B3; }
+#approvalPanel .adf-print-status { font-size: 11px; margin-top: 2px; }
+#approvalPanel .adf-print-waiting { color: #B36B00; }
+#approvalPanel .adf-print-done { color: #1E7E34; }
+#approvalPanel .adf-print-btn {
+    flex: none; display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 7px; font-size: 11.5px; font-weight: 700;
+    border: 1px solid #2450D8; background: #2450D8; color: #fff; cursor: pointer;
+}
+#approvalPanel .adf-print-btn:hover { background: #1C3FA6; }
+#approvalPanel .adf-print-btn-reprint { background: #fff; color: #B36B00; border-color: #F0C68A; }
+#approvalPanel .adf-print-btn-reprint:hover { background: #FFF6E8; }

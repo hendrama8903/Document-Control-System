@@ -9,6 +9,7 @@
         canSubmit: @(((bool)ViewData["Submit"]) ? "true" : "false"),
         canPrint: @(((bool)ViewData["Print"]) ? "true" : "false"),
         canApprove: @(((bool)ViewData["Approve"]) ? "true" : "false"),
+        canPrintDocument: @(((bool)ViewData["PrintDocument"]) ? "true" : "false"),
         sessionDivision: "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("DIVISION"))",
         sessionDepartmentId: "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetInt32("DEPARTMENT_ID"))",
         sessionSectionCode: "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetString("SECTION_CODE"))",
@@ -25,7 +26,8 @@
             submit: "@Url.Action("Submit", "CopyRequest")",
             searchDetail: "@Url.Action("SearchDetail", "CopyRequest")",
             searchApprovedDocuments: "@Url.Action("SearchApprovedDocuments", "CopyRequest")",
-            approveReject: "@Url.Action("ApproveReject", "CopyRequest")"
+            approveReject: "@Url.Action("ApproveReject", "CopyRequest")",
+            printControlledCopy: "@Url.Action("PrintControlledCopy", "DocumentMaintenance")"
         }
     };
 </script>
