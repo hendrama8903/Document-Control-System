@@ -1,0 +1,69 @@
+@* Administration > Signature Settings - one signing method for the whole system
+   (request Hendra 2026-11-09). *@
+@{
+    string method = (string)ViewData["Method"];
+    bool canEdit = (bool)ViewData["CanEdit"];
+}
+<link rel="stylesheet" href="~/css/views/SignatureSetting/Index.css" asp-append-version="true" />
+
+<section class="content">
+    <div class="row">
+        <div class="col-xs-12">
+            <div class="dp-card ss-card">
+                <div class="ss-head">
+                    <h3>Signing Method</h3>
+                    <p>Choose how users sign documents when they save, approve or acknowledge. The method applies to the whole system; documents that are already signed keep their signature.</p>
+                </div>
+
+                <div class="ss-options" role="radiogroup" aria-label="Signing method">
+                    <label class="ss-option">
+                        <input type="radio" name="ssMethod" value="TULIS" @(method == "TULIS" ? "checked" : "") @(canEdit ? "" : "disabled") />
+                        <span class="ss-option-icon"><i class="fa fa-pencil"></i></span>
+                        <span class="ss-option-text">
+                            <b>Draw or Type</b>
+                            <span>Users draw their signature with the mouse or a finger, or type their name in a handwriting font, every time they sign.</span>
+                        </span>
+                    </label>
+                    <label class="ss-option">
+                        <input type="radio" name="ssMethod" value="QR" @(method == "QR" ? "checked" : "") @(canEdit ? "" : "disabled") />
+                        <span class="ss-option-icon"><i class="fa fa-qrcode"></i></span>
+                        <span class="ss-option-text">
+                            <b>QR Code</b>
+                            <span>Users confirm with one click. A QR code is printed in the signature box; scanning it opens a verification page (login required).</span>
+                        </span>
+                    </label>
+                    <label class="ss-option">
+                        <input type="radio" name="ssMethod" value="UPLOAD" @(method == "UPLOAD" ? "checked" : "") @(canEdit ? "" : "disabled") />
+                        <span class="ss-option-icon"><i class="fa fa-picture-o"></i></span>
+                        <span class="ss-option-text">
+                            <b>Uploaded Image</b>
+                            <span>Users confirm with one click and the signature image from their Profile is printed. Users without an image must upload one in Profile first.</span>
+                        </span>
+                    </label>
+                </div>
+
+                <div class="ss-field" id="ssQrField">
+                    <label for="ssVerifyBaseUrl">Server Address for QR Links</label>
+                    <input type="text" id="ssVerifyBaseUrl" maxlength="200" placeholder="http://dcs.hmmi.co.id" value="@ViewData["VerifyBaseUrl"]" @(canEdit ? "" : "disabled") />
+                    <small>The address phones use to open DCS. Leave empty to use the address the document was opened from.</small>
+                </div>
+
+                @if (canEdit)
+                {
+                    <div class="ss-actions">
+                        <button type="button" class="dp-btn dp-btn-primary" id="ssSave"><i class="fa fa-save"></i> Save</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</section>
+
+<script type="text/javascript">
+    var signatureSettingConfig = {
+        urls: {
+            save: "@Url.Action("Save", "SignatureSetting")"
+        }
+    };
+</script>
+<script src="~/js/views/signature-setting.js" asp-append-version="true"></script>

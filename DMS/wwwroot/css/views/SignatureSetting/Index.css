@@ -1,0 +1,38 @@
+.ss-card { padding: 24px; max-width: 880px; }
+.ss-head h3 { margin: 0 0 6px; font-size: 18px; font-weight: 600; color: #1F2933; }
+.ss-head p { margin: 0 0 20px; font-size: 14px; color: #52606D; line-height: 1.6; }
+
+.ss-options { display: grid; gap: 12px; }
+.ss-option {
+    display: flex; align-items: flex-start; gap: 14px; margin: 0;
+    padding: 16px; border: 1px solid #E4E7EB; border-radius: 8px; cursor: pointer;
+    font-weight: 400; background: #fff; transition: border-color .15s, background .15s;
+}
+.ss-option:hover { border-color: #9AA5B1; }
+.ss-option input { margin-top: 12px; flex-shrink: 0; }
+.ss-option:has(input:checked) { border-color: #2348C1; background: #F0F4FF; }
+.ss-option:has(input:disabled) { cursor: default; }
+.ss-option-icon {
+    width: 40px; height: 40px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: #EEF2FF; color: #2348C1; font-size: 18px;
+}
+.ss-option-text { display: flex; flex-direction: column; gap: 4px; }
+.ss-option-text b { font-size: 14px; font-weight: 600; color: #1F2933; }
+.ss-option-text span { font-size: 13px; color: #52606D; line-height: 1.5; }
+
+.ss-field { margin-top: 20px; display: none; }
+.ss-field.visible { display: block; }
+.ss-field label { display: block; font-size: 13px; font-weight: 600; color: #1F2933; margin-bottom: 6px; }
+.ss-field input {
+    width: 100%; max-width: 420px; height: 36px; padding: 0 10px;
+    border: 1px solid #CBD2D9; border-radius: 6px; font-size: 14px;
+}
+.ss-field small { display: block; margin-top: 6px; font-size: 12px; color: #7B8794; }
+
+.ss-actions { margin-top: 24px; }
+
+@media (max-width: 600px) {
+    .ss-card { padding: 16px; }
+    .ss-option { padding: 12px; }
+}

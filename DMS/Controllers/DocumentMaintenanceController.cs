@@ -883,7 +883,7 @@ namespace DMS.Controllers
             if (screenMode == "ADD" && string.Equals(GetLoginUsername(), data.DOCUMENT_CREATOR, StringComparison.OrdinalIgnoreCase))
             {
                 creatorSignature = SignatureFromRequest();
-                string signatureError = Services.SignatureService.Validate(creatorSignature);
+                string signatureError = Services.SignatureService.Validate(creatorSignature, Services.SignatureService.ActiveMethod(db));
                 if (signatureError != null) return Json(new { status = false, message = signatureError });
             }
 
@@ -3138,7 +3138,27 @@ namespace DMS.Controllers
         {
             if (documentTransactionId == null) return null;
             Services.SignatureService.Record signature = Services.SignatureService.Load(db, kind, documentTransactionId.Value, refKey);
-            return signature == null ? null : Services.SignatureService.RenderPng(signature.Method, signature.Data, signature.Font);
+            return signature == null ? null : Services.SignatureService.RenderPng(signature.Method, signature.Data, signature.Font,
+                signature.Method == Services.SignatureService.MethodQr ? QrVerifyBaseUrl() : null);
+        }
+
+        // Level 4 (Checksheet / Form) documents are approved without signatures: no signature
+        // dialog, no DCS_ markers required, and the form is printed exactly as uploaded
+        // (decision Hendra 2026-11-09).
+        public const int UnsignedLevel = 4;
+
+        private bool IsUnsignedCategory(int? documentId)
+        {
+            if (documentId == null) return false;
+            DocumentMaster category = documentMasterRepo.GetByKey(new DocumentMaster { DOCUMENT_ID = documentId }, db);
+            return category?.LEVEL == UnsignedLevel;
+        }
+
+        // Address put in QR links: the configured server address, or the one this request came in on.
+        private string QrVerifyBaseUrl()
+        {
+            string configured = Services.SignatureService.VerifyBaseUrl(db);
+            return !string.IsNullOrWhiteSpace(configured) ? configured.Trim() : Request.Scheme + "://" + Request.Host.Value;
         }
 
         private Services.SignatureService.Input SignatureFromRequest() => !Request.HasFormContentType ? null : new Services.SignatureService.Input

@@ -11,6 +11,12 @@
     var confirmBtn = document.getElementById('esignConfirm');
     var errorBox = document.getElementById('esignError');
     var strokes = [], current = null, mode = 'DRAW', font = FONTS[0], options = {};
+    // Signing method from Administration > Signature Settings: TULIS (draw/type), QR or UPLOAD.
+    var setting = 'TULIS', hasProfileImage = false, loading = false;
+    var tabsBox = document.getElementById('esignTabs');
+    var loadingBox = document.getElementById('esignLoading');
+    var qrPanel = document.getElementById('esignQrPanel');
+    var uploadPanel = document.getElementById('esignUploadPanel');
 
     // Kanvas tajam di layar high-DPI; koordinat yang disimpan tetap skala logis 600x200
     function setupCanvas() {
@@ -60,7 +66,10 @@
     function pointCount() { return strokes.reduce(function (n, s) { return n + s.length; }, 0); }
 
     function refresh() {
-        var ok = mode === 'DRAW' ? pointCount() >= 10 : textInput.value.trim().length >= 2;
+        var ok = loading ? false
+            : setting === 'QR' ? true
+            : setting === 'UPLOAD' ? hasProfileImage
+            : mode === 'DRAW' ? pointCount() >= 10 : textInput.value.trim().length >= 2;
         confirmBtn.disabled = !ok;
         errorBox.textContent = '';
         if (mode === 'TYPE') renderFonts();
@@ -99,7 +108,10 @@
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && overlay.classList.contains('open')) close(); });
 
     confirmBtn.onclick = function () {
-        var sig = mode === 'DRAW'
+        // QR token and the uploaded image are filled in by the server (SignatureService.Prepare).
+        var sig = setting === 'QR' ? { SIGN_METHOD: 'QR', SIGN_DATA: 'CONFIRM', SIGN_FONT: '' }
+            : setting === 'UPLOAD' ? { SIGN_METHOD: 'UPLOAD', SIGN_DATA: 'CONFIRM', SIGN_FONT: '' }
+            : mode === 'DRAW'
             ? { SIGN_METHOD: 'DRAW', SIGN_DATA: JSON.stringify({ w: W, h: H, strokes: strokes }), SIGN_FONT: '' }
             : { SIGN_METHOD: 'TYPE', SIGN_DATA: textInput.value.trim(), SIGN_FONT: font };
         var callback = options.onSigned;
@@ -116,8 +128,44 @@
         confirmBtn.textContent = options.confirmText || 'Sign';
         strokes = []; textInput.value = options.defaultName || ''; font = FONTS[0];
         overlay.classList.add('open');
-        setMode('DRAW');
+        showPanels(null);
+        loading = true; refresh();
+
+        fetch('/SignatureSetting/Current', { credentials: 'same-origin', cache: 'no-store' })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (!res || res.status !== true) throw new Error((res && res.message) || 'Signature settings could not be loaded.');
+                setting = res.method || 'TULIS';
+                hasProfileImage = !!res.profileImage;
+                if (hasProfileImage) document.getElementById('esignUploadImg').src = res.profileImage;
+                loading = false;
+                showPanels(setting);
+            })
+            .catch(function (err) {
+                loading = false;
+                showPanels(null);
+                refresh();
+                errorBox.textContent = err.message || 'Signature settings could not be loaded. Please try again.';
+            });
     };
+
+    // null = only the loading text; otherwise the panels for that signing method.
+    function showPanels(method) {
+        loadingBox.style.display = method === null && loading ? '' : 'none';
+        tabsBox.style.display = method === 'TULIS' ? '' : 'none';
+        qrPanel.style.display = method === 'QR' ? '' : 'none';
+        uploadPanel.style.display = method === 'UPLOAD' ? '' : 'none';
+        document.getElementById('esignUploadPreview').style.display = hasProfileImage ? '' : 'none';
+        document.getElementById('esignUploadText').style.display = hasProfileImage ? '' : 'none';
+        document.getElementById('esignUploadMissing').style.display = hasProfileImage ? 'none' : '';
+        if (method === 'TULIS') {
+            setMode('DRAW');
+        } else {
+            document.getElementById('esignDrawPanel').style.display = 'none';
+            document.getElementById('esignTypePanel').style.display = 'none';
+            refresh();
+        }
+    }
 
     window.appendSignature = function (target, sig) {
         if (!sig) return target;

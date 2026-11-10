@@ -27,7 +27,27 @@
             <button type="button" class="esign-close" id="esignClose" title="Cancel">&times;</button>
         </div>
         <div class="esign-body">
-            <div class="esign-tabs">
+            <div class="esign-loading" id="esignLoading"><i class="fa fa-spinner fa-spin"></i> Loading...</div>
+            @* QR / UPLOAD: metode dari Administration > Signature Settings (2026-11-09) *@
+            <div class="esign-alt" id="esignQrPanel" style="display:none;">
+                <div class="esign-alt-icon"><i class="fa fa-qrcode"></i></div>
+                <div class="esign-alt-text">
+                    <b>Sign with QR code</b>
+                    <span>A QR code is printed in your signature box. Scanning it opens a verification page in DCS that shows who signed and when.</span>
+                </div>
+            </div>
+            <div class="esign-alt" id="esignUploadPanel" style="display:none;">
+                <div class="esign-upload-preview" id="esignUploadPreview"><img id="esignUploadImg" alt="Your signature" /></div>
+                <div class="esign-alt-text" id="esignUploadText">
+                    <b>Sign with your signature image</b>
+                    <span>The signature image from your Profile is printed in your signature box.</span>
+                </div>
+                <div class="esign-alt-text" id="esignUploadMissing" style="display:none;">
+                    <b>No signature image</b>
+                    <span>Upload your signature image in <a href="/User/Profile" target="_blank">Profile</a> first, then sign again.</span>
+                </div>
+            </div>
+            <div class="esign-tabs" id="esignTabs">
                 <button type="button" class="esign-tab active" data-tab="DRAW"><i class="fa fa-paint-brush"></i> Draw</button>
                 <button type="button" class="esign-tab" data-tab="TYPE"><i class="fa fa-keyboard-o"></i> Type</button>
             </div>

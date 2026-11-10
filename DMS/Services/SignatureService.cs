@@ -29,6 +29,16 @@ namespace DMS.Services
 
         public const string MethodDraw = "DRAW";
         public const string MethodType = "TYPE";
+        public const string MethodQr = "QR";
+        public const string MethodUpload = "UPLOAD";
+
+        // Master setting (TB_M_SYSTEM SIGNATURE_SETTING/METHOD, request Hendra 2026-11-09):
+        // one signing method for the whole system. TULIS = draw or type (DRAW/TYPE records).
+        public const string SettingTulis = "TULIS";
+        public static readonly string[] SettingMethods = { SettingTulis, MethodQr, MethodUpload };
+
+        const string SettingType = "SIGNATURE_SETTING";
+        const int MaxUploadBytes = 2 * 1024 * 1024;
 
         /// <summary>Font tulisan tangan bawaan Windows (tidak butuh Office di server).</summary>
         public static readonly string[] TypeFonts = { "Segoe Script", "Segoe Print", "Ink Free", "Gabriola" };
@@ -63,7 +73,136 @@ namespace DMS.Services
             public List<List<float[]>> strokes { get; set; }
         }
 
-        /// <summary>null = valid; selain itu pesan kesalahan untuk user.</summary>
+        // ------------------------------------------------------------------
+        // Master setting
+        // ------------------------------------------------------------------
+
+        static string ReadSetting(DBContext db, string code)
+        {
+            using DbCommand command = TextCommand(db, "SELECT SYSTEM_VALUE FROM dbo.TB_M_SYSTEM WHERE SYSTEM_TYPE = @T AND SYSTEM_CODE = @C", out bool wasClosed);
+            try
+            {
+                command.Parameters.Add(new SqlParameter("@T", SettingType));
+                command.Parameters.Add(new SqlParameter("@C", code));
+                object value = command.ExecuteScalar();
+                return value == null || value == DBNull.Value ? null : Convert.ToString(value).Trim();
+            }
+            finally
+            {
+                if (wasClosed) command.Connection.Close();
+            }
+        }
+
+        /// <summary>Active signing method: TULIS, QR or UPLOAD (TULIS when not set).</summary>
+        public static string ActiveMethod(DBContext db)
+        {
+            string value = (ReadSetting(db, "METHOD") ?? "").ToUpperInvariant();
+            return SettingMethods.Contains(value) ? value : SettingTulis;
+        }
+
+        /// <summary>Server address used in QR links; empty = the address the document was opened from.</summary>
+        public static string VerifyBaseUrl(DBContext db) => ReadSetting(db, "VERIFY_BASE_URL") ?? "";
+
+        public static void SaveSettings(DBContext db, string method, string verifyBaseUrl, string loginUser)
+        {
+            foreach (var (code, value) in new[] { ("METHOD", method), ("VERIFY_BASE_URL", verifyBaseUrl ?? "") })
+            {
+                using DbCommand command = TextCommand(db,
+                    "UPDATE dbo.TB_M_SYSTEM SET SYSTEM_VALUE = @V, CHANGED_BY = @U, CHANGED_DT = GETDATE() WHERE SYSTEM_TYPE = @T AND SYSTEM_CODE = @C; " +
+                    "IF @@ROWCOUNT = 0 INSERT INTO dbo.TB_M_SYSTEM (SYSTEM_TYPE, SYSTEM_CODE, SYSTEM_VALUE, STATUS, CREATED_BY, CREATED_DT) VALUES (@T, @C, @V, 1, @U, GETDATE());",
+                    out bool wasClosed);
+                try
+                {
+                    command.Parameters.Add(new SqlParameter("@T", SettingType));
+                    command.Parameters.Add(new SqlParameter("@C", code));
+                    command.Parameters.Add(new SqlParameter("@V", value));
+                    command.Parameters.Add(new SqlParameter("@U", loginUser));
+                    command.ExecuteNonQuery();
+                }
+                finally
+                {
+                    if (wasClosed) command.Connection.Close();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Profile signature image of a user (TB_M_USER.SIGNATURE_PATH), as a full path, or
+        /// null when the user has none or the file is missing.
+        /// </summary>
+        public static string ProfileSignaturePath(DBContext db, string webRootPath, string username)
+        {
+            using DbCommand command = TextCommand(db, "SELECT SIGNATURE_PATH FROM dbo.TB_M_USER WHERE USERNAME = @U", out bool wasClosed);
+            string relative;
+            try
+            {
+                command.Parameters.Add(new SqlParameter("@U", username ?? ""));
+                object value = command.ExecuteScalar();
+                relative = value == null || value == DBNull.Value ? null : Convert.ToString(value);
+            }
+            finally
+            {
+                if (wasClosed) command.Connection.Close();
+            }
+            string full = UploadPath.Resolve(webRootPath, relative);
+            return full != null && File.Exists(full) ? full : null;
+        }
+
+        /// <summary>
+        /// Fill in what the server owns before saving: a verification token for QR, and a
+        /// copy of the profile image for UPLOAD (so a later profile change does not alter
+        /// signed documents). null = ready; otherwise a message for the user.
+        /// </summary>
+        public static string Prepare(DBContext db, Input input, string signer, string webRootPath)
+        {
+            if (input.Method == MethodQr)
+            {
+                input.Data = Guid.NewGuid().ToString("N");
+                input.Font = null;
+                return null;
+            }
+
+            if (input.Method == MethodUpload)
+            {
+                string path = ProfileSignaturePath(db, webRootPath, signer);
+                if (path == null) return "You have no signature image yet. Upload your signature in Profile first.";
+                byte[] bytes = File.ReadAllBytes(path);
+                if (bytes.Length > MaxUploadBytes) return "Your profile signature image is larger than 2 MB. Upload a smaller image in Profile.";
+                try
+                {
+                    using var ms = new MemoryStream(bytes);
+                    using var image = Image.FromStream(ms);
+                }
+                catch (ArgumentException)
+                {
+                    return "Your profile signature image cannot be read. Upload it again in Profile.";
+                }
+                string mime = Path.GetExtension(path).ToLowerInvariant() == ".png" ? "image/png" : "image/jpeg";
+                input.Data = "data:" + mime + ";base64," + Convert.ToBase64String(bytes);
+                input.Font = null;
+                return null;
+            }
+
+            return null;
+        }
+
+        /// <summary>null = valid for the active method; otherwise a message for the user.</summary>
+        public static string Validate(Input input, string activeMethod)
+        {
+            if (input == null || string.IsNullOrWhiteSpace(input.Method) || string.IsNullOrWhiteSpace(input.Data))
+                return "Please sign the document first.";
+
+            bool allowed = activeMethod == SettingTulis
+                ? input.Method == MethodDraw || input.Method == MethodType
+                : input.Method == activeMethod;
+            if (!allowed)
+                return "The signing method was changed by the administrator. Close this form, reload the page and sign again.";
+
+            if (input.Method == MethodQr || input.Method == MethodUpload) return null;
+            return Validate(input);
+        }
+
+        /// <summary>null = valid; selain itu pesan kesalahan untuk user (DRAW/TYPE).</summary>
         public static string Validate(Input input)
         {
             if (input == null || string.IsNullOrWhiteSpace(input.Method) || string.IsNullOrWhiteSpace(input.Data))
@@ -116,6 +255,13 @@ namespace DMS.Services
             command.CommandType = CommandType.StoredProcedure;
             var transaction = db.Database.CurrentTransaction?.GetDbTransaction();
             if (transaction != null) command.Transaction = transaction;
+            return command;
+        }
+
+        static DbCommand TextCommand(DBContext db, string sql, out bool wasClosed)
+        {
+            DbCommand command = Command(db, sql, out wasClosed);
+            command.CommandType = CommandType.Text;
             return command;
         }
 
@@ -196,13 +342,33 @@ namespace DMS.Services
         /// PNG tanda tangan di folder temp aplikasi (bukan wwwroot - tidak bisa diunduh),
         /// di-cache per isi tanda tangan. Mengembalikan path lengkap.
         /// </summary>
-        public static string RenderPng(string method, string data, string font)
+        public static string RenderPng(string method, string data, string font, string verifyBaseUrl = null)
         {
             string folder = Path.Combine(Path.GetTempPath(), "DMS_Sign");
             Directory.CreateDirectory(folder);
-            string key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(method + "|" + font + "|" + data)))[..20];
+            string verifyUrl = method == MethodQr ? VerifyUrl(verifyBaseUrl, data) : null;
+            string key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(method + "|" + font + "|" + data + "|" + verifyUrl)))[..20];
             string path = Path.Combine(folder, key + ".png");
             if (File.Exists(path)) return path;
+
+            if (method == MethodQr)
+            {
+                WriteAtomically(path, tmp => RenderQr(verifyUrl, tmp));
+                return path;
+            }
+
+            if (method == MethodUpload)
+            {
+                byte[] bytes = DecodeDataUri(data);
+                if (bytes == null) return null;
+                WriteAtomically(path, tmp =>
+                {
+                    using var ms = new MemoryStream(bytes);
+                    using var image = Image.FromStream(ms);
+                    image.Save(tmp, ImageFormat.Png);
+                });
+                return path;
+            }
 
             using (var bmp = new Bitmap(RenderWidth, RenderHeight))
             using (var g = Graphics.FromImage(bmp))
@@ -219,6 +385,41 @@ namespace DMS.Services
                 try { File.Move(tmp, path, true); } catch (IOException) { if (File.Exists(tmp)) File.Delete(tmp); }
             }
             return path;
+        }
+
+        /// <summary>Verification page for a QR signature token.</summary>
+        public static string VerifyUrl(string baseUrl, string token) =>
+            (baseUrl ?? "").TrimEnd('/') + "/Verify/Signature/" + token;
+
+        static void WriteAtomically(string path, Action<string> write)
+        {
+            string tmp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            write(tmp);
+            try { File.Move(tmp, path, true); } catch (IOException) { if (File.Exists(tmp)) File.Delete(tmp); }
+        }
+
+        static byte[] DecodeDataUri(string data)
+        {
+            int comma = data?.IndexOf(',') ?? -1;
+            if (comma < 0) return null;
+            try { return Convert.FromBase64String(data.Substring(comma + 1)); } catch (FormatException) { return null; }
+        }
+
+        static void RenderQr(string url, string outputPath)
+        {
+            using var barCode = new DevExpress.BarCodes.BarCode();
+            barCode.Symbology = DevExpress.BarCodes.Symbology.QRCode;
+            // Byte mode reads CodeBinaryData (CodeText is ignored and throws when empty).
+            barCode.Options.QRCode.CompactionMode = DevExpress.BarCodes.QRCodeCompactionMode.Byte;
+            barCode.CodeBinaryData = Encoding.UTF8.GetBytes(url);
+            barCode.Options.QRCode.ErrorLevel = DevExpress.BarCodes.QRCodeErrorLevel.M;
+            barCode.Options.QRCode.ShowCodeText = false;
+            barCode.Unit = GraphicsUnit.Pixel;
+            barCode.Module = 8;
+            barCode.Margins.Left = barCode.Margins.Right = barCode.Margins.Top = barCode.Margins.Bottom = 16;
+            barCode.BackColor = Color.White;
+            barCode.ForeColor = Color.Black;
+            barCode.Save(outputPath, ImageFormat.Png);
         }
 
         static void DrawStrokes(Graphics g, DrawData draw)

@@ -1,0 +1,61 @@
+@* Opened by scanning the QR code in a signature box (signing method QR, 2026-11-09). *@
+@model DMS.Controllers.VerifyController.SignatureInfo
+@{
+    string role = Model?.Kind switch
+    {
+        "CREATOR" => "Document creator",
+        "APPROVAL" => "Approver",
+        "ACK" => "Acknowledged by related division",
+        _ => Model?.Kind
+    };
+}
+<link rel="stylesheet" href="~/css/views/Verify/Signature.css" asp-append-version="true" />
+
+<section class="content">
+    <div class="vf-card dp-card">
+        @if (Model == null)
+        {
+            <div class="vf-result vf-bad">
+                <i class="fa fa-times-circle"></i>
+                <div>
+                    <b>Signature not found</b>
+                    <span>This QR code does not match any signature in DCS. The document may not be genuine, or the code was copied incorrectly.</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="vf-result @(Model.FileCheck == "CHANGED" ? "vf-warn" : "vf-ok")">
+                <i class="fa @(Model.FileCheck == "CHANGED" ? "fa-exclamation-triangle" : "fa-check-circle")"></i>
+                <div>
+                    <b>@(Model.FileCheck == "CHANGED" ? "Signature is genuine, but the file has changed" : "Signature is genuine")</b>
+                    <span>
+                        @if (Model.FileCheck == "CHANGED")
+                        {
+                            @:The document file stored in DCS is different from the file that was signed. Check the latest revision in DCS.
+                        }
+                        else if (Model.FileCheck == "MATCH")
+                        {
+                            @:The document file stored in DCS is the same file that was signed.
+                        }
+                        else
+                        {
+                            @:This signature is recorded in DCS. The signed file could not be compared.
+                        }
+                    </span>
+                </div>
+            </div>
+
+            <dl class="vf-details">
+                <dt>Signed By</dt><dd>@Model.SignerName</dd>
+                <dt>Position</dt><dd>@(Model.SignerPosition ?? "-")</dd>
+                <dt>Role</dt><dd>@role</dd>
+                <dt>Signed At</dt><dd>@Model.SignedDt.ToString("dd MMM yyyy HH:mm")</dd>
+                <dt>Document No.</dt><dd>@(Model.DocumentCode ?? "-")</dd>
+                <dt>Document Title</dt><dd>@(Model.DocumentTitle ?? "-")</dd>
+                <dt>Revision</dt><dd>@(Model.Revision ?? "-")@(Model.IsCurrentRevision ? "" : " (superseded by a newer revision)")</dd>
+                <dt>Department</dt><dd>@(Model.DepartmentName ?? "-")</dd>
+            </dl>
+        }
+    </div>
+</section>

@@ -1,0 +1,21 @@
+.vf-card { max-width: 640px; margin: 0 auto; padding: 24px; }
+.vf-result { display: flex; gap: 14px; align-items: flex-start; padding: 16px; border-radius: 8px; margin-bottom: 20px; }
+.vf-result > i { font-size: 28px; flex-shrink: 0; }
+.vf-result b { display: block; font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.vf-result span { font-size: 14px; line-height: 1.5; }
+.vf-ok { background: #E8F7EE; color: #14532D; }
+.vf-ok > i { color: #1E9E63; }
+.vf-warn { background: #FFF6E5; color: #7A4B00; }
+.vf-warn > i { color: #E8890C; }
+.vf-bad { background: #FDECEC; color: #7F1D1D; }
+.vf-bad > i { color: #D64545; }
+
+.vf-details { display: grid; grid-template-columns: 150px 1fr; gap: 10px 16px; margin: 0; font-size: 14px; }
+.vf-details dt { font-weight: 600; color: #52606D; }
+.vf-details dd { margin: 0; color: #1F2933; word-break: break-word; }
+
+@media (max-width: 600px) {
+    .vf-card { padding: 16px; }
+    .vf-details { grid-template-columns: 1fr; gap: 2px; }
+    .vf-details dd { margin-bottom: 10px; }
+}
