@@ -17,33 +17,32 @@
     flex: none;
     background: linear-gradient(135deg, #2450D8, #1C3FA6);
     color: #fff;
-    padding: 16px 22px;
+    padding: 11px 18px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 11px;
 }
 
 #modalAddEdit .adf-header-icon {
     flex: none;
-    width: 38px;
-    height: 38px;
-    border-radius: 9px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
     background: rgba(255,255,255,.18);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 14px;
 }
 
 #modalAddEdit .adf-header-title {
-    font-size: 15.5px;
+    font-size: 14.5px;
     font-weight: 700;
 }
 
 #modalAddEdit .adf-header-sub {
-    font-size: 12px;
-    color: rgba(255,255,255,.85);
-    margin-top: 1px;
+    font-size: 11.5px;
+    color: rgba(255,255,255,.8);
 }
 
 #modalAddEdit .adf-close {
@@ -71,7 +70,7 @@
     flex: 1 1 auto;
     min-width: 0;
     overflow-y: auto;
-    padding: 18px 22px;
+    padding: 12px 16px;
     counter-reset: adf-sec;
 }
 
@@ -79,8 +78,8 @@
     background: #fff;
     border: 1px solid #E3E8EE;
     border-radius: 10px;
-    padding: 16px 18px 4px;
-    margin-bottom: 16px;
+    padding: 12px 16px 2px;
+    margin-bottom: 10px;
     scroll-margin-top: 8px;
 }
 
@@ -125,24 +124,26 @@
 #modalAddEdit .adf-section-title {
     display: flex;
     align-items: center;
-    gap: 9px;
-    font-size: 13.5px;
+    gap: 8px;
+    font-size: 13px;
     font-weight: 700;
     color: #1D2939;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #F0F2F5;
 }
 
 #modalAddEdit .adf-section-num {
     flex: none;
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     background: #2450D8;
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 11.5px;
+    font-size: 10.5px;
     font-weight: 700;
     counter-increment: adf-sec;
 }
@@ -152,35 +153,89 @@
 }
 
 #modalAddEdit .form-group {
-    margin-bottom: 14px;
+    margin-bottom: 10px;
 }
 
 #modalAddEdit .form-group > .control-label {
     display: block;
-    margin-bottom: 4px;
-    font-size: 12.5px;
+    margin-bottom: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475467;
 }
 
 #modalAddEdit .external-panel {
     border: 1px solid #DFE5EB;
-    border-radius: 10px;
-    padding: 10px 14px 2px;
-    margin: 4px 0 8px;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 0 0 10px;
     background: #F7F9FB;
+    transition: border-color .15s ease, background .15s ease;
 }
 
-#modalAddEdit .external-panel .panel-title {
-    font-weight: 700;
-    font-size: 12.5px;
-    margin-bottom: 8px;
+/* Panel External dipadatkan lagi (2026-11-10): tidak dicentang = satu baris
+   toggle saja; Reference No/Source/Impact baru muncul saat dicentang. Pakai
+   :has() supaya logika JS (enable/disable/isi nilai, termasuk saat Revise
+   yang mencentang otomatis) tidak perlu diubah sama sekali. */
+#modalAddEdit .external-panel:has(#addEditExternal:checked) {
+    border-color: #B9CCF5;
+    background: #F3F7FF;
 }
 
-/* Panel External dipadatkan (request Hendra 2026-08-21) - form-group bawaan
-   Bootstrap (margin-bottom 15px) bikin jarak antar baris (External > Reference
-   No/Source > Impact To Other Document) kelihatan longgar untuk panel sekecil
-   ini. Scoped ke .external-panel saja, tidak memengaruhi form-group lain. */
+#modalAddEdit .ext-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+#modalAddEdit .ext-toggle input[type="checkbox"],
+#modalAddEdit .ext-check input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    flex: none;
+    accent-color: #2450D8;
+    cursor: pointer;
+}
+
+#modalAddEdit .ext-toggle input:disabled,
+#modalAddEdit .ext-check input:disabled { cursor: not-allowed; }
+
+#modalAddEdit .ext-toggle-text { display: flex; flex-direction: column; line-height: 1.25; }
+#modalAddEdit .ext-toggle-text b { font-size: 12.5px; color: #1D2939; }
+#modalAddEdit .ext-toggle-text small { font-size: 11px; color: #667085; }
+
+#modalAddEdit .external-panel .ext-fields {
+    display: none;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #D5DDE8;
+}
+
+#modalAddEdit .external-panel:has(#addEditExternal:checked) .ext-fields {
+    display: block;
+}
+
 #modalAddEdit .external-panel .form-group {
-    margin-bottom: 8px;
+    margin-bottom: 4px;
+}
+
+#modalAddEdit .ext-impact {
+    padding-top: 27px;
+}
+
+#modalAddEdit .ext-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #344054;
+    cursor: pointer;
 }
 
 #modalAddEdit .checkbox-inline-group {
@@ -421,13 +476,54 @@
     box-shadow: 0 0 0 3px rgba(46, 117, 182, 0.25) !important;
 }
 
+/* Penanda field wajib yang kosong (2026-11-10) - dipasang validateAddForm()
+   / markInvalidFromServerMessage() di document-maintenance.js pada
+   .form-group, jadi berlaku untuk input biasa, select2, dan dropzone. */
+#modalAddEdit .form-group.adf-invalid > .control-label {
+    color: #D92D20;
+}
+
+#modalAddEdit .form-group.adf-invalid .form-control:not([type="hidden"]),
+#modalAddEdit .form-group.adf-invalid .input-group-addon,
+#modalAddEdit .form-group.adf-invalid .select2-container .select2-selection {
+    border-color: #F04438 !important;
+    background-color: #FFFBFA;
+}
+
+#modalAddEdit .form-group.adf-invalid .form-control:focus,
+#modalAddEdit .form-group.adf-invalid .select2-container--open .select2-selection {
+    box-shadow: 0 0 0 3px rgba(240, 68, 56, .18) !important;
+}
+
+#modalAddEdit .form-group.adf-invalid .adf-dropzone {
+    border-color: #F04438;
+    background: #FFFBFA;
+}
+
+#modalAddEdit .form-group.adf-invalid .adf-dropzone i.dz-icon {
+    color: #F04438;
+}
+
+#modalAddEdit .adf-err-msg {
+    margin-top: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #D92D20;
+    animation: adfErrIn .15s ease-out;
+}
+
+@keyframes adfErrIn {
+    from { opacity: 0; transform: translateY(-2px); }
+    to { opacity: 1; transform: none; }
+}
+
 /* drag & drop upload */
 #modalAddEdit .adf-dropzone {
     position: relative;
     border: 1.5px dashed #C6D0DB;
     border-radius: 10px;
     background: #F9FAFB;
-    padding: 22px 16px;
+    padding: 14px 12px;
     text-align: center;
     cursor: pointer;
     transition: border-color .15s ease, background .15s ease;
@@ -481,6 +577,6 @@
     flex: none;
     background: #fff;
     border-top: 1px solid #E3E8EE;
-    padding: 14px 22px;
+    padding: 10px 18px;
     margin: 0;
 }

@@ -67,47 +67,57 @@
                 <div class="adf-section">
                     <div class="adf-section-title"><i class="fa fa-paperclip"></i> Document File</div>
 
-                    <div class="form-group">
-                        <label class="control-label">Current File</label>
-                        <div class="adf-current-file" id="editCurrentFileRow">
-                            <i class="fa fa-file-excel-o dz-file-icon" id="editCurrentFileIcon"></i>
-                            <span class="dz-filename" id="editCurrentFileName">-</span>
-                            <span class="dz-empty hide" id="editCurrentFileEmpty">No file attached</span>
-                            <a href="#" id="btn_preview_filepath"><i class="fa fa-eye"></i> Preview</a>
-                            <a href="#" id="btn_download_filepath"><i class="fa fa-download"></i> Download</a>
-                            <button type="button" id="btn_delete_filepath" class="dz-remove" data-toggle="tooltip" data-placement="bottom" title="Remove Document"><i class="fa fa-trash"></i></button>
+                    <!-- Dipadatkan (2026-11-10): Current File & Replace File
+                         berdampingan, dropzone jadi satu baris, Remark 2 baris. -->
+                    <div class="row">
+                        <div class="col-md-6 form-group">
+                            <label class="control-label">Current File</label>
+                            <div class="adf-current-file" id="editCurrentFileRow">
+                                <i class="fa fa-file-excel-o dz-file-icon" id="editCurrentFileIcon"></i>
+                                <span class="dz-filename" id="editCurrentFileName">-</span>
+                                <span class="dz-empty hide" id="editCurrentFileEmpty">No file attached</span>
+                                <a href="#" id="btn_preview_filepath" data-toggle="tooltip" data-placement="bottom" title="Preview"><i class="fa fa-eye"></i></a>
+                                <a href="#" id="btn_download_filepath" data-toggle="tooltip" data-placement="bottom" title="Download"><i class="fa fa-download"></i></a>
+                                <button type="button" id="btn_delete_filepath" class="dz-remove" data-toggle="tooltip" data-placement="bottom" title="Remove Document"><i class="fa fa-trash"></i></button>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="form-group has-feedback" id="inputContainer">
-                        <label class="control-label">Replace File</label>
-                        <div class="adf-dropzone" id="editDropzone">
-                            <span><i class="fa fa-cloud-upload dz-icon"></i><span class="dz-text" id="editDropzoneText">Drag &amp; drop file here or <span class="dz-browse">click to browse</span></span></span>
-                            <div class="dz-hint">Allowed: XLSX, XLS (Max. 20 MB)</div>
-                        </div>
-                        <div id="editFileNameContainer" style="position:absolute; width:1px; height:1px; overflow:hidden;">
-                            <input type="file" id="editDocumentUpload" accept=".xlsx,.xls" style="width:1px;height:1px;opacity:0;">
+                        <div class="col-md-6 form-group has-feedback" id="inputContainer">
+                            <label class="control-label">Replace File <span class="adf-label-hint">(optional)</span></label>
+                            <div class="adf-dropzone" id="editDropzone">
+                                <span><i class="fa fa-cloud-upload dz-icon"></i><span class="dz-text" id="editDropzoneText">Drop file or <span class="dz-browse">browse</span></span></span>
+                                <div class="dz-hint">XLSX, XLS - max. 20 MB</div>
+                            </div>
+                            <div id="editFileNameContainer" style="position:absolute; width:1px; height:1px; overflow:hidden;">
+                                <input type="file" id="editDocumentUpload" accept=".xlsx,.xls" style="width:1px;height:1px;opacity:0;">
+                            </div>
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-12 form-group">
                             <label class="control-label">Remark</label>
-                            <textarea class="form-control" rows="3" id="editRemark"></textarea>
+                            <textarea class="form-control" rows="2" id="editRemark"></textarea>
                         </div>
                     </div>
                 </div>
 
-                <!-- Additional Information -->
+                <!-- Additional Information - panel External dipadatkan (2026-11-10),
+                     sama dengan form New: tidak dicentang = satu baris toggle;
+                     Reference No/Source/Impact muncul lewat CSS :has(), jadi
+                     logika JS #editExternal tidak berubah. -->
                 <div class="adf-section">
                     <div class="adf-section-title"><i class="fa fa-list-alt"></i> Additional Information</div>
 
                     <div class="external-panel">
-                        <div class="panel-title">
+                        <label class="ext-toggle" for="editExternal">
                             <input type="checkbox" id="editExternal" name="editExternal">
-                            <label for="editExternal" style="font-weight: 700; margin-left: 4px;">External</label>
-                        </div>
-                        <div class="row">
+                            <span class="ext-toggle-text">
+                                <b>External Document</b>
+                                <small>Check if this document comes from an outside source</small>
+                            </span>
+                        </label>
+                        <div class="row ext-fields">
                             <div class="col-md-4 form-group">
                                 <label class="control-label">Reference No <span id="mandatoryMarkEditReferenceNo" class="text-red" style="display: none">*</span></label>
                                 <input class="form-control" id="editReferenceNo" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
@@ -116,10 +126,12 @@
                                 <label class="control-label">Source <span id="mandatoryMarkEditSource" class="text-red" style="display: none">*</span></label>
                                 <input class="form-control" id="editSource" type="text" oninput="removeWhiteSpace(this)" maxlength="255" />
                             </div>
-                            <div class="col-md-4 form-group checkbox-inline-group">
-                                <input type="checkbox" id="editImpactToOtherDocument" name="editImpactToOtherDocument" value="IMP">
-                                <label for="editImpactToOtherDocument" style="margin-left: 4px;">Impact To Other Document</label>
-                                <i class="fa fa-info-circle" data-toggle="tooltip" data-placement="top" title="Check this if changes to this document also affect other related documents." style="margin-left:5px; color:#98A2B3;"></i>
+                            <div class="col-md-4 form-group ext-impact">
+                                <label class="ext-check" for="editImpactToOtherDocument">
+                                    <input type="checkbox" id="editImpactToOtherDocument" name="editImpactToOtherDocument" value="IMP">
+                                    Impact To Other Document
+                                </label>
+                                <i class="fa fa-info-circle" data-toggle="tooltip" data-placement="top" title="Check this if changes to this document also affect other related documents." style="margin-left:4px; color:#98A2B3;"></i>
                             </div>
                         </div>
                     </div>

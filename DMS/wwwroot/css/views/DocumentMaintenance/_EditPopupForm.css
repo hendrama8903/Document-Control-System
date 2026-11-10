@@ -17,33 +17,32 @@
     flex: none;
     background: linear-gradient(135deg, #2450D8, #1C3FA6);
     color: #fff;
-    padding: 16px 22px;
+    padding: 11px 18px;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 11px;
 }
 
 #modalEdit .adf-header-icon {
     flex: none;
-    width: 38px;
-    height: 38px;
-    border-radius: 9px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
     background: rgba(255,255,255,.18);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 14px;
 }
 
 #modalEdit .adf-header-title {
-    font-size: 15.5px;
+    font-size: 14.5px;
     font-weight: 700;
 }
 
 #modalEdit .adf-header-sub {
-    font-size: 12px;
-    color: rgba(255,255,255,.85);
-    margin-top: 1px;
+    font-size: 11.5px;
+    color: rgba(255,255,255,.8);
 }
 
 #modalEdit .adf-close {
@@ -65,35 +64,44 @@
     min-height: 0;
     overflow-y: auto;
     background: #F4F6F8;
-    padding: 18px 22px;
+    padding: 12px 16px;
 }
 
 #modalEdit .adf-section {
     background: #fff;
     border: 1px solid #E3E8EE;
     border-radius: 10px;
-    padding: 16px 18px 4px;
-    margin-bottom: 16px;
+    padding: 12px 16px 2px;
+    margin-bottom: 10px;
 }
 
 #modalEdit .adf-section-title {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 700;
     color: #2450D8;
-    margin-bottom: 14px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #F0F2F5;
 }
 
 #modalEdit .form-group {
-    margin-bottom: 14px;
+    margin-bottom: 10px;
 }
 
 #modalEdit .form-group > .control-label {
     display: block;
-    margin-bottom: 4px;
-    font-size: 12.5px;
+    margin-bottom: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475467;
+}
+
+#modalEdit .control-label .adf-label-hint {
+    font-weight: 400;
+    color: #98A2B3;
 }
 
 #modalEdit .control-label .adf-label-icon {
@@ -116,9 +124,9 @@
 
 #modalEdit .adf-status-panel {
     flex: none;
-    width: 180px;
+    width: 170px;
     border-radius: 10px;
-    padding: 12px 14px 14px;
+    padding: 10px 12px 12px;
     margin-top: 2px;
 }
 
@@ -199,8 +207,9 @@
     background: #F7F9FB;
     border: 1px solid #E3E8EE;
     border-radius: 8px;
-    padding: 10px 12px;
-    margin-bottom: 14px;
+    padding: 0 10px;
+    height: 52px;
+    margin-bottom: 0;
 }
 
 #modalEdit .adf-current-file i.dz-file-icon {
@@ -249,7 +258,8 @@
     border: 1.5px dashed #C6D0DB;
     border-radius: 10px;
     background: #F9FAFB;
-    padding: 18px 16px;
+    padding: 7px 12px;
+    height: 52px;
     text-align: center;
     cursor: pointer;
     transition: border-color .15s ease, background .15s ease;
@@ -282,25 +292,148 @@
 #modalEdit .adf-dropzone .dz-hint {
     font-size: 10.5px;
     color: #98A2B3;
-    margin-top: 4px;
+    margin-top: 1px;
 }
 
+/* current file row: tombol Preview/Download/Remove jadi ikon saja supaya
+   muat berdampingan dengan Replace File (2026-11-10) */
+#modalEdit .adf-current-file a,
+#modalEdit .adf-current-file button {
+    width: 28px;
+    height: 28px;
+    justify-content: center;
+    border-radius: 6px;
+    padding: 0;
+}
+
+#modalEdit .adf-current-file a:hover,
+#modalEdit .adf-current-file button:hover {
+    background: #E7F1FB;
+}
+
+#modalEdit .adf-current-file button.dz-remove:hover {
+    background: #FDECEA;
+}
+
+#modalEdit .adf-current-file {
+    gap: 4px;
+}
+
+#modalEdit .adf-current-file .dz-filename,
+#modalEdit .adf-current-file .dz-empty {
+    margin-left: 4px;
+}
+
+#modalEdit .adf-dropzone {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+#modalEdit textarea.form-control {
+    resize: vertical;
+    min-height: 52px;
+}
+
+/* Panel External dipadatkan (2026-11-10), sama dengan form New
+   (_PopupForm.css): tidak dicentang = satu baris toggle saja. */
 #modalEdit .external-panel {
     border: 1px solid #DFE5EB;
-    border-radius: 10px;
-    padding: 14px 16px 2px;
-    margin: 4px 0 8px;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 0 0 10px;
     background: #F7F9FB;
+    transition: border-color .15s ease, background .15s ease;
 }
 
-#modalEdit .external-panel .panel-title {
-    font-weight: 700;
-    font-size: 12.5px;
-    margin-bottom: 12px;
+#modalEdit .external-panel:has(#editExternal:checked) {
+    border-color: #B9CCF5;
+    background: #F3F7FF;
 }
 
-#modalEdit .checkbox-inline-group {
-    padding-top: 26px;
+#modalEdit .ext-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+#modalEdit .ext-toggle input[type="checkbox"],
+#modalEdit .ext-check input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    flex: none;
+    accent-color: #2450D8;
+    cursor: pointer;
+}
+
+#modalEdit .ext-toggle input:disabled,
+#modalEdit .ext-check input:disabled { cursor: not-allowed; }
+
+#modalEdit .ext-toggle-text { display: flex; flex-direction: column; line-height: 1.25; }
+#modalEdit .ext-toggle-text b { font-size: 12.5px; color: #1D2939; }
+#modalEdit .ext-toggle-text small { font-size: 11px; color: #667085; }
+
+#modalEdit .external-panel .ext-fields {
+    display: none;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #D5DDE8;
+}
+
+#modalEdit .external-panel:has(#editExternal:checked) .ext-fields {
+    display: block;
+}
+
+#modalEdit .external-panel .form-group {
+    margin-bottom: 4px;
+}
+
+#modalEdit .ext-impact {
+    padding-top: 27px;
+}
+
+#modalEdit .ext-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #344054;
+    cursor: pointer;
+}
+
+/* Penanda field wajib yang kosong (2026-11-10) - sama dengan form New
+   (_PopupForm.css), dipasang validateEditForm() di document-maintenance.js. */
+#modalEdit .form-group.adf-invalid > .control-label,
+#modalEdit .form-group.adf-invalid > .control-label .adf-label-icon {
+    color: #D92D20;
+}
+
+#modalEdit .form-group.adf-invalid .form-control:not([type="hidden"]) {
+    border-color: #F04438 !important;
+    background-color: #FFFBFA;
+}
+
+#modalEdit .form-group.adf-invalid .form-control:focus {
+    box-shadow: 0 0 0 3px rgba(240, 68, 56, .18) !important;
+}
+
+#modalEdit .adf-err-msg {
+    margin-top: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #D92D20;
+    animation: adfEditErrIn .15s ease-out;
+}
+
+@keyframes adfEditErrIn {
+    from { opacity: 0; transform: translateY(-2px); }
+    to { opacity: 1; transform: none; }
 }
 
 /* sticky footer */
@@ -308,7 +441,7 @@
     flex: none;
     background: #fff;
     border-top: 1px solid #E3E8EE;
-    padding: 14px 22px;
+    padding: 10px 18px;
     margin: 0;
     display: flex;
     align-items: center;

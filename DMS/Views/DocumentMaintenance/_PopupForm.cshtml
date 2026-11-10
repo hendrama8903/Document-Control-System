@@ -39,11 +39,11 @@
                                 <select class="form-control" id="addEditDocumentType" onchange="onChangeDocumentType()" required></select>
                                 <input class="form-control" id="addEditDocumentId" type="hidden" />
                             </div>
-                            <div class="col-md-3 form-group">
+                            <div class="col-md-2 form-group">
                                 <label class="control-label">Date <span class="text-red">*</span></label>
                                 <input class="form-control" id="addEditDate" type="date" required />
                             </div>
-                            <div class="col-md-6 form-group">
+                            <div class="col-md-7 form-group">
                                 <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; row-gap:2px;">
                                     <label class="control-label" style="margin-bottom:0;">Document No <span class="text-red">*</span></label>
                                     <div id="addEditNumberingModeGroup">
@@ -79,7 +79,7 @@
                                 <label class="control-label">Document Level <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditDocumentLevel" onchange="onChangeDocumentLevel()" required></select>
                             </div>
-                            <div class="col-md-2 form-group">
+                            <div class="col-md-3 form-group">
                                 <label class="control-label">Document Code <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditDocumentCode" required></select>
                             </div>
@@ -87,7 +87,7 @@
                                 <label class="control-label">Process Code <span id="mandatoryMarkProcessCode" class="text-red">*</span></label>
                                 <select class="form-control" id="addEditProcessCode" required></select>
                             </div>
-                            <div class="col-md-4 form-group">
+                            <div class="col-md-3 form-group">
                                 <label class="control-label">Classified <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditClassified" required></select>
                             </div>
@@ -129,25 +129,32 @@
                             </div>
                         </div>
 
+                        <!-- Panel External dipadatkan (2026-11-10): saat tidak dicentang
+                             hanya tampil satu baris toggle; Reference No, Source & Impact
+                             muncul lewat CSS :has(#addEditExternal:checked), jadi semua
+                             logika enable/disable/isi nilai di JS tetap sama. -->
                         <div class="external-panel">
-                            <div class="panel-title">
+                            <label class="ext-toggle" for="addEditExternal">
                                 <input type="checkbox" id="addEditExternal" name="addEditExternal">
-                                <label for="addEditExternal" style="font-weight: 700; margin-left: 4px;">External</label>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6 form-group">
+                                <span class="ext-toggle-text">
+                                    <b>External Document</b>
+                                    <small>Check if this document comes from an outside source</small>
+                                </span>
+                            </label>
+                            <div class="row ext-fields">
+                                <div class="col-md-4 form-group">
                                     <label class="control-label">Reference No <span id="mandatoryMarkReferenceNo" class="text-red" style="display: none">*</span></label>
                                     <input class="form-control" id="addEditReferenceNo" type="text" oninput="removeWhiteSpace(this)" maxlength="255" required />
                                 </div>
-                                <div class="col-md-6 form-group">
+                                <div class="col-md-4 form-group">
                                     <label class="control-label">Source <span id="mandatoryMarkSource" class="text-red" style="display: none">*</span></label>
                                     <input class="form-control" id="addEditSource" type="text" oninput="removeWhiteSpace(this)" maxlength="255" required />
                                 </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6 form-group checkbox-inline-group" style="padding-top:0;">
-                                    <input type="checkbox" id="addEditImpactToOtherDocument" name="addEditImpactToOtherDocument" value="IMP">
-                                    <label for="addEditImpactToOtherDocument" style="margin-left: 4px;">Impact To Other Document</label>
+                                <div class="col-md-4 form-group ext-impact">
+                                    <label class="ext-check" for="addEditImpactToOtherDocument">
+                                        <input type="checkbox" id="addEditImpactToOtherDocument" name="addEditImpactToOtherDocument" value="IMP">
+                                        Impact To Other Document
+                                    </label>
                                 </div>
                             </div>
                         </div>

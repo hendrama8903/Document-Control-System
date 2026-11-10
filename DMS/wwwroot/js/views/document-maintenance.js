@@ -672,7 +672,7 @@ $(document).ready(function () {
         if (fileName) {
             $('#editDropzoneText').html('<i class="fa fa-file-excel-o"></i> ' + fileName);
         } else {
-            $('#editDropzoneText').html('Drag &amp; drop file here or <span class="dz-browse">click to browse</span>');
+            $('#editDropzoneText').html('Drop file or <span class="dz-browse">browse</span>');
         }
     });
 
@@ -2770,16 +2770,160 @@ function setDocumentCreator(val) {
     setDataSelect2WithParam("addEditDocumentCreator", documentMaintenanceConfig.urls.userGetUserNameByDepartmentId, "- Choose -", val);
 }
 
+// ---------- Penanda field wajib yang kosong (2026-11-10) ----------
+// Dulu validasi cuma dari SP (sp_DocumentMaintenance_Insert) yang berhenti
+// di error PERTAMA dan hanya tampil sebagai growl - user tidak tahu field
+// mana yang dimaksud. Sekarang semua field wajib dicek di browser sebelum
+// simpan & ditandai merah sekaligus; pesan error server tetap dipetakan ke
+// field-nya sebagai cadangan (aturan di sini meniru urutan cek di SP).
+function isBlankValue(v) {
+    return v == null || v === "null" || String(v).trim() === "";
+}
+
+function markFieldInvalid(selector, message) {
+    var $el = $(selector);
+    if (!$el.length) return;
+    var $group = $el.closest('.form-group');
+    if (!$group.length) return;
+    $group.addClass('adf-invalid');
+    if (!$group.children('.adf-err-msg').length) {
+        $group.append('<div class="adf-err-msg"><i class="fa fa-exclamation-circle"></i> ' + (message || 'This field is required') + '</div>');
+    }
+}
+
+function clearFieldInvalid($group) {
+    $group.removeClass('adf-invalid').children('.adf-err-msg').remove();
+}
+
+// modalSelector: '#modalAddEdit' (New) atau '#modalEdit' (Edit)
+function clearAllFieldInvalid(modalSelector) {
+    $((modalSelector || '#modalAddEdit') + ' .form-group.adf-invalid').each(function () { clearFieldInvalid($(this)); });
+}
+
+function scrollToFirstInvalid(modalSelector) {
+    var $first = $((modalSelector || '#modalAddEdit') + ' .form-group.adf-invalid').first();
+    if (!$first.length) return;
+    $first.get(0).scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+// Form Edit (2026-11-10): yang bisa diubah user cuma Document Name, Date &
+// panel External. Document No/Revision terkunci, file pengganti opsional.
+function validateEditForm() {
+    clearAllFieldInvalid('#modalEdit');
+    var invalid = 0;
+    function req(selector) {
+        if (isBlankValue($(selector).val())) { markFieldInvalid(selector); invalid++; }
+    }
+    req('#editDocumentName');
+    req('#editDate');
+    if ($('#editExternal').is(':checked')) {
+        req('#editReferenceNo');
+        req('#editSource');
+    }
+    if (invalid) scrollToFirstInvalid('#modalEdit');
+    return invalid;
+}
+
+function validateAddForm() {
+    clearAllFieldInvalid();
+    var invalid = 0;
+    function req(selector, message) {
+        if (isBlankValue($(selector).val())) { markFieldInvalid(selector, message); invalid++; }
+    }
+    function markVisible(selector) {
+        return $(selector).length && $(selector).css('display') !== 'none';
+    }
+
+    var type = $('#addEditDocumentType').val();
+    if (isBlankValue(type)) {
+        markFieldInvalid('#addEditDocumentType');
+        scrollToFirstInvalid();
+        return 1;
+    }
+
+    if (type == "02") {
+        req('#addEditDocumentNo2', 'Select the document to revise');
+        if (invalid) { scrollToFirstInvalid(); return invalid; }
+    } else if ($('#addEditNumberingModeManual').is(':checked')) {
+        // Manual numbering (Jul 2026): nomor manual kosong = server diam-diam
+        // pakai nomor otomatis, jadi tetap ditolak di sini.
+        req('#addEditManualSeqNo', 'Enter the manual number, or switch back to Automatic');
+    }
+
+    req('#addEditDate');
+    req('#addEditDocumentLevel');
+    req('#addEditDocumentCode');
+    if (markVisible('#mandatoryMarkProcessCode')) req('#addEditProcessCode');
+    req('#addEditClassified');
+    req('#addEditDocumentName');
+    if ($('#addEditExternal').is(':checked')) {
+        req('#addEditReferenceNo');
+        req('#addEditSource');
+    }
+    req('#addEditDivision');
+    req('#addEditDepartment');
+    if (markVisible('#mandatoryMarkSection')) req('#addEditSection');
+    req('#addEditCompanyCode');
+    req('#addEditDocumentCreator');
+    req('#addEditDocumentUpload', 'Please upload the document file');
+
+    if (invalid) scrollToFirstInvalid();
+    return invalid;
+}
+
+// Cadangan: pesan "ERROR: X should not be null" dari SP -> tandai field X.
+function markInvalidFromServerMessage(message) {
+    if (!message) return;
+    var map = [
+        ['Document Type', '#addEditDocumentType'],
+        ['Document No', $('#addEditDocumentType').val() == "02" ? '#addEditDocumentNo2' : '#addEditDocumentNo'],
+        ['Document Level', '#addEditDocumentLevel'],
+        ['Document Code', '#addEditDocumentCode'],
+        ['Document Name', '#addEditDocumentName'],
+        ['Classified', '#addEditClassified'],
+        ['Company Code', '#addEditCompanyCode'],
+        ['Process Code', '#addEditProcessCode'],
+        ['Division Code', '#addEditDivision'],
+        ['Department Code', '#addEditDepartment'],
+        ['Section', '#addEditSection'],
+        ['Date', '#addEditDate'],
+        ['Document Creator', '#addEditDocumentCreator'],
+        ['Document Upload', '#addEditDocumentUpload']
+    ];
+    for (var i = 0; i < map.length; i++) {
+        if (String(message).indexOf(map[i][0] + ' should not be null') >= 0) {
+            markFieldInvalid(map[i][1]);
+            scrollToFirstInvalid();
+            return;
+        }
+    }
+}
+
+// Tanda merah hilang begitu field-nya diisi/diubah.
+$(document).on('input change', '#modalAddEdit .form-group.adf-invalid :input, #modalEdit .form-group.adf-invalid :input', function () {
+    var $group = $(this).closest('.form-group');
+    if (!isBlankValue($(this).val())) clearFieldInvalid($group);
+});
+$(document).on('show.bs.modal', '#modalAddEdit, #modalEdit', function (e) {
+    if (e.target === this) clearAllFieldInvalid('#' + this.id);
+});
+// External dimatikan -> Reference No/Source tidak wajib lagi, buang tandanya.
+$(document).on('change click', '#addEditExternal, #editExternal', function () {
+    if (!$(this).is(':checked')) {
+        var prefix = this.id === 'editExternal' ? '#edit' : '#addEdit';
+        $(prefix + 'ReferenceNo, ' + prefix + 'Source').each(function () {
+            clearFieldInvalid($(this).closest('.form-group'));
+        });
+    }
+});
+
 function confirmAddEditData() {
-    // Manual numbering (Jul 2026): kalau mode Manual dipilih tapi nomornya
-    // dibiarkan kosong, server menganggap itu SAMA DENGAN mode Generated
-    // (parameter MANUAL_SEQ_NO kosong = null = auto) - jadi tolak di sini
-    // dulu supaya user tidak diam-diam dapat nomor otomatis padahal
-    // maksudnya mau pilih sendiri.
-    if (gScreenMode == "ADD" && $('#addEditNumberingModeManual').is(':checked')) {
-        var manualSeq = $('#addEditManualSeqNo').val();
-        if (manualSeq == null || manualSeq.trim() == '') {
-            showErrorMesgGrowl("Please enter the manual document number, or switch back to Generated.");
+    if (gScreenMode == "ADD" || gScreenMode == "EDIT") {
+        var invalidCount = gScreenMode == "ADD" ? validateAddForm() : validateEditForm();
+        if (invalidCount) {
+            showErrorMesgGrowl(invalidCount == 1
+                ? "Please complete the highlighted field."
+                : "Please complete the " + invalidCount + " highlighted fields.");
             return;
         }
     }
@@ -3058,6 +3202,7 @@ function addEditData() {
                 } else if (gScreenMode == "EDIT") { $("#modalEdit").modal('hide'); }
             } else {
                 showErrorMesgGrowl(result.message);
+                if (gScreenMode == "ADD") markInvalidFromServerMessage(result.message);
                 popUpProgressHide();
             }
         },
