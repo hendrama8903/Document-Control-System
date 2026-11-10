@@ -65,6 +65,68 @@ namespace DMS.Services
             }
         }
 
+        /// <summary>
+        /// Static access to /Upload: the view rule of <see cref="CheckFile"/>, plus the source rule
+        /// for document files. The source file (usually Excel) carries no stamps and can be edited,
+        /// so only the creator and Document Control get it directly; everyone else gets the
+        /// stamped PDF through ViewAttachment / DownloadAttachment (ISO 9001 7.5.3, 2026-11-10).
+        /// </summary>
+        public static Access CheckStaticFile(HttpContext http, DBContext db, string relativePath)
+        {
+            Access access = CheckFile(http, db, relativePath);
+            if (access != Access.Allowed) return access;
+
+            string path = "/" + (relativePath ?? "").Replace('\\', '/').TrimStart('/');
+            if (!path.StartsWith("/Upload/ATTACHMENT/DOCUMENT_TRANSACTION/", StringComparison.OrdinalIgnoreCase))
+                return Access.Allowed;
+
+            string username = http.Session.GetString("USERNAME");
+            return CanDownloadSource(db, username, FindDocumentByFile(db, path)) ? Access.Allowed : Access.Denied;
+        }
+
+        /// <summary>The document (current or history revision) a file path belongs to, or null.</summary>
+        public static int? FindDocumentByFile(DBContext db, string filePath) =>
+            Scalar(db, @"SELECT TOP 1 ID FROM (
+                    SELECT DOCUMENT_TRANSACTION_ID AS ID, 0 AS SRC FROM dbo.TB_R_DOCUMENT WHERE FILE_PATH = @P
+                    UNION ALL
+                    SELECT DOCUMENT_TRANSACTION_ID, 1 FROM dbo.TB_R_DOCUMENT_HISTORY WHERE FILE_PATH = @P
+                ) X ORDER BY SRC", ("@P", filePath)) is int id ? id : null;
+
+        /// <summary>
+        /// May the user take the unstamped source file: Document Control / admin, or the creator
+        /// of the document. A file that belongs to no document: Document Control only.
+        /// </summary>
+        public static bool CanDownloadSource(DBContext db, string username, int? documentTransactionId)
+        {
+            if (string.IsNullOrEmpty(username)) return false;
+            if (IsDocumentControl(db, username)) return true;
+            if (documentTransactionId == null) return false;
+            return Scalar(db, @"SELECT CAST(CASE WHEN EXISTS (
+                    SELECT 1 FROM dbo.TB_R_DOCUMENT WHERE DOCUMENT_TRANSACTION_ID = @T AND (DOCUMENT_CREATOR = @U OR CREATED_BY = @U)
+                    UNION ALL
+                    SELECT 1 FROM dbo.TB_R_DOCUMENT_HISTORY WHERE DOCUMENT_TRANSACTION_ID = @T AND (DOCUMENT_CREATOR = @U OR CREATED_BY = @U)
+                ) THEN 1 ELSE 0 END AS BIT)", ("@U", username), ("@T", documentTransactionId)) is bool b && b;
+        }
+
+        /// <summary>
+        /// QMS has received the registration of the document: the registration row in Document
+        /// Registration is Accepted, Sent or Partially Sent (2/5/6). Self-request rows
+        /// (OPERATION_TYPE 2) do not count.
+        /// </summary>
+        public static bool IsReceivedByQms(DBContext db, int? documentTransactionId) =>
+            documentTransactionId != null
+            && Scalar(db, @"SELECT CAST(CASE WHEN EXISTS (
+                    SELECT 1 FROM dbo.TB_R_CTRL_DOCUMENT WHERE DOCUMENT_TRANSACTION_ID = @T
+                    AND ISNULL(OPERATION_TYPE, 1) = 1 AND ISNULL(DELETE_FLAG, 0) = 0 AND [STATUS] IN ('2', '5', '6')
+                ) THEN 1 ELSE 0 END AS BIT)", ("@T", documentTransactionId)) is bool b && b;
+
+        /// <summary>The document has been sent to one of the user's departments (dbo.fn_User_RecipientDepartments).</summary>
+        public static bool IsDistributedToUser(DBContext db, string username, int? documentTransactionId) =>
+            !string.IsNullOrEmpty(username) && documentTransactionId != null
+            && Scalar(db, @"SELECT CAST(CASE WHEN EXISTS (
+                    SELECT 1 FROM dbo.fn_User_RecipientDepartments(@U, @T)
+                ) THEN 1 ELSE 0 END AS BIT)", ("@U", username), ("@T", documentTransactionId)) is bool b && b;
+
         public static bool HasFunction(HttpContext http, string functionId) =>
             (http.Session.GetString("functionList") ?? "")
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)

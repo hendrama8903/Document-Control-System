@@ -138,7 +138,7 @@ namespace DMS
                     || requestPath.StartsWith("/document/", StringComparison.OrdinalIgnoreCase))
                 {
                     var db = ctx.RequestServices.GetRequiredService<DBContext>();
-                    var access = DocumentAccessService.CheckFile(ctx, db, requestPath);
+                    var access = DocumentAccessService.CheckStaticFile(ctx, db, requestPath);
                     if (access != DocumentAccessService.Access.Allowed)
                     {
                         ctx.Response.StatusCode = access == DocumentAccessService.Access.NotLoggedIn ? 401 : 403;

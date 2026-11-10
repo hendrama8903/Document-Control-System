@@ -240,6 +240,15 @@ namespace DMS.Controllers
             if (fullPath == null || !System.IO.File.Exists(fullPath)) return NotFound();
             string fileName = Path.GetFileName(fullPath);
 
+            // Source file only for the creator and Document Control (2026-11-10); others get the
+            // uncontrolled PDF from DocumentMaintenance/DownloadAttachment.
+            int? ownerDocumentId = Services.DocumentAccessService.FindDocumentByFile(db, path);
+            if (path.Contains("/DOCUMENT_TRANSACTION/", StringComparison.OrdinalIgnoreCase)
+                && !Services.DocumentAccessService.CanDownloadSource(db, GetLoginUsername(), ownerDocumentId))
+            {
+                return RedirectToAction("DownloadAttachment", "DocumentMaintenance", new { FILE_PATH = path, DOCUMENT_TRANSACTION_ID = ownerDocumentId });
+            }
+
             byte[] bytes = System.IO.File.ReadAllBytes(fullPath);
 
             // Audit trail akses (2026-11-06)

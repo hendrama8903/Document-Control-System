@@ -1503,7 +1503,25 @@ namespace DMS.Controllers
                 string[] split = documentMaintenance.FILE_PATH.Split("/");
                 string fileName = split[4];
 
-                byte[] bytes = System.IO.File.ReadAllBytes(fullPath);
+                // Source file only for the creator and Document Control; everyone else gets the
+                // PDF with its stamps plus UNCONTROLLED COPY (ISO 9001 7.5.3, 2026-11-10). The
+                // owner is looked up from the file path, not from the id sent by the browser.
+                int? ownerDocumentId = Services.DocumentAccessService.FindDocumentByFile(db, documentMaintenance.FILE_PATH);
+                byte[] bytes;
+                if (Services.DocumentAccessService.CanDownloadSource(db, GetLoginUsername(), ownerDocumentId))
+                {
+                    bytes = System.IO.File.ReadAllBytes(fullPath);
+                }
+                else
+                {
+                    if (ownerDocumentId != null) documentMaintenance.DOCUMENT_TRANSACTION_ID = ownerDocumentId;
+                    result = BuildUncontrolledPdf(webRootPath, fullPath, documentMaintenance, out bytes);
+                    if (!result.status)
+                    {
+                        return Content(PreviewMessagePage("Dokumen tidak dapat diunduh", result.message), "text/html; charset=utf-8");
+                    }
+                    fileName = System.IO.Path.GetFileNameWithoutExtension(fileName) + ".pdf";
+                }
 
                 // Audit trail akses (2026-11-06)
                 Services.DocumentAccessLogService.Log(db, HttpContext, Services.DocumentAccessLogService.Download,
@@ -1692,46 +1710,10 @@ namespace DMS.Controllers
                     .FirstOrDefault();
                 bool isObsolete = currentDocument == null;
 
-                // Stempel gambar (bukan teks) berdasarkan STATUS dokumen, bukan siapa yang
-                // login - request user 2026-08-09. DOC_STATUS: 1=Approved (Document
-                // Preparation selesai), 5=Published (Effective, di-set
-                // sp_P4DMaintenance_UpdateDistributionPublish begitu SEMUA department sudah
-                // acknowledge distribusinya). Stempel MASTER (cap_master.png, pojok
-                // kiri-atas) BUKAN muncul begitu Document Preparation selesai (STATUS=1) -
-                // itu baru approval internal pembuatan dokumennya. MASTER baru muncul
-                // setelah dokumen diproses lewat P4D dan di-approve/receive oleh QMS
-                // (lihat IsReceivedByQms), atau kalau sudah lebih jauh lagi yaitu
-                // STATUS=5/Published (request user 2026-08-11). Stempel CONTROLLED COPY
-                // (cap_controlledcopy.png, pojok kanan-bawah) DITAMBAHKAN LAGI (bukan
-                // menggantikan) begitu distribusi ke semua dept sudah di-acknowledge semua -
-                // jadi keduanya bisa tampil sekaligus di posisi beda.
-                bool isFullyAcknowledged = !isObsolete && currentDocument.STATUS == "5";
-                bool isMasterStamped = !isObsolete && (isFullyAcknowledged || IsReceivedByQms(currentDocument.DOCUMENT_TRANSACTION_ID));
-
-                // CONTROLLED COPY cuma relevan buat perspektif "saya user biasa yang
-                // menerima copy terkendali" - staff dokumen kontrol (type 1/2: Document
-                // Preparation, P4D, Document Control Dashboard) cukup lihat stempel MASTER,
-                // karena bagi mereka file ini adalah master, bukan copy yang diterima.
-                // Hanya viewer type 3 (UserDashboard, end user) yang lihat CONTROLLED COPY
-                // (request Hendra 2026-08-14).
-                bool isEndUserView = type == "3";
-
-                string masterStampPath = null;
-                string controlledCopyStampPath = null;
-                string obsoleteStampPath = null;
-
-                if (isObsolete)
-                {
-                    // Stempel gambar OBSOLETE (cap_obsolete.png) - request user 2026-08-10,
-                    // menggantikan watermark teks diagonal supaya konsisten secara visual
-                    // dengan stempel MASTER/CONTROLLED COPY di bawah.
-                    obsoleteStampPath = webRootPath + "/images/cap_obsolete.png";
-                }
-                else
-                {
-                    if (isMasterStamped) masterStampPath = webRootPath + "/images/cap_master.png";
-                    if (isFullyAcknowledged && isEndUserView) controlledCopyStampPath = webRootPath + "/images/cap_controlledcopy.png";
-                }
+                // Stempel gambar MASTER (kiri-atas) dan CONTROLLED COPY / OBSOLETE
+                // (tengah-bawah); aturannya di ResolveStamps (2026-11-10).
+                var (masterStampPath, controlledCopyStampPath, obsoleteStampPath) =
+                    ResolveStamps(webRootPath, currentDocument, isObsolete, type == "3");
 
                 string[] split = documentMaintenance.FILE_PATH.Split("/");
                 string fileName = split[4];
@@ -1847,7 +1829,7 @@ namespace DMS.Controllers
         [HttpGet]
         public IActionResult SpreadsheetPreview(string filePath)
         {
-            IActionResult fileDenied = FileAccessDenied(db, filePath);
+            IActionResult fileDenied = FileAccessDenied(db, filePath) ?? SourceFileDenied(filePath);
             if (fileDenied != null) return fileDenied;
 
             string webRootPath = Environment.WebRootPath;
@@ -1881,7 +1863,7 @@ namespace DMS.Controllers
         [HttpGet]
         public IActionResult ExcelViewerPreview(string filePath)
         {
-            IActionResult fileDenied = FileAccessDenied(db, filePath);
+            IActionResult fileDenied = FileAccessDenied(db, filePath) ?? SourceFileDenied(filePath);
             if (fileDenied != null) return fileDenied;
 
             string webRootPath = Environment.WebRootPath;
@@ -1999,8 +1981,15 @@ namespace DMS.Controllers
         // tidak pernah berstatus approved/published sekaligus (lihat pemanggil),
         // jadi controlledCopyImage dan obsoleteImage tidak akan pernah dua-duanya
         // terisi di saat bersamaan.
-        public void AddImageStamps(string inputFilePath, string outputFilePath, string masterImagePath, string controlledCopyImagePath, string obsoleteImagePath = null)
+        //
+        // uncontrolledNote (2026-11-10): draw an UNCONTROLLED COPY stamp in the bottom slot, with
+        // the note (who downloaded it and when) under it. Drawn as text, not an image, because
+        // the note changes per download. Ignored when the bottom slot already has an image.
+        public void AddImageStamps(string inputFilePath, string outputFilePath, string masterImagePath, string controlledCopyImagePath, string obsoleteImagePath = null, string uncontrolledNote = null)
         {
+            if (uncontrolledNote != null && PdfSharp.Fonts.GlobalFontSettings.FontResolver is not CustomFontResolver)
+                PdfSharp.Fonts.GlobalFontSettings.FontResolver = new CustomFontResolver();
+
             const double stampWidth = 130; // points
             const double margin = 20;
 
@@ -2032,6 +2021,10 @@ namespace DMS.Controllers
                         double h = stampWidth * bottomImage.PixelHeight / bottomImage.PixelWidth;
                         double x = (page.Width - stampWidth) / 2;
                         gfx.DrawImage(bottomImage, x, page.Height - h - margin, stampWidth, h);
+                    }
+                    else if (uncontrolledNote != null)
+                    {
+                        DrawUncontrolledStamp(gfx, page, margin, uncontrolledNote);
                     }
                 }
 
@@ -2705,17 +2698,118 @@ namespace DMS.Controllers
             }
         }
 
-        // Stempel MASTER (cap_master.png) cuma boleh muncul setelah dokumen didaftarkan
-        // ke P4D DAN sudah di-approve/receive oleh QMS (TB_R_CTRL_DOCUMENT.STATUS = '2',
-        // lihat sp_P4DMaintenance_ApproveReject) - BUKAN begitu approval Document
-        // Preparation-nya sendiri (TB_R_DOCUMENT.STATUS = '1') selesai. loginUser
-        // sengaja null - ini cek eksistensi/status murni, tanpa scoping divisi/dept.
-        private bool IsReceivedByQms(int? documentTransactionId)
+        /// <summary>
+        /// The document PDF as an uncontrolled copy: the approval PDF (cached TEMP_ file, made
+        /// when missing), MASTER / OBSOLETE as in ViewAttachment, and UNCONTROLLED COPY with who
+        /// downloaded it and when. Built in a private temp file, so concurrent views and downloads
+        /// never share it.
+        /// </summary>
+        private DBResult BuildUncontrolledPdf(string webRootPath, string sourceFullPath, DocumentMaintenance documentMaintenance, out byte[] bytes)
         {
-            DocumentControlMaintenance ctrlDocument = p4DMaintenanceRepo
-                .Search(new DocumentControlMaintenance { DOCUMENT_TRANSACTION_ID = documentTransactionId }, null, db, 1, 1)
+            bytes = null;
+            string fileName = System.IO.Path.GetFileName(sourceFullPath);
+            string extension = GetFileExtension(fileName);
+
+            string basePdf;
+            if (extension.Equals("pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                basePdf = sourceFullPath;
+            }
+            else
+            {
+                basePdf = webRootPath + "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
+                    + System.IO.Path.GetFileNameWithoutExtension(fileName) + ".pdf";
+                if (!System.IO.File.Exists(basePdf))
+                {
+                    DBResult generated = GeneratePengesahanPdf(webRootPath, documentMaintenance.FILE_PATH, documentMaintenance, basePdf);
+                    if (!generated.status) return generated;
+                }
+            }
+
+            DocumentMaintenance currentDocument = documentMaintenanceRepo
+                .Search(new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = documentMaintenance.DOCUMENT_TRANSACTION_ID }, null, db, 1, 1)
                 .FirstOrDefault();
-            return ctrlDocument != null && ctrlDocument.STATUS == "2";
+            var (masterStamp, _, obsoleteStamp) = ResolveStamps(webRootPath, currentDocument, currentDocument == null, false);
+
+            string note = "Downloaded by " + GetLoginUsername() + " on " + DateTime.Now.ToString("dd MMM yyyy HH:mm")
+                + "\nNot updated on revision. Check the current revision in DCS before use.";
+
+            string tempPdf = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "DCS_" + Guid.NewGuid().ToString("N") + ".pdf");
+            try
+            {
+                System.IO.File.Copy(basePdf, tempPdf);
+                AddImageStamps(tempPdf, tempPdf, masterStamp, null, obsoleteStamp, note);
+                bytes = System.IO.File.ReadAllBytes(tempPdf);
+                return new DBResult(true, "OK");
+            }
+            finally
+            {
+                if (System.IO.File.Exists(tempPdf)) System.IO.File.Delete(tempPdf);
+            }
+        }
+
+        // The Excel previews hand the whole source file to the browser, so they follow the
+        // source rule of DownloadAttachment (creator and Document Control only, 2026-11-10).
+        private IActionResult SourceFileDenied(string filePath)
+        {
+            string path = "/" + (filePath ?? "").Replace("\\", "/").TrimStart('/');
+            if (!path.StartsWith("/Upload/ATTACHMENT/DOCUMENT_TRANSACTION/", StringComparison.OrdinalIgnoreCase)) return null;
+            if (Services.DocumentAccessService.CanDownloadSource(db, GetLoginUsername(), Services.DocumentAccessService.FindDocumentByFile(db, path))) return null;
+            return Content(PreviewMessagePage("Preview Excel tidak tersedia",
+                "Preview Excel hanya untuk pembuat dokumen dan Document Control. Gunakan Preview PDF."), "text/html; charset=utf-8");
+        }
+
+        // Red bordered box, centred at the bottom like the CONTROLLED COPY stamp. Each line of
+        // the note ('\n') gets its own row; DrawString does not wrap.
+        private static void DrawUncontrolledStamp(XGraphics gfx, PdfPage page, double margin, string note)
+        {
+            string[] lines = note.Split('\n');
+            // About as tall as the CONTROLLED COPY image (130 pt wide), so it stays below the page frame.
+            const double width = 290, lineHeight = 8;
+            double height = 22 + lines.Length * lineHeight + 3;
+            double x = (page.Width - width) / 2;
+            double y = page.Height - height - margin;
+            XColor red = XColor.FromArgb(200, 198, 40, 40);
+            var brush = new XSolidBrush(red);
+            var noteFont = new XFont("Arial", 6.5, XFontStyleEx.Regular);
+
+            gfx.DrawRectangle(new XPen(red, 1.6), x, y, width, height);
+            gfx.DrawString("UNCONTROLLED COPY", new XFont("Arial", 14, XFontStyleEx.Bold), brush,
+                new XRect(x, y + 3, width, 18), XStringFormats.Center);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                gfx.DrawString(lines[i], noteFont, brush,
+                    new XRect(x + 4, y + 21 + i * lineHeight, width - 8, lineHeight), XStringFormats.Center);
+            }
+        }
+
+        /// <summary>
+        /// Which stamps a document PDF gets (ISO 9001 7.5.3, decided by Hendra 2026-11-10).
+        /// <list type="bullet">
+        /// <item>OBSOLETE: superseded revision; replaces the others.</item>
+        /// <item>MASTER: once QMS has received the registration (Accepted, Sent or Partially Sent)
+        /// or the document is Published, until it becomes obsolete. Before, only Accepted counted,
+        /// so the stamp disappeared as soon as QMS sent the distribution.</item>
+        /// <item>CONTROLLED COPY: end user view only (type 3) and only for a department the
+        /// document was sent to, from the moment it is sent. Acknowledge is the receipt record and
+        /// no longer holds the stamp back (before: only after every department acknowledged).</item>
+        /// </list>
+        /// </summary>
+        private (string master, string controlledCopy, string obsolete) ResolveStamps(
+            string webRootPath, DocumentMaintenance currentDocument, bool isObsolete, bool isEndUserView)
+        {
+            if (isObsolete) return (null, null, webRootPath + "/images/cap_obsolete.png");
+
+            int? id = currentDocument.DOCUMENT_TRANSACTION_ID;
+            bool isPublished = currentDocument.STATUS == "5";
+            bool isMaster = isPublished || Services.DocumentAccessService.IsReceivedByQms(db, id);
+            bool isControlledCopy = isEndUserView
+                && (isPublished || currentDocument.STATUS == "1")
+                && Services.DocumentAccessService.IsDistributedToUser(db, GetLoginUsername(), id);
+
+            return (isMaster ? webRootPath + "/images/cap_master.png" : null,
+                    isControlledCopy ? webRootPath + "/images/cap_controlledcopy.png" : null,
+                    null);
         }
 
         private void DxSetCellValueBlackFont(DevExpress.Spreadsheet.Cell cell, string value)
@@ -4272,27 +4366,9 @@ namespace DMS.Controllers
                     .FirstOrDefault();
                 bool isObsolete = currentDocument == null;
 
-                // Stempel gambar berdasarkan status dokumen, bukan siapa yang login - lihat
-                // ViewAttachment untuk penjelasan lengkap aturannya (sama persis di sini,
-                // termasuk CONTROLLED COPY cuma untuk type 3/end user - request Hendra
-                // 2026-08-14).
-                bool isFullyAcknowledged = !isObsolete && currentDocument.STATUS == "5";
-                bool isMasterStamped = !isObsolete && (isFullyAcknowledged || IsReceivedByQms(currentDocument.DOCUMENT_TRANSACTION_ID));
-                bool isEndUserView = type == "3";
-
-                string masterStampPath = null;
-                string controlledCopyStampPath = null;
-                string obsoleteStampPath = null;
-
-                if (isObsolete)
-                {
-                    obsoleteStampPath = webRootPath + "/images/cap_obsolete.png";
-                }
-                else
-                {
-                    if (isMasterStamped) masterStampPath = webRootPath + "/images/cap_master.png";
-                    if (isFullyAcknowledged && isEndUserView) controlledCopyStampPath = webRootPath + "/images/cap_controlledcopy.png";
-                }
+                // Same stamps as ViewAttachment, see ResolveStamps.
+                var (masterStampPath, controlledCopyStampPath, obsoleteStampPath) =
+                    ResolveStamps(webRootPath, currentDocument, isObsolete, type == "3");
 
                 string[] split = documentMaintenance.FILE_PATH.Split("/");
                 string fileName = split[4];
@@ -4353,9 +4429,16 @@ namespace DMS.Controllers
 
                         pengesahanModifiedfileNames = pengesahanPdfRelative;
 
-                        // File hasil konversi ini baru & sekali-pakai, aman di-watermark/stempel langsung.
+                        // The new PDF IS the shared cache (TEMP_<name>.pdf) that the next view and
+                        // print reuse, so stamp a copy, like the cached branch above. Stamping it in
+                        // place left the stamps of this print in every later view (2026-11-10).
                         if (masterStampPath != null || controlledCopyStampPath != null || obsoleteStampPath != null)
-                            AddImageStamps(pengesahanPdfFullPath, pengesahanPdfFullPath, masterStampPath, controlledCopyStampPath, obsoleteStampPath);
+                        {
+                            string watermarkedRelative = pengesahanPdfRelative.Replace(".pdf", "_print_wm.pdf");
+                            System.IO.File.Copy(pengesahanPdfFullPath, webRootPath + watermarkedRelative, overwrite: true);
+                            AddImageStamps(webRootPath + watermarkedRelative, webRootPath + watermarkedRelative, masterStampPath, controlledCopyStampPath, obsoleteStampPath);
+                            pengesahanModifiedfileNames = watermarkedRelative;
+                        }
                     }
                 }
 
