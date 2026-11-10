@@ -3231,7 +3231,7 @@ namespace DMS.Controllers
                 approvalDetails.FirstOrDefault(x => x.WORKFLOW_SEQ == step + approverSeqOffset);
 
             // Kotak jabatan yang ada di sheet ini - kalau jabatan PEMBUAT punya kotak POS-nya
-            // sendiri, pembuat ditulis di sana dan kotak DIBUAT dibiarkan kosong (sama seperti
+            // sendiri, pembuat ditulis di sana dan kotak DIBUAT diberi "-" (sama seperti
             // aturan TARGET_POSITION_ID di jalur ROW/COL).
             var boxPositionIds = Services.TemplateMarkerService.Collect(workbook, sheet).Keys
                 .Select(k => k.Contains('_') ? k.Substring(k.IndexOf('_') + 1) : k)

@@ -235,7 +235,8 @@ namespace DMS.Services
 
         /// <summary>
         /// Tulis semua penanda di satu sheet. resolveBox dipanggil per kotak (key tanpa
-        /// prefix SIGN_/NAME_/TITLE_, huruf besar); null = kotak dibiarkan kosong.
+        /// prefix SIGN_/NAME_/TITLE_, huruf besar); null = kotak tidak berlaku: area tanda
+        /// tangan dikosongkan dan baris nama diisi "-".
         /// </summary>
         public static void Write(Workbook workbook, Worksheet sheet, DocumentMaintenance document, Func<string, BoxFill> resolveBox)
         {
@@ -284,7 +285,21 @@ namespace DMS.Services
             foreach (string boxKey in boxKeys)
             {
                 BoxFill fill = resolveBox(boxKey);
-                if (fill == null) continue;
+
+                // The signature area of a template often still holds sample text ("Nama ... (Contoh)").
+                // Clear it first so it never prints around the signature or in an unused box
+                // (request Hendra 2026-11-10).
+                bool hasSign = markers.TryGetValue("SIGN_" + boxKey, out CellRange signRange);
+                if (hasSign) sheet.ClearContents(ExpandToMergedArea(sheet, signRange));
+
+                if (fill == null)
+                {
+                    // Nobody belongs to this box on this document (e.g. a step skipped because
+                    // no one holds the position): mark the name line "-" so it reads as not applicable.
+                    if (markers.TryGetValue("NAME_" + boxKey, out CellRange emptyNameRange))
+                        WriteNameCellSafely(sheet, emptyNameRange.TopRowIndex, emptyNameRange.LeftColumnIndex, emptyNameRange.ColumnCount, "-");
+                    continue;
+                }
 
                 if (markers.TryGetValue("NAME_" + boxKey, out CellRange nameRange))
                 {
@@ -296,9 +311,9 @@ namespace DMS.Services
                     SetValueBlackFontBottomAligned(ResolveMergeAnchor(sheet[titleRange.TopRowIndex, titleRange.LeftColumnIndex]), fill.PositionName);
                 }
 
-                if (!string.IsNullOrEmpty(fill.SignatureFullPath)
-                    && File.Exists(fill.SignatureFullPath)
-                    && markers.TryGetValue("SIGN_" + boxKey, out CellRange signRange))
+                if (hasSign
+                    && !string.IsNullOrEmpty(fill.SignatureFullPath)
+                    && File.Exists(fill.SignatureFullPath))
                 {
                     AddPicture(sheet, fill.SignatureFullPath, signRange);
                 }
