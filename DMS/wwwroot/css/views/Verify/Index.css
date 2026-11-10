@@ -1,0 +1,85 @@
+/* Verify Document (2026-11-10) */
+.vd-wrap { max-width: 720px; margin: 0 auto; }
+.vd-card { padding: 22px 24px; }
+
+.vd-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.vd-head-icon {
+    width: 40px; height: 40px; border-radius: 10px; flex: none;
+    background: #E7F1FB; color: #2450D8; display: flex; align-items: center; justify-content: center; font-size: 19px;
+}
+.vd-head-title { font-size: 16px; font-weight: 700; color: #1D2939; }
+.vd-head-sub { font-size: 12.5px; color: #667085; margin-top: 2px; }
+
+.vd-tabs { display: flex; gap: 6px; border-bottom: 1px solid #E3E8EE; margin-bottom: 16px; flex-wrap: wrap; }
+.vd-tab {
+    background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px;
+    padding: 8px 12px; font-size: 12.5px; font-weight: 600; color: #667085; cursor: pointer;
+}
+.vd-tab:hover { color: #2450D8; }
+.vd-tab.active { color: #2450D8; border-bottom-color: #2450D8; }
+
+.vd-pane { display: none; }
+.vd-pane.active { display: block; }
+
+.vd-drop {
+    display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+    padding: 34px 20px; border: 2px dashed #C7D2E0; border-radius: 12px; background: #F9FAFB;
+    cursor: pointer; font-weight: 400; margin: 0;
+}
+.vd-drop:hover, .vd-drop-over { border-color: #2450D8; background: #F4F8FF; }
+.vd-drop input { display: none; }
+.vd-drop > i { font-size: 30px; color: #2450D8; }
+.vd-drop b { font-size: 14px; color: #1D2939; }
+.vd-drop span { font-size: 12px; color: #667085; max-width: 420px; }
+
+.vd-camera {
+    position: relative; background: #101828; border-radius: 12px; overflow: hidden;
+    aspect-ratio: 4 / 3; max-height: 420px; width: 100%;
+}
+.vd-camera video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vd-camera-idle {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; color: #D0D5DD; font-size: 13px;
+}
+.vd-camera-idle > i { font-size: 32px; color: #98A2B3; }
+.vd-camera-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+
+.vd-label { font-size: 12px; font-weight: 600; color: #344054; }
+.vd-code-row { display: flex; gap: 8px; }
+.vd-code-row .form-control { flex: 1; min-width: 0; }
+.vd-help { font-size: 11.5px; color: #667085; margin-top: 6px; }
+
+.vd-btn {
+    display: inline-flex; align-items: center; gap: 6px; flex: none;
+    padding: 7px 14px; border-radius: 7px; font-size: 12.5px; font-weight: 700;
+    border: 1px solid transparent; cursor: pointer;
+}
+.vd-btn-primary { background: #2450D8; color: #fff; }
+.vd-btn-primary:hover { background: #1C3FA6; }
+.vd-btn-outline { background: #fff; border-color: #D5DDE8; color: #475467; }
+.vd-btn-outline:hover { background: #F4F6F8; }
+
+.vd-status { margin-top: 16px; padding: 11px 14px; border-radius: 8px; font-size: 13px; }
+.vd-status i { margin-right: 6px; }
+.vd-status-info { background: #E7F1FB; color: #1C3FA6; }
+.vd-status-ok { background: #E8F7EE; color: #14532D; }
+.vd-status-bad { background: #FDECEC; color: #7F1D1D; }
+
+.vd-found { margin-top: 16px; }
+.vd-found-title { font-size: 12.5px; font-weight: 700; color: #344054; margin-bottom: 8px; }
+.vd-found-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 12px; margin-bottom: 6px;
+    border: 1px solid #E3E8EE; border-radius: 8px; color: #1D2939; text-decoration: none;
+}
+.vd-found-item:hover { border-color: #2450D8; background: #F4F8FF; text-decoration: none; color: #1D2939; }
+.vd-found-item > i:first-child { color: #2450D8; }
+.vd-found-item span { font-weight: 600; font-size: 13px; }
+.vd-found-item small { color: #98A2B3; font-size: 11px; font-family: monospace; flex: 1; text-align: right; }
+.vd-found-item > i:last-child { color: #B0B8C4; font-size: 11px; }
+
+@media (max-width: 600px) {
+    .vd-card { padding: 16px; }
+    .vd-code-row { flex-direction: column; }
+}
+#vdFoundList .vd-found-unknown span { color: #B42318; }
+#vdFoundList .vd-found-unknown > i:first-child { color: #D64545; }

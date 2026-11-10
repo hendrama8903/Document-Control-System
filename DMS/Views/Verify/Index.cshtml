@@ -1,0 +1,73 @@
+@* Verify Document menu (2026-11-10): read a signature QR from a computer, see VerifyController.Index. *@
+<link rel="stylesheet" href="~/css/views/Verify/Index.css" asp-append-version="true" />
+
+<section class="content">
+    <div class="vd-wrap">
+        <div class="dp-card vd-card">
+            <div class="vd-head">
+                <div class="vd-head-icon"><i class="fa fa-qrcode"></i></div>
+                <div>
+                    <div class="vd-head-title">Verify Document</div>
+                    <div class="vd-head-sub">Check that a signature on a DCS document is genuine by reading its QR code.</div>
+                </div>
+            </div>
+
+            <div class="vd-tabs" role="tablist">
+                <button type="button" class="vd-tab active" data-tab="upload"><i class="fa fa-upload"></i> Upload Image or PDF</button>
+                <button type="button" class="vd-tab" data-tab="camera"><i class="fa fa-camera"></i> Scan with Webcam</button>
+                <button type="button" class="vd-tab" data-tab="code"><i class="fa fa-link"></i> Paste Link or Code</button>
+            </div>
+
+            <div class="vd-pane active" id="vdPaneUpload">
+                <label class="vd-drop" id="vdDrop">
+                    <input type="file" id="vdFile" accept="image/png,image/jpeg,image/bmp,image/webp,application/pdf" />
+                    <i class="fa fa-file-image-o"></i>
+                    <b>Choose a file or drop it here</b>
+                    <span>A photo or screenshot of the QR code, or a scanned or downloaded PDF of the document (JPG, PNG, PDF)</span>
+                </label>
+            </div>
+
+            <div class="vd-pane" id="vdPaneCamera">
+                <div class="vd-camera">
+                    <video id="vdVideo" playsinline muted></video>
+                    <div class="vd-camera-idle" id="vdCameraIdle">
+                        <i class="fa fa-video-camera"></i>
+                        <span>Hold the QR code in front of the camera.</span>
+                        <button type="button" class="vd-btn vd-btn-primary" id="vdStartCamera"><i class="fa fa-play"></i> Start Camera</button>
+                    </div>
+                </div>
+                <div class="vd-camera-actions">
+                    <button type="button" class="vd-btn vd-btn-outline" id="vdStopCamera" style="display:none;"><i class="fa fa-stop"></i> Stop Camera</button>
+                </div>
+            </div>
+
+            <div class="vd-pane" id="vdPaneCode">
+                <label for="vdCode" class="vd-label">Link or Code</label>
+                <div class="vd-code-row">
+                    <input type="text" class="form-control" id="vdCode" autocomplete="off"
+                           placeholder="https://.../Verify/Signature/... or the 32-character code" />
+                    <button type="button" class="vd-btn vd-btn-primary" id="vdVerifyCode"><i class="fa fa-check"></i> Verify</button>
+                </div>
+                <div class="vd-help">A USB QR scanner types the link into this box; press Enter to verify.</div>
+            </div>
+
+            <div class="vd-status" id="vdStatus" style="display:none;"></div>
+            <div class="vd-found" id="vdFound" style="display:none;">
+                <div class="vd-found-title">Signatures found in this file - choose one to verify</div>
+                <div id="vdFoundList"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<canvas id="vdCanvas" style="display:none;"></canvas>
+<script src="~/lib/jsqr/jsQR.js" asp-append-version="true"></script>
+<script src="~/lib/pdfjs/pdf.min.js" asp-append-version="true"></script>
+<script>
+    var verifyConfig = {
+        signatureUrl: "@Url.Content("~/Verify/Signature/")",
+        lookupUrl: "@Url.Action("Lookup", "Verify")",
+        pdfWorker: "@Url.Content("~/lib/pdfjs/pdf.worker.min.js")"
+    };
+</script>
+<script src="~/js/views/verify-document.js" asp-append-version="true"></script>

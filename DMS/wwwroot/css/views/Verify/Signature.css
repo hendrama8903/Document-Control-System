@@ -19,3 +19,7 @@
     .vf-details { grid-template-columns: 1fr; gap: 2px; }
     .vf-details dd { margin-bottom: 10px; }
 }
+
+.vf-again { margin-top: 20px; padding-top: 14px; border-top: 1px solid #EEF1F5; font-size: 13px; }
+.vf-again a { font-weight: 600; color: #2450D8; }
+.vf-again i { margin-right: 4px; }

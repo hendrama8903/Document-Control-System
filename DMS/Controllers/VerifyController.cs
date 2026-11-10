@@ -39,6 +39,40 @@ namespace DMS.Controllers
             public string FileCheck { get; set; }   // MATCH | CHANGED | UNKNOWN
         }
 
+        /// <summary>
+        /// Verify Document menu (request Hendra 2026-11-10): read the QR of a signature box without
+        /// a phone - paste the link or code, upload an image or PDF, or scan with a webcam. The QR
+        /// is decoded in the browser (lib/jsqr) and leads to <see cref="Signature"/>. Open to every
+        /// logged-in user.
+        /// </summary>
+        public IActionResult Index()
+        {
+            if (GetLoginUsername() == null) return Redirect("/Auth/Login?param=" + Uri.EscapeDataString("/Verify/Index"));
+            ViewData["Title"] = "Verify Document";
+            return View();
+        }
+
+        /// <summary>Signer of each code read from one file, so Verify Document can list them by name.</summary>
+        [HttpPost]
+        public JsonResult Lookup(string[] ids)
+        {
+            if (GetLoginUsername() == null) return Json(new { status = false, message = "Session expired. Log in again." });
+            var rows = (ids ?? Array.Empty<string>())
+                .Where(id => System.Text.RegularExpressions.Regex.IsMatch(id ?? "", "^[0-9a-fA-F]{32}$"))
+                .Distinct(StringComparer.OrdinalIgnoreCase).Take(50)
+                .Select(id => new { id, info = Load(id) })
+                .Select(x => new
+                {
+                    x.id,
+                    found = x.info != null,
+                    signer = x.info?.SignerName,
+                    position = x.info?.SignerPosition,
+                    documentCode = x.info?.DocumentCode,
+                })
+                .ToList();
+            return Json(new { status = true, data = rows });
+        }
+
         public IActionResult Signature(string id)
         {
             if (GetLoginUsername() == null)
