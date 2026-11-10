@@ -1,3 +1,5 @@
+   /* Wider than modal-md so Document Level, Creator Level and Category fit on one row. */
+   #modalAddEdit .modal-dialog { width: 820px; max-width: calc(100vw - 32px); }
    #modalAddEdit .modal-content { border: none; border-radius: 14px; overflow: hidden; padding: 0; }
    #modalAddEdit .modal-header,
    #modalAddEdit .modal-footer { display: none; } /* replaced by wfd-header / wfd-footer below */
@@ -124,6 +126,24 @@ border-bottom: 1px solid #E3E8EE !important;
        display: inline-block; padding: 1px 8px; border-radius: 10px;
        background: #FDECEA; color: #B42318; font-size: 10.5px; font-weight: 700;
    }
+
+   .wfd-info { color: #98A2B3; font-size: 12px; margin-left: 3px; cursor: help; }
+   .wfd-info:hover { color: #2450D8; }
+
+   /* Drag & drop order of the Level & Position List (2026-11-10). */
+   .wfd-section-title span i.wfd-inline-grip {
+       display: inline; width: auto; height: auto; background: none;
+       color: #98A2B3; font-size: 10px;
+   }
+   .wfd-drag {
+       display: inline-flex; align-items: center; justify-content: center;
+       width: 18px; height: 24px; margin-right: 4px; vertical-align: middle;
+       color: #B0B8C4; cursor: grab;
+   }
+   .wfd-drag:hover { color: #2450D8; }
+   #detailgrid tbody tr.wfd-dragging { opacity: .45; }
+   #detailgrid tbody tr.wfd-drop-above td { box-shadow: inset 0 2px 0 #2450D8; }
+   #detailgrid tbody tr.wfd-drop-below td { box-shadow: inset 0 -2px 0 #2450D8; }
 
    .wfd-footer {
        display: flex; justify-content: flex-end; gap: 8px;

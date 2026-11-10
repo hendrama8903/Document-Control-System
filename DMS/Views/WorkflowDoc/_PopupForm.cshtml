@@ -14,21 +14,22 @@
 
             <div class="wfd-body">
                 <div class="wfd-card">
+                    @* One row to save height (request Hendra 2026-11-10); the category help moved to the info icon. *@
                     <div class="row">
-                        <div class="col-md-6 form-group">
+                        <div class="col-md-3 form-group">
                             <label>Document Level<span class="text-red"> *</span></label>
                             <div class="wfd-select-icon"><i class="fa fa-clone"></i><select class="form-control" id="addEditWorkflowDocLevel"></select></div>
                         </div>
-                        <div class="col-md-6 form-group">
+                        <div class="col-md-4 form-group">
                             <label>Creator Level<span class="text-red"> *</span></label>
                             <div class="wfd-select-icon"><i class="fa fa-user-o"></i><select class="form-control" id="addEditPositionName"></select></div>
                         </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-12 form-group">
-                            <label>Document Category <span class="wfd-optional">(optional)</span></label>
+                        <div class="col-md-5 form-group">
+                            <label>Document Category <span class="wfd-optional">(optional)</span>
+                                <i class="fa fa-info-circle wfd-info" data-toggle="tooltip" data-placement="top"
+                                   title="Leave empty for the default workflow of this level. Choose a category to give that document type its own approval chain - other categories keep using the default."></i>
+                            </label>
                             <div class="wfd-select-icon"><i class="fa fa-folder-o"></i><select class="form-control" id="addEditWorkflowCategory"></select></div>
-                            <div class="wfd-help">Leave empty for the default workflow of this level. Choose a category to give that document type its own approval chain - other categories keep using the default.</div>
                         </div>
                     </div>
                 </div>
@@ -67,7 +68,7 @@
                     <i class="fa fa-list-ul"></i>
                     <div class="wfd-section-title-text">
                         Level &amp; Position List
-                        <span>Ordered from lowest to highest level</span>
+                        <span>Ordered from lowest to highest level - drag <i class="fa fa-bars wfd-inline-grip"></i> to change the order</span>
                     </div>
                 </div>
                 <div class="wfd-card wfd-table-card">

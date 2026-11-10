@@ -264,17 +264,16 @@ var detailTable = null;
 // 2026-08-18, redesign UI popup ini).
 var gDetailEditMode = false;
 
-// Kolom "Action" (ikon edit/delete per baris).
-// Delete cuma boleh untuk baris LEVEL PALING TINGGI (urutan level harus
-// tetap rapat, tidak boleh bolong di tengah).
+// Kolom "Action" (ikon edit/delete per baris). Semua baris boleh dihapus: level
+// sesudahnya otomatis naik satu (renumberDetail), jadi urutan tetap rapat
+// (2026-11-10; dulu hanya level paling tinggi).
 var detailActionColumnDef = {
     "targets": [4],
     "className": "text-center",
     "orderable": false,
-    "render": function (data, type, row) {
-        var canDelete = (parseInt(row.WORKFLOW_SEQ) + 1 == seq);
+    "render": function () {
         return '<button type="button" class="wfd-row-btn wfd-row-edit" title="Edit"><i class="fa fa-pencil"></i></button>' +
-            '<button type="button" class="wfd-row-btn wfd-row-delete" title="Delete"' + (canDelete ? '' : ' disabled') + '><i class="fa fa-trash"></i></button>';
+            '<button type="button" class="wfd-row-btn wfd-row-delete" title="Delete"><i class="fa fa-trash"></i></button>';
     }
 };
 
@@ -284,7 +283,7 @@ function buildDetailTable() {
     detailTable = $('#detailgrid').DataTable({
         "ordering"      : false,
         "oLanguage"     : { "sEmptyTable": "Data not found." },
-        "scrollY"       : '110px',
+        "scrollY"       : '190px',
         "scrollCollapse": false,
         "paging"        : false,
         "info"          : false,
@@ -295,7 +294,10 @@ function buildDetailTable() {
                 "targets"   : [0],
                 "width"     : "16%",
                 "className" : "seq text-center",
-                "render"    : function (data) { return '<span class="wfd-level-badge">' + data + '</span>'; }
+                "render"    : function (data) {
+                    return '<span class="wfd-drag" title="Drag to change the order"><i class="fa fa-bars"></i></span>' +
+                        '<span class="wfd-level-badge">' + data + '</span>';
+                }
             },
             {
                 "targets": [2],
@@ -323,7 +325,8 @@ function buildDetailTable() {
 // menentukan baris mana yang boleh dihapus.
 function renderDetail() {
     detailData.sort((a, b) => parseInt(a.WORKFLOW_SEQ) - parseInt(b.WORKFLOW_SEQ));
-    seq = detailData.length > 0 ? parseInt(Math.max(...detailData.map(o => o.WORKFLOW_SEQ))) + 1 : 1;
+    renumberDetail();
+    seq = detailData.length + 1;
 
     detailTable.clear().draw();
     detailTable.rows.add(detailData).draw(false);
@@ -333,6 +336,66 @@ function renderDetail() {
         $('#addEditWorkflowSeq').append(new Option(i, i, false, false));
     }
     onClearDetail();
+}
+
+// Level = position in the list, 1..n with no gaps (after delete, insert or drag).
+function renumberDetail() {
+    detailData.forEach(function (d, i) { d.WORKFLOW_SEQ = i + 1; });
+}
+
+// Drag & drop order (request Hendra 2026-11-10): native HTML5 drag on the grip in the Level
+// column. A row is only draggable while its grip is held, so clicking a row still selects it.
+var gDragIndex = null;
+
+function bindDetailDragDrop() {
+    var $grid = $("#detailgrid");
+
+    $grid.on("mousedown", ".wfd-drag", function () {
+        if (detailData.length > 1) $(this).closest("tr").attr("draggable", "true");
+    });
+    $(document).on("mouseup", function () {
+        $("#detailgrid tbody tr[draggable]").removeAttr("draggable");
+    });
+
+    $grid.on("dragstart", "tbody tr", function (e) {
+        gDragIndex = $(this).index();
+        e.originalEvent.dataTransfer.effectAllowed = "move";
+        e.originalEvent.dataTransfer.setData("text/plain", String(gDragIndex));
+        $(this).addClass("wfd-dragging");
+    });
+
+    $grid.on("dragover", "tbody tr", function (e) {
+        if (gDragIndex === null) return;
+        e.preventDefault();
+        e.originalEvent.dataTransfer.dropEffect = "move";
+        var rect = this.getBoundingClientRect();
+        var below = e.originalEvent.clientY > rect.top + rect.height / 2;
+        $("#detailgrid tbody tr").removeClass("wfd-drop-above wfd-drop-below");
+        $(this).addClass(below ? "wfd-drop-below" : "wfd-drop-above");
+    });
+
+    $grid.on("drop", "tbody tr", function (e) {
+        if (gDragIndex === null) return;
+        e.preventDefault();
+        var target = $(this).index();
+        if ($(this).hasClass("wfd-drop-below")) target++;
+        var from = gDragIndex;
+        endDetailDrag();
+
+        if (target > from) target--;
+        if (target === from) return;
+        var moved = detailData.splice(from, 1)[0];
+        detailData.splice(target, 0, moved);
+        renumberDetail();
+        renderDetail();
+    });
+
+    $grid.on("dragend", "tbody tr", endDetailDrag);
+}
+
+function endDetailDrag() {
+    gDragIndex = null;
+    $("#detailgrid tbody tr").removeClass("wfd-dragging wfd-drop-above wfd-drop-below").removeAttr("draggable");
 }
 
 function mapDetailRows(data) {
@@ -379,7 +442,7 @@ function confirmWithImpact(id, action, question, onYes) {
 
 // Dropdown kategori bergantung pada Document Level terpilih.
 function setCategorySelect(level) {
-    setDataSelect2WithParam("addEditWorkflowCategory", workflowDocConfig.urls.getDocumentCategories, "- Default workflow (all categories) -", level || "");
+    setDataSelect2WithParam("addEditWorkflowCategory", workflowDocConfig.urls.getDocumentCategories, "- Default (all categories) -", level || "");
 }
 
 $(document).ready(function() {
@@ -435,8 +498,11 @@ $(document).ready(function() {
     });
 
     $("#detailgrid").on("click", "tbody tr", function (e) {
+        if ($(e.target).closest(".wfd-drag").length) return;
         onSelectDetail($(this));
     });
+
+    bindDetailDragDrop();
 
     $("#detailgrid").on("click", ".wfd-row-edit", function (e) {
         e.stopPropagation();
@@ -687,8 +753,15 @@ function readDetailForm(previous) {
 
 function onAddDetail(){
     if ($('#addEditPositionName2').val() != null) {
-
-        detailData.push(readDetailForm(null));
+        // Choosing a level that already exists inserts the position there and moves the
+        // later levels down one, instead of putting two positions on the same level.
+        var item = readDetailForm(null);
+        var level = parseInt(item.WORKFLOW_SEQ) || seq;
+        detailData.forEach(function (d) {
+            if (parseInt(d.WORKFLOW_SEQ) >= level) d.WORKFLOW_SEQ = parseInt(d.WORKFLOW_SEQ) + 1;
+        });
+        item.WORKFLOW_SEQ = level;
+        detailData.push(item);
         renderDetail();
     }
 }
