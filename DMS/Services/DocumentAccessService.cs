@@ -149,7 +149,7 @@ namespace DMS.Services
             }
         }
 
-        static bool IsDocumentControl(DBContext db, string username) =>
+        public static bool IsDocumentControl(DBContext db, string username) =>
             Scalar(db, "SELECT dbo.fn_User_IsDocumentControl(@U)", ("@U", username)) is bool b && b;
 
         static bool IsOwnSignature(DBContext db, string username, string path) =>

@@ -1713,7 +1713,7 @@ namespace DMS.Controllers
                 // Stempel gambar MASTER (kiri-atas) dan CONTROLLED COPY / OBSOLETE
                 // (tengah-bawah); aturannya di ResolveStamps (2026-11-10).
                 var (masterStampPath, controlledCopyStampPath, obsoleteStampPath) =
-                    ResolveStamps(webRootPath, currentDocument, isObsolete, type == "3");
+                    ResolveStamps(webRootPath, currentDocument, isObsolete, type);
 
                 string[] split = documentMaintenance.FILE_PATH.Split("/");
                 string fileName = split[4];
@@ -2700,7 +2700,7 @@ namespace DMS.Controllers
 
         /// <summary>
         /// The document PDF as an uncontrolled copy: the approval PDF (cached TEMP_ file, made
-        /// when missing), MASTER / OBSOLETE as in ViewAttachment, and UNCONTROLLED COPY with who
+        /// when missing), OBSOLETE when superseded, and UNCONTROLLED COPY with who
         /// downloaded it and when. Built in a private temp file, so concurrent views and downloads
         /// never share it.
         /// </summary>
@@ -2713,7 +2713,8 @@ namespace DMS.Controllers
             DocumentMaintenance currentDocument = documentMaintenanceRepo
                 .Search(new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = documentMaintenance.DOCUMENT_TRANSACTION_ID }, null, db, 1, 1)
                 .FirstOrDefault();
-            var (masterStamp, _, obsoleteStamp) = ResolveStamps(webRootPath, currentDocument, currentDocument == null, false);
+            // No viewer type: an uncontrolled copy carries neither MASTER nor CONTROLLED COPY.
+            var (_, _, obsoleteStamp) = ResolveStamps(webRootPath, currentDocument, currentDocument == null, null);
 
             string note = "Downloaded by " + GetLoginUsername() + " on " + DateTime.Now.ToString("dd MMM yyyy HH:mm")
                 + "\nNot updated on revision. Check the current revision in DCS before use.";
@@ -2722,7 +2723,7 @@ namespace DMS.Controllers
             try
             {
                 System.IO.File.Copy(basePdf, tempPdf);
-                AddImageStamps(tempPdf, tempPdf, masterStamp, null, obsoleteStamp, note);
+                AddImageStamps(tempPdf, tempPdf, null, null, obsoleteStamp, note);
                 bytes = System.IO.File.ReadAllBytes(tempPdf);
                 return new DBResult(true, "OK");
             }
@@ -2791,21 +2792,26 @@ namespace DMS.Controllers
         /// <item>OBSOLETE: superseded revision; replaces the others.</item>
         /// <item>MASTER: once QMS has received the registration (Accepted, Sent or Partially Sent)
         /// or the document is Published, until it becomes obsolete. Before, only Accepted counted,
-        /// so the stamp disappeared as soon as QMS sent the distribution.</item>
+        /// so the stamp disappeared as soon as QMS sent the distribution. Only in the QMS menus
+        /// (type 2: Document Control Dashboard, Document Registration) and only for Document
+        /// Control users: the master belongs to QMS (Hendra 2026-11-10). The type comes from the
+        /// browser, hence the user check.</item>
         /// <item>CONTROLLED COPY: end user view only (type 3) and only for a department the
         /// document was sent to, from the moment it is sent. Acknowledge is the receipt record and
         /// no longer holds the stamp back (before: only after every department acknowledged).</item>
         /// </list>
         /// </summary>
         private (string master, string controlledCopy, string obsolete) ResolveStamps(
-            string webRootPath, DocumentMaintenance currentDocument, bool isObsolete, bool isEndUserView)
+            string webRootPath, DocumentMaintenance currentDocument, bool isObsolete, string viewerType)
         {
             if (isObsolete) return (null, null, webRootPath + "/images/cap_obsolete.png");
 
             int? id = currentDocument.DOCUMENT_TRANSACTION_ID;
             bool isPublished = currentDocument.STATUS == "5";
-            bool isMaster = isPublished || Services.DocumentAccessService.IsReceivedByQms(db, id);
-            bool isControlledCopy = isEndUserView
+            bool isMaster = viewerType == "2"
+                && (isPublished || Services.DocumentAccessService.IsReceivedByQms(db, id))
+                && Services.DocumentAccessService.IsDocumentControl(db, GetLoginUsername());
+            bool isControlledCopy = viewerType == "3"
                 && (isPublished || currentDocument.STATUS == "1")
                 && Services.DocumentAccessService.IsDistributedToUser(db, GetLoginUsername(), id);
 
@@ -4370,7 +4376,7 @@ namespace DMS.Controllers
 
                 // Same stamps as ViewAttachment, see ResolveStamps.
                 var (masterStampPath, controlledCopyStampPath, obsoleteStampPath) =
-                    ResolveStamps(webRootPath, currentDocument, isObsolete, type == "3");
+                    ResolveStamps(webRootPath, currentDocument, isObsolete, type);
 
                 string[] split = documentMaintenance.FILE_PATH.Split("/");
                 string fileName = split[4];
