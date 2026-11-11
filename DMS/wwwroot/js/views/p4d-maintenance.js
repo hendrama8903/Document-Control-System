@@ -548,6 +548,13 @@ function openRowActionMenu($btn, row) {
         }));
     }
 
+    // Stamp Layout stage 3: change the fixed stamp positions after Accept (reason required).
+    if (p4dMaintenanceConfig.canAdjustStamp && typeof spOpen === "function") {
+        $menu.append(menuItem("dp-menu-stamp", "fa-certificate", "Stamp Position", (row.STATUS == 2 || row.STATUS == 5 || row.STATUS == 6), function () {
+            selectRowThen(row, function () { spOpen(row.DOCUMENT_CTRL_ID, row.DOCUMENT_CODE); });
+        }));
+    }
+
     if (gCanEdit) {
         $menu.append(menuItem("dp-menu-location", "fa-map-marker", "Update Location", true, function () {
             selectRowThen(row, onEditPrepare);
@@ -1502,6 +1509,12 @@ function onAcceptPrepare() {
 
     gDocumentCtrlId = row.DOCUMENT_CTRL_ID;
     gDocumentNo = row.DOCUMENT_CODE;
+
+    // With P4D-STAMPLAYOUT, Accept also asks where the stamps go (p4d-stamp-layout.js).
+    if (p4dMaintenanceConfig.canAdjustStamp && typeof spOpen === "function") {
+        spOpen(gDocumentCtrlId, gDocumentNo);
+        return;
+    }
 
     showConfirmMesg("Are you sure you want to accept Document No " + gDocumentNo
         + "? (Second step - status will become Accepted, and the document can then be distributed.)",

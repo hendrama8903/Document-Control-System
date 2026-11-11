@@ -1,7 +1,11 @@
 <script type="text/javascript">
     var documentControlDashboardConfig = {
         canDocumentControlAccess: @(((bool)ViewData["DocumentControlAccess"]) ? "true" : "false"),
+        canExportPdf: @(((bool)ViewData["ExportPdf"]) ? "true" : "false"),
         urls: {
+            exportPdf: "@Url.Action("ExportPdf", "DocumentMaintenance")",
+            searchCopyRegister: "@Url.Action("SearchCopyRegister", "DocumentControlDashboard")",
+            withdrawCopy: "@Url.Action("WithdrawCopy", "DocumentControlDashboard")",
             moveDocumentsToFolder: "@Url.Action("MoveDocumentsToFolder", "DocumentControlDashboard")",
             search: "@Url.Action("Search", "DocumentControlDashboard")",
             downloadExcel: "@Url.Action("DownloadExcel", "DocumentControlDashboard")",

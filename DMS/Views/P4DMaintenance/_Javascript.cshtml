@@ -12,6 +12,13 @@
         canEdit: @((((bool)ViewData["Edit"]) && ((bool)ViewData["DocumentControlAccess"])) ? "true" : "false"),
         canSend: @((((bool)ViewData["Send"]) && ((bool)ViewData["DocumentControlAccess"])) ? "true" : "false"),
         canReject: @((((bool)ViewData["Reject"]) && ((bool)ViewData["DocumentControlAccess"])) ? "true" : "false"),
+        canAdjustStamp: @(((bool)ViewData["StampLayout"]) ? "true" : "false"),
+        stampLimits: {
+            safeMarginPt: @DMS.Services.StampLayoutService.SafeMarginPt.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            minWidthPt: @DMS.Services.StampLayoutService.MinWidthPt.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            maxWidthPt: @DMS.Services.StampLayoutService.MaxWidthPt.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            noteHeightPt: @((DMS.Services.StampLayoutService.NoteGapPt + DMS.Services.StampLayoutService.NoteLineHeightPt).ToString(System.Globalization.CultureInfo.InvariantCulture))
+        },
         sessionDepartmentId: "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetInt32("DEPARTMENT_ID"))",
         urls: {
             search: "@Url.Action("Search", "P4DMaintenance")",
@@ -26,6 +33,9 @@
             deleteDistributionMultiple: "@Url.Action("DeleteDistributionMultiple", "P4DMaintenance")",
             sendDistributionAll: "@Url.Action("SendDistributionAll", "P4DMaintenance")",
             accept: "@Url.Action("Accept", "P4DMaintenance")",
+            stampLayoutInfo: "@Url.Action("StampLayoutInfo", "P4DMaintenance")",
+            changeStampLayout: "@Url.Action("ChangeStampLayout", "P4DMaintenance")",
+            pdfWorker: "@Url.Content("~/lib/pdfjs/pdf.worker.min.js")",
             unReceive: "@Url.Action("UnReceive", "P4DMaintenance")",
             approveReject: "@Url.Action("ApproveReject", "P4DMaintenance")",
             getByKey: "@Url.Action("GetByKey", "P4DMaintenance")",
@@ -41,3 +51,11 @@
     };
 </script>
 <script src="~/js/views/p4d-maintenance.js" asp-append-version="true"></script>
+@if ((bool)ViewData["StampLayout"])
+{
+    <link rel="stylesheet" href="~/css/views/StampLayout/Index.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/views/P4DMaintenance/_StampLayoutPopup.css" asp-append-version="true" />
+    <script src="~/lib/pdfjs/pdf.min.js" asp-append-version="true"></script>
+    <script src="~/js/views/stamp-layout-core.js" asp-append-version="true"></script>
+    <script src="~/js/views/p4d-stamp-layout.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,22 @@
+<!-- Copy Register (request Hendra 2026-11-11): controlled copies issued through Download PDF,
+     grouped by revision, with their withdrawal. Side panel like Acceptance Detail so the grid
+     stays usable. -->
+<link rel="stylesheet" href="~/css/views/DocumentControlDashboard/_CopyRegisterPanel.css" asp-append-version="true" />
+
+<div id="copyRegisterPanel">
+    <div class="crp-header">
+        <div class="crp-header-icon"><i class="fa fa-list-ol"></i></div>
+        <div>
+            <div class="crp-header-title">Copy Register</div>
+            <div class="crp-header-sub" id="crpDocumentCode">-</div>
+        </div>
+        <button type="button" class="crp-close" id="btn_closeCopyRegisterPanel" title="Close"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="crp-summary" id="crpSummary"></div>
+    <div class="crp-toolbar">
+        <label class="crp-toggle">
+            <input type="checkbox" id="crpShowWithdrawn" checked /> Show withdrawn copies
+        </label>
+    </div>
+    <div class="crp-body" id="crpBody"></div>
+</div>

@@ -1,0 +1,158 @@
+#copyRegisterPanel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 460px;
+    max-width: 92vw;
+    height: 100vh;
+    background: #fff;
+    box-shadow: -8px 0 24px rgba(20,35,50,.18);
+    z-index: 1050;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform .22s cubic-bezier(.4,0,.2,1);
+}
+
+#copyRegisterPanel.open { transform: translateX(0); }
+
+#copyRegisterPanel .crp-header {
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid #EEF1F5;
+    flex: none;
+}
+
+#copyRegisterPanel .crp-header-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: #E7F1FB;
+    color: #2450D8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    font-size: 15px;
+}
+
+#copyRegisterPanel .crp-header-title { font-size: 14px; font-weight: 700; color: #101828; }
+#copyRegisterPanel .crp-header-sub { font-size: 12px; color: #8A94A3; margin-top: 2px; }
+
+#copyRegisterPanel .crp-close {
+    background: none;
+    border: none;
+    color: #98A2B3;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 2px;
+    margin-left: auto;
+}
+#copyRegisterPanel .crp-close:hover { color: #475467; }
+
+#copyRegisterPanel .crp-summary {
+    display: flex;
+    gap: 8px;
+    padding: 12px 18px 0;
+    flex: none;
+}
+
+#copyRegisterPanel .crp-stat {
+    flex: 1;
+    border: 1px solid #EEF1F5;
+    border-radius: 9px;
+    padding: 8px 10px;
+}
+#copyRegisterPanel .crp-stat-value { font-size: 18px; font-weight: 700; color: #101828; line-height: 1.2; }
+#copyRegisterPanel .crp-stat-label { font-size: 11.5px; color: #8A94A3; }
+#copyRegisterPanel .crp-stat-alert .crp-stat-value { color: #C62828; }
+
+#copyRegisterPanel .crp-toolbar {
+    padding: 10px 18px 6px;
+    flex: none;
+    font-size: 12.5px;
+    color: #475467;
+}
+#copyRegisterPanel .crp-toggle { font-weight: 400; cursor: pointer; margin: 0; }
+#copyRegisterPanel .crp-toggle input { margin: 0 4px 0 0; vertical-align: -1px; }
+
+#copyRegisterPanel .crp-body {
+    padding: 4px 18px 18px;
+    flex: 1 1 auto;
+    overflow-y: auto;
+}
+
+#copyRegisterPanel .crp-rev {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 14px 0 8px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #344054;
+}
+#copyRegisterPanel .crp-rev:first-child { margin-top: 6px; }
+
+#copyRegisterPanel .crp-rev-warning {
+    background: #FFF4DC;
+    color: #B36B00;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+#copyRegisterPanel .crp-card {
+    border: 1px solid #EEF1F5;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    font-size: 12.5px;
+    color: #344054;
+}
+#copyRegisterPanel .crp-card.crp-withdrawn { background: #FAFBFC; color: #8A94A3; }
+
+#copyRegisterPanel .crp-card-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+#copyRegisterPanel .crp-copy-no { font-weight: 700; color: #101828; font-size: 13px; }
+#copyRegisterPanel .crp-withdrawn .crp-copy-no { color: #8A94A3; }
+#copyRegisterPanel .crp-line { margin-top: 2px; word-break: break-word; }
+#copyRegisterPanel .crp-muted { color: #8A94A3; }
+
+#copyRegisterPanel .crp-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 2px 9px;
+    border-radius: 999px;
+}
+#copyRegisterPanel .crp-pill-success { background: #E4F7EC; color: #1E9E63; }
+#copyRegisterPanel .crp-pill-danger { background: #FDECEC; color: #C62828; }
+#copyRegisterPanel .crp-pill-default { background: #F1F3F6; color: #66788A; }
+
+#copyRegisterPanel .crp-withdraw-btn {
+    margin-left: auto;
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 7px;
+    border: 1px solid #F3C4C4;
+    background: #fff;
+    color: #C62828;
+    cursor: pointer;
+}
+#copyRegisterPanel .crp-withdraw-btn:hover { background: #FDECEC; }
+
+#copyRegisterPanel .crp-empty {
+    text-align: center;
+    color: #8A94A3;
+    font-size: 12.5px;
+    padding: 32px 8px;
+}

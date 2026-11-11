@@ -868,7 +868,7 @@ namespace DMS.Controllers
                 {
                     string cacheFileName = splitCache[4];
                     string cacheExt = GetFileExtension(cacheFileName);
-                    string cachedPdf = webRootPath + "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
+                    string cachedPdf = DMS.Services.UploadPath.Root + "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
                         + cacheFileName.Replace("." + cacheExt, ".pdf");
 
                     if (System.IO.File.Exists(cachedPdf))
@@ -910,7 +910,7 @@ namespace DMS.Controllers
 
                     string extension = Path.GetExtension(file.FileName);
                     string path = folderName + mSystem.SYSTEM_VALUE.Trim();
-                    string pathSave = webRootPath + folderName + mSystem.SYSTEM_VALUE.Trim();
+                    string pathSave = DMS.Services.UploadPath.Root + folderName + mSystem.SYSTEM_VALUE.Trim();
                     string documentname = data.DOCUMENT_TRANSACTION_NAME;
                     documentname = documentname.Replace(" ", "_").Replace("/", "_");
                     string fileName = documentname + "-" + DateTime.Now.ToFileTime() + extension;
@@ -1714,6 +1714,7 @@ namespace DMS.Controllers
                 // (tengah-bawah); aturannya di ResolveStamps (2026-11-10).
                 var (masterStampPath, controlledCopyStampPath, obsoleteStampPath) =
                     ResolveStamps(webRootPath, currentDocument, isObsolete, type);
+                var stampLayout = StampLayoutFor(currentDocument, documentMaintenance);
 
                 string[] split = documentMaintenance.FILE_PATH.Split("/");
                 string fileName = split[4];
@@ -1723,7 +1724,7 @@ namespace DMS.Controllers
                 if (extension.Equals("pdf"))
                 {
                     string outputFileName = "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_" + fileName;
-                    string outputFullPath = webRootPath + outputFileName;
+                    string outputFullPath = DMS.Services.UploadPath.Root + outputFileName;
 
                     if (System.IO.File.Exists(outputFullPath))
                     {
@@ -1742,7 +1743,7 @@ namespace DMS.Controllers
                     // ✅ TAMBAHKAN INI: cek cache dulu
                     string cachedPdfRelative = "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
                         + fileName.Replace("." + extension, ".pdf");
-                    string cachedPdfFullPath = webRootPath + cachedPdfRelative;
+                    string cachedPdfFullPath = DMS.Services.UploadPath.Root + cachedPdfRelative;
 
                     if (System.IO.File.Exists(cachedPdfFullPath))
                     {
@@ -1751,9 +1752,9 @@ namespace DMS.Controllers
                         if (masterStampPath != null || controlledCopyStampPath != null || obsoleteStampPath != null)
                         {
                             string watermarkedRelative = cachedPdfRelative.Replace(".pdf", "_wm.pdf");
-                            string watermarkedFullPath = webRootPath + watermarkedRelative;
+                            string watermarkedFullPath = DMS.Services.UploadPath.Root + watermarkedRelative;
                             System.IO.File.Copy(cachedPdfFullPath, watermarkedFullPath, overwrite: true);
-                            AddImageStamps(watermarkedFullPath, watermarkedFullPath, masterStampPath, controlledCopyStampPath, obsoleteStampPath);
+                            AddImageStamps(watermarkedFullPath, watermarkedFullPath, masterStampPath, controlledCopyStampPath, obsoleteStampPath, layout: stampLayout);
                             servePath = watermarkedRelative;
                         }
 
@@ -1775,7 +1776,7 @@ namespace DMS.Controllers
                     // menghasilkan PDF 0 halaman untuk workbook kompleks, Aug 2026).
                     string pengesahanPdfRelative = "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
                         + System.IO.Path.GetFileNameWithoutExtension(fileName) + ".pdf";
-                    string pengesahanPdfFullPath = webRootPath + pengesahanPdfRelative;
+                    string pengesahanPdfFullPath = DMS.Services.UploadPath.Root + pengesahanPdfRelative;
 
                     result = GeneratePengesahanPdf(webRootPath, documentMaintenance.FILE_PATH, documentMaintenance, pengesahanPdfFullPath);
                     if (!result.status && result.message == Services.TemplateMarkerService.MissingMarkersMessage)
@@ -1798,15 +1799,15 @@ namespace DMS.Controllers
                 // if (type == "3") AddWatermark(finalPath, finalPath, "CONTROLLED COPY");
 
                 string convertedRelative = pengesahanModifiedfileNames.Replace(extension, "pdf");
-                string convertedFullPath = webRootPath + convertedRelative;
+                string convertedFullPath = DMS.Services.UploadPath.Root + convertedRelative;
                 string serveRelative = convertedRelative;
 
                 if (masterStampPath != null || controlledCopyStampPath != null || obsoleteStampPath != null)
                 {
                     string watermarkedRelative = convertedRelative.Replace(".pdf", "_wm.pdf");
-                    string watermarkedFullPath = webRootPath + watermarkedRelative;
+                    string watermarkedFullPath = DMS.Services.UploadPath.Root + watermarkedRelative;
                     System.IO.File.Copy(convertedFullPath, watermarkedFullPath, overwrite: true);
-                    AddImageStamps(watermarkedFullPath, watermarkedFullPath, masterStampPath, controlledCopyStampPath, obsoleteStampPath);
+                    AddImageStamps(watermarkedFullPath, watermarkedFullPath, masterStampPath, controlledCopyStampPath, obsoleteStampPath, layout: stampLayout);
                     serveRelative = watermarkedRelative;
                 }
 
@@ -1844,7 +1845,7 @@ namespace DMS.Controllers
 
             ViewData["Title"] = "Spreadsheet Preview";
             ViewData["PhysicalPath"] = fullPath;
-            ViewData["WorkDirectory"] = System.IO.Path.Combine(webRootPath, "Upload", "ATTACHMENT", "DOCUMENT_TEMP");
+            ViewData["WorkDirectory"] = System.IO.Path.Combine(DMS.Services.UploadPath.Root, "Upload", "ATTACHMENT", "DOCUMENT_TEMP");
 
             return View("~/Views/Preview/SpreadsheetPreview.cshtml");
         }
@@ -1887,7 +1888,7 @@ namespace DMS.Controllers
             {
                 string convertedRelative = "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
                     + System.IO.Path.GetFileNameWithoutExtension(fullPath) + ".xlsx";
-                string convertedFullPath = webRootPath + convertedRelative;
+                string convertedFullPath = DMS.Services.UploadPath.Root + convertedRelative;
 
                 if (!System.IO.File.Exists(convertedFullPath))
                 {
@@ -1971,12 +1972,12 @@ namespace DMS.Controllers
 
         // Stempel gambar di pojok kanan-bawah tiap halaman (luar footer), sesuai
         // Posisi sesuai contoh stempel fisik asli (request user 2026-08-10):
-        // MASTER (cap_master.png) di pojok KIRI-ATAS, menindih area header/title
-        // block dokumen. CONTROLLED COPY (cap_controlledcopy.png) di TENGAH-BAWAH
+        // MASTER (02_MASTER.png) di pojok KIRI-ATAS, menindih area header/title
+        // block dokumen. CONTROLLED COPY (03_CONTROLLED_COPY.png) di TENGAH-BAWAH
         // halaman. Beda dari AddWatermark: ini gambar asli (opacity penuh, kayak
         // stempel tinta beneran), bukan teks transparan diagonal.
         //
-        // OBSOLETE (cap_obsolete.png) pakai slot POSISI YANG SAMA dengan CONTROLLED
+        // OBSOLETE (01_OBSOLETE.png) pakai slot POSISI YANG SAMA dengan CONTROLLED
         // COPY (tengah-bawah) - menggantikan, bukan menumpuk. Dokumen obsolete
         // tidak pernah berstatus approved/published sekaligus (lihat pemanggil),
         // jadi controlledCopyImage dan obsoleteImage tidak akan pernah dua-duanya
@@ -1985,13 +1986,20 @@ namespace DMS.Controllers
         // uncontrolledNote (2026-11-10): draw an UNCONTROLLED COPY stamp in the bottom slot, with
         // the note (who downloaded it and when) under it. Drawn as text, not an image, because
         // the note changes per download. Ignored when the bottom slot already has an image.
-        public void AddImageStamps(string inputFilePath, string outputFilePath, string masterImagePath, string controlledCopyImagePath, string obsoleteImagePath = null, string uncontrolledNote = null)
+        //
+        // Stamp images (2026-11-11, Hendra): 01_OBSOLETE, 02_MASTER, 03_CONTROLLED_COPY and
+        // 04_UNCONTROLLED_COPY in wwwroot/images replace the old cap_*.png. They are about 5:1,
+        //
+        // Stamp Layout (2026-11-11, Hendra): position and size come from the layout of the
+        // document's category (Master Data > Stamp Layout), per page orientation. A null layout
+        // uses the global one.
+        public void AddImageStamps(string inputFilePath, string outputFilePath, string masterImagePath, string controlledCopyImagePath, string obsoleteImagePath = null, string uncontrolledNote = null, string uncontrolledImagePath = null, Services.StampLayoutService.Layout layout = null)
         {
             if (uncontrolledNote != null && PdfSharp.Fonts.GlobalFontSettings.FontResolver is not CustomFontResolver)
                 PdfSharp.Fonts.GlobalFontSettings.FontResolver = new CustomFontResolver();
 
-            const double stampWidth = 130; // points
-            const double margin = 20;
+            layout ??= Services.StampLayoutService.ForCategory(db, null);
+            string bottomType = controlledCopyImagePath != null ? Services.StampLayoutService.Controlled : Services.StampLayoutService.Obsolete;
 
             PdfDocument document = PdfReader.Open(inputFilePath, PdfDocumentOpenMode.Modify);
             document.Version = 17;
@@ -2002,29 +2010,39 @@ namespace DMS.Controllers
                 ? XImage.FromFile(controlledCopyImagePath) : null;
             XImage obsoleteImage = obsoleteImagePath != null && System.IO.File.Exists(obsoleteImagePath)
                 ? XImage.FromFile(obsoleteImagePath) : null;
+            XImage uncontrolledImage = uncontrolledNote != null && uncontrolledImagePath != null && System.IO.File.Exists(uncontrolledImagePath)
+                ? XImage.FromFile(uncontrolledImagePath) : null;
             XImage bottomImage = controlledCopyImage ?? obsoleteImage;
 
             try
             {
+                int pageNo = 0;
                 foreach (PdfPage page in document.Pages)
                 {
+                    pageNo++;
                     using XGraphics gfx = XGraphics.FromPdfPage(page);
+                    double pageWidth = page.Width.Point, pageHeight = page.Height.Point;
 
                     if (masterImage != null)
                     {
-                        double h = stampWidth * masterImage.PixelHeight / masterImage.PixelWidth;
-                        gfx.DrawImage(masterImage, margin, margin, stampWidth, h);
+                        gfx.DrawImage(masterImage, layout.Place(Services.StampLayoutService.Master, pageWidth, pageHeight, Aspect(masterImage), 0, pageNo));
                     }
 
                     if (bottomImage != null)
                     {
-                        double h = stampWidth * bottomImage.PixelHeight / bottomImage.PixelWidth;
-                        double x = (page.Width - stampWidth) / 2;
-                        gfx.DrawImage(bottomImage, x, page.Height - h - margin, stampWidth, h);
+                        gfx.DrawImage(bottomImage, layout.Place(bottomType, pageWidth, pageHeight, Aspect(bottomImage), 0, pageNo));
+                    }
+                    else if (uncontrolledImage != null)
+                    {
+                        string[] lines = uncontrolledNote.Split('\n');
+                        XRect rect = layout.Place(Services.StampLayoutService.Uncontrolled, pageWidth, pageHeight, Aspect(uncontrolledImage), lines.Length, pageNo);
+                        gfx.DrawImage(uncontrolledImage, rect);
+                        Services.StampLayoutService.DrawNote(gfx, pageWidth, rect, lines,
+                            new XFont("Arial", 6.5, XFontStyleEx.Regular), StampNoteBrush());
                     }
                     else if (uncontrolledNote != null)
                     {
-                        DrawUncontrolledStamp(gfx, page, margin, uncontrolledNote);
+                        DrawUncontrolledStamp(gfx, page, StampMargin, uncontrolledNote);
                     }
                 }
 
@@ -2035,7 +2053,37 @@ namespace DMS.Controllers
                 masterImage?.Dispose();
                 controlledCopyImage?.Dispose();
                 obsoleteImage?.Dispose();
+                uncontrolledImage?.Dispose();
             }
+        }
+
+        // Stamp images in wwwroot (2026-11-11) and their size on the page.
+        private const string StampObsoleteImage = "/images/01_OBSOLETE.png";
+        private const string StampMasterImage = "/images/02_MASTER.png";
+        private const string StampControlledCopyImage = "/images/03_CONTROLLED_COPY.png";
+        private const string StampUncontrolledCopyImage = "/images/04_UNCONTROLLED_COPY.png";
+        // Margin of the text-only UNCONTROLLED COPY fallback (stamp image missing).
+        private const double StampMargin = 20;
+
+        // Image height / width, for StampLayoutService.Layout.Place.
+        private static double Aspect(XImage image) => (double)image.PixelHeight / image.PixelWidth;
+
+        // Red of the stamps, for the note lines under CONTROLLED / UNCONTROLLED COPY.
+        private static XBrush StampNoteBrush() => new XSolidBrush(XColor.FromArgb(220, 198, 40, 40));
+
+        // Layout of a document: the positions fixed on its revision at Accept in Document
+        // Registration (first given row that has them), else the category of the first row that
+        // has one (current revision first, then the requested row), else global.
+        private Services.StampLayoutService.Layout StampLayoutFor(params DocumentMaintenance[] documents)
+        {
+            int? categoryId = documents.FirstOrDefault(d => d?.DOCUMENT_ID != null)?.DOCUMENT_ID;
+            foreach (DocumentMaintenance d in documents)
+            {
+                if (d?.DOCUMENT_TRANSACTION_ID == null) continue;
+                if (Services.StampLayoutService.HasDocument(db, d.DOCUMENT_TRANSACTION_ID.Value, d.REVISION ?? 0))
+                    return Services.StampLayoutService.ForDocument(db, categoryId, d.DOCUMENT_TRANSACTION_ID, d.REVISION);
+            }
+            return Services.StampLayoutService.ForCategory(db, categoryId);
         }
 
         /// <summary>
@@ -2716,20 +2764,56 @@ namespace DMS.Controllers
             // No viewer type: an uncontrolled copy carries neither MASTER nor CONTROLLED COPY.
             var (_, _, obsoleteStamp) = ResolveStamps(webRootPath, currentDocument, currentDocument == null, null);
 
-            string note = "Downloaded by " + GetLoginUsername() + " on " + DateTime.Now.ToString("dd MMM yyyy HH:mm")
-                + "\nNot updated on revision. Check the current revision in DCS before use.";
+            string note = "This document is not controlled by the QMS - Document Control";
 
             string tempPdf = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "DCS_" + Guid.NewGuid().ToString("N") + ".pdf");
             try
             {
                 System.IO.File.Copy(basePdf, tempPdf);
-                AddImageStamps(tempPdf, tempPdf, null, null, obsoleteStamp, note);
+                AddImageStamps(tempPdf, tempPdf, null, null, obsoleteStamp, note, webRootPath + StampUncontrolledCopyImage, StampLayoutFor(currentDocument, documentMaintenance));
                 bytes = System.IO.File.ReadAllBytes(tempPdf);
                 return new DBResult(true, "OK");
             }
             finally
             {
                 if (System.IO.File.Exists(tempPdf)) System.IO.File.Delete(tempPdf);
+            }
+        }
+
+        /// <summary>
+        /// The approval PDF without any stamp, for the stamp position dialog in Document
+        /// Registration (Stamp Layout stage 2). Document Control with P4D-STAMPLAYOUT only.
+        /// </summary>
+        [HttpGet]
+        public IActionResult StampLayoutSource(int documentTransactionId)
+        {
+            string username = GetLoginUsername();
+            if (string.IsNullOrEmpty(username)) return Unauthorized();
+            bool hasFunction = HttpContext.Session.GetString("functionList")?.Contains("P4D-STAMPLAYOUT") == true;
+            if (!hasFunction || !Services.DocumentAccessService.IsDocumentControl(db, username)) return Forbid();
+
+            try
+            {
+                DocumentMaintenance document = documentMaintenanceRepo
+                    .Search(new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = documentTransactionId }, null, db, 1, 1)
+                    .FirstOrDefault();
+                if (document == null || string.IsNullOrEmpty(document.FILE_PATH)) return NotFound();
+
+                string webRootPath = Environment.WebRootPath;
+                string fullPath = Services.UploadPath.Resolve(webRootPath, document.FILE_PATH);
+                if (!System.IO.File.Exists(fullPath)) return NotFound();
+
+                DBResult ensured = EnsureApprovalPdf(webRootPath, fullPath, document, out string basePdf);
+                if (!ensured.status) return StatusCode(500, ensured.message);
+
+                Services.DocumentAccessLogService.Log(db, HttpContext, Services.DocumentAccessLogService.View,
+                    document.DOCUMENT_TRANSACTION_ID, document.FILE_PATH);
+
+                return File(System.IO.File.ReadAllBytes(basePdf), "application/pdf");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
             }
         }
 
@@ -2785,7 +2869,7 @@ namespace DMS.Controllers
                 int copies = Math.Max(1, line.COPY_QTY ?? 1);
                 string note = (header.REQUEST_NO ?? "") + " · Printed by " + username + " on " + DateTime.Now.ToString("dd MMM yyyy HH:mm")
                     + (isReprint ? " · REPRINT" : "");
-                byte[] bytes = BuildControlledCopies(basePdf, webRootPath + "/images/cap_controlledcopy.png", copies, note, out int pageCount);
+                byte[] bytes = BuildControlledCopies(basePdf, webRootPath + StampControlledCopyImage, copies, note, StampLayoutFor(document), out int pageCount);
 
                 // Recorded only once the PDF exists, so a failed render never locks the line.
                 DBResult recorded = CopyRequestRepo.Instance.WebPrint(requestDetailId, pageCount, isReprint ? reprintReason.Trim() : null, username, db);
@@ -2803,35 +2887,172 @@ namespace DMS.Controllers
             }
         }
 
-        // COPY_QTY copies of the approval PDF in one file. Each copy is imported from a fresh
-        // reader so the stamps of one copy never land on the pages of another.
-        private static byte[] BuildControlledCopies(string basePdf, string stampImagePath, int copies, string note, out int pageCount)
+        /// <summary>
+        /// Download PDF from Document Control (request Hendra 2026-11-11, ISO 9001 7.5.3). The
+        /// approval PDF of the current revision with the stamp of the chosen purpose:
+        /// <list type="bullet">
+        /// <item>MASTER: archive copy, MASTER stamp. Only once QMS has received the
+        /// registration or the document is Published (same rule as ResolveStamps).</item>
+        /// <item>CONTROLLED: CONTROLLED COPY with the next copy number of this revision and the
+        /// recipient, recorded in TB_R_DOCUMENT_EXPORT.</item>
+        /// <item>UNCONTROLLED: reference / audit / external, same PDF as DownloadAttachment
+        /// gives to other users.</item>
+        /// </list>
+        /// Access follows the role function DOCUMENTCONTROLDASHBOARD-EXPORTPDF. Only Approved or
+        /// Published documents. Posted from a form into a new tab.
+        /// </summary>
+        [HttpPost]
+        public IActionResult ExportPdf(int documentTransactionId, string purpose, string recipient, string notes)
+        {
+            const string title = "Dokumen tidak dapat diunduh";
+            string username = GetLoginUsername();
+            if (string.IsNullOrEmpty(username)) return Redirect("/Auth/Login");
+            if (!Services.DocumentAccessService.HasFunction(HttpContext, Services.DocumentExportService.FunctionId))
+                return Content(PreviewMessagePage(title, "Anda tidak punya akses Download PDF."), "text/html; charset=utf-8");
+
+            purpose = (purpose ?? "").Trim().ToUpperInvariant();
+            recipient = string.IsNullOrWhiteSpace(recipient) ? null : recipient.Trim();
+            notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+            if (!Services.DocumentExportService.IsPurpose(purpose))
+                return Content(PreviewMessagePage(title, "Pilih tujuan unduhan."), "text/html; charset=utf-8");
+            if (purpose == Services.DocumentExportService.Controlled && recipient == null)
+                return Content(PreviewMessagePage(title, "Controlled Copy wajib diisi penerimanya."), "text/html; charset=utf-8");
+            if (recipient?.Length > 200 || notes?.Length > 500)
+                return Content(PreviewMessagePage(title, "Penerima maksimal 200 karakter dan catatan maksimal 500 karakter."), "text/html; charset=utf-8");
+
+            try
+            {
+                // Current revision only: the dashboard lists TB_R_DOCUMENT, a superseded
+                // revision is not there any more (see ViewAttachment).
+                DocumentMaintenance document = documentMaintenanceRepo
+                    .Search(new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = documentTransactionId }, null, db, 1, 1)
+                    .FirstOrDefault();
+                if (document == null)
+                    return Content(PreviewMessagePage(title, "Dokumen tidak ditemukan atau sudah obsolete. Revisi lama dapat dilihat lewat History."), "text/html; charset=utf-8");
+                if (document.STATUS != "1" && document.STATUS != "5")
+                    return Content(PreviewMessagePage(title, "Hanya dokumen berstatus Approved atau Published yang dapat diunduh sebagai PDF."), "text/html; charset=utf-8");
+                if (purpose == Services.DocumentExportService.Master && document.STATUS != "5"
+                    && !Services.DocumentAccessService.IsReceivedByQms(db, document.DOCUMENT_TRANSACTION_ID))
+                    return Content(PreviewMessagePage(title, "Salinan MASTER baru tersedia setelah registrasi dokumen diterima QMS."), "text/html; charset=utf-8");
+
+                string webRootPath = Environment.WebRootPath;
+                string fullPath = Services.UploadPath.Resolve(webRootPath, document.FILE_PATH);
+                if (!System.IO.File.Exists(fullPath))
+                    return Content(PreviewMessagePage(title, "File dokumen tidak ditemukan."), "text/html; charset=utf-8");
+
+                byte[] bytes;
+                string suffix;
+                if (purpose == Services.DocumentExportService.Uncontrolled)
+                {
+                    DBResult built = BuildUncontrolledPdf(webRootPath, fullPath, document, out bytes);
+                    if (!built.status)
+                        return Content(PreviewMessagePage(title, built.message), "text/html; charset=utf-8");
+                    Services.DocumentExportService.Record(db, documentTransactionId, document.DOCUMENT_CODE, document.REVISION,
+                        purpose, recipient, notes, username);
+                    suffix = "UNCONTROLLED COPY";
+                }
+                else
+                {
+                    DBResult ensured = EnsureApprovalPdf(webRootPath, fullPath, document, out string basePdf);
+                    if (!ensured.status)
+                        return Content(PreviewMessagePage(title, ensured.message), "text/html; charset=utf-8");
+
+                    // Numbered only once the approval PDF exists, so a failed render never uses up a number.
+                    int? copyNo = Services.DocumentExportService.Record(db, documentTransactionId, document.DOCUMENT_CODE, document.REVISION,
+                        purpose, recipient, notes, username);
+
+                    string tempPdf = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "DCS_" + Guid.NewGuid().ToString("N") + ".pdf");
+                    try
+                    {
+                        System.IO.File.Copy(basePdf, tempPdf);
+                        if (purpose == Services.DocumentExportService.Master)
+                        {
+                            AddImageStamps(tempPdf, tempPdf, webRootPath + StampMasterImage, null, layout: StampLayoutFor(document));
+                            suffix = "MASTER";
+                        }
+                        else
+                        {
+                            string note = "Copy No. " + copyNo + " · To: " + recipient
+                                + " · Issued by " + username + " on " + DateTime.Now.ToString("dd MMM yyyy HH:mm");
+                            StampNumberedControlledCopy(tempPdf, webRootPath + StampControlledCopyImage, note, StampLayoutFor(document));
+                            suffix = "CONTROLLED COPY " + copyNo?.ToString("00");
+                        }
+                        bytes = System.IO.File.ReadAllBytes(tempPdf);
+                    }
+                    finally
+                    {
+                        if (System.IO.File.Exists(tempPdf)) System.IO.File.Delete(tempPdf);
+                    }
+                }
+
+                Services.DocumentAccessLogService.Log(db, HttpContext, Services.DocumentAccessLogService.Download,
+                    document.DOCUMENT_TRANSACTION_ID, document.FILE_PATH);
+
+                // e.g. "HMMI_PDM_2026_003 Rev.00 - CONTROLLED COPY 03.pdf"
+                string safeCode = string.Join("_", (document.DOCUMENT_CODE ?? "Document").Split(System.IO.Path.GetInvalidFileNameChars()));
+                string fileName = safeCode + " Rev." + (document.REVISION ?? 0).ToString("00") + " - " + suffix + ".pdf";
+                var disposition = new System.Net.Mime.ContentDisposition { Inline = true, FileName = fileName };
+                Response.Headers["Content-Disposition"] = disposition.ToString();
+                return File(bytes, "application/pdf");
+            }
+            catch (Exception ex)
+            {
+                return Content(PreviewMessagePage(title, ex.Message), "text/html; charset=utf-8");
+            }
+        }
+
+        // CONTROLLED COPY stamp on every page where the Stamp Layout puts it, with the copy
+        // number, recipient and issuer under it (same drawing as BuildControlledCopies).
+        private static void StampNumberedControlledCopy(string pdfPath, string stampImagePath, string note, Services.StampLayoutService.Layout layout)
         {
             if (PdfSharp.Fonts.GlobalFontSettings.FontResolver is not CustomFontResolver)
                 PdfSharp.Fonts.GlobalFontSettings.FontResolver = new CustomFontResolver();
 
-            const double stampWidth = 130, margin = 20;
+            using (PdfDocument document = PdfReader.Open(pdfPath, PdfDocumentOpenMode.Modify))
+            using (XImage stamp = XImage.FromFile(stampImagePath))
+            {
+                document.Version = 17;
+                int pageNo = 0;
+                foreach (PdfPage page in document.Pages)
+                {
+                    using XGraphics gfx = XGraphics.FromPdfPage(page);
+                    DrawControlledCopyStamp(gfx, page, ++pageNo, stamp, note, layout);
+                }
+                document.Save(pdfPath);
+            }
+        }
+
+        private static void DrawControlledCopyStamp(XGraphics gfx, PdfPage page, int pageNo, XImage stamp, string note, Services.StampLayoutService.Layout layout)
+        {
+            double pageWidth = page.Width.Point, pageHeight = page.Height.Point;
+            XRect rect = layout.Place(Services.StampLayoutService.Controlled, pageWidth, pageHeight, Aspect(stamp), 1, pageNo);
+            gfx.DrawImage(stamp, rect);
+            Services.StampLayoutService.DrawNote(gfx, pageWidth, rect, new[] { note },
+                new XFont("Arial", 7, XFontStyleEx.Bold), StampNoteBrush());
+        }
+
+        // COPY_QTY copies of the approval PDF in one file. Each copy is imported from a fresh
+        // reader so the stamps of one copy never land on the pages of another.
+        private static byte[] BuildControlledCopies(string basePdf, string stampImagePath, int copies, string note, Services.StampLayoutService.Layout layout, out int pageCount)
+        {
+            if (PdfSharp.Fonts.GlobalFontSettings.FontResolver is not CustomFontResolver)
+                PdfSharp.Fonts.GlobalFontSettings.FontResolver = new CustomFontResolver();
+
             pageCount = 0;
             using PdfDocument output = new PdfDocument();
             output.Version = 17;
             using XImage stamp = XImage.FromFile(stampImagePath);
-            var red = new XSolidBrush(XColor.FromArgb(220, 198, 40, 40));
-            var noteFont = new XFont("Arial", 7, XFontStyleEx.Bold);
 
             for (int copy = 1; copy <= copies; copy++)
             {
                 using PdfDocument source = PdfReader.Open(basePdf, PdfDocumentOpenMode.Import);
                 pageCount = source.PageCount;
+                int pageNo = 0;
                 foreach (PdfPage sourcePage in source.Pages)
                 {
                     PdfPage page = output.AddPage(sourcePage);
                     using XGraphics gfx = XGraphics.FromPdfPage(page);
-                    double h = stampWidth * stamp.PixelHeight / stamp.PixelWidth;
-                    double x = (page.Width - stampWidth) / 2;
-                    double y = page.Height - h - margin;
-                    gfx.DrawImage(stamp, x, y, stampWidth, h);
-                    gfx.DrawString("Copy " + copy + " of " + copies + " · " + note, noteFont, red,
-                        new XRect(0, page.Height - margin + 3, page.Width, 9), XStringFormats.Center);
+                    DrawControlledCopyStamp(gfx, page, ++pageNo, stamp, "Copy " + copy + " of " + copies + " · " + note, layout);
                 }
             }
 
@@ -2852,7 +3073,7 @@ namespace DMS.Controllers
                 return new DBResult(true, "OK");
             }
 
-            basePdf = webRootPath + "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
+            basePdf = DMS.Services.UploadPath.Root + "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
                 + System.IO.Path.GetFileNameWithoutExtension(fileName) + ".pdf";
             if (System.IO.File.Exists(basePdf)) return new DBResult(true, "OK");
             return GeneratePengesahanPdf(webRootPath, documentMaintenance.FILE_PATH, documentMaintenance, basePdf);
@@ -2911,7 +3132,7 @@ namespace DMS.Controllers
         private (string master, string controlledCopy, string obsolete) ResolveStamps(
             string webRootPath, DocumentMaintenance currentDocument, bool isObsolete, string viewerType)
         {
-            if (isObsolete) return (null, null, webRootPath + "/images/cap_obsolete.png");
+            if (isObsolete) return (null, null, webRootPath + StampObsoleteImage);
 
             int? id = currentDocument.DOCUMENT_TRANSACTION_ID;
             bool isPublished = currentDocument.STATUS == "5";
@@ -2922,8 +3143,8 @@ namespace DMS.Controllers
                 && (isPublished || currentDocument.STATUS == "1")
                 && Services.DocumentAccessService.IsDistributedToUser(db, GetLoginUsername(), id);
 
-            return (isMaster ? webRootPath + "/images/cap_master.png" : null,
-                    isControlledCopy ? webRootPath + "/images/cap_controlledcopy.png" : null,
+            return (isMaster ? webRootPath + StampMasterImage : null,
+                    isControlledCopy ? webRootPath + StampControlledCopyImage : null,
                     null);
         }
 
@@ -3444,7 +3665,7 @@ namespace DMS.Controllers
             if (error != null) return error;
 
             string fileHash = document?.FILE_PATH == null ? null
-                : Services.SignatureService.FileHash(Environment.WebRootPath + document.FILE_PATH.Trim());
+                : Services.SignatureService.FileHash(DMS.Services.UploadPath.Root + document.FILE_PATH.Trim());
 
             var (ok, message) = Services.SignatureService.Save(db, kind, documentTransactionId, refKey, GetLoginUsername(), input,
                 HttpContext.Connection.RemoteIpAddress?.ToString(), Request.Headers["User-Agent"].ToString(), fileHash);
@@ -4317,7 +4538,7 @@ namespace DMS.Controllers
                 // pola yang sudah benar di GeneratePengesahanPdf (bug ditemukan 2026-08-12).
                 User approverUser = UserRepo.Instance.GetByKey(new User { USERNAME = approvalDetail.APPROVER }, db);
                 string anotherFullPath = approverUser != null && !string.IsNullOrEmpty(approverUser.SIGNATURE_PATH)
-                    ? webRootPath + approverUser.SIGNATURE_PATH
+                    ? DMS.Services.UploadPath.Root + approverUser.SIGNATURE_PATH
                     : null;
 
                 if (anotherFullPath != null && System.IO.File.Exists(anotherFullPath))
@@ -4422,7 +4643,7 @@ namespace DMS.Controllers
                 string extension = GetFileExtension(fileName);
 
                 // Cek cache PDF dulu
-                string cachedPdf = webRootPath
+                string cachedPdf = DMS.Services.UploadPath.Root
                     + "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
                     + fileName.Replace("." + extension, ".pdf");
 
@@ -4484,6 +4705,7 @@ namespace DMS.Controllers
                 // Same stamps as ViewAttachment, see ResolveStamps.
                 var (masterStampPath, controlledCopyStampPath, obsoleteStampPath) =
                     ResolveStamps(webRootPath, currentDocument, isObsolete, type);
+                var stampLayout = StampLayoutFor(currentDocument, documentMaintenance);
 
                 string[] split = documentMaintenance.FILE_PATH.Split("/");
                 string fileName = split[4];
@@ -4493,7 +4715,7 @@ namespace DMS.Controllers
                 if (extension.Equals("pdf"))
                 {
                     string outputFileName = "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_" + fileName;
-                    string outputFullPath = webRootPath + outputFileName;
+                    string outputFullPath = DMS.Services.UploadPath.Root + outputFileName;
                     if (System.IO.File.Exists(outputFullPath))
                         System.IO.File.Delete(outputFullPath);
                     System.IO.File.Copy(fullPath, outputFullPath);
@@ -4501,7 +4723,7 @@ namespace DMS.Controllers
                     // outputFullPath sudah salinan sekali-pakai (bukan file asli/cache
                     // bersama), jadi aman di-watermark/stempel langsung di tempat.
                     if (masterStampPath != null || controlledCopyStampPath != null || obsoleteStampPath != null)
-                        AddImageStamps(outputFullPath, outputFullPath, masterStampPath, controlledCopyStampPath, obsoleteStampPath);
+                        AddImageStamps(outputFullPath, outputFullPath, masterStampPath, controlledCopyStampPath, obsoleteStampPath, layout: stampLayout);
 
                     pengesahanModifiedfileNames = outputFileName;
                 }
@@ -4510,7 +4732,7 @@ namespace DMS.Controllers
                     // Cek cache
                     string cachedPdfRelative = "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
                         + fileName.Replace("." + extension, ".pdf");
-                    string cachedPdfFullPath = webRootPath + cachedPdfRelative;
+                    string cachedPdfFullPath = DMS.Services.UploadPath.Root + cachedPdfRelative;
 
                     if (System.IO.File.Exists(cachedPdfFullPath))
                     {
@@ -4523,9 +4745,9 @@ namespace DMS.Controllers
                             // stempel yang sama. Salin dulu ke path sendiri, sama seperti
                             // pola di ViewAttachment.
                             string watermarkedRelative = cachedPdfRelative.Replace(".pdf", "_print_wm.pdf");
-                            string watermarkedFullPath = webRootPath + watermarkedRelative;
+                            string watermarkedFullPath = DMS.Services.UploadPath.Root + watermarkedRelative;
                             System.IO.File.Copy(cachedPdfFullPath, watermarkedFullPath, overwrite: true);
-                            AddImageStamps(watermarkedFullPath, watermarkedFullPath, masterStampPath, controlledCopyStampPath, obsoleteStampPath);
+                            AddImageStamps(watermarkedFullPath, watermarkedFullPath, masterStampPath, controlledCopyStampPath, obsoleteStampPath, layout: stampLayout);
                             pengesahanModifiedfileNames = watermarkedRelative;
                         }
                     }
@@ -4536,7 +4758,7 @@ namespace DMS.Controllers
                         // round-trip lewat NPOI (lihat GeneratePengesahanPdf).
                         string pengesahanPdfRelative = "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
                             + System.IO.Path.GetFileNameWithoutExtension(fileName) + ".pdf";
-                        string pengesahanPdfFullPath = webRootPath + pengesahanPdfRelative;
+                        string pengesahanPdfFullPath = DMS.Services.UploadPath.Root + pengesahanPdfRelative;
 
                         result = GeneratePengesahanPdf(webRootPath, documentMaintenance.FILE_PATH, documentMaintenance, pengesahanPdfFullPath);
                         if (!result.status)
@@ -4550,15 +4772,15 @@ namespace DMS.Controllers
                         if (masterStampPath != null || controlledCopyStampPath != null || obsoleteStampPath != null)
                         {
                             string watermarkedRelative = pengesahanPdfRelative.Replace(".pdf", "_print_wm.pdf");
-                            System.IO.File.Copy(pengesahanPdfFullPath, webRootPath + watermarkedRelative, overwrite: true);
-                            AddImageStamps(webRootPath + watermarkedRelative, webRootPath + watermarkedRelative, masterStampPath, controlledCopyStampPath, obsoleteStampPath);
+                            System.IO.File.Copy(pengesahanPdfFullPath, DMS.Services.UploadPath.Root + watermarkedRelative, overwrite: true);
+                            AddImageStamps(DMS.Services.UploadPath.Root + watermarkedRelative, DMS.Services.UploadPath.Root + watermarkedRelative, masterStampPath, controlledCopyStampPath, obsoleteStampPath, layout: stampLayout);
                             pengesahanModifiedfileNames = watermarkedRelative;
                         }
                     }
                 }
 
                 // ── Duplikasi halaman sesuai copy + watermark "COPY X of N" ──
-                string sourcePdfPath = webRootPath + pengesahanModifiedfileNames;
+                string sourcePdfPath = DMS.Services.UploadPath.Root + pengesahanModifiedfileNames;
                 string finalRelativePath = pengesahanModifiedfileNames;
 
                 if (printCopy >= 1 && System.IO.File.Exists(sourcePdfPath))
@@ -4695,7 +4917,7 @@ namespace DMS.Controllers
                 string ext = GetFileExtension(fileName);
 
                 // Hapus cache PDF
-                string cachedPdf = webRootPath + "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
+                string cachedPdf = DMS.Services.UploadPath.Root + "/Upload/ATTACHMENT/DOCUMENT_TEMP/TEMP_"
                     + fileName.Replace("." + ext, ".pdf");
 
                 if (System.IO.File.Exists(cachedPdf))

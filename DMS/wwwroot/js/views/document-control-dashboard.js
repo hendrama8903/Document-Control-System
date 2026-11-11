@@ -133,6 +133,23 @@ function dcdOpenRowActionMenu($btn, row) {
         onDownloadAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
     }));
 
+    // Download PDF with a stamp chosen by purpose (request Hendra 2026-11-11). Role
+    // function DOCUMENTCONTROLDASHBOARD-EXPORTPDF; Approved or Published only (the server
+    // checks both again).
+    if (documentControlDashboardConfig.canExportPdf && (row.DOC_STATUS == "1" || row.DOC_STATUS == "5")) {
+        $menu.append(dcdMenuItem("dp-menu-download", "fa-file-pdf-o", "Download PDF", function () {
+            dcdExportPdf(row);
+        }));
+    }
+
+    // Copy Register: controlled copies of every revision and their withdrawal.
+    if (documentControlDashboardConfig.canExportPdf) {
+        $menu.append(dcdMenuItem("dp-menu-history", "fa-list-ol", "Copy Register", function () {
+            // After this click has finished bubbling, or the outside-click handler closes it again.
+            setTimeout(function () { dcdOpenCopyRegister(row); }, 0);
+        }));
+    }
+
     // Reuse total popup History yang sudah ada & teruji di Document
     // Preparation (_DocumentHistoryPopup.cshtml, dirender dari Index.cshtml
     // dashboard ini) - onHistoryPrepare() otomatis baca row.DOCUMENT_CODE
@@ -149,6 +166,54 @@ function dcdOpenRowActionMenu($btn, row) {
     var offset = $btn.offset();
     $menu.css({ top: offset.top + $btn.outerHeight() + 4, left: offset.left - $menu.outerWidth() + $btn.outerWidth() })
         .show();
+}
+
+// Purpose decides the stamp: MASTER (archive), CONTROLLED COPY (numbered per revision,
+// recipient required) or UNCONTROLLED COPY (reference / audit / external).
+function dcdExportPdf(row) {
+    $.MessageBox({
+        title: "Download PDF",
+        message: confirmText(row.DOCUMENT_CODE || row.DOCUMENT_NAME || "") + " (Rev. " + (row.REVISION != null ? row.REVISION : 0) + ")",
+        input: {
+            purpose: {
+                type: "select",
+                label: "Purpose",
+                title: "Choose a purpose",
+                options: {
+                    "UNCONTROLLED": "Reference / audit / external - UNCONTROLLED COPY",
+                    "CONTROLLED": "Distribution - CONTROLLED COPY (numbered)",
+                    "MASTER": "Archive - MASTER"
+                },
+                defaultValue: "UNCONTROLLED"
+            },
+            recipient: {
+                type: "text",
+                label: "Recipient (required for Controlled Copy)",
+                title: "Department or person",
+                maxlength: 200
+            },
+            notes: {
+                type: "text",
+                label: "Notes",
+                title: "Optional",
+                maxlength: 500
+            }
+        },
+        buttonDone: "Download",
+        buttonFail: "Cancel",
+        customClass: "msg-confirm",
+        filterDone: function (data) {
+            if (!data.purpose) return "Choose a purpose.";
+            if (data.purpose === "CONTROLLED" && !$.trim(data.recipient)) return "Enter the recipient of the controlled copy.";
+        }
+    }).done(function (data) {
+        var $form = $('<form method="post" target="_blank"></form>').attr("action", documentControlDashboardConfig.urls.exportPdf);
+        $('<input type="hidden" name="documentTransactionId">').val(row.DOCUMENT_TRANSACTION_ID).appendTo($form);
+        $('<input type="hidden" name="purpose">').val(data.purpose).appendTo($form);
+        $('<input type="hidden" name="recipient">').val($.trim(data.recipient || "")).appendTo($form);
+        $('<input type="hidden" name="notes">').val($.trim(data.notes || "")).appendTo($form);
+        $form.appendTo("body").trigger("submit").remove();
+    });
 }
 
 // ---------- folder breadcrumb/title + grid filter (request Hendra 2026-08-28) ----------
@@ -627,6 +692,175 @@ function buildAcceptanceDetailGrid() {
         ]
     });
 }
+
+// ---------- Copy Register (request Hendra 2026-11-11) ----------
+var crpRow = null;
+var crpData = [];
+
+function dcdOpenCopyRegister(row) {
+    crpRow = row;
+    $("#acceptancePanel").removeClass("open");
+    $("#crpDocumentCode").text((row.DOCUMENT_CODE || "-") + (row.DOCUMENT_NAME ? " · " + row.DOCUMENT_NAME : ""));
+    $("#crpSummary").empty();
+    $("#crpBody").html('<div class="crp-empty"><i class="fa fa-spinner fa-spin"></i> Loading...</div>');
+    $("#copyRegisterPanel").addClass("open");
+    crpLoad();
+}
+
+function crpLoad() {
+    $.ajax({
+        type: "GET",
+        url: documentControlDashboardConfig.urls.searchCopyRegister,
+        data: { documentTransactionId: crpRow.DOCUMENT_TRANSACTION_ID },
+        cache: false,
+        success: function (result) {
+            if (!result.status) {
+                $("#crpBody").html('<div class="crp-empty"></div>').find(".crp-empty").text(result.message || "Failed to load the copy register");
+                return;
+            }
+            crpData = result.data || [];
+            crpRender();
+        },
+        error: function () {
+            $("#crpBody").html('<div class="crp-empty">Failed to load the copy register</div>');
+        }
+    });
+}
+
+function crpFormatDate(value) {
+    return value ? moment(value).format("DD MMM YYYY HH:mm") : "-";
+}
+
+function crpRender() {
+    var showWithdrawn = $("#crpShowWithdrawn").is(":checked");
+    var total = crpData.length;
+    var circulating = crpData.filter(function (d) { return !d.WITHDRAWN_DT; }).length;
+    var obsoleteCirculating = crpData.filter(function (d) { return !d.WITHDRAWN_DT && d.IS_OBSOLETE; }).length;
+
+    var $summary = $("#crpSummary").empty();
+    [
+        { value: total, label: "Copies issued" },
+        { value: circulating, label: "In circulation" },
+        { value: obsoleteCirculating, label: "Obsolete, not withdrawn", alert: obsoleteCirculating > 0 }
+    ].forEach(function (s) {
+        $('<div class="crp-stat"></div>').toggleClass("crp-stat-alert", !!s.alert)
+            .append($('<div class="crp-stat-value"></div>').text(s.value))
+            .append($('<div class="crp-stat-label"></div>').text(s.label))
+            .appendTo($summary);
+    });
+
+    var $body = $("#crpBody").empty();
+    if (total === 0) {
+        $body.html('<div class="crp-empty">No controlled copy has been issued for this document yet.<br/>Use Download PDF &rarr; Distribution to issue one.</div>');
+        return;
+    }
+
+    // Group by revision, newest first (the server already sorts).
+    var revisions = [];
+    crpData.forEach(function (d) {
+        var key = d.REVISION != null ? d.REVISION : 0;
+        var group = revisions.filter(function (g) { return g.revision === key; })[0];
+        if (!group) { group = { revision: key, obsolete: d.IS_OBSOLETE, items: [] }; revisions.push(group); }
+        group.items.push(d);
+    });
+
+    revisions.forEach(function (g) {
+        var visible = g.items.filter(function (d) { return showWithdrawn || !d.WITHDRAWN_DT; });
+        var open = g.items.filter(function (d) { return !d.WITHDRAWN_DT; }).length;
+
+        var $rev = $('<div class="crp-rev"></div>').text("Rev. " + g.revision).appendTo($body);
+        $('<span class="crp-pill"></span>')
+            .addClass(g.obsolete ? "crp-pill-default" : "crp-pill-success")
+            .text(g.obsolete ? "Obsolete" : "Current")
+            .appendTo($rev);
+
+        if (g.obsolete && open > 0) {
+            $('<div class="crp-rev-warning"></div>')
+                .html('<i class="fa fa-exclamation-triangle"></i> ')
+                .append(document.createTextNode(open + " cop" + (open > 1 ? "ies" : "y") + " of this obsolete revision still in circulation. Withdraw and replace them with the current revision."))
+                .appendTo($body);
+        }
+
+        if (visible.length === 0) {
+            $('<div class="crp-muted" style="font-size:12px;margin-bottom:8px;"></div>').text("All copies withdrawn.").appendTo($body);
+        }
+
+        visible.forEach(function (d) { crpCard(d).appendTo($body); });
+    });
+}
+
+function crpCard(d) {
+    var withdrawn = !!d.WITHDRAWN_DT;
+    var $card = $('<div class="crp-card"></div>').toggleClass("crp-withdrawn", withdrawn);
+
+    var $top = $('<div class="crp-card-top"></div>').appendTo($card);
+    $('<span class="crp-copy-no"></span>').text("Copy No. " + ("0" + d.COPY_NO).slice(-2)).appendTo($top);
+    $('<span class="crp-pill"></span>')
+        .addClass(withdrawn ? "crp-pill-default" : (d.IS_OBSOLETE ? "crp-pill-danger" : "crp-pill-success"))
+        .text(withdrawn ? "Withdrawn" : "In circulation")
+        .appendTo($top);
+    if (!withdrawn) {
+        $('<button type="button" class="crp-withdraw-btn"><i class="fa fa-undo"></i> Withdraw</button>')
+            .on("click", function () { crpWithdraw(d); })
+            .appendTo($top);
+    }
+
+    $('<div class="crp-line"></div>').append("<b>To:</b> ").append(document.createTextNode(d.RECIPIENT || "-")).appendTo($card);
+    $('<div class="crp-line crp-muted"></div>').text("Issued by " + (d.CREATED_BY || "-") + " on " + crpFormatDate(d.CREATED_DT)).appendTo($card);
+    if (d.NOTES) $('<div class="crp-line crp-muted"></div>').text("Note: " + d.NOTES).appendTo($card);
+    if (withdrawn) {
+        $('<div class="crp-line crp-muted"></div>')
+            .text("Withdrawn by " + (d.WITHDRAWN_BY || "-") + " on " + crpFormatDate(d.WITHDRAWN_DT) + (d.WITHDRAW_NOTE ? " · " + d.WITHDRAW_NOTE : ""))
+            .appendTo($card);
+    }
+    return $card;
+}
+
+function crpWithdraw(d) {
+    $.MessageBox({
+        title: "Withdraw Copy",
+        message: "Mark copy no. " + d.COPY_NO + " (Rev. " + (d.REVISION != null ? d.REVISION : 0) + ", to " + confirmText(d.RECIPIENT || "-") + ") as withdrawn? Do this once the copy has been returned or destroyed.",
+        input: {
+            note: { type: "text", label: "Note", title: "Optional, e.g. returned, destroyed, replaced by Rev. 1", maxlength: 500 }
+        },
+        buttonDone: "Withdraw",
+        buttonFail: "Cancel",
+        customClass: "msg-warning"
+    }).done(function (data) {
+        $.ajax({
+            type: "POST",
+            url: documentControlDashboardConfig.urls.withdrawCopy,
+            data: { exportId: d.EXPORT_ID, note: $.trim((data && data.note) || "") },
+            success: function (result) {
+                if (result.status) {
+                    showSuccessMesgGrowl(result.message);
+                } else {
+                    showErrorMesgGrowl(result.message);
+                }
+                crpLoad();
+            },
+            error: function () {
+                showErrorMesgGrowl("Failed to withdraw the copy");
+            }
+        });
+    });
+}
+
+$(document).ready(function () {
+    $("#btn_closeCopyRegisterPanel").on("click", function () {
+        $("#copyRegisterPanel").removeClass("open");
+    });
+
+    $("#crpShowWithdrawn").on("change", crpRender);
+
+    // Outside click closes the panel, except clicks in the Withdraw dialog.
+    $(document).on("click", function (e) {
+        if ($("#copyRegisterPanel").hasClass("open")
+            && !$(e.target).closest("#copyRegisterPanel, .messagebox, .messagebox_overlay").length) {
+            $("#copyRegisterPanel").removeClass("open");
+        }
+    });
+});
 
 $(document).ready(function () {
     $("#btn_closeAcceptancePanel").on("click", function () {

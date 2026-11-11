@@ -69,4 +69,8 @@
 @Html.Partial("_DistributionAddEditPopupForm")
 @Html.Partial("_DocumentLogPopup")
 @Html.Partial("_AcceptanceDetailPopup")
+@if ((bool)ViewData["StampLayout"])
+{
+    @Html.Partial("_StampLayoutPopup")
+}
 @Html.Partial("_Javascript")

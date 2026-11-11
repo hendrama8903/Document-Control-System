@@ -1,0 +1,116 @@
+@* Accept Registration with stamp positions (Stamp Layout stage 2, Hendra 2026-11-11). Only for
+   users with P4D-STAMPLAYOUT; others get the plain Accept confirmation.
+   Layout (2026-11-11): one toolbar row (layout choice + copy), the page gets the rest of the
+   window; no close icon (Cancel does that). The copy tabs follow ResolveStamps: every copy of
+   the document carries exactly one stamp, so only that stamp is shown on the page. *@
+<div class="modal fade" id="modalStampAccept" tabindex="-1" role="dialog" aria-labelledby="spTitle" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog sp-dialog">
+        <div class="modal-content adf-modal-content">
+            <div class="adf-header sp-header">
+                <div class="adf-header-title" id="spTitle">Accept Registration</div>
+                <div class="adf-header-sub" id="spSubtitle"></div>
+            </div>
+
+            <div class="modal-body sp-modal-body">
+                <div class="sl-banner" id="spBanner"></div>
+
+                <div class="sp-toolbar">
+                    <div class="sp-mode" role="radiogroup" aria-label="Stamp position">
+                        <label class="sp-mode-opt">
+                            <input type="radio" name="spMode" value="category" checked />
+                            <span><b>Category Layout</b><small id="spCategoryName"></small></span>
+                        </label>
+                        <label class="sp-mode-opt">
+                            <input type="radio" name="spMode" value="custom" />
+                            <span><b>Adjust for This Document</b><small id="spCustomHint">This revision only</small></span>
+                        </label>
+                    </div>
+
+                    <div class="sl-stamps sp-stamps" role="tablist" aria-label="Copy">
+                        <button type="button" class="sl-stamp-btn sp-stamp-btn active" data-stamp="MASTER">Master</button>
+                        <button type="button" class="sl-stamp-btn sp-stamp-btn" data-stamp="CONTROLLED">Controlled Copy</button>
+                        <button type="button" class="sl-stamp-btn sp-stamp-btn" data-stamp="UNCONTROLLED">Uncontrolled Copy</button>
+                        <button type="button" class="sl-stamp-btn sp-stamp-btn" data-stamp="OBSOLETE">Obsolete</button>
+                    </div>
+                </div>
+
+                <div class="sp-reason" id="spReasonField">
+                    <label for="spReason">Reason for Change <span class="sp-required">*</span></label>
+                    <textarea id="spReason" rows="1" maxlength="500" placeholder="For example: the stamp covered the revision table on page 3"></textarea>
+                </div>
+
+                <div class="sp-body">
+                    <div class="sp-thumbs" id="spThumbs" aria-label="Pages"></div>
+
+                    <div class="sp-editor">
+                        <div class="sp-page-wrap">
+                            <div class="sp-page" id="spPage">
+                                <canvas id="spCanvas"></canvas>
+                                <div class="sl-safe"></div>
+                                <div class="sl-box" data-stamp="MASTER"><img src="~/images/02_MASTER.png" alt="Master stamp" draggable="false" /><div class="sl-note"></div></div>
+                                <div class="sl-box" data-stamp="CONTROLLED"><img src="~/images/03_CONTROLLED_COPY.png" alt="Controlled Copy stamp" draggable="false" /><div class="sl-note"></div></div>
+                                <div class="sl-box" data-stamp="UNCONTROLLED"><img src="~/images/04_UNCONTROLLED_COPY.png" alt="Uncontrolled Copy stamp" draggable="false" /><div class="sl-note"></div></div>
+                                <div class="sl-box" data-stamp="OBSOLETE"><img src="~/images/01_OBSOLETE.png" alt="Obsolete stamp" draggable="false" /><div class="sl-note"></div></div>
+                            </div>
+                            <div class="sp-message" id="spMessage"></div>
+                        </div>
+                        <div class="sp-page-label" id="spPageLabel"></div>
+                    </div>
+
+                    <div class="sl-panel sp-panel">
+                        <div class="sl-panel-title" id="spPanelTitle">Master</div>
+                        <p class="sp-stamp-note" id="spStampNote"></p>
+                        <div class="sl-field">
+                            <label>Quick Position</label>
+                            <div class="sl-grid9" id="spGrid9">
+                                <button type="button" data-h="0" data-v="0" title="Top left"></button>
+                                <button type="button" data-h="1" data-v="0" title="Top center"></button>
+                                <button type="button" data-h="2" data-v="0" title="Top right"></button>
+                                <button type="button" data-h="0" data-v="1" title="Middle left"></button>
+                                <button type="button" data-h="1" data-v="1" title="Middle center"></button>
+                                <button type="button" data-h="2" data-v="1" title="Middle right"></button>
+                                <button type="button" data-h="0" data-v="2" title="Bottom left"></button>
+                                <button type="button" data-h="1" data-v="2" title="Bottom center"></button>
+                                <button type="button" data-h="2" data-v="2" title="Bottom right"></button>
+                            </div>
+                        </div>
+                        <div class="sl-field">
+                            <label for="spWidth">Width <span id="spWidthText"></span></label>
+                            <input type="range" id="spWidth" min="35" max="120" step="1" />
+                        </div>
+                        <div class="sl-field sl-xy">
+                            <div>
+                                <label for="spX">From Left (mm)</label>
+                                <input type="number" id="spX" step="1" min="0" />
+                            </div>
+                            <div>
+                                <label for="spY">From Top (mm)</label>
+                                <input type="number" id="spY" step="1" min="0" />
+                            </div>
+                        </div>
+                        <div class="sl-field sp-pageonly">
+                            <label class="sp-check">
+                                <input type="checkbox" id="spPageOnly" />
+                                <span id="spPageOnlyText">Only this page</span>
+                            </label>
+                            <button type="button" class="sp-link" id="spPageReset">Reset this page</button>
+                            <div class="sp-page-own" id="spPageOwn"></div>
+                        </div>
+                        <p class="sl-help">Moving a stamp changes every page of the same orientation. Tick Only page to move it on the page shown only; page positions are not carried to the next revision.</p>
+
+                        <details class="sp-history">
+                            <summary class="sp-history-title">History</summary>
+                            <ul class="sp-history-list" id="spHistory"></ul>
+                        </details>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer sp-footer">
+                <p class="sp-intro" id="spIntro"></p>
+                <button type="button" class="dp-btn dp-btn-outline" data-dismiss="modal">Cancel</button>
+                <button type="button" class="dp-btn dp-btn-primary" id="spAccept"><i class="fa fa-check"></i> Accept</button>
+            </div>
+        </div>
+    </div>
+</div>

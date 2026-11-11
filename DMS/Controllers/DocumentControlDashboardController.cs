@@ -53,6 +53,7 @@ namespace DMS.Controllers
 
             // add authorization function
             ViewData["DocumentControlAccess"] = GetDocumentAccessControl();
+            ViewData["ExportPdf"] = Services.DocumentAccessService.HasFunction(HttpContext, Services.DocumentExportService.FunctionId);
 
 
             ViewData["Title"] = "Document Control";
@@ -72,6 +73,45 @@ namespace DMS.Controllers
                     new DocumentDistribution { DOCUMENT_TRANSACTION_ID = documentTransactionId }, db, null, null);
 
                 return Json(new { status = true, data = dataList });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        // Copy Register (request Hendra 2026-11-11): controlled copies of every revision of the
+        // document and their withdrawal. Same role function as Download PDF, which issues them.
+        public JsonResult SearchCopyRegister(int documentTransactionId)
+        {
+            if (!Services.DocumentAccessService.HasFunction(HttpContext, Services.DocumentExportService.FunctionId))
+                return Json(new { status = false, message = "You are not authorized to view the copy register." });
+            try
+            {
+                return Json(new { status = true, data = Services.DocumentExportService.CopyRegister(db, documentTransactionId) });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public JsonResult WithdrawCopy(int exportId, string note)
+        {
+            if (!Services.DocumentAccessService.HasFunction(HttpContext, Services.DocumentExportService.FunctionId))
+                return Json(new { status = false, message = "You are not authorized to withdraw copies." });
+            note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
+            if (note?.Length > 500)
+                return Json(new { status = false, message = "The note can be at most 500 characters." });
+            try
+            {
+                Services.DocumentExportService.Withdraw(db, exportId, note, GetLoginUsername());
+                return Json(new { status = true, message = "Copy marked as withdrawn." });
+            }
+            catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 50003)
+            {
+                return Json(new { status = false, message = ex.Message });
             }
             catch (Exception ex)
             {

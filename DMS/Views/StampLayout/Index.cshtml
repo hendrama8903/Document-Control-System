@@ -1,0 +1,141 @@
+@* Master Data > Stamp Layout - where the document stamps go, globally and per Document
+   Category, for Portrait and Landscape pages (request Hendra 2026-11-11, stage 1). *@
+@using DMS.Services
+@{
+    bool canEdit = (bool)ViewData["CanEdit"];
+    var categories = (List<StampLayoutService.CategoryItem>)ViewData["Categories"];
+    var stampImages = (Dictionary<string, string>)ViewData["StampImages"];
+}
+<link rel="stylesheet" href="~/css/views/StampLayout/Index.css" asp-append-version="true" />
+
+<section class="content">
+    <div class="row">
+        <div class="col-xs-12">
+            <div class="dp-card sl-card">
+                <aside class="sl-scopes" aria-label="Layout scope">
+                    <div class="sl-scopes-head">Apply To</div>
+                    <button type="button" class="sl-scope active" data-id="">
+                        <span class="sl-scope-text"><b>Global Default</b><span>All categories without their own layout</span></span>
+                    </button>
+                    <div class="sl-scopes-head sl-scopes-sub">Document Category</div>
+                    <input type="text" id="slScopeSearch" class="sl-scope-search" placeholder="Search category" aria-label="Search category" />
+                    <div class="sl-scope-list" id="slScopeList">
+                        @foreach (var c in categories)
+                        {
+                            <button type="button" class="sl-scope" data-id="@c.DOCUMENT_ID" data-search="@((c.DOCUMENT_CODE + " " + c.DOCUMENT_NAME).ToLowerInvariant())">
+                                <span class="sl-scope-text">
+                                    <b>@c.DOCUMENT_CODE</b>
+                                    <span>@c.DOCUMENT_NAME@(c.IS_ACTIVE ? "" : " (inactive)")</span>
+                                </span>
+                                <span class="sl-badge @(c.HAS_CUSTOM ? "custom" : "")">@(c.HAS_CUSTOM ? "Custom" : "Global")</span>
+                            </button>
+                        }
+                    </div>
+                </aside>
+
+                <div class="sl-main">
+                    <div class="sl-toolbar">
+                        <div class="sl-seg" role="tablist" aria-label="Page orientation">
+                            <button type="button" class="sl-seg-btn active" data-orientation="P"><i class="fa fa-file-o"></i> Portrait</button>
+                            <button type="button" class="sl-seg-btn" data-orientation="L"><i class="fa fa-file-o fa-rotate-90"></i> Landscape</button>
+                        </div>
+                        <div class="sl-toolbar-right">
+                            <div class="sl-stamps" role="tablist" aria-label="Stamp">
+                                <button type="button" class="sl-stamp-btn active" data-stamp="MASTER">Master</button>
+                                <button type="button" class="sl-stamp-btn" data-stamp="CONTROLLED">Controlled Copy</button>
+                                <button type="button" class="sl-stamp-btn" data-stamp="UNCONTROLLED">Uncontrolled Copy</button>
+                                <button type="button" class="sl-stamp-btn" data-stamp="OBSOLETE">Obsolete</button>
+                            </div>
+                            <button type="button" class="dp-btn dp-btn-outline" id="slPreview"><i class="fa fa-file-pdf-o"></i> Preview PDF</button>
+                        </div>
+                    </div>
+
+                    <div class="sl-banner" id="slBanner"></div>
+
+                    <div class="sl-body">
+                        <div class="sl-canvas-wrap">
+                            <div class="sl-page" id="slPage">
+                                <div class="sl-safe"></div>
+                                @foreach (var s in stampImages)
+                                {
+                                    <div class="sl-box" data-stamp="@s.Key" tabindex="-1">
+                                        <img src="@s.Value" alt="@s.Key stamp" draggable="false" />
+                                        <div class="sl-note"></div>
+                                    </div>
+                                }
+                            </div>
+                            <div class="sl-canvas-hint">A4 page. Dashed line = 5 mm print margin. Stamps are printed on every page.</div>
+                        </div>
+
+                        <div class="sl-panel">
+                            <div class="sl-panel-title" id="slPanelTitle">Master</div>
+
+                            <div class="sl-field">
+                                <label>Quick Position</label>
+                                <div class="sl-grid9" id="slGrid9">
+                                    <button type="button" data-h="0" data-v="0" title="Top left"></button>
+                                    <button type="button" data-h="1" data-v="0" title="Top center"></button>
+                                    <button type="button" data-h="2" data-v="0" title="Top right"></button>
+                                    <button type="button" data-h="0" data-v="1" title="Middle left"></button>
+                                    <button type="button" data-h="1" data-v="1" title="Middle center"></button>
+                                    <button type="button" data-h="2" data-v="1" title="Middle right"></button>
+                                    <button type="button" data-h="0" data-v="2" title="Bottom left"></button>
+                                    <button type="button" data-h="1" data-v="2" title="Bottom center"></button>
+                                    <button type="button" data-h="2" data-v="2" title="Bottom right"></button>
+                                </div>
+                            </div>
+
+                            <div class="sl-field">
+                                <label for="slWidth">Width <span id="slWidthText"></span></label>
+                                <input type="range" id="slWidth" min="35" max="120" step="1" />
+                            </div>
+
+                            <div class="sl-field sl-xy">
+                                <div>
+                                    <label for="slX">From Left (mm)</label>
+                                    <input type="number" id="slX" step="1" min="0" />
+                                </div>
+                                <div>
+                                    <label for="slY">From Top (mm)</label>
+                                    <input type="number" id="slY" step="1" min="0" />
+                                </div>
+                            </div>
+
+                            <p class="sl-help">Drag the stamp on the page, or use the buttons. The stamp always stays inside the print margin, including the note under Controlled and Uncontrolled Copy.</p>
+
+                            @if (canEdit)
+                            {
+                                <div class="sl-actions">
+                                    <button type="button" class="dp-btn dp-btn-primary" id="slSave"><i class="fa fa-save"></i> Save</button>
+                                    <button type="button" class="dp-btn dp-btn-outline" id="slRevert">Undo Changes</button>
+                                    <button type="button" class="dp-btn dp-btn-outline" id="slCustomize"><i class="fa fa-pencil"></i> Customize for This Category</button>
+                                    <button type="button" class="dp-btn dp-btn-outline" id="slRestore">Restore System Default</button>
+                                    <button type="button" class="dp-btn dp-btn-outline-danger" id="slUseGlobal">Use Global Layout</button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script type="text/javascript">
+    var stampLayoutConfig = {
+        canEdit: @(canEdit ? "true" : "false"),
+        builtInDefaults: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(StampLayoutService.BuiltInDefaults())),
+        safeMarginPt: @StampLayoutService.SafeMarginPt.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        minWidthPt: @StampLayoutService.MinWidthPt.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        maxWidthPt: @StampLayoutService.MaxWidthPt.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        noteHeightPt: @((StampLayoutService.NoteGapPt + StampLayoutService.NoteLineHeightPt).ToString(System.Globalization.CultureInfo.InvariantCulture)),
+        urls: {
+            get: "@Url.Action("Get", "StampLayout")",
+            save: "@Url.Action("Save", "StampLayout")",
+            useGlobal: "@Url.Action("UseGlobal", "StampLayout")",
+            preview: "@Url.Action("Preview", "StampLayout")"
+        }
+    };
+</script>
+<script src="~/js/views/stamp-layout-core.js" asp-append-version="true"></script>
+<script src="~/js/views/stamp-layout.js" asp-append-version="true"></script>

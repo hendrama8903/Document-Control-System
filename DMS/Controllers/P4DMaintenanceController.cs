@@ -5,6 +5,7 @@ using DMS.Models;
 using DMS.Models.DB;
 using DMS.Models.DB.Commons;
 using DMS.Models.Repo;
+using DMS.Services;
 using Hangfire;
 using MDC.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -73,6 +74,8 @@ namespace DMS.Controllers
             ViewData["Reject"] = HttpContext.Session.GetString("functionList").Contains("P4D-REJECT");
             ViewData["Send"] = HttpContext.Session.GetString("functionList").Contains("P4D-SEND");
             ViewData["DocumentControlAccess"] = GetDocumentAccessControl();
+            ViewData["StampLayout"] = GetDocumentAccessControl() == true
+                && HttpContext.Session.GetString("functionList").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Contains(StampFunctionId);
 
             bool? isaccess = GetDocumentAccessControl();
 
@@ -920,8 +923,120 @@ namespace DMS.Controllers
             }
         }
 
+        // Stamp Layout (Hendra 2026-11-11). Stage 2: QMS chooses the stamp positions on Accept.
+        // Stage 3: every Accept fixes the positions on the document (a copy of the category
+        // layout, or its own), so later changes to the layout master never move the stamps of
+        // an accepted document; changing them afterwards needs a reason and is logged.
+        // Needs P4D-STAMPLAYOUT on top of Document Control access.
+        bool CanAdjustStamp() => DenyP4D(StampFunctionId) == null;
+        const string StampFunctionId = "P4D-STAMPLAYOUT";
+        static readonly string[] AcceptedStatuses = { "2", "5", "6" }; // Accepted, Sent, Partially Sent
+
+        // The registration and its document (current revision in TB_R_DOCUMENT), or null.
+        DocumentMaintenance RegisteredDocument(int? documentCtrlId, out DocumentControlMaintenance registration)
+        {
+            registration = null;
+            if (documentCtrlId == null) return null;
+            registration = P4DMaintenanceRepo
+                .Search(new DocumentControlMaintenance { DOCUMENT_CTRL_ID = documentCtrlId }, null, db, 1, 1).FirstOrDefault();
+            if (registration?.DOCUMENT_TRANSACTION_ID == null) return null;
+            return documentMaintenanceRepo
+                .Search(new DocumentMaintenance { DOCUMENT_TRANSACTION_ID = registration.DOCUMENT_TRANSACTION_ID }, null, db, 1, 1)
+                .FirstOrDefault();
+        }
+
+        // stampPositions of the dialog when customStamp is true; null otherwise. error is set when invalid.
+        static List<StampLayoutService.Position> ParseStampPositions(bool customStamp, string stampPositions, out string error)
+        {
+            error = null;
+            if (!customStamp) return null;
+            List<StampLayoutService.Position> positions;
+            try
+            {
+                positions = System.Text.Json.JsonSerializer.Deserialize<List<StampLayoutService.Position>>(stampPositions ?? "",
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                error = "Stamp positions are not valid.";
+                return null;
+            }
+            error = StampLayoutService.Validate(positions, allowPages: true);
+            return error == null ? positions : null;
+        }
+
+        // Fixes the document's positions: its own set, or a copy of the category layout now.
+        void FixStampLayout(DocumentMaintenance document, List<StampLayoutService.Position> custom, string action, string reason)
+        {
+            bool isCustom = custom != null;
+            StampLayoutService.SaveDocument(db, document.DOCUMENT_TRANSACTION_ID.Value, document.REVISION ?? 0,
+                custom ?? StampLayoutService.Effective(db, document.DOCUMENT_ID),
+                isCustom ? StampLayoutService.SourceCustom : StampLayoutService.SourceCategory,
+                action, reason, GetLoginUsername());
+        }
+
+        /// <summary>
+        /// Data for the stamp position dialog: the category layout, this revision's fixed or
+        /// inherited positions (null when it has none yet), the log, and the unstamped PDF.
+        /// mode "accept" before Accept, "change" afterwards (reason required).
+        /// </summary>
+        [HttpGet]
+        public JsonResult StampLayoutInfo(int documentCtrlId)
+        {
+            JsonResult denied = DenyP4D(StampFunctionId);
+            if (denied != null) return denied;
+
+            try
+            {
+                DocumentMaintenance document = RegisteredDocument(documentCtrlId, out DocumentControlMaintenance registration);
+                if (document == null)
+                    return Json(new { status = false, message = "The registered document was not found." });
+
+                int id = document.DOCUMENT_TRANSACTION_ID.Value, revision = document.REVISION ?? 0;
+                var category = document.DOCUMENT_ID == null ? null
+                    : StampLayoutService.Categories(db).FirstOrDefault(c => c.DOCUMENT_ID == document.DOCUMENT_ID);
+                List<StampLayoutService.Position> own = StampLayoutService.LoadDocument(db, id, revision);
+                List<StampLayoutService.HistoryItem> history = StampLayoutService.History(db, id);
+
+                return Json(new
+                {
+                    status = true,
+                    mode = AcceptedStatuses.Contains(registration.STATUS) ? "change" : "accept",
+                    documentTransactionId = id,
+                    documentCode = document.DOCUMENT_CODE,
+                    revision,
+                    categoryName = category == null ? "Global" : category.DOCUMENT_CODE + " - " + category.DOCUMENT_NAME,
+                    categoryHasOwn = category?.HAS_CUSTOM == true,
+                    categoryPositions = StampLayoutService.Effective(db, document.DOCUMENT_ID),
+                    documentPositions = own.Count == 0 ? null : own,
+                    documentSource = own.Count == 0 ? null : StampLayoutService.LoadDocumentSource(db, id, revision),
+                    inheritedFrom = history.FirstOrDefault(h => h.ACTION == StampLayoutService.ActionInherit)?.REASON,
+                    history = history.Select(h => new
+                    {
+                        h.ACTION,
+                        h.SOURCE,
+                        h.REVISION,
+                        h.REASON,
+                        h.CREATED_BY,
+                        CREATED_DT = h.CREATED_DT.ToString("dd MMM yyyy HH:mm")
+                    }),
+                    sourceUrl = Url.Action("StampLayoutSource", "DocumentMaintenance", new { documentTransactionId = id })
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Second step of the registration. Always fixes the stamp positions on the document:
+        /// with P4D-STAMPLAYOUT the dialog sends the choice (customStamp true = stampPositions,
+        /// a full set as JSON; false = copy of the category layout); without it the category
+        /// layout is copied.
+        /// </summary>
         [HttpPost]
-        public JsonResult Accept(DocumentControlMaintenance data)
+        public JsonResult Accept(DocumentControlMaintenance data, bool? customStamp, string stampPositions)
         {
             JsonResult denied = DenyP4D("P4D-RECEIVE");
             if (denied != null)
@@ -933,8 +1048,56 @@ namespace DMS.Controllers
 
             try
             {
+                // Checked before Accept so a bad stamp choice never leaves a half-done Accept.
+                bool custom = customStamp == true && CanAdjustStamp();
+                List<StampLayoutService.Position> positions = ParseStampPositions(custom, stampPositions, out string error);
+                if (error != null) return Json(new { status = false, message = error });
+
                 result = P4DMaintenanceRepo.Accept(data, GetLoginUsername(), db);
+
+                if (result.status)
+                {
+                    DocumentMaintenance document = RegisteredDocument(data.DOCUMENT_CTRL_ID, out _);
+                    if (document != null)
+                        FixStampLayout(document, positions, StampLayoutService.ActionAccept, null);
+                }
                 return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Changes the fixed stamp positions of an accepted registration (Stamp Layout stage 3).
+        /// Reason required; logged. Copies already downloaded or printed keep their stamps.
+        /// </summary>
+        [HttpPost]
+        public JsonResult ChangeStampLayout(int documentCtrlId, bool customStamp, string stampPositions, string reason)
+        {
+            JsonResult denied = DenyP4D(StampFunctionId);
+            if (denied != null) return denied;
+
+            reason = (reason ?? "").Trim();
+            if (reason.Length < 5)
+                return Json(new { status = false, message = "Enter the reason for changing the stamp position (at least 5 characters)." });
+            if (reason.Length > 500)
+                return Json(new { status = false, message = "The reason can be at most 500 characters." });
+
+            try
+            {
+                List<StampLayoutService.Position> positions = ParseStampPositions(customStamp, stampPositions, out string error);
+                if (error != null) return Json(new { status = false, message = error });
+
+                DocumentMaintenance document = RegisteredDocument(documentCtrlId, out DocumentControlMaintenance registration);
+                if (document == null)
+                    return Json(new { status = false, message = "The registered document was not found." });
+                if (!AcceptedStatuses.Contains(registration.STATUS))
+                    return Json(new { status = false, message = "The stamp position can be changed only after the registration is accepted. Use Accept to set it." });
+
+                FixStampLayout(document, positions, StampLayoutService.ActionChange, reason);
+                return Json(new { status = true, message = "Stamp position changed. New copies use the new position." });
             }
             catch (Exception ex)
             {
