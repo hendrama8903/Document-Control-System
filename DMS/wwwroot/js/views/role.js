@@ -100,7 +100,6 @@ $(document).ready(function () {
                 fixedPosition: "left",
                 cellTemplate: function (container, options) {
                     $("<div>").addClass("ra-role-cell").append(
-                        $("<span>").addClass("ra-role-icon").html('<i class="fa fa-shield"></i>'),
                         $("<b>").text(options.data.ROLE_ID)
                     ).appendTo(container);
                 }

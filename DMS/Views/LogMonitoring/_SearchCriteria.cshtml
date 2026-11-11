@@ -1,26 +1,24 @@
 <div class="box-header dp-toolbar">
-    <div class="dp-toolbar-left" style="flex-wrap:wrap;">
-        <div>
-            <label>Date Range</label>
-            <div class="has-feedback" style="display:inline-block; width: 230px;">
-                <input class="form-control input-sm" id="searchDate" type="text" placeholder="Select date range" />
-            </div>
+    <div class="dp-toolbar-left al-filters">
+        <div class="al-filter">
+            <label for="searchDate">Date Range</label>
+            <input class="form-control al-filter-date" id="searchDate" type="text" placeholder="Select date range" />
         </div>
-        <div>
-            <label>Module</label>
-            <select id="filterModule">
+        <div class="al-filter">
+            <label for="filterModule">Module</label>
+            <select id="filterModule" class="al-filter-select">
                 <option value="">All Module</option>
             </select>
         </div>
-        <div>
-            <label>User</label>
-            <select id="filterUser">
+        <div class="al-filter">
+            <label for="filterUser">User</label>
+            <select id="filterUser" class="al-filter-select">
                 <option value="">All User</option>
             </select>
         </div>
-        <div>
-            <label>Status</label>
-            <select id="filterStatus">
+        <div class="al-filter">
+            <label for="filterStatus">Status</label>
+            <select id="filterStatus" class="al-filter-select">
                 <option value="">All Status</option>
                 <option value="SUCCESS">Success</option>
                 <option value="FAILED">Failed</option>
