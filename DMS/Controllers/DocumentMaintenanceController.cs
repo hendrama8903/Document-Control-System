@@ -1983,9 +1983,10 @@ namespace DMS.Controllers
         // jadi controlledCopyImage dan obsoleteImage tidak akan pernah dua-duanya
         // terisi di saat bersamaan.
         //
-        // uncontrolledNote (2026-11-10): draw an UNCONTROLLED COPY stamp in the bottom slot, with
-        // the note (who downloaded it and when) under it. Drawn as text, not an image, because
-        // the note changes per download. Ignored when the bottom slot already has an image.
+        // uncontrolledNote (2026-11-10): draw an UNCONTROLLED COPY stamp in the bottom slot.
+        // Ignored when the bottom slot already has an image. Since 2026-11-12 the stamp image
+        // goes on alone (no text); the note is only used by the text fallback when the
+        // 04_UNCONTROLLED_COPY image is missing.
         //
         // Stamp images (2026-11-11, Hendra): 01_OBSOLETE, 02_MASTER, 03_CONTROLLED_COPY and
         // 04_UNCONTROLLED_COPY in wwwroot/images replace the old cap_*.png. They are about 5:1,
@@ -2034,11 +2035,8 @@ namespace DMS.Controllers
                     }
                     else if (uncontrolledImage != null)
                     {
-                        string[] lines = uncontrolledNote.Split('\n');
-                        XRect rect = layout.Place(Services.StampLayoutService.Uncontrolled, pageWidth, pageHeight, Aspect(uncontrolledImage), lines.Length, pageNo);
-                        gfx.DrawImage(uncontrolledImage, rect);
-                        Services.StampLayoutService.DrawNote(gfx, pageWidth, rect, lines,
-                            new XFont("Arial", 6.5, XFontStyleEx.Regular), StampNoteBrush());
+                        // The stamp image only, no text under it (Hendra 2026-11-12).
+                        gfx.DrawImage(uncontrolledImage, layout.Place(Services.StampLayoutService.Uncontrolled, pageWidth, pageHeight, Aspect(uncontrolledImage), 0, pageNo));
                     }
                     else if (uncontrolledNote != null)
                     {

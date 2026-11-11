@@ -63,7 +63,7 @@
     display: none; margin-top: 2px; border-radius: 2px;
     background: repeating-linear-gradient(90deg, rgba(198, 40, 40, .45) 0 6px, transparent 6px 9px);
 }
-.sl-box[data-stamp="CONTROLLED"] .sl-note, .sl-box[data-stamp="UNCONTROLLED"] .sl-note { display: block; }
+.sl-box[data-stamp="CONTROLLED"] .sl-note { display: block; }
 .sl-canvas-hint { font-size: 12px; color: #7B8794; }
 
 /* Side panel */

@@ -10,7 +10,9 @@ var StampCore = (function () {
 
     function key(type, orientation) { return type + "|" + orientation; }
     function clone(map) { return JSON.parse(JSON.stringify(map)); }
-    function hasNote(type) { return type === "CONTROLLED" || type === "UNCONTROLLED"; }
+    // Only CONTROLLED COPY has a note line under it (copy number, recipient); UNCONTROLLED COPY
+    // is the image alone since 2026-11-12.
+    function hasNote(type) { return type === "CONTROLLED"; }
     function clamp(v, min, max) { return max < min ? min : Math.max(min, Math.min(max, v)); }
     function orientationOf(w, h) { return w > h ? "L" : "P"; }
 

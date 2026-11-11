@@ -146,7 +146,6 @@ namespace DMS.Controllers
             var notes = new Dictionary<string, string>
             {
                 [StampLayoutService.Controlled] = "Copy No. 1 · To: Sample Department · Issued by " + GetLoginUsername() + " on " + DateTime.Now.ToString("dd MMM yyyy HH:mm"),
-                [StampLayoutService.Uncontrolled] = "This document is not controlled by the QMS - Document Control",
             };
 
             using var document = new PdfDocument();

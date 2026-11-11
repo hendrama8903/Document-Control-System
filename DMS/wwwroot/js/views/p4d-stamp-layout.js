@@ -312,7 +312,7 @@ function spPositionList() {
 var SP_STAMP_WHEN = {
     MASTER: "On the original Document Control opens in the QMS menus, from Accept on.",
     CONTROLLED: "On copies viewed or printed by the departments it is sent to, with the copy number.",
-    UNCONTROLLED: "On downloaded copies, with who downloaded it and when.",
+    UNCONTROLLED: "On copies downloaded by users other than the creator and Document Control.",
     OBSOLETE: "On every copy once a new revision replaces this one. Set it now: it cannot be changed later."
 };
 
