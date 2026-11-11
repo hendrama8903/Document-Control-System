@@ -14,6 +14,8 @@ using System.Text;
 
 namespace DMS.Controllers
 {
+    // Activity log: only for roles with this menu (2026-11-11).
+    [RequireMenu("/LogMonitoring/Index")]
     public class LogMonitoringController : BaseController
     {
         DBContext db;

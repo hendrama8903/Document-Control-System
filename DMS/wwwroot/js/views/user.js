@@ -199,8 +199,21 @@ function umCloseActionMenu() {
     $(".um-dropdown-menu").remove();
 }
 
+// Apakah baris ini punya minimal satu aksi untuk user login - harus sejalan
+// dengan isi umOpenActionMenu. Role yang punya akses menu User tapi tanpa
+// fungsi USER-EDIT/POSITION/DELETE/RESTORE dulu melihat dropdown kosong.
+function umHasAnyAction(row) {
+    if (row.DELETE_FLAG == "1") return gCanRestore;
+    return gCanEdit || gCanPosition || gCanDelete;
+}
+
 function umAppendActionKebab(container, row) {
     container.css("white-space", "nowrap");
+
+    if (!umHasAnyAction(row)) {
+        container.append($("<span>").addClass("text-muted").text("-"));
+        return;
+    }
 
     var $btn = $("<button>").attr({ type: "button", title: "Actions" }).addClass("dp-act-kebab")
         .html('<i class="fa fa-ellipsis-v"></i>')
@@ -579,7 +592,7 @@ function onEditPrepare(row) {
                 $('#addEditPhone').val(data.PHONE);
                 $('#addEditRoleId').select2("trigger", "select", { data: { id: data.ROLE_ID, text: data.ROLE_NAME } });
                 $('#addEditAdUser').prop('checked', data.AD_USER == "1");
-                gHasLocalPassword = (data.PASSWORD != null);
+                gHasLocalPassword = (data.HAS_LOCAL_PASSWORD === true);
                 toggleAdUserFields();
                 $('#inputContainer :input[type="text"]').val(data.FILE_PATH);
 

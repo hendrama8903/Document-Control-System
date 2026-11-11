@@ -54,7 +54,7 @@ namespace DMS.Controllers
         {
             try
             {
-                string cacheDir = Path.Combine(Environment.WebRootPath, "Upload", "ATTACHMENT", "DOCUMENT_TEMP");
+                string cacheDir = Path.Combine(DMS.Services.UploadPath.Root, "Upload", "ATTACHMENT", "DOCUMENT_TEMP");
                 if (Directory.Exists(cacheDir))
                 {
                     foreach (string file in Directory.GetFiles(cacheDir, "TEMP_*"))
@@ -98,6 +98,7 @@ namespace DMS.Controllers
             return View();
         }
 
+        [RequireMenu("/User/Index")]
         public ActionResult Search(User data, bool initialMode, bool showDeleted = false)
         {
             try
@@ -138,6 +139,7 @@ namespace DMS.Controllers
             }
         }
 
+        [RequireMenu("/User/Index")]
         public JsonResult GetByKey(User data)
         {
             try
@@ -151,6 +153,7 @@ namespace DMS.Controllers
             }
         }
 
+        [RequireMenu("/User/Index")]
         public ActionResult SearchAll(User data)
         {
             try
@@ -173,6 +176,7 @@ namespace DMS.Controllers
             }
         }
 
+        [RequireMenu("/User/Index")]
         public IActionResult DownloadExcel()
         {
             IList<UserListItem> listData = userRepo.SearchAll(new User(), db, null, null);
@@ -272,7 +276,7 @@ namespace DMS.Controllers
 
                     string extension = Path.GetExtension(file.FileName);
                     string path = folderName + mSystem.SYSTEM_VALUE.Trim();
-                    string pathSave = webRootPath + folderName + mSystem.SYSTEM_VALUE.Trim();
+                    string pathSave = DMS.Services.UploadPath.Root + folderName + mSystem.SYSTEM_VALUE.Trim();
                     //string fileName = data.VIN_NO + '-' + DateTime.Now.ToFileTime() + extension;
                     string fileName = "User" + '-' + DateTime.Now.ToFileTime() + extension;
                     string finalPath = pathSave + fileName;
@@ -414,6 +418,14 @@ namespace DMS.Controllers
         // page - GetByKey above stays untouched for the admin User Management grid.
         public JsonResult GetProfileDetail(User data)
         {
+            // Own profile, or a role with User Management (2026-11-11): any login user could
+            // read the email and phone of every other user.
+            bool self = string.Equals((data?.USERNAME ?? "").Trim(), (GetLoginUsername() ?? "").Trim(), StringComparison.OrdinalIgnoreCase);
+            if (!self && !RequireMenuAttribute.HasMenu(HttpContext, "/User/Index"))
+            {
+                return Json(new { status = false, message = "You are not authorized to perform this action." });
+            }
+
             try
             {
                 UserProfileDetail result = userRepo.GetProfileDetail(data, db);
@@ -464,7 +476,7 @@ namespace DMS.Controllers
 
                 MSystem mSystem = mSystemRepo.GetByKey(new MSystem { SYSTEM_TYPE = "UPLOAD_FOLDER", SYSTEM_CODE = "USER" }, db);
                 string path = folderName + mSystem.SYSTEM_VALUE.Trim();
-                string pathSave = webRootPath + folderName + mSystem.SYSTEM_VALUE.Trim();
+                string pathSave = DMS.Services.UploadPath.Root + folderName + mSystem.SYSTEM_VALUE.Trim();
                 string fileName = "Signature-" + DateTime.Now.ToFileTime() + extension;
                 string finalPath = pathSave + fileName;
 

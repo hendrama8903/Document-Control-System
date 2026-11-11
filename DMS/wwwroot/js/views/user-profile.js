@@ -96,7 +96,7 @@ function getProfileData() {
                 $("#addEditOldPassword").val("");
                 $("#addEditPassword").val("");
                 $("#addEditConfirmPassword").val("");
-                gHasLocalPassword = (data.PASSWORD != null);
+                gHasLocalPassword = (data.HAS_LOCAL_PASSWORD === true);
 
                 gAvatarFile = null;
                 $("#avatarFileInput").val("");

@@ -113,6 +113,10 @@ namespace DMS.Controllers
         {
             try
             {
+                // Always the login user: the username sent by the browser used to decide whose
+                // notifications were returned (2026-11-11).
+                notification ??= new Notification();
+                notification.USERNAME = GetLoginUsername();
                 var data = notificationRepo.Search(notification, db);
 
                 return Json(new { status = true, data = data });

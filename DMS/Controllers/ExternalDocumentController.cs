@@ -136,7 +136,7 @@ namespace DMS.Controllers
 
                     string extension = Path.GetExtension(file.FileName);
                     string path = folderName + mSystem.SYSTEM_VALUE.Trim();
-                    string pathSave = webRootPath + folderName + mSystem.SYSTEM_VALUE.Trim();
+                    string pathSave = DMS.Services.UploadPath.Root + folderName + mSystem.SYSTEM_VALUE.Trim();
                     string documentname = data.DOCUMENT_NAME;
                     documentname = documentname.Replace(" ", "_").Replace("/", "_");
                     string fileName = documentname + "_" + DateTime.Now.ToString("yyyyMMddHHmmss") + extension;

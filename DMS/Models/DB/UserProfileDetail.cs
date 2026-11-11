@@ -36,8 +36,12 @@ namespace DMS.Models.DB
 
         public string? AD_USER { get; set; }
 
-        // Present in sp_User_GetByKey's output solely so the shared User model's
-        // password-presence check (gHasLocalPassword) still works the same way here.
+        // Present in sp_User_GetByKey's output only to know whether a local password exists.
+        // Never sent to the browser (2026-11-11): HAS_LOCAL_PASSWORD is.
+        [System.Text.Json.Serialization.JsonIgnore]
         public string? PASSWORD { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+        public bool HAS_LOCAL_PASSWORD => !string.IsNullOrEmpty(PASSWORD);
     }
 }

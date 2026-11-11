@@ -13,6 +13,8 @@ using NPOI.XSSF.UserModel;
 
 namespace DMS.Controllers
 {
+    // Menu & function configuration: only for roles with this menu (2026-11-11).
+    [RequireMenu("/Menu/Index")]
     public class MenuController : BaseController
     {
         DBContext db;

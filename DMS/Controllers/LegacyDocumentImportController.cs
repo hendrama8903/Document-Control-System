@@ -243,7 +243,7 @@ namespace DMS.Controllers
                     MSystem uploadFolder = mSystemRepo.GetByKey(new MSystem { SYSTEM_TYPE = "UPLOAD_FOLDER", SYSTEM_CODE = "DOCUMENT_TRANSACTION" }, db);
                     string webRootPath = Environment.WebRootPath;
                     string folderPath = "/Upload/" + uploadFolder.SYSTEM_VALUE.Trim();
-                    string fullFolderPath = webRootPath + folderPath;
+                    string fullFolderPath = DMS.Services.UploadPath.Root + folderPath;
 
                     if (!Directory.Exists(fullFolderPath))
                     {

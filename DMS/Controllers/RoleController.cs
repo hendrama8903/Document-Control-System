@@ -57,6 +57,7 @@ namespace DMS.Controllers
             return View();
         }
 
+        [RequireMenu("/Role/Index")]
         public JsonResult GetByKey(Role data)
         {
             try
@@ -70,6 +71,7 @@ namespace DMS.Controllers
             }
         }
 
+        [RequireMenu("/Role/Index")]
         public ActionResult Search(Role data)
         {
             try
@@ -93,6 +95,7 @@ namespace DMS.Controllers
             }
         }
 
+        [RequireMenu("/Role/Index")]
         public IActionResult DownloadExcel()
         {
             IList<RoleListItem> listData = roleRepo.SearchGrid(new Role(), db, null, null);
@@ -302,6 +305,7 @@ namespace DMS.Controllers
             }
         }
 
+        [RequireMenu("/Role/Index")]
         public ActionResult GetAuthByRole(AuthMenu authMenu)
         {
             IList<Menu> dataMenu;
@@ -334,6 +338,7 @@ namespace DMS.Controllers
             return Json(new { status, param });
         }
 
+        [RequireMenu("/Role/Index")]
         public ActionResult GetAuthMenuByRole(AuthMenu data)
         {
             IList<Menu> dataMenu;
@@ -359,6 +364,7 @@ namespace DMS.Controllers
             return Json(new { status, param });
         }
 
+        [RequireMenu("/Role/Index")]
         public ActionResult GetAuthFunctionByRole(AuthFunction data)
         {
             IList<Function> dataFunction;

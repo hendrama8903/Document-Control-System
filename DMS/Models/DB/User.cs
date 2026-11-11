@@ -1,6 +1,7 @@
 ﻿using DMS.Common.Models;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace DMS.Models.DB
 {
@@ -10,9 +11,18 @@ namespace DMS.Models.DB
         [Key]
         public string? USERNAME { get; set; }
         public string? REG_NO { get; set; }
+        // Never sent to the browser (2026-11-11, Kadai No. 54): the stored value is reversible.
+        // Still bound from the login and user forms (JsonIgnore only affects JSON).
+        [JsonIgnore]
         public string? PASSWORD { get; set; }
+        [JsonIgnore]
         public string? OLD_PASSWORD { get; set; }
+        [JsonIgnore]
         public string? CONFIRM_PASSWORD { get; set; }
+
+        /// <summary>The user has a local password (the forms ask for the old one when changing it).</summary>
+        [NotMapped]
+        public bool HAS_LOCAL_PASSWORD => !string.IsNullOrEmpty(PASSWORD);
         public string? FULL_NAME { get; set; }
         public string? EMAIL { get; set; }
         public string? PHONE { get; set; }

@@ -77,7 +77,7 @@ namespace DMS.Controllers
                 string full = SignatureService.ProfileSignaturePath(db, environment.WebRootPath, GetLoginUsername());
                 if (full != null)
                 {
-                    string relative = Path.GetRelativePath(environment.WebRootPath, full).Replace('\\', '/');
+                    string relative = Path.GetRelativePath(UploadPath.Root, full).Replace('\\', '/');
                     profileImage = "/" + relative + "?v=" + System.IO.File.GetLastWriteTimeUtc(full).Ticks;
                 }
             }

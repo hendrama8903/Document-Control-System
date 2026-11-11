@@ -172,6 +172,15 @@
         GetListNotif();
     });
 
+    // Session expired: the server answers AJAX calls with 401 (RequireLoginFilter, 2026-11-11).
+    var gSessionRedirecting = false;
+    $(document).ajaxError(function (event, xhr) {
+        if (xhr && xhr.status === 401 && !gSessionRedirecting) {
+            gSessionRedirecting = true;
+            window.location.href = "/Auth/Login?param=" + encodeURIComponent(window.location.pathname + window.location.search);
+        }
+    });
+
     function GetListNotif() {
         $.ajax({
             type: "POST",

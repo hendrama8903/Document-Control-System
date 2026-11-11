@@ -27,7 +27,12 @@ namespace DMS
         {
             services.AddDevExpressControls();
             services.AddScoped<PrintingService>();
-            services.AddControllersWithViews(options => options.Filters.Add<DynamicTitleFilter>());
+            services.AddControllersWithViews(options =>
+            {
+                // Login wajib untuk semua action kecuali Login/Validate/Logout/Error (2026-11-11).
+                options.Filters.Add<RequireLoginFilter>();
+                options.Filters.Add<DynamicTitleFilter>();
+            });
             services.AddMemoryCache();
             // Hanya CSS/JS/SVG statis. HTML dan JSON tidak dikompres karena bisa berisi data
             // sesi di atas HTTPS (BREACH).
@@ -82,6 +87,9 @@ namespace DMS
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            // Uploaded files live outside the application when Storage:RootPath is set (see UploadPath).
+            UploadPath.Configure(Configuration["Storage:RootPath"], env.WebRootPath);
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -149,6 +157,16 @@ namespace DMS
                 }
                 await next();
             });
+
+            // /Upload from the storage folder when it is outside wwwroot. The access check above runs first.
+            if (!string.Equals(UploadPath.Root, Path.GetFullPath(env.WebRootPath).TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+            {
+                app.UseStaticFiles(new StaticFileOptions
+                {
+                    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(Path.Combine(UploadPath.Root, "Upload")),
+                    RequestPath = "/Upload"
+                });
+            }
 
             app.UseStaticFiles(new StaticFileOptions
             {
