@@ -15,15 +15,25 @@ body{
   color:var(--text-dark);
   min-height:100vh;
   background-color:#EAF2FE;
-  background-image:url('../../../images/logo_bg.png');
-  background-repeat:no-repeat;
-  background-position:center center;
-  background-size:cover;
-  background-attachment:fixed;
   overflow-x:hidden;
 }
 
+/* Background illustration (2026-11-15). The picture is very wide (2.36:1): the artwork sits
+   on its left and right, the middle is empty for the card. It is drawn on a fixed layer
+   behind the page instead of background-attachment:fixed, which mobile browsers handle
+   badly. Wide screens: fills the screen. Upright screens (tablet / phone, further down):
+   a band along the bottom, so the artwork stays visible instead of only the empty middle. */
+body::before{
+  content:"";
+  position:fixed;
+  top:0; right:0; bottom:0; left:0;
+  z-index:0;
+  pointer-events:none;
+  background:url('../../../images/logo_bg.png') center center / cover no-repeat;
+}
+
 .page-wrap{
+  z-index:1;
   position:relative;
   min-height:100vh;
   display:flex;
@@ -213,12 +223,35 @@ input:disabled{ opacity:.7; cursor:not-allowed; }
 .bootstrap-growl .close:hover{opacity:1;}
 
 /* ===== responsive: tablet & phone ===== */
-@media (max-width: 768px){
-  /* background-attachment:fixed is buggy/janky on mobile browsers (esp. iOS Safari) */
-  body{background-attachment:scroll;}
+/* Upright screen (narrower than 5:4): "cover" would show only the empty middle of the
+   picture. The whole picture becomes a band along the bottom, as wide as the screen, with
+   its top edge faded into the page color; the card stays above it. */
+@media (max-aspect-ratio: 5/4){
+  body{background:linear-gradient(180deg, #F4F8FF 0%, #E9F1FE 60%, #E4EEFD 100%) fixed;}
+  body::before{
+    top:auto;
+    height:calc(100vw / 2.363);            /* the picture's own height at this width */
+    background-size:100% auto;
+    background-position:center bottom;
+    -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 38%);
+            mask-image:linear-gradient(to bottom, transparent 0, #000 38%);
+  }
+  /* room so the card does not sit on the artwork when the screen is tall enough */
+  .page-wrap{padding-bottom:calc(100vw / 2.363 * .55);}
+}
+/* Phone: the full picture would be a thin strip, so it is enlarged and anchored to its
+   left artwork (the document tray and the "Document Control" sheet). */
+@media (max-aspect-ratio: 5/4) and (max-width: 600px){
+  body::before{
+    height:calc(185vw / 2.363);
+    background-size:185% auto;
+    background-position:left bottom;
+  }
+  .page-wrap{padding-bottom:calc(185vw / 2.363 * .5);}
 }
 @media (max-width: 600px){
-  .page-wrap{padding:20px 16px 24px;}
+  /* bottom padding is left to the rules above (room for the artwork on an upright screen) */
+  .page-wrap{padding-top:20px; padding-left:16px; padding-right:16px;}
   .brand-header{margin-bottom:16px;}
   .brand-header img{height:56px; margin-bottom:10px;}
   .brand-header h1{font-size:16px;}
