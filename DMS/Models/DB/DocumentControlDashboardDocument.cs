@@ -68,6 +68,9 @@ namespace DMS.Models.DB
         public int? DIVISION_COUNT { get; set; }
         public int? PENDING_DISTRIBUTION_COUNT { get; set; }
 
+        // Controlled copies of a superseded revision still in circulation (2026-11-15, "Needs Action").
+        public int? OPEN_OBSOLETE_COPIES { get; set; }
+
         // Folder tree assignment (request Hendra 2026-08-28) - NULL = unassigned,
         // shown under "All Documents". See TB_M_DOCUMENT_FOLDER / DocumentFolder.cs.
         public int? FOLDER_ID { get; set; }

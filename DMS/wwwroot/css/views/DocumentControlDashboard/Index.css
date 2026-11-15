@@ -156,3 +156,17 @@
 @media (max-width: 560px) {
     #btn_toggleFolders, #btn_toggleStats, #btn_hideFolders { display: none !important; }
 }
+
+/* bulk bar in the toolbar, shown while documents are ticked (2026-11-14) */
+.dcd-selection-bar {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 3px 4px 3px 12px; border-radius: 8px;
+    background: #E7F1FB; border: 1px solid #C7D9F7;
+}
+.dcd-selection-count { font-size: 12.5px; font-weight: 700; color: #1C3FA6; white-space: nowrap; }
+.dcd-selection-bar .dp-btn { background: #fff; }
+.dcd-selection-clear {
+    width: 26px; height: 26px; border: none; border-radius: 6px;
+    background: transparent; color: #1C3FA6;
+}
+.dcd-selection-clear:hover { background: #DCE8FC; }

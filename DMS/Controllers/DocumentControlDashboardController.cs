@@ -269,6 +269,145 @@ namespace DMS.Controllers
             }
         }
 
+        // ---------- Binders (bantex) and "Needs Action" (request Hendra 2026-11-15) ----------
+        // A folder can be a master binder or a controlled copy binder kept by a department, see
+        // Services/DocumentBinderService and SQL/DocumentBinder_Migration.sql. Binder details
+        // follow the folder endpoints above (anyone who reaches this menu); the copies filed in
+        // a binder follow the Copy Register (role function Download PDF).
+
+        bool CanManageCopies() =>
+            Services.DocumentAccessService.HasFunction(HttpContext, Services.DocumentExportService.FunctionId);
+
+        public JsonResult GetBinderDepartments()
+        {
+            JsonResult denied = DenyWithoutLogin();
+            if (denied != null) return denied;
+            try
+            {
+                return Json(new { status = true, data = Services.DocumentBinderService.Departments(db) });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public JsonResult SaveBinder(int folderId, string folderType, string folderCode, int? departmentId, string location, string remarks)
+        {
+            JsonResult denied = DenyWithoutLogin();
+            if (denied != null) return denied;
+
+            folderType = string.IsNullOrWhiteSpace(folderType) ? null : folderType.Trim().ToUpperInvariant();
+            folderCode = string.IsNullOrWhiteSpace(folderCode) ? null : folderCode.Trim();
+            location = string.IsNullOrWhiteSpace(location) ? null : location.Trim();
+            remarks = string.IsNullOrWhiteSpace(remarks) ? null : remarks.Trim();
+            if (folderCode?.Length > 50 || location?.Length > 200 || remarks?.Length > 500)
+                return Json(new { status = false, message = "Code can be at most 50, location 200 and notes 500 characters." });
+            try
+            {
+                Services.DocumentBinderService.Save(db, folderId, folderType, folderCode, departmentId, location, remarks, GetLoginUsername());
+                return Json(new { status = true, message = "Binder details saved." });
+            }
+            catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number >= 50011 && ex.Number <= 50018)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        // Binder Index: the copies in circulation of a controlled copy binder (Download PDF
+        // function, as the Copy Register) or the documents of a master binder / folder.
+        public JsonResult GetBinderContents(int folderId)
+        {
+            JsonResult denied = DenyWithoutLogin();
+            if (denied != null) return denied;
+            try
+            {
+                DocumentFolder folder = DocumentFolderRepo.GetTree(db).FirstOrDefault(f => f.FOLDER_ID == folderId);
+                if (folder == null) return Json(new { status = false, message = "Folder not found" });
+                if (folder.FOLDER_TYPE == Services.DocumentBinderService.Copy && !CanManageCopies())
+                    return Json(new { status = false, message = "You are not authorized to view the controlled copies of this binder." });
+
+                return Json(new { status = true, folder, data = Services.DocumentBinderService.Contents(db, folderId) });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public JsonResult AssignCopyToBinder(int exportId, int? folderId)
+        {
+            if (!CanManageCopies())
+                return Json(new { status = false, message = "You are not authorized to file controlled copies." });
+            try
+            {
+                Services.DocumentBinderService.AssignCopy(db, exportId, folderId);
+                return Json(new { status = true, message = folderId == null ? "Copy taken out of its binder." : "Copy filed in the binder." });
+            }
+            catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 50021 || ex.Number == 50022)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public JsonResult GetActionItems()
+        {
+            JsonResult denied = DenyWithoutLogin();
+            if (denied != null) return denied;
+            try
+            {
+                // A chip that leads to another menu is shown only to a role that has that menu.
+                string menuURLList = HttpContext.Session.GetString("menuURL") ?? "";
+                return Json(new
+                {
+                    status = true,
+                    data = Services.DocumentBinderService.GetActionItems(db),
+                    canRegistration = menuURLList.Contains("/P4DMaintenance/Index"),
+                    canPrintRequest = menuURLList.Contains("/CopyRequest/Index")
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        // Printable index sheet and spine label of a binder (opens in a new tab).
+        public IActionResult BinderIndex(int folderId)
+        {
+            if (HttpContext.Session.GetString("USERNAME") == null)
+                return RedirectToAction("Login", "Auth");
+            string menuURLList = HttpContext.Session.GetString("menuURL") ?? "";
+            if (!menuURLList.Contains("/DocumentControlDashboard/Index"))
+            {
+                Response.StatusCode = 403;
+                return View("Error403");
+            }
+
+            DocumentFolder folder = DocumentFolderRepo.GetTree(db).FirstOrDefault(f => f.FOLDER_ID == folderId);
+            if (folder == null) return NotFound();
+            if (folder.FOLDER_TYPE == Services.DocumentBinderService.Copy && !CanManageCopies())
+            {
+                Response.StatusCode = 403;
+                return View("Error403");
+            }
+
+            ViewData["Folder"] = folder;
+            ViewData["Items"] = Services.DocumentBinderService.Contents(db, folderId);
+            ViewData["PrintedBy"] = GetLoginUsername();
+            return View();
+        }
+
         public IActionResult DownloadDocument(string path)
         {
             IActionResult fileDenied = FileAccessDenied(db, path);

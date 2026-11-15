@@ -1,0 +1,20 @@
+<!-- Binder Index (request Hendra 2026-11-15): what a binder holds. For a controlled copy
+     binder: the numbered copies in circulation, which ones are obsolete, and their withdrawal.
+     Side panel like the Copy Register, with the same styles (_CopyRegisterPanel.css). -->
+<link rel="stylesheet" href="~/css/views/DocumentControlDashboard/_CopyRegisterPanel.css" asp-append-version="true" />
+
+<div id="binderPanel">
+    <div class="crp-header">
+        <div class="crp-header-icon"><i class="fa fa-book"></i></div>
+        <div>
+            <div class="crp-header-title">Binder Index</div>
+            <div class="crp-header-sub" id="bdpTitle">-</div>
+        </div>
+        <button type="button" class="crp-close" id="btn_closeBinderPanel" title="Close"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="crp-summary" id="bdpSummary"></div>
+    <div class="crp-toolbar">
+        <button type="button" class="dp-btn dp-btn-outline" id="btn_printBinderIndex"><i class="fa fa-print"></i> Print Index and Label</button>
+    </div>
+    <div class="crp-body" id="bdpBody"></div>
+</div>

@@ -1,5 +1,6 @@
             <!-- RECOMMIT DINA -->
 <link rel="stylesheet" href="~/css/views/DocumentControlDashboard/Index.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/views/DocumentControlDashboard/Binder.css" asp-append-version="true" />
 <section class="content">
     <div class="row">
         <div class="col-xs-12">
@@ -13,6 +14,21 @@
                             <div class="dcd-folder-title-row">
                                 <span class="dcd-folder-title" id="dcdFolderTitle">All Documents</span>
                                 <span class="dcd-folder-subtitle" id="dcdFolderSubtitle"></span>
+                                @* shown only while a Needs Action filter is on (it is set in the
+                                   Register Overview panel, which may be closed) *@
+                                <span class="dcd-action-active" id="dcdActionActive" style="display:none;">
+                                    <i class="fa fa-filter"></i> <span id="dcdActionActiveLabel"></span>
+                                    <button type="button" id="btn_clearActionFilter" title="Clear this filter"><i class="fa fa-times"></i></button>
+                                </span>
+                            </div>
+                            @* Binder details of the open folder (2026-11-15): type, label code, holder,
+                               location, and what to do with it. Filled by dcdRenderBinderHeader(). *@
+                            <div class="dcd-binder-bar" id="dcdBinderBar" style="display:none;">
+                                <div class="dcd-binder-meta" id="dcdBinderMeta"></div>
+                                <div class="dcd-binder-actions">
+                                    <button type="button" class="dp-btn dp-btn-outline" id="btn_binderIndex"><i class="fa fa-list-alt"></i> Binder Index</button>
+                                    <button type="button" class="dp-btn dp-btn-outline" id="btn_binderDetails"><i class="fa fa-pencil"></i> Binder Details</button>
+                                </div>
                             </div>
                         </div>
                         <div id="divSearch">
@@ -34,5 +50,7 @@
 {
     @Html.Partial("_CopyRegisterPanel")
 }
+@Html.Partial("_BinderPanel")
+@Html.Partial("_BinderDetailsPopup")
 @Html.Partial("~/Views/DocumentMaintenance/_DocumentHistoryPopup.cshtml")
 @Html.Partial("_Javascript")

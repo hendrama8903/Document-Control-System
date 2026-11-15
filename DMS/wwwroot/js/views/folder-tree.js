@@ -45,19 +45,27 @@ function loadFolderTree(afterLoad) {
 
 function renderFolderTree() {
     var $tree = $("#dcdFolderTree").empty();
+    var rootDepth = 0;
 
-    var $all = $("<div>").addClass("dcd-folder-row").toggleClass("selected", gSelectedFolderId === null);
-    $("<span>").addClass("dcd-folder-chevron").appendTo($all); // spacer, no children
-    $("<i>").addClass("fa fa-folder-open-o dcd-folder-icon").appendTo($all);
-    $("<span>").addClass("dcd-folder-name").text("All Documents").appendTo($all);
-    $all.on("click", function () { dcdSelectFolder(null); });
-    $tree.append($all);
-
-    if (gFolderAddingUnder === null) {
-        dcdAppendFolderInput($tree, null);
+    if (typeof folderTreeRenderTop === "function") {
+        // Page-specific top of the tree (UserDashboard: All Documents, Library, My Folders).
+        // Returns the depth for the folders of this tree, or -1 when they are collapsed.
+        rootDepth = folderTreeRenderTop($tree);
+        if (rootDepth < 0) { return; }
+    } else {
+        var $all = $("<div>").addClass("dcd-folder-row").toggleClass("selected", gSelectedFolderId === null);
+        $("<span>").addClass("dcd-folder-chevron").appendTo($all); // spacer, no children
+        $("<i>").addClass("fa fa-folder-open-o dcd-folder-icon").appendTo($all);
+        $("<span>").addClass("dcd-folder-name").text("All Documents").appendTo($all);
+        $all.on("click", function () { dcdSelectFolder(null); });
+        $tree.append($all);
     }
 
-    dcdRenderFolderLevel($tree, null, 0);
+    if (gFolderAddingUnder === null) {
+        dcdAppendFolderInput($tree, null, rootDepth);
+    }
+
+    dcdRenderFolderLevel($tree, null, rootDepth);
 
     if (gAllFolders.length === 0 && gFolderAddingUnder !== null) {
         $("<div>").addClass("mf-empty-state").text("No folders yet - click + to create one.").appendTo($tree);
@@ -80,9 +88,19 @@ function dcdRenderFolderLevel($container, parentId, depth) {
             var $row = $("<div>").addClass("dcd-folder-row").toggleClass("selected", gSelectedFolderId === folder.FOLDER_ID).css("padding-left", (8 + depth * 18) + "px");
             var $chevron = $("<span>").addClass("dcd-folder-chevron fa fa-chevron-right").toggleClass("expanded", expanded).css("visibility", hasChildren ? "visible" : "hidden").appendTo($row);
             $chevron.on("click", function (e) { e.stopPropagation(); dcdToggleFolderExpand(folder.FOLDER_ID); });
-            $("<i>").addClass("fa fa-folder-o dcd-folder-icon").appendTo($row);
-            $("<span>").addClass("dcd-folder-name").text(folder.FOLDER_NAME).appendTo($row);
-            $("<span>").addClass("dcd-folder-count").text(folder.DOCUMENT_COUNT || 0).appendTo($row);
+            // A binder shows its own icon, its label code, and for a controlled copy binder the
+            // copies in circulation instead of documents - red while an obsolete copy is in it.
+            var isCopyBinder = folder.FOLDER_TYPE === "COPY";
+            var obsoleteCopies = isCopyBinder ? (folder.OBSOLETE_COPY_COUNT || 0) : 0;
+            $row.attr("title", dcdFolderTooltip(folder));
+            $("<i>").addClass("fa " + dcdFolderIconClass(folder) + " dcd-folder-icon").appendTo($row);
+            var $name = $("<span>").addClass("dcd-folder-name").appendTo($row);
+            if (folder.FOLDER_CODE && folder.FOLDER_CODE !== folder.FOLDER_NAME) {
+                $("<span>").addClass("dcd-folder-code").text(folder.FOLDER_CODE).appendTo($name);
+            }
+            $name.append(document.createTextNode(folder.FOLDER_NAME));
+            $("<span>").addClass("dcd-folder-count").toggleClass("dcd-folder-count-alert", obsoleteCopies > 0)
+                .text(isCopyBinder ? (folder.COPY_COUNT || 0) : (folder.DOCUMENT_COUNT || 0)).appendTo($row);
             if (gFolderCanManage) { dcdAppendFolderKebab($row, folder); }
 
             $row.on("click", function (e) {
@@ -162,6 +180,165 @@ function dcdAppendFolderKebab($row, folder) {
 
 function dcdCloseFolderMenu() { $(".dcd-folder-dropdown-menu").remove(); }
 
+// ---------- Binders (bantex), Document Control only (request Hendra 2026-11-15) ----------
+// A folder can be a physical binder: a master binder kept by Document Control (holds
+// documents) or a controlled copy binder kept by a department (holds numbered copies).
+// See SQL/DocumentBinder_Migration.sql. My Documents has no saveBinder url, so its
+// personal folders never show any of this.
+function dcdBinderTypeLabel(folder) {
+    if (folder.FOLDER_TYPE === "COPY") { return "Controlled Copy Binder"; }
+    if (folder.FOLDER_TYPE === "MASTER") { return "Master Binder"; }
+    return "Folder";
+}
+
+function dcdFolderIconClass(folder) {
+    if (folder.FOLDER_TYPE === "COPY") { return "fa-book"; }
+    if (folder.FOLDER_TYPE === "MASTER") { return "fa-archive"; }
+    return "fa-folder-o";
+}
+
+function dcdBinderHolder(folder) {
+    return folder.DEPARTMENT_CODE ? folder.DEPARTMENT_CODE + " - " + (folder.DEPARTMENT_NAME || "") : "";
+}
+
+function dcdFolderTooltip(folder) {
+    if (!folder.FOLDER_TYPE) { return folder.FOLDER_NAME; }
+    var lines = [dcdBinderTypeLabel(folder) + (folder.FOLDER_CODE ? " " + folder.FOLDER_CODE : "")];
+    if (dcdBinderHolder(folder)) { lines.push("Holder: " + dcdBinderHolder(folder)); }
+    if (folder.LOCATION) { lines.push("Location: " + folder.LOCATION); }
+    if (folder.FOLDER_TYPE === "COPY" && folder.OBSOLETE_COPY_COUNT > 0) {
+        lines.push(folder.OBSOLETE_COPY_COUNT + " obsolete cop" + (folder.OBSOLETE_COPY_COUNT > 1 ? "ies" : "y") + " to withdraw");
+    }
+    return lines.join("\n");
+}
+
+var gBinderDepartments = null; // loaded once, on the first Binder Details
+
+function dcdOpenBinderDetails(folder) {
+    if (gBinderDepartments) { dcdShowBinderDetails(folder); return; }
+    $.ajax({
+        type: "GET",
+        url: folderTreeConfig.urls.getBinderDepartments,
+        cache: false,
+        success: function (result) {
+            if (result.status == true) {
+                gBinderDepartments = result.data || [];
+                dcdShowBinderDetails(folder);
+            } else {
+                showErrorMesgGrowl(result.message);
+            }
+        },
+        error: function () { showErrorMesgGrowl("Failed to load the departments"); }
+    });
+}
+
+// The popup (#modalBinder, _BinderDetailsPopup.cshtml) replaced the generic message box
+// (2026-11-15): type as three cards, the binder fields only for a binder, errors under the
+// field they belong to.
+var gBinderEditing = null;
+
+function dcdBinderType() {
+    return $("#bdfTypes .bdf-type.selected").data("type") || "";
+}
+
+function dcdSetBinderType(type) {
+    $("#bdfTypes .bdf-type").each(function () {
+        $(this).toggleClass("selected", ($(this).data("type") || "") === (type || ""));
+    });
+    // a plain folder has no label, holder or location
+    $("#bdfBinderFields").toggle(!!type);
+    // the holder is required only for a binder kept by a department
+    $("#bdfHolderRequired").toggle(type === "COPY");
+    dcdClearBinderErrors();
+}
+
+function dcdClearBinderErrors() {
+    $("#modalBinder .bdf-error").removeClass("show").text("");
+    $("#modalBinder .bdf-invalid").removeClass("bdf-invalid");
+}
+
+function dcdBinderError(errorId, inputId, message) {
+    $("#" + errorId).text(message).addClass("show");
+    if (inputId) { $("#" + inputId).addClass("bdf-invalid").trigger("focus"); }
+}
+
+function dcdShowBinderDetails(folder) {
+    gBinderEditing = folder;
+
+    // departments grouped by division, in the order the server sent them
+    var $department = $("#bdfDepartment").empty().append($("<option>").val("").text("Choose a department"));
+    var $group = null, division = null;
+    gBinderDepartments.forEach(function (d) {
+        if (d.DIVISION !== division) {
+            division = d.DIVISION;
+            $group = $("<optgroup>").attr("label", division || "-").appendTo($department);
+        }
+        $("<option>").val(d.DEPARTMENT_ID).text(d.DEPARTMENT_CODE + " - " + d.DEPARTMENT_NAME).appendTo($group);
+    });
+
+    $("#bdfFolderName").text(folder.FOLDER_NAME);
+    $("#bdfCode").val(folder.FOLDER_CODE || "");
+    $department.val(folder.DEPARTMENT_ID || "");
+    $("#bdfLocation").val(folder.LOCATION || "");
+    $("#bdfRemarks").val(folder.REMARKS || "");
+    dcdSetBinderType(folder.FOLDER_TYPE || "");
+    $("#btn_saveBinder").prop("disabled", false);
+    $("#modalBinder").modal("show");
+}
+
+function dcdSaveBinderDetails() {
+    var folder = gBinderEditing;
+    if (!folder) { return; }
+    var type = dcdBinderType();
+    var code = $.trim($("#bdfCode").val());
+    var departmentId = $("#bdfDepartment").val();
+
+    dcdClearBinderErrors();
+    if (type && !code) { dcdBinderError("bdfCodeError", "bdfCode", "Enter the binder code written on its label."); return; }
+    if (type === "COPY" && !departmentId) { dcdBinderError("bdfDepartmentError", "bdfDepartment", "Choose the department that holds this binder."); return; }
+
+    $("#btn_saveBinder").prop("disabled", true);
+    $.ajax({
+        type: "POST",
+        url: folderTreeConfig.urls.saveBinder,
+        // a plain folder keeps no binder data
+        data: {
+            folderId: folder.FOLDER_ID,
+            folderType: type,
+            folderCode: type ? code : "",
+            departmentId: type ? departmentId : "",
+            location: type ? $.trim($("#bdfLocation").val()) : "",
+            remarks: $.trim($("#bdfRemarks").val())
+        },
+        success: function (result) {
+            $("#btn_saveBinder").prop("disabled", false);
+            if (result.status == true) {
+                $("#modalBinder").modal("hide");
+                showSuccessMesgGrowl(result.message);
+                // the open folder may have changed type: refresh its header and grid filter
+                loadFolderTree(function () { if (gSelectedFolderId === folder.FOLDER_ID) { dcdSelectFolder(folder.FOLDER_ID); } });
+            } else if (/code is already used/i.test(result.message || "")) {
+                dcdBinderError("bdfCodeError", "bdfCode", result.message);
+            } else {
+                // e.g. the folder still holds documents / copies of the other kind
+                dcdBinderError("bdfFormError", null, result.message || "Failed to save the binder details");
+            }
+        },
+        error: function () {
+            $("#btn_saveBinder").prop("disabled", false);
+            dcdBinderError("bdfFormError", null, "Failed to save the binder details");
+        }
+    });
+}
+
+$(document).ready(function () {
+    $("#bdfTypes").on("click", ".bdf-type", function () { dcdSetBinderType($(this).data("type") || ""); });
+    $("#btn_saveBinder").on("click", dcdSaveBinderDetails);
+    $("#modalBinder").on("keydown", "input", function (e) { if (e.key === "Enter") { dcdSaveBinderDetails(); } });
+    // first field of the form once the popup is open
+    $("#modalBinder").on("shown.bs.modal", function () { if (dcdBinderType()) { $("#bdfCode").trigger("focus"); } });
+});
+
 function dcdOpenFolderMenu($btn, folder) {
     var $menu = $("<ul>").addClass("dropdown-menu dp-dropdown-menu dcd-folder-dropdown-menu")
         .css({ position: "fixed", "z-index": 2000, "min-width": "170px", background: "#fff", margin: 0, "list-style": "none" });
@@ -178,6 +355,13 @@ function dcdOpenFolderMenu($btn, folder) {
         gFolderRenamingId = folder.FOLDER_ID;
         renderFolderTree();
     })).appendTo($menu);
+
+    if (folderTreeConfig.urls.saveBinder) {
+        $("<li>").append($("<button>").attr("type", "button").html('<i class="fa fa-book"></i> Binder Details').on("click", function (e) {
+            e.stopPropagation(); dcdCloseFolderMenu();
+            dcdOpenBinderDetails(folder);
+        })).appendTo($menu);
+    }
 
     $("<li>").append($("<button>").attr("type", "button").html('<i class="fa fa-trash-o"></i> Delete').on("click", function (e) {
         e.stopPropagation(); dcdCloseFolderMenu();
@@ -260,18 +444,31 @@ function dcdFlattenFolders(parentId, depth, out) {
     return out;
 }
 
-function dcdOpenFolderPicker($anchor, onPick) {
+// copyBinders = true: pick a controlled copy binder for a copy (flat list, with holder);
+// otherwise pick a folder / master binder for documents - a controlled copy binder holds
+// copies, not documents, so it is left out there (2026-11-15).
+function dcdOpenFolderPicker($anchor, onPick, copyBinders) {
     $(".dcd-folder-picker").remove();
 
     var $picker = $("<div>").addClass("dcd-folder-picker");
-    $("<div>").addClass("dcd-folder-picker-item").text("All Documents (unassigned)").on("click", function () {
+    $("<div>").addClass("dcd-folder-picker-item").text(copyBinders ? "Not in a binder" : "All Documents (unassigned)").on("click", function () {
         $picker.remove(); onPick(null);
     }).appendTo($picker);
 
-    dcdFlattenFolders(null, 0, []).forEach(function (entry) {
-        $("<div>").addClass("dcd-folder-picker-item").css("padding-left", (10 + entry.depth * 14) + "px")
-            .text(entry.folder.FOLDER_NAME)
-            .on("click", function () { $picker.remove(); onPick(entry.folder.FOLDER_ID); })
+    var entries = dcdFlattenFolders(null, 0, []).filter(function (entry) {
+        return (entry.folder.FOLDER_TYPE === "COPY") === !!copyBinders;
+    });
+    if (copyBinders && entries.length === 0) {
+        $("<div>").addClass("dcd-folder-picker-empty").text("No controlled copy binder yet. Open Binder Details of a folder to make one.").appendTo($picker);
+    }
+    entries.forEach(function (entry) {
+        var folder = entry.folder;
+        var label = copyBinders
+            ? (folder.FOLDER_CODE || folder.FOLDER_NAME) + (folder.DEPARTMENT_CODE ? " · " + folder.DEPARTMENT_CODE : "")
+            : folder.FOLDER_NAME;
+        $("<div>").addClass("dcd-folder-picker-item").css("padding-left", (10 + (copyBinders ? 0 : entry.depth) * 14) + "px")
+            .text(label)
+            .on("click", function () { $picker.remove(); onPick(folder.FOLDER_ID); })
             .appendTo($picker);
     });
 

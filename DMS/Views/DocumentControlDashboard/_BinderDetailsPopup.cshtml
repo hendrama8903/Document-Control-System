@@ -1,0 +1,103 @@
+@* Binder Details (request Hendra 2026-11-15): same popup design as the Master Data forms
+   (dvf-* classes of DivisionMaster/_PopupForm.css) instead of the generic message box.
+   Filled and saved by folder-tree.js (dcdShowBinderDetails). *@
+<link rel="stylesheet" href="~/css/views/DivisionMaster/_PopupForm.css" asp-append-version="true" />
+
+<div class="modal fade" id="modalBinder" role="dialog" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <div class="dvf-header">
+                <div class="dvf-header-icon"><i class="fa fa-book"></i></div>
+                <div>
+                    <div class="dvf-header-title">Binder Details</div>
+                    <div class="dvf-header-sub" id="bdfFolderName">-</div>
+                </div>
+                <button type="button" class="dvf-close" data-dismiss="modal" title="Close"><i class="fa fa-times"></i></button>
+            </div>
+
+            <div class="dvf-body">
+                <div class="bdf-section-label">What is this folder?</div>
+                <div class="bdf-types" id="bdfTypes">
+                    <button type="button" class="bdf-type" data-type="">
+                        <i class="fa fa-folder-o"></i>
+                        <span class="bdf-type-title">Folder</span>
+                        <span class="bdf-type-sub">Only groups documents on screen</span>
+                    </button>
+                    <button type="button" class="bdf-type" data-type="MASTER">
+                        <i class="fa fa-archive"></i>
+                        <span class="bdf-type-title">Master Binder</span>
+                        <span class="bdf-type-sub">Kept by Document Control, holds the master documents</span>
+                    </button>
+                    <button type="button" class="bdf-type" data-type="COPY">
+                        <i class="fa fa-book"></i>
+                        <span class="bdf-type-title">Controlled Copy Binder</span>
+                        <span class="bdf-type-sub">Kept by a department, holds numbered copies</span>
+                    </button>
+                </div>
+
+                <div id="bdfBinderFields">
+                    <div class="dvf-row">
+                        <div class="dvf-row-left">
+                            <div class="dvf-icon"><i class="fa fa-tag"></i></div>
+                            <div>
+                                <div class="dvf-label">Binder Code <span class="text-red">*</span></div>
+                                <div class="dvf-sub">As written on the label</div>
+                            </div>
+                        </div>
+                        <div class="dvf-row-right">
+                            <input class="form-control" id="bdfCode" type="text" maxlength="50" placeholder="e.g. BTX-ITD-01" autocomplete="off" />
+                            <div class="bdf-error" id="bdfCodeError"></div>
+                        </div>
+                    </div>
+
+                    <div class="dvf-row">
+                        <div class="dvf-row-left">
+                            <div class="dvf-icon"><i class="fa fa-users"></i></div>
+                            <div>
+                                <div class="dvf-label">Holder Department <span class="text-red" id="bdfHolderRequired">*</span></div>
+                                <div class="dvf-sub">Who keeps the binder</div>
+                            </div>
+                        </div>
+                        <div class="dvf-row-right">
+                            <select class="form-control" id="bdfDepartment"></select>
+                            <div class="bdf-error" id="bdfDepartmentError"></div>
+                        </div>
+                    </div>
+
+                    <div class="dvf-row">
+                        <div class="dvf-row-left">
+                            <div class="dvf-icon"><i class="fa fa-map-marker"></i></div>
+                            <div>
+                                <div class="dvf-label">Location</div>
+                                <div class="dvf-sub">Room, cabinet or shelf</div>
+                            </div>
+                        </div>
+                        <div class="dvf-row-right">
+                            <input class="form-control" id="bdfLocation" type="text" maxlength="200" placeholder="e.g. QMS room, cabinet 2" autocomplete="off" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dvf-row">
+                    <div class="dvf-row-left">
+                        <div class="dvf-icon"><i class="fa fa-sticky-note-o"></i></div>
+                        <div>
+                            <div class="dvf-label">Notes</div>
+                            <div class="dvf-sub">Optional</div>
+                        </div>
+                    </div>
+                    <div class="dvf-row-right">
+                        <input class="form-control" id="bdfRemarks" type="text" maxlength="500" placeholder="Anything worth knowing about it" autocomplete="off" />
+                    </div>
+                </div>
+
+                <div class="bdf-error bdf-error-form" id="bdfFormError"></div>
+            </div>
+
+            <div class="dvf-footer">
+                <button type="button" class="dvf-btn dvf-btn-cancel" data-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
+                <button type="button" class="dvf-btn dvf-btn-primary" id="btn_saveBinder"><i class="fa fa-save"></i> Save</button>
+            </div>
+        </div>
+    </div>
+</div>

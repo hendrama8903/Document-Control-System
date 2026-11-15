@@ -1,4 +1,4 @@
-#copyRegisterPanel {
+:is(#copyRegisterPanel, #binderPanel) {
     position: fixed;
     top: 0;
     right: 0;
@@ -14,9 +14,9 @@
     transition: transform .22s cubic-bezier(.4,0,.2,1);
 }
 
-#copyRegisterPanel.open { transform: translateX(0); }
+:is(#copyRegisterPanel, #binderPanel).open { transform: translateX(0); }
 
-#copyRegisterPanel .crp-header {
+:is(#copyRegisterPanel, #binderPanel) .crp-header {
     padding: 16px 18px;
     display: flex;
     align-items: center;
@@ -25,7 +25,7 @@
     flex: none;
 }
 
-#copyRegisterPanel .crp-header-icon {
+:is(#copyRegisterPanel, #binderPanel) .crp-header-icon {
     width: 34px;
     height: 34px;
     border-radius: 9px;
@@ -38,10 +38,10 @@
     font-size: 15px;
 }
 
-#copyRegisterPanel .crp-header-title { font-size: 14px; font-weight: 700; color: #101828; }
-#copyRegisterPanel .crp-header-sub { font-size: 12px; color: #8A94A3; margin-top: 2px; }
+:is(#copyRegisterPanel, #binderPanel) .crp-header-title { font-size: 14px; font-weight: 700; color: #101828; }
+:is(#copyRegisterPanel, #binderPanel) .crp-header-sub { font-size: 12px; color: #8A94A3; margin-top: 2px; }
 
-#copyRegisterPanel .crp-close {
+:is(#copyRegisterPanel, #binderPanel) .crp-close {
     background: none;
     border: none;
     color: #98A2B3;
@@ -50,41 +50,41 @@
     padding: 2px;
     margin-left: auto;
 }
-#copyRegisterPanel .crp-close:hover { color: #475467; }
+:is(#copyRegisterPanel, #binderPanel) .crp-close:hover { color: #475467; }
 
-#copyRegisterPanel .crp-summary {
+:is(#copyRegisterPanel, #binderPanel) .crp-summary {
     display: flex;
     gap: 8px;
     padding: 12px 18px 0;
     flex: none;
 }
 
-#copyRegisterPanel .crp-stat {
+:is(#copyRegisterPanel, #binderPanel) .crp-stat {
     flex: 1;
     border: 1px solid #EEF1F5;
     border-radius: 9px;
     padding: 8px 10px;
 }
-#copyRegisterPanel .crp-stat-value { font-size: 18px; font-weight: 700; color: #101828; line-height: 1.2; }
-#copyRegisterPanel .crp-stat-label { font-size: 11.5px; color: #8A94A3; }
-#copyRegisterPanel .crp-stat-alert .crp-stat-value { color: #C62828; }
+:is(#copyRegisterPanel, #binderPanel) .crp-stat-value { font-size: 18px; font-weight: 700; color: #101828; line-height: 1.2; }
+:is(#copyRegisterPanel, #binderPanel) .crp-stat-label { font-size: 11.5px; color: #8A94A3; }
+:is(#copyRegisterPanel, #binderPanel) .crp-stat-alert .crp-stat-value { color: #C62828; }
 
-#copyRegisterPanel .crp-toolbar {
+:is(#copyRegisterPanel, #binderPanel) .crp-toolbar {
     padding: 10px 18px 6px;
     flex: none;
     font-size: 12.5px;
     color: #475467;
 }
-#copyRegisterPanel .crp-toggle { font-weight: 400; cursor: pointer; margin: 0; }
-#copyRegisterPanel .crp-toggle input { margin: 0 4px 0 0; vertical-align: -1px; }
+:is(#copyRegisterPanel, #binderPanel) .crp-toggle { font-weight: 400; cursor: pointer; margin: 0; }
+:is(#copyRegisterPanel, #binderPanel) .crp-toggle input { margin: 0 4px 0 0; vertical-align: -1px; }
 
-#copyRegisterPanel .crp-body {
+:is(#copyRegisterPanel, #binderPanel) .crp-body {
     padding: 4px 18px 18px;
     flex: 1 1 auto;
     overflow-y: auto;
 }
 
-#copyRegisterPanel .crp-rev {
+:is(#copyRegisterPanel, #binderPanel) .crp-rev {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -93,9 +93,9 @@
     font-weight: 700;
     color: #344054;
 }
-#copyRegisterPanel .crp-rev:first-child { margin-top: 6px; }
+:is(#copyRegisterPanel, #binderPanel) .crp-rev:first-child { margin-top: 6px; }
 
-#copyRegisterPanel .crp-rev-warning {
+:is(#copyRegisterPanel, #binderPanel) .crp-rev-warning {
     background: #FFF4DC;
     color: #B36B00;
     border-radius: 8px;
@@ -104,7 +104,7 @@
     margin-bottom: 8px;
 }
 
-#copyRegisterPanel .crp-card {
+:is(#copyRegisterPanel, #binderPanel) .crp-card {
     border: 1px solid #EEF1F5;
     border-radius: 10px;
     padding: 10px 12px;
@@ -112,20 +112,20 @@
     font-size: 12.5px;
     color: #344054;
 }
-#copyRegisterPanel .crp-card.crp-withdrawn { background: #FAFBFC; color: #8A94A3; }
+:is(#copyRegisterPanel, #binderPanel) .crp-card.crp-withdrawn { background: #FAFBFC; color: #8A94A3; }
 
-#copyRegisterPanel .crp-card-top {
+:is(#copyRegisterPanel, #binderPanel) .crp-card-top {
     display: flex;
     align-items: center;
     gap: 8px;
     margin-bottom: 4px;
 }
-#copyRegisterPanel .crp-copy-no { font-weight: 700; color: #101828; font-size: 13px; }
-#copyRegisterPanel .crp-withdrawn .crp-copy-no { color: #8A94A3; }
-#copyRegisterPanel .crp-line { margin-top: 2px; word-break: break-word; }
-#copyRegisterPanel .crp-muted { color: #8A94A3; }
+:is(#copyRegisterPanel, #binderPanel) .crp-copy-no { font-weight: 700; color: #101828; font-size: 13px; }
+:is(#copyRegisterPanel, #binderPanel) .crp-withdrawn .crp-copy-no { color: #8A94A3; }
+:is(#copyRegisterPanel, #binderPanel) .crp-line { margin-top: 2px; word-break: break-word; }
+:is(#copyRegisterPanel, #binderPanel) .crp-muted { color: #8A94A3; }
 
-#copyRegisterPanel .crp-pill {
+:is(#copyRegisterPanel, #binderPanel) .crp-pill {
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -134,11 +134,11 @@
     padding: 2px 9px;
     border-radius: 999px;
 }
-#copyRegisterPanel .crp-pill-success { background: #E4F7EC; color: #1E9E63; }
-#copyRegisterPanel .crp-pill-danger { background: #FDECEC; color: #C62828; }
-#copyRegisterPanel .crp-pill-default { background: #F1F3F6; color: #66788A; }
+:is(#copyRegisterPanel, #binderPanel) .crp-pill-success { background: #E4F7EC; color: #1E9E63; }
+:is(#copyRegisterPanel, #binderPanel) .crp-pill-danger { background: #FDECEC; color: #C62828; }
+:is(#copyRegisterPanel, #binderPanel) .crp-pill-default { background: #F1F3F6; color: #66788A; }
 
-#copyRegisterPanel .crp-withdraw-btn {
+:is(#copyRegisterPanel, #binderPanel) .crp-withdraw-btn {
     margin-left: auto;
     font-size: 12px;
     padding: 3px 10px;
@@ -148,11 +148,27 @@
     color: #C62828;
     cursor: pointer;
 }
-#copyRegisterPanel .crp-withdraw-btn:hover { background: #FDECEC; }
+:is(#copyRegisterPanel, #binderPanel) .crp-withdraw-btn:hover { background: #FDECEC; }
 
-#copyRegisterPanel .crp-empty {
+:is(#copyRegisterPanel, #binderPanel) .crp-empty {
     text-align: center;
     color: #8A94A3;
     font-size: 12.5px;
     padding: 32px 8px;
 }
+
+/* Binder Index and "File in Binder" (2026-11-15) - both panels share this file */
+:is(#copyRegisterPanel, #binderPanel) .crp-link-btn {
+    margin-left: 8px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: #2450D8;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+:is(#copyRegisterPanel, #binderPanel) .crp-link-btn:hover { text-decoration: underline; }
+#binderPanel .crp-card > .crp-link-btn { margin: 6px 0 0; display: inline-block; }
+#binderPanel .crp-obsolete-note { color: #C62828; font-weight: 600; }
+#binderPanel .crp-toolbar .dp-btn { background: #fff; }

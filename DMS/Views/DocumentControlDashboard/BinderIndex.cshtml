@@ -1,0 +1,129 @@
+@using DMS.Models.DB
+@using DMS.Services
+@{
+    // Printable index sheet + spine label of a binder (request Hendra 2026-11-15). Standalone
+    // page (no site layout) opened in a new tab from Document Control > Binder Index > Print.
+    Layout = null;
+    var folder = (DocumentFolder)ViewData["Folder"];
+    var items = (List<DocumentBinderService.BinderItem>)ViewData["Items"];
+    bool isCopy = folder.FOLDER_TYPE == DocumentBinderService.Copy;
+    bool isMaster = folder.FOLDER_TYPE == DocumentBinderService.Master;
+    string typeLabel = isCopy ? "Controlled Copy Binder" : (isMaster ? "Master Binder" : "Folder");
+    string holder = string.IsNullOrEmpty(folder.DEPARTMENT_CODE) ? "-" : folder.DEPARTMENT_CODE + " - " + folder.DEPARTMENT_NAME;
+    int obsolete = items.Count(i => i.IS_OBSOLETE);
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Binder Index - @(folder.FOLDER_CODE ?? folder.FOLDER_NAME)</title>
+    <link rel="stylesheet" href="~/css/views/DocumentControlDashboard/BinderIndex.css" asp-append-version="true" />
+</head>
+<body>
+    <div class="bi-actions">
+        <button type="button" onclick="window.print()">Print</button>
+        <span>Index sheet goes in front of the binder. Cut the spine label along the dashed line.</span>
+    </div>
+
+    <div class="bi-sheet">
+        <div class="bi-head">
+            <div>
+                <div class="bi-type">@typeLabel</div>
+                <h1>@(folder.FOLDER_CODE ?? folder.FOLDER_NAME)</h1>
+                @if (!string.IsNullOrEmpty(folder.FOLDER_CODE))
+                {
+                    <div class="bi-name">@folder.FOLDER_NAME</div>
+                }
+            </div>
+            <table class="bi-meta">
+                <tr><th>Holder</th><td>@holder</td></tr>
+                <tr><th>Location</th><td>@(folder.LOCATION ?? "-")</td></tr>
+                <tr><th>@(isCopy ? "Copies" : "Documents")</th><td>@items.Count</td></tr>
+                <tr><th>Printed</th><td>@DateTime.Now.ToString("dd MMM yyyy HH:mm") · @ViewData["PrintedBy"]</td></tr>
+            </table>
+        </div>
+
+        @if (obsolete > 0)
+        {
+            <div class="bi-warning">
+                @obsolete cop@(obsolete > 1 ? "ies" : "y") in this binder belong@(obsolete > 1 ? "" : "s") to a superseded revision.
+                Withdraw and replace with the current revision.
+            </div>
+        }
+
+        <table class="bi-table">
+            <thead>
+                <tr>
+                    <th class="bi-no">No</th>
+                    <th>Document No</th>
+                    <th>Document Name</th>
+                    <th class="bi-center">Revision</th>
+                    @if (isCopy)
+                    {
+                        <th class="bi-center">Copy No</th>
+                        <th class="bi-center">Issued</th>
+                        <th>Status</th>
+                    }
+                    else
+                    {
+                        <th class="bi-center">Effective Date</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @if (items.Count == 0)
+                {
+                    <tr><td colspan="@(isCopy ? 7 : 5)" class="bi-empty">This binder is empty.</td></tr>
+                }
+                @for (int i = 0; i < items.Count; i++)
+                {
+                    var item = items[i];
+                    <tr class="@(item.IS_OBSOLETE ? "bi-obsolete" : "")">
+                        <td class="bi-no">@(i + 1)</td>
+                        <td>@item.DOCUMENT_CODE</td>
+                        <td>@item.DOCUMENT_NAME</td>
+                        <td class="bi-center">@((item.REVISION ?? 0).ToString("00"))</td>
+                        @if (isCopy)
+                        {
+                            <td class="bi-center">@((item.COPY_NO ?? 0).ToString("00"))</td>
+                            <td class="bi-center">@item.ISSUED_DT?.ToString("dd MMM yyyy")</td>
+                            <td>
+                                @if (item.IS_OBSOLETE)
+                                {
+                                    @(item.CURRENT_REVISION != null
+                                        ? "Obsolete - replace with Rev. " + item.CURRENT_REVISION.Value.ToString("00")
+                                        : "Obsolete - withdraw")
+                                }
+                                else
+                                {
+                                    @:Current
+                                }
+                            </td>
+                        }
+                        else
+                        {
+                            <td class="bi-center">@item.ISSUED_DT?.ToString("dd MMM yyyy")</td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <div class="bi-foot">Printed from the Document Control System. Check the system for the current revision.</div>
+    </div>
+
+    <div class="bi-spine-wrap">
+        <div class="bi-spine">
+            <div class="bi-spine-type">@typeLabel</div>
+            <div class="bi-spine-code">@(folder.FOLDER_CODE ?? folder.FOLDER_NAME)</div>
+            @if (!string.IsNullOrEmpty(folder.FOLDER_CODE))
+            {
+                <div class="bi-spine-name">@folder.FOLDER_NAME</div>
+            }
+            <div class="bi-spine-holder">@(string.IsNullOrEmpty(folder.DEPARTMENT_CODE) ? "" : folder.DEPARTMENT_CODE)</div>
+            <div class="bi-spine-location">@folder.LOCATION</div>
+        </div>
+    </div>
+</body>
+</html>

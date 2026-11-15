@@ -27,6 +27,17 @@ BEGIN TRY
 		RETURN 0;
 	END
 
+	-- A controlled copy binder holds numbered copies, not documents (2026-11-15,
+	-- SQL/DocumentBinder_Migration.sql): file a copy in it from the Copy Register instead.
+	IF @FOLDER_ID IS NOT NULL AND EXISTS (
+		SELECT 1 FROM [dbo].[TB_M_DOCUMENT_FOLDER] WHERE FOLDER_ID = @FOLDER_ID AND FOLDER_TYPE = 'COPY'
+	)
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: A controlled copy binder holds copies, not documents - file a copy in it from the Copy Register';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+		RETURN 0;
+	END
+
 	UPDATE [dbo].[TB_R_DOCUMENT]
 	SET FOLDER_ID	= @FOLDER_ID,
 			CHANGED_DT	= GETDATE(),

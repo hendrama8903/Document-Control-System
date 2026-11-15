@@ -9,6 +9,14 @@
         <span>Register Overview</span>
         <button type="button" class="dp-stats-panel-close" id="btn_closeStatsPanel"><i class="fa fa-times"></i></button>
     </div>
+    @* Two tabs (request Hendra 2026-11-15): Overview = the register numbers, Needs Action =
+       what Document Control still has to do. Needs Action sat above the grid toolbar first;
+       moved here so the area around the grid stays clean. *@
+    <div class="dcd-stats-tabs" id="dcdStatsTabs">
+        <button type="button" class="dcd-stats-tab active" data-tab="overview">Overview</button>
+        <button type="button" class="dcd-stats-tab" data-tab="action">Needs Action <span class="dcd-stats-tab-badge" id="dcdActionBadge" style="display:none;">0</span></button>
+    </div>
+    <div class="dp-stats-panel-body dcd-action-chips" id="dcdActionChips" style="display:none;"></div>
     <div class="dp-stats-panel-body" id="dcdStatsRow">
         <div class="dp-stat-card">
             <div class="dp-stat-card-icon blue"><i class="fa fa-file-text-o"></i></div>

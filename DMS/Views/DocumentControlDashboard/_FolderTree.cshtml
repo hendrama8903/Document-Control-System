@@ -22,6 +22,7 @@
     // pages point this same tree UI at different controllers/tables entirely.
     // Falls back to DocumentControlDashboard so that page needs no ViewData change.
     var folderController = ViewData["FolderController"] as string ?? "DocumentControlDashboard";
+    bool isDocumentControl = folderController == "DocumentControlDashboard";
 }
 <script type="text/javascript">
     var folderTreeConfig = {
@@ -29,7 +30,11 @@
             getFolderTree: "@Url.Action("GetFolderTree", folderController)",
             createFolder: "@Url.Action("CreateFolder", folderController)",
             renameFolder: "@Url.Action("RenameFolder", folderController)",
-            deleteFolder: "@Url.Action("DeleteFolder", folderController)"
+            deleteFolder: "@Url.Action("DeleteFolder", folderController)",
+            // Binder details exist only for the Document Control folders (2026-11-15); empty
+            // on My Documents, whose personal folders are not binders.
+            saveBinder: "@(isDocumentControl ? Url.Action("SaveBinder", "DocumentControlDashboard") : "")",
+            getBinderDepartments: "@(isDocumentControl ? Url.Action("GetBinderDepartments", "DocumentControlDashboard") : "")"
         }
     };
 </script>

@@ -23,7 +23,7 @@ namespace DMS.Services
 
         /// <summary>Records the export and returns the copy number (null unless CONTROLLED).</summary>
         public static int? Record(DBContext db, int documentTransactionId, string documentCode, int? revision,
-            string purpose, string recipient, string notes, string username)
+            string purpose, string recipient, string notes, string username, int? binderId = null)
         {
             using var connection = new SqlConnection(db.Database.GetConnectionString());
             connection.Open();
@@ -37,6 +37,8 @@ namespace DMS.Services
             command.Parameters.Add(new SqlParameter("@RECIPIENT", (object)recipient ?? DBNull.Value));
             command.Parameters.Add(new SqlParameter("@NOTES", (object)notes ?? DBNull.Value));
             command.Parameters.Add(new SqlParameter("@USERNAME", username));
+            // Controlled copy binder the copy is filed in (2026-11-15, DocumentBinderService)
+            command.Parameters.Add(new SqlParameter("@FOLDER_ID", (object)binderId ?? DBNull.Value));
 
             using var reader = command.ExecuteReader();
             if (!reader.Read()) return null;
@@ -58,6 +60,9 @@ namespace DMS.Services
             public DateTime? WITHDRAWN_DT { get; set; }
             public string WITHDRAW_NOTE { get; set; }
             public bool IS_OBSOLETE { get; set; }
+            public int? FOLDER_ID { get; set; }
+            public string BINDER_CODE { get; set; }
+            public string BINDER_NAME { get; set; }
         }
 
         /// <summary>Every controlled copy of every revision of the document (sp_DocumentExport_CopyRegister).</summary>
@@ -89,6 +94,9 @@ namespace DMS.Services
                     WITHDRAWN_DT = r["WITHDRAWN_DT"] as DateTime?,
                     WITHDRAW_NOTE = r["WITHDRAW_NOTE"] as string,
                     IS_OBSOLETE = (bool)r["IS_OBSOLETE"],
+                    FOLDER_ID = r["FOLDER_ID"] as int?,
+                    BINDER_CODE = r["BINDER_CODE"] as string,
+                    BINDER_NAME = r["BINDER_NAME"] as string,
                 });
             }
             return items;

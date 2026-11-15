@@ -31,6 +31,14 @@ BEGIN TRY
 		RETURN 0;
 	END
 
+	-- A controlled copy binder that still holds copies in circulation (2026-11-15)
+	IF EXISTS (SELECT TOP 1 1 FROM [dbo].[TB_R_DOCUMENT_EXPORT] WHERE FOLDER_ID = @FOLDER_ID AND PURPOSE = 'CONTROLLED' AND WITHDRAWN_DT IS NULL)
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: This binder still holds controlled copies in circulation - withdraw or move them first';
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @LOGIN_USER
+		RETURN 0;
+	END
+
 	UPDATE [dbo].[TB_M_DOCUMENT_FOLDER]
 	SET DELETE_FLAG	= 1,
 			CHANGED_DT	= GETDATE(),
