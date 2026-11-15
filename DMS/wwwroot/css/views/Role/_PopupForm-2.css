@@ -5,57 +5,9 @@
 
 #modalAuth .modal-body { padding: 18px 22px; }
 
-.ra-auth-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-}
-
-.ra-auth-stats {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.ra-auth-stat {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 14px;
-    border-radius: 10px;
-    border: 1px solid #E3E8EE;
-    background: #F9FAFB;
-    min-width: 130px;
-}
-
-.ra-auth-stat i {
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 13px;
-    color: #fff;
-    flex: none;
-}
-
-.ra-auth-stat.blue i { background: #2450D8; }
-.ra-auth-stat.green i { background: #1E9E63; }
-.ra-auth-stat.purple i { background: #6C3FB5; }
-.ra-auth-stat.orange i { background: #C6791F; }
-
-.ra-auth-stat b { display: block; font-size: 16px; color: #1D2939; line-height: 1.1; }
-.ra-auth-stat span { display: block; font-size: 10.5px; color: #667085; white-space: nowrap; }
-
-.ra-auth-permsearch input { width: 220px; }
-
 .ra-auth-columns {
     display: grid;
-    grid-template-columns: 230px 230px 1fr;
+    grid-template-columns: 240px 240px 1fr;
     gap: 14px;
 }
 
@@ -83,14 +35,20 @@
     gap: 10px;
 }
 
+.ra-auth-col-title-row .ra-auth-col-title {
+    padding: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .ra-auth-col-sub {
-    display: block;
     font-size: 11px;
     font-weight: 400;
     color: #98A2B3;
-    text-transform: none;
-    letter-spacing: 0;
-    margin-top: 2px;
+    margin-left: 6px;
 }
 
 .ra-auth-checkall {
@@ -111,10 +69,11 @@
    so measure from the input edge instead, otherwise the icon sits on the input border. */
 .ra-auth-colsearch i { left: 23px; }
 
+/* Fixed height so the three columns line up even when a column is empty. */
 .ra-auth-list {
-    flex: 1 1 auto;
+    flex: none;
     overflow-y: auto;
-    max-height: 380px;
+    height: 360px;
     padding: 4px 8px 8px;
 }
 
@@ -148,10 +107,10 @@
 }
 
 .ra-auth-permgrid {
-    flex: 1 1 auto;
+    flex: none;
     overflow-y: auto;
-    max-height: 380px;
-    padding: 10px 12px 12px;
+    height: 360px;
+    padding: 4px 12px 12px;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
@@ -235,8 +194,6 @@
     display: inline-block;
 }
 
-#modalAuth .modal-footer { justify-content: space-between; }
-.ra-auth-footer-right { display: flex; gap: 10px; }
 
 @media (max-width: 991px) {
     .ra-auth-columns { grid-template-columns: 1fr; }

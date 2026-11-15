@@ -41,7 +41,7 @@ $(document).ready(function () {
     $("#datagrid").dxDataGrid(dmsGridOptions({
         dataSource: gridStore,
         height: computeGridHeight(),
-        filterRow: { visible: true, applyFilter: "auto" },
+        filterRow: { visible: false, applyFilter: "auto" },
         columns: [
             {
                 caption: "No",
@@ -95,25 +95,25 @@ $(document).ready(function () {
                 },
                 cellTemplate: function (container, options) {
                     var row = options.data;
-                    var labelClass = "label label-danger";
+                    var pillClass = "dms-pill-danger";
 
                     if (row.STATUS == 0) {
-                        labelClass = "label label-info";
+                        pillClass = "dms-pill-info";
                     } else if (row.STATUS == 1) {
-                        labelClass = "label label-success";
+                        pillClass = "dms-pill-success";
                     } else if (row.STATUS == 4) {
-                        labelClass = "label label-default";
+                        pillClass = "dms-pill-default";
                     } else if (row.STATUS == 5) {
-                        labelClass = "label label-primary";
+                        pillClass = "dms-pill-primary";
                     }
 
-                    $("<span>").addClass(labelClass).text(row.STATUS_DISPLAY).appendTo(container);
+                    $("<span>").addClass("dms-pill " + pillClass).append($("<span>").addClass("dms-dot")).append(document.createTextNode(row.STATUS_DISPLAY || "")).appendTo(container);
                 }
             },
             {
                 dataField: "DOCUMENT_DATE",
                 caption: "Effective Date",
-                alignment: "center",
+                alignment: "right",
                 cellTemplate: function (container, options) {
                     var value = options.data.DOCUMENT_DATE;
                     container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
@@ -176,7 +176,12 @@ $(document).ready(function () {
         ]
     }));
 
-    bindGridToolbar("columns resize");
+    bindGridToolbar("columns filters reset refresh resize");
+
+    // Reset clears every filter; bring back the default "current, valid" status filter
+    $("#btn_resetFilters").on("click", function () {
+        $("#datagrid").dxDataGrid("instance").columnOption("STATUS", "filterValues", [1, 5]);
+    });
 
     $("#btn_export").on("click", function () {
         window.location.href = documentMasterlistConfig.urls.downloadExcel;

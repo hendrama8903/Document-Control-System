@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 using NPOI.POIFS.FileSystem;
+using NPOI.SS.UserModel;
+using NPOI.XSSF.UserModel;
 
 namespace DMS.Controllers
 {
@@ -76,6 +78,59 @@ namespace DMS.Controllers
             {
                 return Json("Error : " + ex.Message);
             }
+        }
+
+        // Export to Excel with the same columns as the grid (pattern of DocumentMasterlistController.DownloadExcel).
+        public IActionResult DownloadExcel()
+        {
+            if (!(HttpContext.Session.GetString("menuURL") ?? "").Contains("/DocumentReport/Index"))
+            {
+                return StatusCode(403);
+            }
+
+            IList<DocumentReport> listData = documentMaintenanceRepo.SearchReport(new DocumentReport(), db, null, null);
+
+            IWorkbook workbook = new XSSFWorkbook();
+            ISheet sheet = workbook.CreateSheet("Document Distribution");
+
+            string[] headers = {
+                "No", "Document Code", "Document Name", "Document Date", "Next Review Date", "Division", "Department",
+                "Revision", "Published", "Creator", "Distribution Date"
+            };
+
+            IRow headerRow = sheet.CreateRow(0);
+            for (int col = 0; col < headers.Length; col++)
+            {
+                headerRow.CreateCell(col).SetCellValue(headers[col]);
+            }
+
+            int no = 1;
+            foreach (DocumentReport item in listData)
+            {
+                IRow row = sheet.CreateRow(no);
+                row.CreateCell(0).SetCellValue(no);
+                row.CreateCell(1).SetCellValue(item.DOCUMENT_CODE ?? "");
+                row.CreateCell(2).SetCellValue(item.DOCUMENT_TRANSACTION_NAME ?? "");
+                row.CreateCell(3).SetCellValue(item.DOCUMENT_DATE?.ToString("dd-MM-yyyy") ?? "");
+                row.CreateCell(4).SetCellValue(item.NEXT_REVIEW_DATE?.ToString("dd-MM-yyyy") ?? "");
+                row.CreateCell(5).SetCellValue(item.DIVISION != null ? item.DIVISION + " - " + item.DIVISION_NAME : "");
+                row.CreateCell(6).SetCellValue(item.DEPARTMENT_CODE != null ? item.DEPARTMENT_CODE + " - " + item.DEPARTMENT_NAME : "");
+                row.CreateCell(7).SetCellValue(item.REVISION ?? 0);
+                row.CreateCell(8).SetCellValue(item.PUBLISH_FLAG == 1 ? "Yes" : "No");
+                row.CreateCell(9).SetCellValue(item.DOCUMENT_CREATOR ?? "");
+                row.CreateCell(10).SetCellValue(item.DISTRIBUTION_DATE?.ToString("dd-MM-yyyy") ?? "");
+                no++;
+            }
+
+            for (int col = 0; col < headers.Length; col++)
+            {
+                sheet.AutoSizeColumn(col);
+            }
+
+            using var memoryStream = new MemoryStream();
+            workbook.Write(memoryStream);
+            return File(memoryStream.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "DOCUMENT-DISTRIBUTION-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
     }
 }

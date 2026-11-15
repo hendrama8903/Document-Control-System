@@ -28,8 +28,7 @@ $(document).ready(function () {
     $("#datagrid").dxDataGrid(dmsGridOptions({
         dataSource: gridStore,
         height: computeGridHeight(),
-        filterRow: { visible: true, applyFilter: "auto" },
-        selection: { mode: "single" },
+        filterRow: { visible: false, applyFilter: "auto" },
         columns: [
             {
                 caption: "No",
@@ -71,15 +70,15 @@ $(document).ready(function () {
                     var reviewDate = moment(value).startOf("day");
                     var today = moment().startOf("day");
                     var daysLeft = reviewDate.diff(today, "days");
-                    var labelClass = "label label-default";
+                    var pillClass = "dms-pill-default";
 
                     if (daysLeft < 0) {
-                        labelClass = "label label-danger";
+                        pillClass = "dms-pill-danger";
                     } else if (daysLeft <= 30) {
-                        labelClass = "label label-warning";
+                        pillClass = "dms-pill-warning";
                     }
 
-                    $("<span>").addClass(labelClass).text(reviewDate.format("DD-MM-YYYY")).appendTo(container);
+                    $("<span>").addClass("dms-pill " + pillClass).text(reviewDate.format("DD-MM-YYYY")).appendTo(container);
                 }
             },
             {
@@ -101,10 +100,10 @@ $(document).ready(function () {
                 alignment: "center",
                 cellTemplate: function (container, options) {
                     var row = options.data;
-                    var labelClass = row.PUBLISH_FLAG == 1 ? "label label-success" : "label label-warning";
-                    var text = row.PUBLISH_FLAG == 1 ? "YES" : "NO";
+                    var pillClass = row.PUBLISH_FLAG == 1 ? "dms-pill-success" : "dms-pill-warning";
+                    var text = row.PUBLISH_FLAG == 1 ? "Yes" : "No";
 
-                    $("<span>").addClass(labelClass).text(text).appendTo(container);
+                    $("<span>").addClass("dms-pill " + pillClass).append($("<span>").addClass("dms-dot")).append(document.createTextNode(text)).appendTo(container);
                 }
             },
             { dataField: "DOCUMENT_CREATOR", caption: "Creator" },
@@ -120,7 +119,11 @@ $(document).ready(function () {
         ]
     }));
 
-    bindGridToolbar("resize");
+    bindGridToolbar("columns filters reset refresh resize");
+
+    $("#btn_export").on("click", function () {
+        window.location.href = documentReportConfig.urls.downloadExcel;
+    });
 
     $('body').tooltip({ selector: '[data-toggle="tooltip"]' });
 });

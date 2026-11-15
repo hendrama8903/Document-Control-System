@@ -182,3 +182,12 @@
         border-color: #E3E8EF; box-shadow: 0 4px 14px rgba(16,24,40,.04); margin-top: 16px;
     }
 }
+
+/* ---------- row menu: disabled items show their reason under the label; Delete in red ---------- */
+.dp-dropdown-menu .dp-menu-text { display: flex; flex-direction: column; line-height: 1.3; }
+.dp-dropdown-menu .dp-menu-hint { font-size: 11px; color: #667085; }
+.dp-dropdown-menu > li > button[disabled]:has(.dp-menu-hint) { opacity: .75; }
+.dp-dropdown-menu > li > button[disabled] .dp-menu-text > span:first-child { color: #98A2B3; }
+.dp-dropdown-menu > li > button.dp-menu-delete:not([disabled]) { color: #C62828; }
+.dp-dropdown-menu > li > button.dp-menu-delete:not([disabled]):hover { background: #FDECEC; }
+.dp-dropdown-menu > li.divider { margin: 4px 0; }

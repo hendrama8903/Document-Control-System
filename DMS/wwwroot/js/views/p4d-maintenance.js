@@ -48,25 +48,6 @@ function setMyApprovalOnly(enabled) {
     $("#datagrid").dxDataGrid("instance").columnOption("MY_APPROVAL", "filterValue", enabled ? "Y" : undefined);
 }
 
-function updateActionButtons() {
-    var row = getSelectedRowData();
-    var selected = row != null;
-
-    $("#btn_edit").prop("disabled", !selected);
-    // Delete cuma untuk Draft/Rejected - Checking (1) SENGAJA tidak boleh,
-    // sebab QMS sudah mulai Receive/review; department harus Un-Receive dulu
-    // (balik ke Draft) baru bisa Delete, supaya log aktivitas & distribusi
-    // tidak hilang permanen tanpa jejak di tengah proses QMS (request Hendra
-    // 2026-08-14).
-    $("#btn_delete").prop("disabled", !(selected && (row.STATUS == 0 || row.STATUS == 3) && row.DEPARTMENT_ID == SESSION_DEPARTMENT_ID_LOGIN));
-    $("#btn_receive").prop("disabled", !(selected && row.STATUS == 0));
-    $("#btn_accept").prop("disabled", !(selected && row.STATUS == 1));
-    $("#btn_unreceive").prop("disabled", !(selected && row.STATUS == 2));
-    $("#btn_reject").prop("disabled", !(selected && row.STATUS == 0));
-    $("#btn_distribution").prop("disabled", !(selected && row.STATUS != 0 && row.STATUS != 3 && row.STATUS != 4));
-    $("#btn_send").prop("disabled", !(selected && (row.STATUS == 2 || row.STATUS == 6)));
-}
-
 // ---------- docked "Document Status" panel toggle - top-level (not inside
 // $(document).ready) so updateHeaderStats() below can reach dpLastPending too ----------
 var dpLastPending = 0;
@@ -92,14 +73,6 @@ function setStatsPanelCollapsed(collapsed) {
 
 $(document).ready(function () {
     $("#btn_add").prop("disabled", false);
-    $("#btn_edit").prop("disabled", true);
-    $("#btn_delete").prop("disabled", true);
-    $("#btn_receive").prop("disabled", true);
-    $("#btn_accept").prop("disabled", true);
-    $("#btn_unreceive").prop("disabled", true);
-    $("#btn_reject").prop("disabled", true);
-    $("#btn_distribution").prop("disabled", true);
-    $("#btn_send").prop("disabled", true);
 
     var gridStore = new DevExpress.data.CustomStore({
         key: "DOCUMENT_CTRL_ID",
@@ -136,25 +109,15 @@ $(document).ready(function () {
         dataSource: gridStore,
         height: computeGridHeight(),
         filterRow: { visible: false, applyFilter: "auto" },
-        selection: {
-            mode: "multiple",
-            showCheckBoxesMode: "always",
-            allowSelectAll: false
-        },
+        // No checkbox column: every per-document action is in the row menu, which selects its
+        // own row (selectRowThen) so the *Prepare functions can read it via getSelectedRowData.
+        selection: { mode: "single" },
         onRowPrepared: function (e) {
             if (e.rowType === "data" && getMyAction(e.data) != null) {
                 e.rowElement.addClass("dp-row-my-approval");
             }
         },
-        onSelectionChanged: function (e) {
-            if (e.selectedRowKeys.length > 1) {
-                e.component.selectRows(e.currentSelectedRowKeys, false);
-                return;
-            }
-            updateActionButtons();
-        },
         columns: [
-            { type: "selection", width: 40, fixed: true, fixedPosition: "left" },
             {
                 caption: "No",
                 width: 50,
@@ -504,16 +467,25 @@ function buildRowActionMenu() {
     return $dpRowMenu;
 }
 
-function menuItem(cssClass, icon, label, enabled, onClick) {
-    var $li = $('<li><button type="button" class="' + cssClass + '"' + (enabled ? "" : " disabled") + '><i class="fa ' + icon + '"></i> ' + label + '</button></li>');
-    if (enabled) {
-        $li.find("button").on("click", function (e) {
+// One menu item. An item that never applies to the document's status is not added at all
+// (the caller skips it). An item that applies but cannot run yet is shown disabled, with the
+// reason written under the label so it is readable without hovering (Hendra 2026-11-13).
+function p4dMenuItem(cssClass, icon, label, onClick, disabledReason) {
+    var $btn = $('<button type="button"></button>').addClass(cssClass)
+        .append($('<i class="fa"></i>').addClass(icon))
+        .append($('<span class="dp-menu-text"></span>').append($("<span></span>").text(label)));
+
+    if (disabledReason) {
+        $btn.prop("disabled", true).attr("title", disabledReason);
+        $btn.find(".dp-menu-text").append($('<small class="dp-menu-hint"></small>').text(disabledReason));
+    } else {
+        $btn.on("click", function (e) {
             e.preventDefault();
             $dpRowMenu.hide();
             onClick();
         });
     }
-    return $li;
+    return $("<li></li>").append($btn);
 }
 
 function selectRowThen(row, action) {
@@ -522,82 +494,97 @@ function selectRowThen(row, action) {
     action();
 }
 
+// Groups, top to bottom: View, Process, Manage, then Delete on its own. A divider only goes
+// between groups that have items.
 function openRowActionMenu($btn, row) {
     var $menu = buildRowActionMenu();
     $menu.empty();
 
-    $menu.append(menuItem("dp-menu-preview", "fa-eye", "Preview", true, function () {
-        onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+    var status = row.STATUS;
+    var pending = row.PENDING_DISTRIBUTION_COUNT || 0;
+    var view = [], process = [], manage = [], danger = [];
+
+    // ---- View ----
+    view.push(p4dMenuItem("dp-menu-preview", "fa-eye", "Preview", function () {
+        onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID, row);
+    }));
+    view.push(p4dMenuItem("dp-menu-history", "fa-history", "Revision History", function () {
+        onclickHistory(row.DOCUMENT_CODE);
+    }));
+    view.push(p4dMenuItem("dp-menu-history", "fa-file-text", "Activity Log", function () {
+        onclickLog(row.DOCUMENT_TRANSACTION_ID);
     }));
 
-    if (gCanReceive) {
-        $menu.append(menuItem("dp-menu-approve", "fa-check-circle", "Receive", row.STATUS == 0, function () {
+    // ---- Process (status flow: Draft 0 -> Checking 1 -> Accepted 2 -> Sent 5 / Partially Sent 6) ----
+    if (gCanReceive && status == 0) {
+        process.push(p4dMenuItem("dp-menu-approve", "fa-check-circle", "Receive", function () {
             selectRowThen(row, onReceivePrepare);
         }));
     }
-
-    if (gCanReceive) {
-        $menu.append(menuItem("dp-menu-accept", "fa-check-square-o", "Accept", row.STATUS == 1, function () {
+    if (gCanReceive && status == 1) {
+        process.push(p4dMenuItem("dp-menu-accept", "fa-check-square-o", "Accept", function () {
             selectRowThen(row, onAcceptPrepare);
         }));
     }
-
-    if (gCanUnReceive) {
-        $menu.append(menuItem("dp-menu-unreceive", "fa-undo", "Un-Receive", row.STATUS == 2, function () {
-            selectRowThen(row, onUnReceivePrepare);
+    if (gCanReject && status == 0) {
+        process.push(p4dMenuItem("dp-menu-reject", "fa-ban", "Reject", function () {
+            selectRowThen(row, onRejectPrepare);
         }));
     }
+    if (gCanSend && (status == 2 || status == 6)) {
+        process.push(p4dMenuItem("dp-menu-send", "fa-paper-plane-o", "Send", function () {
+            selectRowThen(row, onSendDistributionAllPrepare);
+        }, pending > 0 ? null : (status == 2 ? "Set the Distribution first" : "No department waiting to be sent")));
+    }
+    // sp_P4DMaintenance_UnReceive refuses while any distribution row exists; at Accepted (2)
+    // nothing is sent yet, so every distribution row is still pending.
+    if (gCanUnReceive && status == 2) {
+        process.push(p4dMenuItem("dp-menu-unreceive", "fa-undo", "Un-Receive", function () {
+            selectRowThen(row, onUnReceivePrepare);
+        }, pending > 0 ? "Remove the Distribution first" : null));
+    }
 
+    // ---- Manage ----
+    if (gCanDistribution && (status == 1 || status == 2 || status == 5 || status == 6)) {
+        manage.push(p4dMenuItem("dp-menu-distribution", "fa-share-alt", "Distribution", function () {
+            selectRowThen(row, onDistributionPrepare);
+        }));
+    }
     // Stamp Layout stage 3: change the fixed stamp positions after Accept (reason required).
-    if (p4dMaintenanceConfig.canAdjustStamp && typeof spOpen === "function") {
-        $menu.append(menuItem("dp-menu-stamp", "fa-certificate", "Stamp Position", (row.STATUS == 2 || row.STATUS == 5 || row.STATUS == 6), function () {
+    if (p4dMaintenanceConfig.canAdjustStamp && typeof spOpen === "function" && (status == 2 || status == 5 || status == 6)) {
+        manage.push(p4dMenuItem("dp-menu-stamp", "fa-certificate", "Stamp Position", function () {
             selectRowThen(row, function () { spOpen(row.DOCUMENT_CTRL_ID, row.DOCUMENT_CODE); });
         }));
     }
-
-    if (gCanEdit) {
-        $menu.append(menuItem("dp-menu-location", "fa-map-marker", "Update Location", true, function () {
+    if (gCanEdit && status != 4) {
+        manage.push(p4dMenuItem("dp-menu-location", "fa-map-marker", "Update Location", function () {
             selectRowThen(row, onEditPrepare);
         }));
     }
 
-    if (gCanSend) {
-        $menu.append(menuItem("dp-menu-send", "fa-paper-plane-o", "Send", (row.STATUS == 2 || row.STATUS == 6), function () {
-            selectRowThen(row, onSendDistributionAllPrepare);
-        }));
-    }
-
-    if (gCanDistribution) {
-        $menu.append(menuItem("dp-menu-distribution", "fa-share-alt", "Distribution", (row.STATUS != 0 && row.STATUS != 3 && row.STATUS != 4), function () {
-            selectRowThen(row, onDistributionPrepare);
-        }));
-    }
-
-    if (gCanReject) {
-        $menu.append(menuItem("dp-menu-reject", "fa-ban", "Reject", row.STATUS == 0, function () {
-            selectRowThen(row, onRejectPrepare);
-        }));
-    }
-
-    $menu.append(menuItem("dp-menu-history", "fa-history", "Revision History", true, function () {
-        onclickHistory(row.DOCUMENT_CODE);
-    }));
-
-    $menu.append(menuItem("dp-menu-history", "fa-file-text", "Activity Log", true, function () {
-        onclickLog(row.DOCUMENT_TRANSACTION_ID);
-    }));
-
-    if (gCanDelete) {
-        var deletable = (row.STATUS == 0 || row.STATUS == 3) && row.DEPARTMENT_ID == SESSION_DEPARTMENT_ID_LOGIN;
-        $menu.append('<li class="divider"></li>');
-        $menu.append(menuItem("dp-menu-delete", "fa-trash-o", "Delete", deletable, function () {
+    // ---- Delete: Draft/Rejected only. Checking (1) is deliberately excluded - QMS has started
+    // the review, so the department must Un-Receive first and the activity log is kept
+    // (Hendra 2026-08-14). Only the registering department may delete. ----
+    if (gCanDelete && (status == 0 || status == 3)) {
+        danger.push(p4dMenuItem("dp-menu-delete", "fa-trash-o", "Delete", function () {
             selectRowThen(row, onDeletePrepare);
-        }));
+        }, row.DEPARTMENT_ID == SESSION_DEPARTMENT_ID_LOGIN ? null : "Only the registering department can delete"));
     }
 
+    [view, process, manage, danger].filter(function (g) { return g.length > 0; })
+        .forEach(function (group, i) {
+            if (i > 0) $menu.append('<li class="divider"></li>');
+            group.forEach(function ($li) { $menu.append($li); });
+        });
+
+    // Open below the button, or above it when there is no room below.
     var offset = $btn.offset();
-    $menu.css({ top: offset.top + $btn.outerHeight() + 4, left: offset.left - $menu.outerWidth() + $btn.outerWidth() })
-        .show();
+    var menuHeight = $menu.outerHeight();
+    var top = offset.top + $btn.outerHeight() + 4;
+    if (top + menuHeight > $(window).scrollTop() + $(window).height() && offset.top - menuHeight - 4 > $(window).scrollTop()) {
+        top = offset.top - menuHeight - 4;
+    }
+    $menu.css({ top: top, left: offset.left - $menu.outerWidth() + $btn.outerWidth() }).show();
 }
 
 //$(document).ready(function () {
@@ -720,30 +707,6 @@ $(document).ready(function () {
         onAddPrepare();
     });
 
-    $("#btn_edit").on("click", function () {
-        onEditPrepare();
-    });
-
-    $("#btn_delete").on("click", function () {
-        onDeletePrepare();
-    });
-
-    $("#btn_receive").on("click", function () {
-        onReceivePrepare();
-    });
-
-    $("#btn_accept").on("click", function () {
-        onAcceptPrepare();
-    });
-
-    $("#btn_unreceive").on("click", function () {
-        onUnReceivePrepare();
-    });
-
-    $("#btn_reject").on("click", function () {
-        onRejectPrepare();
-    });
-
     $("#btn_save").on("click", function () {
         confirmAddEditData();
     });
@@ -766,14 +729,6 @@ $(document).ready(function () {
 
     $("#btn_download").on("click", function () {
         onDownload();
-    });
-
-    $("#btn_distribution").on("click", function () {
-        onDistributionPrepare();
-    });
-
-    $("#btn_send").on("click", function () {
-        onSendDistributionAllPrepare();
     });
 
     $("#btn_addDistribution").on("click", function () {
@@ -1719,19 +1674,23 @@ function downloadAttachment() {
     }
 }
 
-function onViewAttachment(attachment, documentId) {
+function onViewAttachment(attachment, documentId, row) {
     gAttachmentPath = attachment;
     gDocumentCtrlId = documentId;
-    viewAttachment();
+    viewAttachment(row);
 }
 
-function viewAttachment() {
+// Preview in the Document Viewer pop up (2026-11-12) instead of a new tab; same URL.
+function viewAttachment(row) {
     if (gAttachmentPath !== "null" && gAttachmentPath !== null) {
         var link = p4dMaintenanceConfig.urls.viewAttachment;
         link = link.replace("-1", gAttachmentPath);
         link = link.replace("-2", gDocumentCtrlId);
         link = link.replace("-3", "2");
-        window.open(link, '_blank');
+        var subtitle = [];
+        if (row && row.REVISION != null) subtitle.push("Rev." + ("0" + row.REVISION).slice(-2));
+        if (row && row.DOCUMENT_NAME) subtitle.push(row.DOCUMENT_NAME);
+        DocViewer.open({ url: link, title: (row && row.DOCUMENT_CODE) || "Preview", subtitle: subtitle.join(" · ") });
     } else {
         showErrorMesgGrowl("This data does not have an attachment");
     }

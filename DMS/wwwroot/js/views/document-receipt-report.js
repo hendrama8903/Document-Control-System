@@ -32,7 +32,7 @@ $(document).ready(function () {
     $("#datagrid").dxDataGrid(dmsGridOptions({
         dataSource: gridStore,
         height: computeGridHeight(),
-        filterRow: { visible: true, applyFilter: "auto" },
+        filterRow: { visible: false, applyFilter: "auto" },
         selection: {
             mode: "multiple",
             showCheckBoxesMode: "always",
@@ -69,7 +69,7 @@ $(document).ready(function () {
             {
                 dataField: "RECEIVED_DATE",
                 caption: "Received Date",
-                alignment: "center",
+                alignment: "right",
                 cellTemplate: function (container, options) {
                     var value = options.data.RECEIVED_DATE;
                     container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
@@ -79,7 +79,11 @@ $(document).ready(function () {
         ]
     }));
 
-    bindGridToolbar("columns resize");
+    bindGridToolbar("columns filters reset refresh resize");
+
+    $("#btn_export").on("click", function () {
+        window.location.href = documentReceiptReportConfig.urls.downloadExcel;
+    });
 
     $('body').tooltip({ selector: '[data-toggle="tooltip"]' });
 });

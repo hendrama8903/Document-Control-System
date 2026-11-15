@@ -3,6 +3,8 @@ using DMS.Models;
 using DMS.Models.DB;
 using DMS.Models.Repo;
 using Microsoft.AspNetCore.Mvc;
+using NPOI.SS.UserModel;
+using NPOI.XSSF.UserModel;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 
@@ -77,6 +79,52 @@ namespace DMS.Controllers
                     error = ex.Message
                 });
             }
+        }
+
+        // Export to Excel with the same columns as the grid (pattern of DocumentMasterlistController.DownloadExcel).
+        public IActionResult DownloadExcel()
+        {
+            if (!(HttpContext.Session.GetString("menuURL") ?? "").Contains("/DocumentReceiptReport/Index"))
+            {
+                return StatusCode(403);
+            }
+
+            var listData = documentReceiptReportRepo.Search(new DocumentReceiptReport(), db, null, null);
+
+            IWorkbook workbook = new XSSFWorkbook();
+            ISheet sheet = workbook.CreateSheet("Document Receipt Report");
+
+            string[] headers = { "No", "Document No", "Document Name", "Revision", "Department", "Received Date", "Received By" };
+
+            IRow headerRow = sheet.CreateRow(0);
+            for (int col = 0; col < headers.Length; col++)
+            {
+                headerRow.CreateCell(col).SetCellValue(headers[col]);
+            }
+
+            int no = 1;
+            foreach (DocumentReceiptReport item in listData)
+            {
+                IRow row = sheet.CreateRow(no);
+                row.CreateCell(0).SetCellValue(no);
+                row.CreateCell(1).SetCellValue(item.DOCUMENT_CODE ?? "");
+                row.CreateCell(2).SetCellValue(item.DOCUMENT_NAME ?? "");
+                row.CreateCell(3).SetCellValue(item.REVISION ?? 0);
+                row.CreateCell(4).SetCellValue(item.DEPARTMENT_CODE != null ? item.DEPARTMENT_CODE + " - " + item.DEPARTMENT_NAME : "");
+                row.CreateCell(5).SetCellValue(item.RECEIVED_DATE?.ToString("dd-MM-yyyy") ?? "");
+                row.CreateCell(6).SetCellValue(item.RECEIVED_BY_NAME ?? "");
+                no++;
+            }
+
+            for (int col = 0; col < headers.Length; col++)
+            {
+                sheet.AutoSizeColumn(col);
+            }
+
+            using var memoryStream = new MemoryStream();
+            workbook.Write(memoryStream);
+            return File(memoryStream.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "DOCUMENT-RECEIPT-REPORT-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
         }
 
         //Cetak "Tanda Terima Dokumen" (form QMS Hino QCD/FR-QMS-00/006) untuk baris-baris yang

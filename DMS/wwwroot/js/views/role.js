@@ -428,17 +428,6 @@ function renderAuthModal() {
     renderAuthMenuColumn();
     renderAuthSubMenuColumn();
     renderAuthPermissionColumn();
-    renderAuthStats();
-}
-
-function renderAuthStats() {
-    var totalMenus = gAuthAllMenu.length;
-    var totalPermissions = gAuthAllFunction.length;
-    var enabled = gAuthCheckedFunctions.size;
-    $("#authStatMenus").text(totalMenus);
-    $("#authStatPermissions").text(totalPermissions);
-    $("#authStatEnabled").text(enabled);
-    $("#authStatDisabled").text(totalPermissions - enabled);
 }
 
 function renderAuthMenuColumn() {
@@ -510,7 +499,7 @@ function renderAuthPermissionColumn() {
     var $grid = $("#authPermissionGrid").empty();
     var subMenu = gAuthAllMenu.find(function (m) { return m.MENU_ID === gAuthSelectedSubMenu; });
 
-    $("#authPermTargetLabel").text("Set permission for: " + (subMenu ? subMenu.MENU_NAME : "-"));
+    $("#authPermTargetLabel").text(subMenu ? "· " + subMenu.MENU_NAME : "");
 
     var functions = authGetFunctionsForMenu(gAuthSelectedSubMenu).filter(function (f) {
         return f.FUNCTION_NAME.toLowerCase().indexOf(search) !== -1 || (f.FUNCTION_DESC || "").toLowerCase().indexOf(search) !== -1;

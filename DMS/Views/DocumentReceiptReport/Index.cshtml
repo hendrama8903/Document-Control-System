@@ -1,19 +1,15 @@
 <section class="content">
     <div class="row">
         <div class="col-xs-12">
-            <div id="divTitle">
-                <div class="content-header">
-                    <h1>@ViewData["Title"]</h1>
+            <div class="dp-card">
+                <div id="divSearch">
+                    @Html.Partial("_SearchCriteria")
                 </div>
-            </div>
-            <div id="divSearch">
-                @Html.Partial("_SearchCriteria")
-            </div>
-            <div id="divGrid">
-                @Html.Partial("_GridView")
+                <div id="divGrid">
+                    @Html.Partial("_GridView")
+                </div>
             </div>
         </div>
     </div>
 </section>
-
 @Html.Partial("_Javascript")

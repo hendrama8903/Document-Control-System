@@ -2943,3 +2943,11 @@ body.adm-body {
 .adm-body .modal .wfd-section-title-text > span {
     display: none !important;
 }
+
+/* file-type icon in front of a document number (dmsFileIconClass in grid-common.js) */
+.dms-file-icon { width: 16px; margin-right: 6px; text-align: center; }
+.dms-file-pdf { color: #D92D20; }
+.dms-file-excel { color: #1E7B45; }
+.dms-file-word { color: #2B579A; }
+.dms-file-image { color: #6C3FB5; }
+.dms-file-other { color: #98A2B3; }

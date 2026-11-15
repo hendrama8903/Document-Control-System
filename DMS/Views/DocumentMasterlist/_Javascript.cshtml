@@ -1,0 +1,10 @@
+<script type="text/javascript">
+    var documentMasterlistConfig = {
+        urls: {
+            search: "@Url.Action("Search", "DocumentMasterlist")",
+            downloadExcel: "@Url.Action("DownloadExcel", "DocumentMasterlist")",
+            viewAttachment: '@Html.Raw(Url.Action("ViewAttachment", "DocumentMaintenance", new { FILE_PATH = "-1", DOCUMENT_TRANSACTION_ID = "-2", type = "-3" }))'
+        }
+    };
+</script>
+<script src="~/js/views/document-masterlist.js" asp-append-version="true"></script>

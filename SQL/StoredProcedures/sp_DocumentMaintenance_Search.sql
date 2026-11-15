@@ -233,17 +233,19 @@ BEGIN
 										BEGIN
 											-- Phase (Jul 2026): Published (''5'') documents are current/effective too, same
 											-- as Approved (''1'') - both are revisable. A revision may only be picked here
-											-- once its P4D control entry reached a final QMS decision: RECEIVED (''2'') or
-											-- REJECTED (''3''). A document still Draft/On Progress/Sent/Partially Sent in
-											-- P4D (no final decision yet) is not eligible, even though TB_R_DOCUMENT itself
-											-- still shows Approved/Published.
+											-- once its P4D control entry reached a final QMS decision: Accepted (''2''),
+											-- Rejected (''3''), or Sent / Partially Sent (''5'' / ''6''), which come after
+											-- Accepted when QMS distributes the document. A document still Draft (''0'') or
+											-- Checking (''1'') in P4D is not eligible, even though TB_R_DOCUMENT itself
+											-- still shows Approved/Published. (2026-11-13: Sent / Partially Sent used to be
+											-- left out, so no distributed document could be revised.)
 											SET @QUERY += ' AND S.STATUS IN (''1'', ''5'') '
 											SET @QUERY += ' AND EXISTS (
 															SELECT 1
 															FROM TB_R_CTRL_DOCUMENT ctrl
 															WHERE ctrl.DOCUMENT_CODE = S.DOCUMENT_CODE
 															AND ISNULL(ctrl.DELETE_FLAG, 0) = 0 AND ctrl.OPERATION_TYPE = 1
-															AND ctrl.STATUS IN (2, 3)
+															AND ctrl.STATUS IN (2, 3, 5, 6)
 														)';
 										END
 

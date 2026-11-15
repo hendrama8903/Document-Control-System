@@ -4,46 +4,8 @@
         {
             <button type="button" class="dp-btn dp-btn-primary" id="btn_add"><i class="fa fa-plus"></i> New</button>
         }
-        <div class="dropdown" style="display:inline-block;">
-            <button type="button" class="dp-btn dp-btn-outline dropdown-toggle" data-toggle="dropdown">
-                <i class="fa fa-list"></i> Actions <span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu dp-dropdown-menu">
-                @if ((bool)ViewData["Receive"] && (bool)ViewData["DocumentControlAccess"])
-                {
-                    <li><button type="button" id="btn_receive" title="First step: mark this registration entry as being reviewed (status becomes Checking)"><i class="fa fa-check-circle dp-menu-approve"></i> Receive</button></li>
-                }
-                @if ((bool)ViewData["Receive"] && (bool)ViewData["DocumentControlAccess"])
-                {
-                    <li><button type="button" id="btn_accept" title="Second step: confirm the registration entry (status becomes Accepted) - only possible after Receive"><i class="fa fa-check-square-o dp-menu-accept"></i> Accept</button></li>
-                }
-                @if ((bool)ViewData["UnReceive"] && (bool)ViewData["DocumentControlAccess"])
-                {
-                    <li><button type="button" id="btn_unreceive" title="Undo Accept - only possible before distribution has been assigned"><i class="fa fa-undo dp-menu-unreceive"></i> Un-Receive</button></li>
-                }
-                @if ((bool)ViewData["Edit"] && (bool)ViewData["DocumentControlAccess"])
-                {
-                    <li><button type="button" id="btn_edit"><i class="fa fa-pencil-square-o"></i> Update Location</button></li>
-                }
-                @if ((bool)ViewData["Send"] && (bool)ViewData["DocumentControlAccess"])
-                {
-                    <li><button type="button" id="btn_send"><i class="fa fa-paper-plane-o dp-menu-send"></i> Send</button></li>
-                }
-                @if ((bool)ViewData["Distribution"])
-                {
-                    <li><button type="button" id="btn_distribution"><i class="fa fa-share-alt dp-menu-distribution"></i> Distribution</button></li>
-                }
-                @if ((bool)ViewData["Reject"] && (bool)ViewData["DocumentControlAccess"])
-                {
-                    <li><button type="button" id="btn_reject"><i class="fa fa-ban dp-menu-reject"></i> Reject</button></li>
-                }
-                @if ((bool)ViewData["Delete"])
-                {
-                    <li role="separator" class="divider"></li>
-                    <li><button type="button" id="btn_delete"><i class="fa fa-trash-o"></i> Delete</button></li>
-                }
-            </ul>
-        </div>
+        @* Per-document actions live only in the row menu (⋮ in the Action column). The toolbar
+           Actions dropdown repeated them for one selected row and was removed (Hendra 2026-11-13). *@
         @if ((bool)ViewData["DocumentControlAccess"])
         {
             @* Muncul hanya kalau ada dokumen yang menunggu tindakan user login (diatur di _GridView) *@

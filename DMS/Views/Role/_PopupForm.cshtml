@@ -71,19 +71,6 @@
             </div>
 
             <div class="modal-body">
-                <div class="ra-auth-toolbar">
-                    <div class="ra-auth-stats">
-                        <div class="ra-auth-stat blue"><i class="fa fa-th-large"></i><div><b id="authStatMenus">0</b><span>Total Menus</span></div></div>
-                        <div class="ra-auth-stat green"><i class="fa fa-shield"></i><div><b id="authStatPermissions">0</b><span>Total Permissions</span></div></div>
-                        <div class="ra-auth-stat purple"><i class="fa fa-check-square-o"></i><div><b id="authStatEnabled">0</b><span>Permissions Enabled</span></div></div>
-                        <div class="ra-auth-stat orange"><i class="fa fa-ban"></i><div><b id="authStatDisabled">0</b><span>Permissions Disabled</span></div></div>
-                    </div>
-                    <div class="dp-search ra-auth-permsearch">
-                        <i class="fa fa-search"></i>
-                        <input type="text" id="authSearchPermission" placeholder="Search permission...">
-                    </div>
-                </div>
-
                 <div class="ra-auth-columns">
                     <div class="ra-auth-col">
                         <div class="ra-auth-col-title">1. Menu</div>
@@ -97,12 +84,10 @@
                     </div>
                     <div class="ra-auth-col">
                         <div class="ra-auth-col-title-row">
-                            <div>
-                                <div class="ra-auth-col-title" style="padding:0;">3. Permission</div>
-                                <span class="ra-auth-col-sub" id="authPermTargetLabel">Set permission for: -</span>
-                            </div>
+                            <div class="ra-auth-col-title">3. Permission <span class="ra-auth-col-sub" id="authPermTargetLabel"></span></div>
                             <label class="ra-auth-checkall"><input type="checkbox" id="authCheckAllPermission"> Check All</label>
                         </div>
+                        <div class="dp-search ra-auth-colsearch"><i class="fa fa-search"></i><input type="text" id="authSearchPermission" placeholder="Search permission..."></div>
                         <div class="ra-auth-permgrid" id="authPermissionGrid"></div>
                     </div>
                 </div>
@@ -118,11 +103,9 @@
             </div>
 
             <div class="modal-footer">
-                <button type="button" class="btn dp-btn dp-btn-outline" id="btn_auth_clearall"><i class="fa fa-undo"></i> Clear All</button>
-                <div class="ra-auth-footer-right">
-                    <button type="button" class="btn dp-btn dp-btn-outline" data-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
-                    <button type="button" class="btn dp-btn dp-btn-primary" id="btn_save_auth"><i class="fa fa-save"></i> Save</button>
-                </div>
+                <button type="button" class="btn dp-btn dp-btn-outline pull-left" id="btn_auth_clearall"><i class="fa fa-undo"></i> Clear All</button>
+                <button type="button" class="btn dp-btn dp-btn-outline" data-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
+                <button type="button" class="btn dp-btn dp-btn-primary" id="btn_save_auth"><i class="fa fa-save"></i> Save</button>
             </div>
         </div>
     </div>

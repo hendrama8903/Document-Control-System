@@ -137,3 +137,14 @@ function menuItem(cssClass, icon, label, onClick) {
     });
     return $li;
 }
+
+// Font Awesome classes for a file-type icon in front of a document number, like File
+// Explorer (My Documents and Document Control Dashboard, 2026-11-14). Colours: admin-theme.css.
+function dmsFileIconClass(path) {
+    var ext = ((path || "").split(".").pop() || "").toLowerCase();
+    if (ext === "pdf") return "fa-file-pdf-o dms-file-pdf";
+    if (ext === "xls" || ext === "xlsx" || ext === "xlsm") return "fa-file-excel-o dms-file-excel";
+    if (ext === "doc" || ext === "docx") return "fa-file-word-o dms-file-word";
+    if (["png", "jpg", "jpeg", "gif", "bmp"].indexOf(ext) >= 0) return "fa-file-image-o dms-file-image";
+    return "fa-file-o dms-file-other";
+}

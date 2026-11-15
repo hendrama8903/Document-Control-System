@@ -1232,7 +1232,7 @@ var SESSION_SECTION_NAME = documentMaintenanceConfig.sessionSectionName;
 
 $(document).ready(function () {
     //Updated By Arie (2023-08-24)
-    setDataSelect2("addEditDocumentNo2", documentMaintenanceConfig.urls.getDocumentNoAllowedRevision, "- Choose -");
+    initRevisionDocumentLookup();
     $('#addEditDocumentNo2').data('select2').$container.addClass('hide');
     setDataSelect2WithParam("addEditDocumentLevel", documentMaintenanceConfig.urls.mSystemGetSystemCodeBySystemType, "- Choose -", "LEVEL_CODE");
 
@@ -2499,6 +2499,60 @@ function onChangeDocumentLevel() {
     setDataSelect2WithParam("addEditDocumentCode", documentMaintenanceConfig.urls.getDocumentCodeByLevel, "- Choose -", $('#addEditDocumentLevel').val());
 }
 
+// Document No lookup for a revision. Searches the server by number or name
+// (debounced), loads 20 rows a page as the list scrolls, and shows the name
+// and current revision under each number. The field keeps the number only.
+function initRevisionDocumentLookup() {
+    var pageSize = 20;
+    $("#addEditDocumentNo2").select2({
+        ajax: {
+            url: documentMaintenanceConfig.urls.getDocumentNoAllowedRevision,
+            dataType: 'json',
+            delay: 300,
+            data: function (params) {
+                return { q: params.term, pageLimit: pageSize, page: params.page || 1 };
+            },
+            processResults: function (data) {
+                return {
+                    results: data.items || [],
+                    pagination: { more: !!data.more }
+                };
+            }
+        },
+        allowClear: true,
+        placeholder: "Search document number or name",
+        width: '100%',
+        language: {
+            noResults: function () { return "No document available for revision"; },
+            searching: function () { return "Searching..."; },
+            loadingMore: function () { return "Loading more..."; }
+        },
+        templateResult: function (item) {
+            if (item.loading || !item.id) return item.text;
+            var $row = $('<div class="revision-lookup-item"></div>');
+            $('<div class="revision-lookup-code"></div>').text(item.text).appendTo($row);
+            var meta = (item.name || "") + (item.revision != null ? "  ·  Rev " + item.revision : "");
+            if (meta) $('<div class="revision-lookup-name"></div>').text(meta).appendTo($row);
+            return $row;
+        },
+        templateSelection: function (item) { return item.text; }
+    }).on('select2:open', function () {
+        $('.select2-container--open .select2-search__field').attr('placeholder', 'Type a document number or name...');
+    });
+}
+
+// Sets an ajax Select2 to exactly one option. select2("trigger", "select") reuses an
+// existing <option> with the same value and keeps its old text, so options left by
+// earlier fills (login defaults, the previous document) are removed first.
+function setSelect2Option(selector, id, text) {
+    var $el = $(selector);
+    $el.find('option').remove();
+    if (id != null && id !== "") {
+        $el.append(new Option(text || id, id, true, true));
+    }
+    $el.trigger('change');
+}
+
 function onChangeDocumentNo() {
     gImpactOther = null;
     gReffNo = null;
@@ -2526,27 +2580,45 @@ function onChangeDocumentNo() {
 
                     $("#addEditDocumentLevel").select2("trigger", "select", { data: { id: data.LEVEL_CODE, text: data.LEVEL_CODE } });//.val(data.CLASSIFIED);
                     $("#addEditClassified").select2("trigger", "select", { data: { id: data.CLASSIFIED, text: data.CLASSIFIED + ' - ' + data.CLASSIFIED_VAL } });//.val(data.CLASSIFIED);
-                    $("#addEditDocumentCode").select2("trigger", "select", { data: { id: data.DOCUMENT_CODE, text: data.DOCUMENT_CODE } });//.val(data.DOCUMENT_CODE);
+                    // Document Code is the category (SOP, IK, ...), stored as "DOCUMENT_ID|LEVEL"
+                    // like the list in GetDocumentCodeByLevel - not the document number.
+                    setSelect2Option("#addEditDocumentCode", data.DOCUMENT_ID != null ? data.DOCUMENT_ID + "|" + data.LEVEL_CODE : "", data.CATEGORY_CODE);
                     $("#addEditDocumentName").val(data.DOCUMENT_TRANSACTION_NAME);
-                    $("#addEditCompanyCode").select2("trigger", "select", { data: { id: data.COMPANY_CODE, text: data.COMPANY_CODE } });//.val(data.COMPANY_CODE);
-                    $("#addEditDivision").select2("trigger", "select", { data: { id: data.DIVISION, text: data.DIVISION + " - " + data.DIVISION_NAME } });//.val(data.DIVISION_CODE);
-                    $("#addEditDepartment").select2("trigger", "select", { data: { id: data.DEPARTMENT_ID, text: data.DEPARTMENT_CODE + " - " + data.DEPARTMENT_NAME } });//.val(data.DEPARTMENT_CODE);
-                    $("#addEditDocumentCreator").select2("trigger", "select", { data: { id: data.DOCUMENT_CREATOR, text: data.DOCUMENT_CREATOR } });//.val(data.DEPARTMENT_CODE);
-                    $("#addEditDate").val(data.DOCUMENT_DATE.substring(0, 10));
-                    $('#addEditItemChanged').val(data.ITEM_CHANGED);
-                    $('#addEditReason').val(data.REASON);
+                    // A revision takes three kinds of fields (2026-11-13):
+                    //  1. Identity, copied and locked: level, code, organisation, process,
+                    //     classified. These form the document number, so they cannot change.
+                    //  2. Copied but editable: document name, external / reference.
+                    //  3. New for this revision: date (today), item changed, reason, file,
+                    //     creator (the login user, who prepares and signs "Dibuat Oleh").
+                    //     Copying them from the previous revision gave its old date and
+                    //     reason, and for migrated documents the importer as creator.
+                    $("#addEditDivision").select2("trigger", "select", { data: { id: data.DIVISION, text: data.DIVISION + " - " + data.DIVISION_NAME } });
+                    // Department change reloads Section and Creator, so it goes before them.
+                    $("#addEditDepartment").select2("trigger", "select", { data: { id: data.DEPARTMENT_ID, text: data.DEPARTMENT_CODE + " - " + data.DEPARTMENT_NAME } });
 
-                    if (data.PROCESS_CODE != null) {
-                        $("#addEditProcessCode").select2("trigger", "select", { data: { id: data.PROCESS_CODE, text: data.PROCESS_CODE } });//.val(data.PROCESS_CODE);
-                    } else {
-                        $("#addEditProcessCode").val("").trigger("change");
-                    }
+                    // Section of the document being revised, not the login user's section.
+                    setSelect2Option("#addEditSection", data.SECTION_CODE, data.SECTION_NAME);
+                    setSelect2Option("#addEditProcessCode", data.PROCESS_CODE, data.PROCESS_CODE);
 
-                    if (data.SECTION_CODE != null) {
-                        $("#addEditSection").select2("trigger", "select", { data: { id: data.SECTION_CODE, text: data.SECTION_NAME } });//.val(data.SECTION_CODE);
-                    } else {
-                        $("#addEditSection").val("").trigger("change");
-                    }
+                    // Migrated documents have no Company Code; let the user pick one then.
+                    setSelect2Option("#addEditCompanyCode", data.COMPANY_CODE, data.COMPANY_CODE);
+                    $('#addEditCompanyCode').prop('disabled', !!data.COMPANY_CODE);
+
+                    var me = result.creator || { id: gCurrentUsername, text: gCurrentUsername };
+                    setSelect2Option("#addEditDocumentCreator", me.id, me.text);
+                    $('#addEditDocumentCreator').prop('disabled', false);
+
+                    $("#addEditDate").val(moment().format('YYYY-MM-DD'));
+                    $('#addEditItemChanged').val("");
+                    $('#addEditReason').val("");
+                    $('#addEditDocumentUpload').val("");
+
+                    // Required marks follow the level, as for a new document.
+                    var revLevel = String(data.LEVEL_CODE);
+                    $('#mandatoryMarkProcessCode').toggle(revLevel == "2");
+                    $('#mandatoryMarkSection').toggle(revLevel == "3" || revLevel == "4");
+                    $('#addEditSection').prop('disabled', true);
+                    $('#addEditProcessCode').prop('disabled', true);
 
                     $('#addEditDocumentName').prop('disabled', false);
                     $('#addEditDate').prop('disabled', false);
@@ -2569,7 +2641,7 @@ function onChangeDocumentNo() {
                     }
 
                     $('#addEditReferenceNo').val(data.REFERENCE_NO);
-                    $('#addEditSource').val(data.SOURCE);
+                    $('#addEditSource').val(data.SOURCE === "MIGRATION" ? "" : data.SOURCE);  // import marker, not a real source
 
                     // Analisis dampak revisi (OCR tahap 2, 2026-11-06)
                     loadDocumentReferences(data.DOCUMENT_CODE);
