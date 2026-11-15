@@ -8,8 +8,8 @@
 --   2. Pembuat / approver dokumen itu, atau divisinya termasuk divisi "Mengetahui"
 --   3. Didistribusikan (STATUS = 1) ke department-nya atau department di divisinya
 --   4. Satu divisi dengan dokumen (sama seperti Document Preparation)
---   5. Role-nya punya menu Document Control Dashboard / Masterlist, untuk dokumen sah
---      (status 1/4/5) yang tidak dihapus
+-- (Butir 5 lama - punya menu Document Control Dashboard / Masterlist - dihapus 2026-11-14:
+--  menu daftar induk tidak lagi memberi hak membuka isi dokumen.)
 -- Dokumen Rahasia (CLASSIFIED = 2) hanya lewat butir 1-3.
 -- Dokumen eksternal: role DMS-ADMIN atau yang punya menu External Document.
 --
@@ -92,11 +92,10 @@ BEGIN
 	-- 4. satu divisi (Document Preparation)
 	IF @DIVISION IN (SELECT DIVISION FROM dbo.TB_M_USER_POS WHERE USERNAME = @USERNAME) RETURN 1;
 
-	-- 5. menu daftar induk, dokumen sah
-	IF @DELETED = 0 AND @STATUS IN ('1', '4', '5')
-	   AND (dbo.fn_User_HasMenu(@USERNAME, '/DocumentControlDashboard/Index') = 1
-	        OR dbo.fn_User_HasMenu(@USERNAME, '/DocumentMasterlist/Index') = 1) RETURN 1;
-
+	-- 2026-11-14: butir 5 lama (punya menu Document Control Dashboard / Masterlist = boleh lihat
+	-- semua dokumen sah) dihapus. Menu itu hanya menampilkan register; isi dokumen tetap
+	-- mengikuti butir 1-4. Kasus: user FAD dengan menu Masterlist bisa membuka dokumen ITD
+	-- yang tidak didistribusikan ke FAD lewat pencarian isi dokumen.
 	RETURN 0;
 END
 GO
