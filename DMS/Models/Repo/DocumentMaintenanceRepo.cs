@@ -67,7 +67,7 @@ namespace DMS.Models.Repo
             return Result;
         }
 
-        public DBResult ImportLegacyInsert(DocumentMaintenance data, string loginUser, DBContext db)
+        public DBResult ImportLegacyInsert(DocumentMaintenance data, string loginUser, DBContext db, string distribution = null)
         {
             SqlParameter returnVal = CreateSqlParameterOutputInt("@RETURN_VAL");
             SqlParameter returnMsg = CreateSqlParameterOutputString("@RETURN_MSG");
@@ -88,13 +88,14 @@ namespace DMS.Models.Repo
                 new SqlParameter ( "@FILE_PATH", CheckNullValue(data.FILE_PATH) ),
                 new SqlParameter ( "@DOCUMENT_CREATOR", CheckNullValue(data.DOCUMENT_CREATOR) ),
                 new SqlParameter ( "@REASON", CheckNullValue(data.REASON) ),
+                new SqlParameter ( "@DISTRIBUTION", CheckNullValue(distribution) ),
                 new SqlParameter ( "@CREATED_BY", loginUser ),
                 returnMsg,
                 returnId
             };
 
             string query = "EXEC @RETURN_VAL = [dbo].[sp_DocumentMaintenance_ImportLegacyInsert] @DOCUMENT_CODE, @DOCUMENT_TRANSACTION_NAME, @DOCUMENT_ID, @LEVEL_CODE, " +
-                "@DIVISION, @DEPARTMENT, @CLASSIFIED, @REVISION, @DOCUMENT_DATE, @FILE_PATH, @DOCUMENT_CREATOR, @REASON, @CREATED_BY, @RETURN_MSG OUTPUT, @RETURN_ID OUTPUT";
+                "@DIVISION, @DEPARTMENT, @CLASSIFIED, @REVISION, @DOCUMENT_DATE, @FILE_PATH, @DOCUMENT_CREATOR, @REASON, @CREATED_BY, @RETURN_MSG OUTPUT, @RETURN_ID OUTPUT, @DISTRIBUTION = @DISTRIBUTION";
             int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString(), Convert.ToInt32(returnId.Value));

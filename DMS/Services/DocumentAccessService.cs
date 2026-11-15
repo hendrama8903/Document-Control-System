@@ -93,6 +93,21 @@ namespace DMS.Services
                 ) X ORDER BY SRC", ("@P", filePath)) is int id ? id : null;
 
         /// <summary>
+        /// Brought in by Legacy Document Import: SOURCE = 'MIGRATION' and never approved in the
+        /// system. Its file is a scan of the paper MASTER with the MASTER stamp already on it, so
+        /// the system adds no second MASTER stamp; the copy stamps (CONTROLLED / UNCONTROLLED)
+        /// still apply (decided with QMS, Hendra 2026-11-13). A revision made in the system later
+        /// has an APPROVAL_ID, so it is a normal document.
+        /// </summary>
+        public static bool IsMigrated(DBContext db, int? documentTransactionId) =>
+            documentTransactionId != null
+            && Scalar(db, @"SELECT CAST(CASE WHEN EXISTS (
+                    SELECT 1 FROM dbo.TB_R_DOCUMENT WHERE DOCUMENT_TRANSACTION_ID = @T AND SOURCE = 'MIGRATION' AND APPROVAL_ID IS NULL
+                    UNION ALL
+                    SELECT 1 FROM dbo.TB_R_DOCUMENT_HISTORY WHERE DOCUMENT_TRANSACTION_ID = @T AND SOURCE = 'MIGRATION' AND APPROVAL_ID IS NULL
+                ) THEN 1 ELSE 0 END AS BIT)", ("@T", documentTransactionId)) is bool b && b;
+
+        /// <summary>
         /// May the user take the unstamped source file: Document Control / admin, or the creator
         /// of the document. A file that belongs to no document: Document Control only.
         /// </summary>

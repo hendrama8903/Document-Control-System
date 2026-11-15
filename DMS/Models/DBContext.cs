@@ -115,6 +115,7 @@ namespace DMS.Models
             builder.Entity<WorkflowDocArr>().HasNoKey();
             builder.Entity<DocumentReport>().HasNoKey();
             builder.Entity<DocumentMasterlist>().HasNoKey();
+            builder.Entity<DocumentHistory>().HasNoKey();
             builder.Entity<Select2DivisionUser>().HasNoKey();
 
         }

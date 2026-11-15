@@ -13,6 +13,10 @@ namespace DMS.Models
         public int? Revision { get; set; }
         public DateTime? DocumentDate { get; set; }
         public string? DocumentCreator { get; set; }
+        public string? RevisionReason { get; set; }
+        // Column L (optional, 2026-11-12): departments that already hold this revision,
+        // "APP:12-04-2017; INF:12-04-2017". Only on the latest revision row.
+        public string? Distribution { get; set; }
 
         public bool Valid { get; set; } = true;
         public List<string> Errors { get; set; } = new List<string>();
@@ -20,6 +24,7 @@ namespace DMS.Models
         public int? ResolvedDocumentId { get; set; }
         public int? ResolvedLevelCode { get; set; }
         public int? ResolvedDepartmentId { get; set; }
+        public List<(int DepartmentId, DateTime Date)> ResolvedDistribution { get; set; } = new();
 
         // True for the row with the highest Revision within its Document Code group -
         // that one becomes the active TB_R_DOCUMENT row (with the uploaded file); every

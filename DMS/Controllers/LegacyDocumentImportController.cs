@@ -4,6 +4,7 @@ using DMS.Models;
 using DMS.Models.DB;
 using DMS.Models.Repo;
 using Microsoft.AspNetCore.Mvc;
+using DMS.Services;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 using System.IO.Compression;
@@ -26,6 +27,7 @@ namespace DMS.Controllers
         private DivisionMasterRepo divisionMasterRepo = DivisionMasterRepo.Instance;
         private DepartmentMasterRepo departmentMasterRepo = DepartmentMasterRepo.Instance;
         private MSystemRepo mSystemRepo = MSystemRepo.Instance;
+        private SectionMasterRepo sectionMasterRepo = SectionMasterRepo.Instance;
 
         public IActionResult Index()
         {
@@ -55,6 +57,14 @@ namespace DMS.Controllers
                 return StatusCode(403);
             }
 
+            IWorkbook workbook = BuildTemplate(out _);
+            return XlsxFile(workbook, "Import_Legacy_Document_Template.xlsx");
+        }
+
+        // Template sheet (header only) + Reference sheet with the master codes. Column K
+        // Revision Reason is optional (2026-11-12, filled by the master list converter).
+        private IWorkbook BuildTemplate(out ISheet templateSheet)
+        {
             IList<DocumentMaster> categories = documentMasterRepo.Search(new DocumentMaster(), db, null, null);
             IList<DivisionMaster> divisions = divisionMasterRepo.Search(new DivisionMaster(), db, null, null);
             IList<DepartmentMaster> departments = departmentMasterRepo.Search(new DepartmentMaster(), db, null, null);
@@ -62,8 +72,8 @@ namespace DMS.Controllers
 
             IWorkbook workbook = new XSSFWorkbook();
             {
-                ISheet templateSheet = workbook.CreateSheet("Template");
-                string[] headers = { "File Name", "Document Code", "Document Name", "Category Code", "Division Code", "Department Code", "Classification Code", "Revision", "Document Date (DD-MM-YYYY)", "Document Creator" };
+                templateSheet = workbook.CreateSheet("Template");
+                string[] headers = { "File Name", "Document Code", "Document Name", "Category Code", "Division Code", "Department Code", "Classification Code", "Revision", "Document Date (DD-MM-YYYY)", "Document Creator", "Revision Reason (optional)", "Distribution (optional)" };
                 IRow headerRow = templateSheet.CreateRow(0);
                 for (int i = 0; i < headers.Length; i++)
                 {
@@ -80,6 +90,8 @@ namespace DMS.Controllers
                 noteLine1.CreateCell(0).SetCellValue("A Document Code may repeat across multiple rows, one row per past revision (e.g. Revision 0, 1, 2...).");
                 IRow noteLine2 = referenceSheet.CreateRow(refRow++);
                 noteLine2.CreateCell(0).SetCellValue("File Name is required only on the row with the highest Revision for that Document Code (it becomes the active document). Older revision rows may leave File Name blank.");
+                IRow noteLine3 = referenceSheet.CreateRow(refRow++);
+                noteLine3.CreateCell(0).SetCellValue("Distribution (optional, latest revision row only): departments that already hold the document and the date they received it, e.g. \"APP:12-04-2017; INF:12-04-2017\". The document is then registered in P4D as sent and acknowledged on that date.");
                 refRow += 1;
 
                 IRow catTitle = referenceSheet.CreateRow(refRow++);
@@ -130,14 +142,94 @@ namespace DMS.Controllers
                 referenceSheet.SetColumnWidth(0, 20 * 256);
                 referenceSheet.SetColumnWidth(1, 30 * 256);
                 referenceSheet.SetColumnWidth(2, 16 * 256);
+            }
+            return workbook;
+        }
 
-                // NPOI's Write(Stream) closes the stream it's given (this NPOI version has no
-                // leaveOpen overload), so write through a wrapper that swallows Dispose/Close
-                // and keep the real MemoryStream readable afterward.
-                MemoryStream stream = new MemoryStream();
-                workbook.Write(new NonClosingStreamWrapper(stream));
-                stream.Position = 0;
-                return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Import_Legacy_Document_Template.xlsx");
+        private FileStreamResult XlsxFile(IWorkbook workbook, string fileName)
+        {
+            // NPOI's Write(Stream) closes the stream it's given (this NPOI version has no
+            // leaveOpen overload), so write through a wrapper that swallows Dispose/Close
+            // and keep the real MemoryStream readable afterward.
+            MemoryStream stream = new MemoryStream();
+            workbook.Write(new NonClosingStreamWrapper(stream));
+            stream.Position = 0;
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+        }
+
+        // Master List converter (request Hendra 2026-11-12): the departments' own master lists
+        // (form QCD/FR-QMS-00/004) in, a filled import template out - see MasterListConverter.
+        // documentFiles = JSON array of the names of the documents the user picked; only the
+        // names are sent, the files themselves go up later in the ZIP of the normal import.
+        // Nothing is saved here.
+        [HttpPost]
+        [RequestSizeLimit(60 * 1024 * 1024)]
+        public IActionResult ConvertMasterList(List<IFormFile> masterLists, string documentFiles)
+        {
+            if (!HasMenuAccess("/LegacyDocumentImport/Index"))
+            {
+                return Json(new { status = false, message = "You are not authorized to use this feature." });
+            }
+
+            try
+            {
+                if (masterLists == null || masterLists.Count == 0)
+                {
+                    return Json(new { status = false, message = "Choose at least one master list (.xlsx or .xls)." });
+                }
+                if (masterLists.Any(f => !new[] { ".xlsx", ".xls", ".xlsm" }.Contains(Path.GetExtension(f.FileName).ToLowerInvariant())))
+                {
+                    return Json(new { status = false, message = "Master lists must be Excel files (.xlsx, .xls)." });
+                }
+
+                List<string> names = string.IsNullOrWhiteSpace(documentFiles)
+                    ? new List<string>()
+                    : System.Text.Json.JsonSerializer.Deserialize<List<string>>(documentFiles) ?? new List<string>();
+
+                IList<DocumentMaintenance> existingDocs = documentMaintenanceRepo.Search(new DocumentMaintenance(), null, db, null, null);
+                var masters = new MasterListConverter.Masters
+                {
+                    Categories = documentMasterRepo.Search(new DocumentMaster(), db, null, null),
+                    Divisions = divisionMasterRepo.Search(new DivisionMaster(), db, null, null),
+                    Departments = departmentMasterRepo.Search(new DepartmentMaster(), db, null, null),
+                    Sections = sectionMasterRepo.Search(new SectionMaster(), db, null, null),
+                    Classifications = mSystemRepo.Search(new MSystem { SYSTEM_TYPE = "CLASSIFIED" }, db, null, null),
+                    CompanyCodes = mSystemRepo.Search(new MSystem { SYSTEM_TYPE = "COMPANY_CODE" }, db, null, null),
+                    ProcessCodes = mSystemRepo.Search(new MSystem { SYSTEM_TYPE = "PROCESS_CODE" }, db, null, null),
+                    ExistingRevisions = existingDocs
+                        .Where(x => !string.IsNullOrEmpty(x.DOCUMENT_CODE))
+                        .GroupBy(x => x.DOCUMENT_CODE.ToUpperInvariant())
+                        .ToDictionary(g => g.Key, g => g.Max(x => x.REVISION ?? 0))
+                };
+
+                // WorkbookFactory needs a stream it can seek in.
+                var lists = new List<(string, Stream)>();
+                foreach (IFormFile file in masterLists)
+                {
+                    var copy = new MemoryStream();
+                    file.CopyTo(copy);
+                    copy.Position = 0;
+                    lists.Add((Path.GetFileName(file.FileName), copy));
+                }
+
+                MasterListConverter.Result result = MasterListConverter.Convert(lists, names, masters);
+                if (result.Rows.Count == 0)
+                {
+                    string why = string.Join(" ", result.Files.Where(f => f.Problem != null).Select(f => f.Name + ": " + f.Problem));
+                    return Json(new { status = false, message = "No documents found in the master list. " + why });
+                }
+
+                IWorkbook workbook = BuildTemplate(out ISheet templateSheet);
+                MasterListConverter.Write(workbook, templateSheet, result);
+
+                Response.Headers["X-Convert-Rows"] = result.Rows.Count.ToString();
+                Response.Headers["X-Convert-Errors"] = result.ErrorRows.ToString();
+                Response.Headers["X-Convert-Warnings"] = result.WarningRows.ToString();
+                return XlsxFile(workbook, "Import_Template_From_Master_List_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".xlsx");
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
             }
         }
 
@@ -214,6 +306,7 @@ namespace DMS.Controllers
                                 isCurrentRevision = x.IsCurrentRevision,
                                 isHistoryOnlyAppend = x.IsHistoryOnlyAppend,
                                 revision = x.Revision,
+                                distribution = string.Join(", ", x.ResolvedDistribution.Select(d => departments.FirstOrDefault(p => p.DEPARTMENT_ID == d.DepartmentId)?.DEPARTMENT_CODE + " " + d.Date.ToString("dd-MM-yyyy"))),
                                 errors = x.Errors
                             }),
                             validCount = rows.Count(x => x.Valid),
@@ -302,15 +395,17 @@ namespace DMS.Controllers
                                         DOCUMENT_DATE = row.DocumentDate,
                                         FILE_PATH = folderPath + savedFileName,
                                         DOCUMENT_CREATOR = string.IsNullOrEmpty(row.DocumentCreator) ? username : row.DocumentCreator,
-                                        REASON = "Digitalisasi dokumen lama"
+                                        REASON = ReasonOf(row, "Digitalisasi dokumen lama")
                                     };
 
-                                    DBResult result = documentMaintenanceRepo.ImportLegacyInsert(data, username, db);
+                                    string distribution = row.ResolvedDistribution.Count == 0 ? null
+                                        : string.Join(";", row.ResolvedDistribution.Select(d => d.DepartmentId + "|" + d.Date.ToString("yyyy-MM-dd")));
+                                    DBResult result = documentMaintenanceRepo.ImportLegacyInsert(data, username, db, distribution);
                                     currentRevisionSaved = result.status;
 
                                     if (result.status)
                                     {
-                                        results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = true, Message = "Imported" });
+                                        results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = true, Message = row.ResolvedDistribution.Count == 0 ? "Imported" : "Imported, distributed to " + row.ResolvedDistribution.Count + " department(s)" });
                                     }
                                     else
                                     {
@@ -370,7 +465,7 @@ namespace DMS.Controllers
                                         DOCUMENT_DATE = row.DocumentDate,
                                         FILE_PATH = historyFilePath,
                                         DOCUMENT_CREATOR = string.IsNullOrEmpty(row.DocumentCreator) ? username : row.DocumentCreator,
-                                        REASON = "Digitalisasi dokumen lama (histori)"
+                                        REASON = ReasonOf(row, "Digitalisasi dokumen lama (histori)")
                                     };
 
                                     DBResult historyResult = documentMaintenanceRepo.ImportLegacyHistoryInsert(historyData, username, db);
@@ -623,6 +718,58 @@ namespace DMS.Controllers
             {
                 row.AddError("Document Date is required and must be a valid date.");
             }
+
+            ValidateDistribution(row, departments);
+        }
+
+        // Column L "APP:12-04-2017; INF:12-04-2017" -> departments + received date (2026-11-12).
+        // Only the active revision can carry it: the import registers that revision in P4D.
+        private void ValidateDistribution(LegacyDocumentImportRow row, IList<DepartmentMaster> departments)
+        {
+            row.ResolvedDistribution.Clear();
+            if (string.IsNullOrWhiteSpace(row.Distribution)) return;
+
+            if (!row.IsCurrentRevision)
+            {
+                row.AddError(row.IsHistoryOnlyAppend
+                    ? "Distribution cannot be imported for a document that is already in the system; use P4D Maintenance."
+                    : "Distribution can only be filled on the latest revision row of the document.");
+                return;
+            }
+
+            string[] formats = { "dd-MM-yyyy", "d-M-yyyy", "dd/MM/yyyy", "d/M/yyyy", "yyyy-MM-dd" };
+            foreach (string part in row.Distribution.Split(new[] { ';', ',', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                string entry = part.Trim();
+                if (entry.Length == 0) continue;
+
+                string[] pieces = entry.Split(':', 2);
+                string code = pieces[0].Trim();
+                if (pieces.Length < 2 || !DateTime.TryParseExact(pieces[1].Trim(), formats, System.Globalization.CultureInfo.InvariantCulture,
+                        System.Globalization.DateTimeStyles.None, out DateTime date))
+                {
+                    row.AddError("Distribution \"" + entry + "\" must be written as DEPARTMENT:DD-MM-YYYY.");
+                    continue;
+                }
+
+                DepartmentMaster department = departments.FirstOrDefault(x => string.Equals(x.DEPARTMENT_CODE, code, StringComparison.OrdinalIgnoreCase));
+                if (department == null)
+                {
+                    row.AddError("Distribution department '" + code + "' does not match any Department.");
+                    continue;
+                }
+                if (date > DateTime.Today)
+                {
+                    row.AddError("Distribution date " + date.ToString("dd-MM-yyyy") + " for " + code + " is in the future.");
+                    continue;
+                }
+                if (row.ResolvedDistribution.Any(x => x.DepartmentId == department.DEPARTMENT_ID))
+                {
+                    row.AddError("Distribution department '" + code + "' is written more than once.");
+                    continue;
+                }
+                row.ResolvedDistribution.Add((department.DEPARTMENT_ID.Value, date));
+            }
         }
 
         private List<LegacyDocumentImportRow> ParseExcel(IFormFile excelFile)
@@ -654,7 +801,9 @@ namespace DMS.Controllers
                         ClassificationCode = GetCellString(excelRow, 6),
                         Revision = GetCellInt(excelRow, 7),
                         DocumentDate = GetCellDate(excelRow, 8),
-                        DocumentCreator = GetCellString(excelRow, 9)
+                        DocumentCreator = GetCellString(excelRow, 9),
+                        RevisionReason = GetCellString(excelRow, 10),
+                        Distribution = GetCellString(excelRow, 11)
                     };
 
                     rows.Add(row);
@@ -662,6 +811,15 @@ namespace DMS.Controllers
             }
 
             return rows;
+        }
+
+        // Column K of the template (optional): reason of that revision, e.g. taken from the
+        // comments of the master list. Empty -> the fixed migration text.
+        private static string ReasonOf(LegacyDocumentImportRow row, string fallback)
+        {
+            string reason = row.RevisionReason?.Trim();
+            if (string.IsNullOrEmpty(reason)) return fallback;
+            return reason.Length > 255 ? reason.Substring(0, 255) : reason;
         }
 
         private bool IsRowEmpty(IRow row)

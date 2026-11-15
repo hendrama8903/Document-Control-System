@@ -6,10 +6,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DMS.Models.DB
 {
+    // Keyless (see DBContext): only read through sp_DocumentHistory_Search. Revisions brought in
+    // by Legacy Import have no DOCUMENT_TRANSACTION_ID, and with that column as the key EF turned
+    // those rows into null entries, which broke the History popup.
     [Table("TB_R_DOCUMENT_HISTORY")]
     public class DocumentHistory : BaseModel
     {
-        [Key]
         public int? DOCUMENT_TRANSACTION_ID { get; set; }
         public int? DOCUMENT_ID { get; set; }
         public string? DOCUMENT_NAME { get; set; }

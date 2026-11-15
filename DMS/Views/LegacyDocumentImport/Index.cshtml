@@ -6,113 +6,100 @@
 <section class="content">
     <div class="row">
         <div class="col-xs-12">
+            <div class="di-page">
 
-            <div class="di-header">
-                <div class="di-header-icon"><i class="fa fa-upload"></i></div>
-                <div class="di-header-text">
-                    <h1>@ViewData["Title"]</h1>
-                    <p>Import multiple controlled documents using Excel metadata and ZIP file.</p>
+                <div class="di-header">
+                    <div class="di-header-text">
+                        <h1>@ViewData["Title"]</h1>
+                        <p>Bring existing controlled documents into the system from an Excel template and a ZIP of their files.</p>
+                    </div>
+                    <a class="dp-btn dp-btn-outline" href="@Url.Action("DownloadTemplate")"><i class="fa fa-download"></i> Download Template</a>
                 </div>
-            </div>
 
-            <!-- Section 1: Prepare -->
-            <div class="di-section">
-                <div class="di-prepare-grid">
-                    <div class="di-prepare-main">
-                        <div class="di-prepare-icon"><i class="fa fa-file-excel-o"></i></div>
-                        <div class="di-prepare-text">
-                            <h3>Prepare Your Files</h3>
-                            <p>Download the Excel template, fill in the document metadata, and prepare all PDF/Excel documents in a ZIP file.</p>
-                        </div>
-                        <div class="di-prepare-cta">
-                            <a class="di-btn-outline" href="@Url.Action("DownloadTemplate")"><i class="fa fa-download"></i> Download Excel Template</a>
-                            <div class="di-prepare-meta">File type: .xlsx &bull; Max size: 10 MB</div>
+                <!-- One card, two steps (request Hendra 2026-11-12). Restyled 2026-11-15: same
+                     colors, buttons and type sizes as the rest of the app, file pickers as tiles. -->
+                <div class="di-card">
+
+                    <!-- Step 1 (optional): departments' Master List (QCD/FR-QMS-00/004) -> filled
+                         template. Only the document file NAMES are sent; the files go up in step 2. -->
+                    <div class="di-step">
+                        <div class="di-step-rail"><span class="di-step-no">1</span></div>
+                        <div class="di-step-main">
+                            <div class="di-step-title">Convert Master List <span class="di-badge">Optional</span></div>
+                            <div class="di-step-desc">Starting from a department's Master List (QCD/FR-QMS-00/004)? Convert it into a filled import template. Skip this step if your template is already filled.</div>
+
+                            <div class="di-step-row">
+                                <input type="file" id="mlFiles" accept=".xlsx,.xls,.xlsm" multiple hidden />
+                                <button type="button" class="di-pick" id="mlPick" title="Master List Dokumen Internal, one or more files">
+                                    <span class="di-pick-icon excel"><i class="fa fa-file-excel-o"></i></span>
+                                    <span class="di-pick-body">
+                                        <span class="di-pick-title">Master Lists</span>
+                                        <span class="di-pick-text" id="mlPicked">Choose one or more .xlsx files</span>
+                                    </span>
+                                </button>
+                                <input type="file" id="mlFolder" webkitdirectory directory multiple hidden />
+                                <button type="button" class="di-pick" id="mlPickFolder" title="Only the file names are read, to fill the File Name column">
+                                    <span class="di-pick-icon folder"><i class="fa fa-folder-open-o"></i></span>
+                                    <span class="di-pick-body">
+                                        <span class="di-pick-title">Document Folder <span class="di-pick-opt">optional</span></span>
+                                        <span class="di-pick-text" id="mlFolderPicked">Only file names are read, nothing is uploaded</span>
+                                    </span>
+                                </button>
+                                <button type="button" class="dp-btn dp-btn-outline di-step-btn" id="btn_convert"><i class="fa fa-exchange"></i> Convert</button>
+                            </div>
+                            <div class="di-convert-result" id="mlResult"></div>
                         </div>
                     </div>
-                    <div class="di-info-box">
-                        <div class="di-info-title"><i class="fa fa-info-circle"></i> Before you upload</div>
-                        <ul>
-                            <li><span class="di-info-check"><i class="fa fa-check"></i></span> Fill metadata in the template</li>
-                            <li><span class="di-info-check"><i class="fa fa-check"></i></span> File Name must match exactly with the template</li>
-                            <li><span class="di-info-check"><i class="fa fa-check"></i></span> Supported file: PDF, Excel</li>
-                            <li><span class="di-info-check"><i class="fa fa-check"></i></span> All documents in a single ZIP file</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Section 2: Upload -->
-            <div class="di-section">
-                <h3 class="di-section-title">Upload Files</h3>
-                <p class="di-section-desc">Upload the completed Excel metadata and ZIP file containing documents.</p>
+                    <!-- Step 2: filled template + ZIP of the documents -->
+                    <div class="di-step">
+                        <div class="di-step-rail"><span class="di-step-no">2</span></div>
+                        <div class="di-step-main">
+                            <div class="di-step-title">Upload and Validate</div>
+                            <div class="di-step-desc">Choose the filled template and one ZIP with the document files. Nothing is saved until you press Import in the review.</div>
 
-                <div class="di-upload-grid">
-                    <div class="di-dropzone di-dropzone-excel" id="dzExcel">
-                        <input type="file" id="excelFile" accept=".xlsx,.xls" hidden />
-                        <div class="di-dz-icon"><i class="fa fa-file-excel-o"></i></div>
-                        <div class="di-dz-title">Excel Metadata</div>
-                        <div class="di-dz-sub">Upload your completed Excel template</div>
-                        <div class="di-dz-inner">
-                            <div class="di-dz-dropline">Drag &amp; drop Excel file here</div>
-                            <div class="di-dz-or">or</div>
-                            <button type="button" class="di-dz-browse">Browse File</button>
-                        </div>
-                        <div class="di-dz-file" style="display:none;">
-                            <i class="fa fa-file-excel-o"></i>
-                            <span class="di-dz-filename"></span>
-                            <span class="di-dz-filesize"></span>
-                            <i class="fa fa-check-circle di-dz-check"></i>
-                        </div>
-                        <div class="di-dz-format">Format: .xlsx, .xls &bull; Max size: 10 MB</div>
-                    </div>
+                            <div class="di-step-row">
+                                <div class="di-pick di-dropzone" id="dzExcel" title="Drop or click to choose the filled template">
+                                    <input type="file" id="excelFile" accept=".xlsx,.xls" hidden />
+                                    <span class="di-pick-icon excel"><i class="fa fa-file-excel-o"></i></span>
+                                    <span class="di-pick-body">
+                                        <span class="di-pick-title">Excel Template</span>
+                                        <span class="di-pick-text di-dz-dropline">Drop the .xlsx here or click to choose</span>
+                                        <span class="di-dz-file" style="display:none;">
+                                            <span class="di-dz-filename"></span>
+                                            <span class="di-dz-filesize"></span>
+                                        </span>
+                                    </span>
+                                    <i class="fa fa-check-circle di-dz-check"></i>
+                                    <button type="button" class="di-dz-remove" title="Remove this file"><i class="fa fa-times"></i></button>
+                                </div>
+                                <div class="di-pick di-dropzone" id="dzZip" title="Drop or click to choose the ZIP of the documents">
+                                    <input type="file" id="zipFile" accept=".zip" hidden />
+                                    <span class="di-pick-icon zip"><i class="fa fa-file-archive-o"></i></span>
+                                    <span class="di-pick-body">
+                                        <span class="di-pick-title">Documents ZIP</span>
+                                        <span class="di-pick-text di-dz-dropline">Drop the .zip here or click to choose</span>
+                                        <span class="di-dz-file" style="display:none;">
+                                            <span class="di-dz-filename"></span>
+                                            <span class="di-dz-filesize"></span>
+                                        </span>
+                                    </span>
+                                    <i class="fa fa-check-circle di-dz-check"></i>
+                                    <button type="button" class="di-dz-remove" title="Remove this file"><i class="fa fa-times"></i></button>
+                                </div>
+                                <button type="button" class="dp-btn dp-btn-primary di-step-btn" id="btn_preview"><i class="fa fa-eye"></i> Preview &amp; Validate</button>
+                            </div>
 
-                    <div class="di-dropzone di-dropzone-zip" id="dzZip">
-                        <input type="file" id="zipFile" accept=".zip" hidden />
-                        <div class="di-dz-icon"><i class="fa fa-file-archive-o"></i></div>
-                        <div class="di-dz-title">Document ZIP</div>
-                        <div class="di-dz-sub">Upload ZIP file containing all documents</div>
-                        <div class="di-dz-inner">
-                            <div class="di-dz-dropline">Drag &amp; drop ZIP file here</div>
-                            <div class="di-dz-or">or</div>
-                            <button type="button" class="di-dz-browse">Browse File</button>
-                        </div>
-                        <div class="di-dz-file" style="display:none;">
-                            <i class="fa fa-file-archive-o"></i>
-                            <span class="di-dz-filename"></span>
-                            <span class="di-dz-filesize"></span>
-                            <i class="fa fa-check-circle di-dz-check"></i>
-                        </div>
-                        <div class="di-dz-format">Format: .zip &bull; Max size: 100 MB</div>
-                    </div>
-
-                    <div class="di-guidelines">
-                        <div class="di-guidelines-title">Upload Guidelines</div>
-                        <div class="di-guidelines-group">
-                            <div class="di-guidelines-sub">Excel Metadata</div>
-                            <ul>
-                                <li>Format: .xlsx or .xls</li>
-                                <li>Maximum size: 10 MB</li>
+                            <ul class="di-hints">
+                                <li><i class="fa fa-file-excel-o"></i> Excel up to 10 MB</li>
+                                <li><i class="fa fa-file-archive-o"></i> ZIP up to 100 MB, PDF or Excel files named as in the File Name column</li>
+                                <li><i class="fa fa-shield"></i> Import is enabled only when every row passes validation</li>
                             </ul>
                         </div>
-                        <div class="di-guidelines-group">
-                            <div class="di-guidelines-sub">Document ZIP</div>
-                            <ul>
-                                <li>Format: .zip</li>
-                                <li>Maximum size: 100 MB</li>
-                                <li>Allowed file types: PDF, Excel</li>
-                                <li>File name must match template</li>
-                            </ul>
-                        </div>
-                        <div class="di-guidelines-help">Need help? <a href="#" onclick="return false;">View guide <i class="fa fa-external-link"></i></a></div>
                     </div>
                 </div>
 
-                <div class="di-preview-row">
-                    <button type="button" class="btn btn-primary btn-lg" id="btn_preview"><i class="fa fa-eye"></i> Preview &amp; Validate</button>
-                    <div class="di-preview-note"><i class="fa fa-lock"></i>Import will be available after successful validation</div>
-                </div>
             </div>
-
         </div>
     </div>
 </section>
@@ -122,36 +109,36 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="di-review-header">
+                <div class="di-review-icon"><i class="fa fa-check-square-o"></i></div>
                 <div>
-                    <h3 class="di-section-title" style="margin:0;">Review &amp; Import</h3>
-                    <p class="di-section-desc" style="margin:2px 0 0;">Review validation results before importing documents.</p>
+                    <div class="di-review-title">Review &amp; Import</div>
+                    <div class="di-review-sub" id="diReviewSub">Check the validation result of every row before importing.</div>
                 </div>
-                <div class="di-review-actions">
-                    <button type="button" class="btn btn-default btn-sm" id="btn_export"><i class="fa fa-download"></i> Export Result</button>
-                    <button type="button" class="btn btn-default btn-sm" id="btn_viewErrors"><i class="fa fa-filter"></i> View Error Only</button>
-                    <button type="button" class="di-modal-close" data-dismiss="modal" aria-label="Close"><i class="fa fa-times"></i></button>
+                <button type="button" class="di-modal-close" data-dismiss="modal" aria-label="Close" title="Close"><i class="fa fa-times"></i></button>
+            </div>
+
+            <div class="di-review-toolbar">
+                <div class="di-tabs" id="diTabs">
+                    <button type="button" class="di-tab active" data-filter="all">All <span id="tabAllCount">0</span></button>
+                    <button type="button" class="di-tab" data-filter="ready"><i class="fa fa-check-circle"></i> Ready <span id="tabReadyCount">0</span></button>
+                    <button type="button" class="di-tab" data-filter="warning"><i class="fa fa-exclamation-triangle"></i> Warning <span id="tabWarningCount">0</span></button>
+                    <button type="button" class="di-tab" data-filter="error"><i class="fa fa-times-circle"></i> Error <span id="tabErrorCount">0</span></button>
                 </div>
+                <button type="button" class="dp-btn dp-btn-outline" id="btn_export"><i class="fa fa-download"></i> Export Result</button>
             </div>
 
             <div class="modal-body">
-                <div class="di-tabs" id="diTabs">
-                    <button type="button" class="di-tab active" data-filter="all">All <span id="tabAllCount">0</span></button>
-                    <button type="button" class="di-tab" data-filter="ready">Ready <span id="tabReadyCount">0</span></button>
-                    <button type="button" class="di-tab" data-filter="warning">Warning <span id="tabWarningCount">0</span></button>
-                    <button type="button" class="di-tab" data-filter="error">Error <span id="tabErrorCount">0</span></button>
-                </div>
-
                 <div id="reviewGrid"></div>
             </div>
 
             <div class="di-final-actions">
-                <button type="button" class="btn btn-default" id="btn_cancel">Cancel</button>
+                <div class="di-final-note" id="importNote">All rows must be error-free before you can import</div>
                 <div class="di-final-right">
+                    <button type="button" class="dp-btn dp-btn-outline" id="btn_cancel">Cancel</button>
                     @if ((bool)ViewData["Import"])
                     {
-                        <button type="button" class="btn btn-primary" id="btn_import" disabled><i class="fa fa-upload"></i> Import <span id="btnImportCount">0</span> Documents</button>
+                        <button type="button" class="dp-btn dp-btn-primary" id="btn_import" disabled><i class="fa fa-upload"></i> Import <span id="btnImportCount">0</span> Documents</button>
                     }
-                    <div class="di-final-note" id="importNote">All rows must be error-free before you can import</div>
                 </div>
             </div>
         </div>

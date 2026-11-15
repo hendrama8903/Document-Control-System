@@ -33,15 +33,113 @@
         $("#diTabs").on("click", ".di-tab", function () {
             setActiveTab($(this).data("filter"));
         });
+
+        setupConverter();
     });
+
+    // ---------- Convert from Master List (2026-11-12) ----------
+    // Sends the master lists plus only the NAMES of the files in the chosen folder; the server
+    // returns a filled template (.xlsx) or { status:false, message }.
+    var DOC_EXT = /\.(pdf|xlsx?|xlsm|docx?)$/i;
+
+    function setupConverter() {
+        $("#mlPick").on("click", function () { $("#mlFiles").trigger("click"); });
+        $("#mlPickFolder").on("click", function () { $("#mlFolder").trigger("click"); });
+
+        $("#mlFiles").on("change", function () {
+            var files = this.files;
+            $("#mlPicked").toggleClass("filled", files.length > 0)
+                .text(files.length === 0 ? "Choose one or more .xlsx files" : files.length === 1 ? files[0].name : files.length + " master lists")
+                .attr("title", $.map(files, function (f) { return f.name; }).join("\n"));
+            $("#mlResult").removeClass("ok check").text("");
+        });
+
+        $("#mlFolder").on("change", function () {
+            var docs = $.grep(this.files, function (f) { return DOC_EXT.test(f.name) && f.name.indexOf("~$") !== 0; });
+            var folder = this.files.length ? (this.files[0].webkitRelativePath || "").split("/")[0] : "";
+            $("#mlFolderPicked").toggleClass("filled", docs.length > 0)
+                .text(this.files.length === 0 ? "Only file names are read, nothing is uploaded"
+                    : (folder ? folder + ": " : "") + docs.length + " document(s)");
+            $("#mlResult").removeClass("ok check").text("");
+        });
+
+        $("#btn_convert").on("click", convertMasterList);
+    }
+
+    function convertMasterList() {
+        var lists = document.getElementById("mlFiles").files;
+        if (lists.length === 0) {
+            showErrorMesgGrowl("Choose at least one master list.");
+            return;
+        }
+
+        var names = $.map($.grep(document.getElementById("mlFolder").files, function (f) {
+            return DOC_EXT.test(f.name) && f.name.indexOf("~$") !== 0;
+        }), function (f) { return f.webkitRelativePath || f.name; });
+
+        var formData = new FormData();
+        $.each(lists, function (_, f) { formData.append("masterLists", f); });
+        formData.append("documentFiles", JSON.stringify(names));
+
+        popUpProgressShow();
+        $("#btn_convert").prop("disabled", true);
+        $("#mlResult").removeClass("ok check").text("");
+
+        fetch("@Url.Action("ConvertMasterList", "LegacyDocumentImport")", { method: "POST", body: formData, credentials: "same-origin" })
+            .then(function (response) {
+                var type = response.headers.get("Content-Type") || "";
+                if (type.indexOf("application/json") >= 0) {
+                    return response.json().then(function (json) { throw new Error(json.message || "Conversion failed."); });
+                }
+                if (!response.ok) throw new Error("Conversion failed (" + response.status + ").");
+                var rows = Number(response.headers.get("X-Convert-Rows") || 0);
+                var errors = Number(response.headers.get("X-Convert-Errors") || 0);
+                var warnings = Number(response.headers.get("X-Convert-Warnings") || 0);
+                var name = "Import_Template_From_Master_List.xlsx";
+                var match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(response.headers.get("Content-Disposition") || "");
+                if (match) name = decodeURIComponent(match[1]);
+                return response.blob().then(function (blob) {
+                    var url = URL.createObjectURL(blob);
+                    var link = document.createElement("a");
+                    link.href = url;
+                    link.download = name;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+
+                    var text = rows + " row(s) converted and downloaded as " + name + ".";
+                    if (errors || warnings) {
+                        text += " " + errors + " row(s) to fix (red) and " + warnings + " to check (yellow); column N says why.";
+                    } else {
+                        text += " Nothing to fix. Check the rows, then upload the file below with the ZIP of the documents.";
+                    }
+                    $("#mlResult").addClass(errors || warnings ? "check" : "ok").text(text);
+                });
+            })
+            .catch(function (err) {
+                showErrorMesgGrowl(err.message);
+            })
+            .then(function () {
+                popUpProgressHide();
+                $("#btn_convert").prop("disabled", false);
+            });
+    }
 
     // ---------- Dropzones ----------
     function setupDropzone(zoneId, inputId) {
         var zone = document.getElementById(zoneId);
         var input = document.getElementById(inputId);
 
+        // The whole one-line picker opens the dialog, also to replace a chosen file.
         zone.addEventListener("click", function (e) {
-            if (e.target.closest(".di-dz-file")) return;
+            if (e.target === input) return;
+            // the x on a chosen file takes it out instead of opening the dialog (2026-11-15)
+            if ($(e.target).closest(".di-dz-remove").length) {
+                input.value = "";
+                resetDropzone(zoneId);
+                return;
+            }
             input.click();
         });
 
@@ -81,6 +179,7 @@
     // colored "selected file" row below toggles.
     function showSelectedFile(zone, file) {
         zone.classList.add("filled");
+        zone.classList.remove("missing");
         var fileBox = $(zone).find(".di-dz-file");
         fileBox.find(".di-dz-filename").text(file.name).attr("title", file.name);
         fileBox.find(".di-dz-filesize").text(formatFileSize(file.size));
@@ -95,7 +194,7 @@
 
     function resetDropzone(zoneId) {
         var zone = document.getElementById(zoneId);
-        zone.classList.remove("filled");
+        zone.classList.remove("filled", "missing");
         $(zone).find(".di-dz-dropline").show();
         $(zone).find(".di-dz-file").hide();
     }
@@ -118,12 +217,14 @@
         var excelInput = document.getElementById("excelFile");
         var zipInput = document.getElementById("zipFile");
 
-        if (excelInput.files.length == 0) {
-            showErrorMesgGrowl("Please choose the Excel metadata file.");
-            return;
-        }
-        if (zipInput.files.length == 0) {
-            showErrorMesgGrowl("Please choose the ZIP file.");
+        // The tile of a file that is still missing turns red, so it is clear which one (2026-11-15).
+        var noExcel = excelInput.files.length == 0;
+        var noZip = zipInput.files.length == 0;
+        $("#dzExcel").toggleClass("missing", noExcel);
+        $("#dzZip").toggleClass("missing", noZip);
+        if (noExcel || noZip) {
+            showErrorMesgGrowl(noExcel && noZip ? "Choose the Excel template and the documents ZIP first."
+                : noExcel ? "Choose the Excel template first." : "Choose the documents ZIP first.");
             return;
         }
 
@@ -216,11 +317,22 @@
         $("#btnImportCount").text(importCount);
         $("#btn_import").prop("disabled", mode !== "preview" || importCount === 0 || errorCount > 0);
 
+        // Footer note in the color of the outcome; after an import it reports the result
+        // (before, the preview note stayed there).
+        var $note = $("#importNote").removeClass("ok error");
         if (mode === "preview") {
+            $("#diReviewSub").text("Check the validation result of every row before importing.");
             if (errorCount > 0) {
-                $("#importNote").text("Fix all " + errorCount + " error(s) below before you can import");
+                $note.addClass("error").html('<i class="fa fa-times-circle"></i> Fix ' + (errorCount === 1 ? "the 1 error" : "all " + errorCount + " errors") + " in the Excel file, then validate again");
             } else {
-                $("#importNote").text("All rows are error-free - ready to import");
+                $note.addClass("ok").html('<i class="fa fa-check-circle"></i> All rows are error-free - ready to import');
+            }
+        } else {
+            $("#diReviewSub").text("Import result of every row.");
+            if (errorCount > 0) {
+                $note.addClass("error").html('<i class="fa fa-times-circle"></i> ' + readyCount + " imported, " + errorCount + " failed - see the Message column");
+            } else {
+                $note.addClass("ok").html('<i class="fa fa-check-circle"></i> ' + readyCount + " document(s) imported");
             }
         }
 
@@ -280,13 +392,7 @@
                 { dataField: "revision", caption: "Revision", width: 90, alignment: "center", calculateCellValue: function (row) { return row.revision != null ? row.revision : "-"; } },
                 { dataField: "documentName", caption: "Document Title", calculateCellValue: function (row) { return row.documentName || "-"; } },
                 { dataField: "fileName", caption: "File Name", calculateCellValue: function (row) { return row.fileName || "-"; } },
-                {
-                    caption: "File Size",
-                    width: 90,
-                    allowFiltering: false,
-                    // Not available without parsing the ZIP client-side.
-                    cellTemplate: function (container) { container.text("-"); }
-                },
+                { dataField: "distribution", caption: "Distribution", calculateCellValue: function (row) { return row.distribution || "-"; } },
                 {
                     caption: "Message",
                     minWidth: 220,
