@@ -57,12 +57,33 @@
 .sl-safe { position: absolute; border: 1px dashed #9DB2EA; pointer-events: none; }
 .sl-box { position: absolute; opacity: .22; cursor: pointer; outline: none; }
 .sl-box img { display: block; width: 100%; height: auto; pointer-events: none; }
+
+/* Rotate handle above the selected stamp (2026-11-12): drag it to turn the stamp. */
+.sl-rot {
+    display: none; position: absolute; left: 50%; top: -30px; width: 22px; height: 22px; margin-left: -11px;
+    border-radius: 50%; background: #fff; border: 1.5px solid #2450D8; color: #2450D8;
+    align-items: center; justify-content: center; font-size: 11px; cursor: grab; touch-action: none;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, .2);
+}
+.sl-rot::after { content: ""; position: absolute; left: 50%; top: 100%; width: 1.5px; height: 8px; margin-left: -.75px; background: #2450D8; }
+.sl-rot:active { cursor: grabbing; }
+.sl-box.active.editable .sl-rot { display: flex; }
+
+.sl-rotate { display: flex; align-items: center; gap: 8px; }
+.sl-rotate input[type=range] { flex: 1; min-width: 0; }
+.sl-field .sl-rotate input.sl-rot-value { width: 62px; flex-shrink: 0; height: 30px; padding: 0 6px; text-align: right; }
+.sl-deg { font-size: 13px; color: #66788A; margin-left: -4px; }
+.sl-rot-quick { display: flex; gap: 6px; margin-top: 8px; }
+.sl-rot-btn {
+    flex: 1; height: 28px; border: 1.5px solid #D0D6DE; border-radius: 6px; background: #fff;
+    font-size: 12px; font-weight: 600; color: #475467;
+}
+.sl-rot-btn:hover:not(:disabled) { border-color: #2450D8; color: #2450D8; }
 .sl-box.active { opacity: 1; z-index: 2; box-shadow: 0 0 0 1.5px #2450D8; }
 .sl-box.active.editable { cursor: move; }
-.sl-note {
-    display: none; margin-top: 2px; border-radius: 2px;
-    background: repeating-linear-gradient(90deg, rgba(198, 40, 40, .45) 0 6px, transparent 6px 9px);
-}
+/* Room for the note under Controlled Copy (copy number, recipient): kept empty so the box and
+   rotation centre still match the PDF, but nothing is drawn (Hendra 2026-11-12). */
+.sl-note { display: none; margin-top: 2px; }
 .sl-box[data-stamp="CONTROLLED"] .sl-note { display: block; }
 .sl-canvas-hint { font-size: 12px; color: #7B8794; }
 
@@ -78,16 +99,6 @@
 }
 .sl-field input[type=number]:focus { border-color: #2450D8; outline: none; }
 .sl-xy { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.sl-grid9 { display: grid; grid-template-columns: repeat(3, 34px); gap: 6px; }
-.sl-grid9 button {
-    width: 34px; height: 34px; border: 1.5px solid #D0D6DE; border-radius: 6px; background: #fff; position: relative;
-}
-.sl-grid9 button::after {
-    content: ""; position: absolute; width: 12px; height: 5px; border-radius: 1px; background: #98A2B3;
-    left: calc(4px + var(--h) * 7px); top: calc(4px + var(--v) * 10px);
-}
-.sl-grid9 button:hover { border-color: #2450D8; }
-.sl-grid9 button:hover::after { background: #2450D8; }
 .sl-help { font-size: 12px; color: #7B8794; line-height: 1.5; margin: 0; }
 .sl-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .sl-actions .dp-btn { justify-content: center; }

@@ -65,7 +65,7 @@
     flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 6px;
     background: #F2F4F7; border-radius: 10px; padding: 12px 12px 8px;
 }
-.sp-page-wrap { width: 100%; flex: 1; min-height: 160px; overflow: hidden; display: flex; justify-content: center; align-items: flex-start; }
+.sp-page-wrap { width: 100%; flex: 1; min-height: 160px; overflow: visible; display: flex; justify-content: center; align-items: flex-start; }
 .sp-page { position: relative; background: #fff; box-shadow: 0 2px 10px rgba(16, 24, 40, .14); user-select: none; touch-action: none; }
 .sp-page canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
 /* Every copy carries one stamp (ResolveStamps), so only the selected one is shown. */

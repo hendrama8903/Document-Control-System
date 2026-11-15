@@ -41,7 +41,7 @@ function spMapFor(n) {
         var own = spOwn(type, n);
         if (!own) return;
         map = map || $.extend({}, base);
-        map[StampCore.key(type, own.o)] = { x: own.x, y: own.y, w: own.w };
+        map[StampCore.key(type, own.o)] = { x: own.x, y: own.y, w: own.w, r: own.r || 0 };
     });
     return map || base;
 }
@@ -66,7 +66,7 @@ function spPageList(positions) {
     var map = {};
     $.each(positions || [], function (_, p) {
         if (p.PAGE_NO == null) return;
-        map[spPageKey(p.STAMP_TYPE, p.PAGE_NO)] = { x: Number(p.POS_X), y: Number(p.POS_Y), w: Number(p.WIDTH_PCT), o: p.ORIENTATION };
+        map[spPageKey(p.STAMP_TYPE, p.PAGE_NO)] = { x: Number(p.POS_X), y: Number(p.POS_Y), w: Number(p.WIDTH_PCT), r: Number(p.ROTATION || 0), o: p.ORIENTATION };
     });
     return map;
 }
@@ -228,7 +228,7 @@ function spRender() {
     $page.find(".sl-box").each(function () {
         var type = $(this).data("stamp");
         var r = spPlace(type);
-        $(this).css({ left: r.x * scale, top: r.y * scale, width: r.w * scale })
+        $(this).css(StampCore.boxCss(r, scale))
             .toggleClass("active", type === gSp.stamp)
             .toggleClass("editable", editable);
         $(this).find(".sl-note").css("height", (spLimits().noteHeightPt - 3) * scale);
@@ -244,7 +244,7 @@ function spRender() {
         $(this).toggleClass("active", n === gSp.current)
             .toggleClass("own", !!spOwn(gSp.stamp, n))
             .attr("title", "Page " + n + (spOwn(gSp.stamp, n) ? " · own position" : ""));
-        $(this).find(".sp-thumb-box").css({ left: r.x * s, top: r.y * s, width: r.w * s })
+        $(this).find(".sp-thumb-box").css(StampCore.boxCss(r, s))
             .find("img").attr("src", src);
     });
 
@@ -258,7 +258,9 @@ function spRender() {
     $("#spWidthText").text(Math.round(cur.w / StampCore.MM) + " mm");
     if (!$("#spX").is(":focus")) $("#spX").val(Math.round(cur.x / StampCore.MM));
     if (!$("#spY").is(":focus")) $("#spY").val(Math.round(cur.y / StampCore.MM));
-    $("#spX, #spY, #spGrid9 button").prop("disabled", !editable);
+    $("#spRot").val(cur.r);
+    if (!$("#spRotValue").is(":focus")) $("#spRotValue").val(cur.r);
+    $("#spX, #spY, #spRot, #spRotValue, .sp-rot-btn").prop("disabled", !editable);
     $(".sp-panel").toggleClass("readonly", !editable);
 
     // Only this page (stage 4): checked while the page has its own position for this stamp.
@@ -271,15 +273,15 @@ function spRender() {
 
 // Moves the selected stamp: on the current page only when it has its own position there,
 // otherwise on every page of the same orientation.
-function spSetPt(x, y, w) {
+function spSetPt(x, y, w, rot) {
     var size = spPageSize(), n = gSp.current;
     var own = spOwn(gSp.stamp, n);
     if (own) {
         var map = $.extend({}, spMapFor(n));
-        StampCore.setPt(spLimits(), map, gSp.aspect, gSp.stamp, size.w, size.h, x, y, w);
+        StampCore.setPt(spLimits(), map, gSp.aspect, gSp.stamp, size.w, size.h, x, y, w, rot);
         gSp.pageMap[spPageKey(gSp.stamp, n)] = $.extend({ o: own.o }, map[StampCore.key(gSp.stamp, own.o)]);
     } else {
-        StampCore.setPt(spLimits(), gSp.customMap, gSp.aspect, gSp.stamp, size.w, size.h, x, y, w);
+        StampCore.setPt(spLimits(), gSp.customMap, gSp.aspect, gSp.stamp, size.w, size.h, x, y, w, rot);
     }
     spRender();
 }
@@ -289,7 +291,7 @@ function spSetPageOnly(on) {
     var n = gSp.current, size = spPageSize(n), k = spPageKey(gSp.stamp, n);
     if (on) {
         var r = spPlace(gSp.stamp, n);
-        gSp.pageMap[k] = { x: r.x / size.w * 100, y: r.y / size.h * 100, w: r.w / size.w * 100, o: StampCore.orientationOf(size.w, size.h) };
+        gSp.pageMap[k] = { x: r.x / size.w * 100, y: r.y / size.h * 100, w: r.w / size.w * 100, r: r.r, o: StampCore.orientationOf(size.w, size.h) };
     } else {
         delete gSp.pageMap[k];
     }
@@ -302,7 +304,7 @@ function spPositionList() {
     $.each(gSp.pageMap, function (k, p) {
         var parts = k.split("#"), n = Number(parts[1]);
         if (!gSp.pages[n] || !spOwn(parts[0], n)) return;
-        list.push({ STAMP_TYPE: parts[0], ORIENTATION: p.o, PAGE_NO: n, POS_X: +p.x.toFixed(3), POS_Y: +p.y.toFixed(3), WIDTH_PCT: +p.w.toFixed(3) });
+        list.push({ STAMP_TYPE: parts[0], ORIENTATION: p.o, PAGE_NO: n, POS_X: +p.x.toFixed(3), POS_Y: +p.y.toFixed(3), WIDTH_PCT: +p.w.toFixed(3), ROTATION: +(p.r || 0).toFixed(2) });
     });
     return list;
 }
@@ -382,11 +384,8 @@ function spAccept() {
 }
 
 $(document).ready(function () {
-    $("#spGrid9 button").each(function () {
-        this.style.setProperty("--h", $(this).data("h"));
-        this.style.setProperty("--v", $(this).data("v"));
-    });
     StampCore.loadAspects($("#spPage"), gSp.aspect, function () { });
+    StampCore.addRotateHandles($("#spPage"));
 
     $("input[name='spMode']").on("change", function () {
         gSp.mode = $(this).val();
@@ -405,22 +404,30 @@ $(document).ready(function () {
         }
         if (!spEditable()) return;
         var r = spPlace(type);
-        gSp.drag = { startX: e.clientX, startY: e.clientY, x: r.x, y: r.y, w: r.w };
+        // The round handle above the stamp rotates it around its centre; the stamp itself moves.
+        var rotate = $(e.target).closest(".sl-rot").length > 0;
+        gSp.drag = { rotate: rotate, startX: e.clientX, startY: e.clientY, x: r.x, y: r.y, w: r.w };
         this.setPointerCapture(e.pointerId);
         e.preventDefault();
     }).on("pointermove", ".sl-box", function (e) {
         var d = gSp.drag;
         if (!d) return;
-        spSetPt(d.x + (e.clientX - d.startX) / gSp.scale, d.y + (e.clientY - d.startY) / gSp.scale, d.w);
+        if (d.rotate) spSetPt(d.x, d.y, d.w, StampCore.angleFromPointer(this, e));
+        else spSetPt(d.x + (e.clientX - d.startX) / gSp.scale, d.y + (e.clientY - d.startY) / gSp.scale, d.w);
     }).on("pointerup pointercancel", ".sl-box", function () {
         gSp.drag = null;
     });
 
-    $("#spGrid9 button").on("click", function () {
-        var size = spPageSize(), r = spPlace(gSp.stamp);
-        var q = StampCore.quick(spLimits(), r, size.w, size.h, $(this).data("h"), $(this).data("v"));
-        spSetPt(q.x, q.y, r.w);
-    });
+    // Rotation: slider, number box and quick buttons.
+    function spRotateTo(deg) {
+        var r = spPlace(gSp.stamp);
+        spSetPt(r.x, r.y, r.w, StampCore.normAngle(deg));
+    }
+    $("#spRot").on("input", function () { spRotateTo($(this).val()); });
+    $("#spRotValue").on("change", function () { spRotateTo($(this).val()); $(this).blur(); });
+    $("#spRotLeft").on("click", function () { spRotateTo(spPlace(gSp.stamp).r - 90); });
+    $("#spRotRight").on("click", function () { spRotateTo(spPlace(gSp.stamp).r + 90); });
+    $("#spRotZero").on("click", function () { spRotateTo(0); });
 
     $("#spWidth").on("input", function () {
         var r = spPlace(gSp.stamp), w = Number($(this).val()) * StampCore.MM;

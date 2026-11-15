@@ -45,6 +45,11 @@ namespace DMS.Services
             /// a number = only that page (1-based). Page positions are not inherited by a new revision.
             /// </summary>
             public int? PAGE_NO { get; set; }
+            /// <summary>
+            /// Degrees clockwise (-180..180), around the centre of the stamp and its note
+            /// (2026-11-12). 0 = upright.
+            /// </summary>
+            public decimal ROTATION { get; set; }
         }
 
         /// <summary>Highest page number and most page positions one document can have.</summary>
@@ -99,19 +104,52 @@ namespace DMS.Services
             /// </summary>
             public XRect Place(string stampType, double pageWidth, double pageHeight, double aspect, int noteLines = 0, int pageNo = 0)
             {
-                string orientation = OrientationOf(pageWidth, pageHeight);
-                Position p = pageNo > 0 && pages.TryGetValue((stampType, pageNo), out Position own) && own.ORIENTATION == orientation
-                    ? own
-                    : positions[(stampType, orientation)];
+                Position p = Pick(stampType, pageWidth, pageHeight, pageNo);
 
                 double usable = Math.Max(1, pageWidth - 2 * SafeMarginPt);
                 double width = Clamp((double)p.WIDTH_PCT / 100 * pageWidth, Math.Min(MinWidthPt, usable), Math.Min(MaxWidthPt, usable));
                 double height = width * aspect;
                 double block = height + (noteLines > 0 ? NoteGapPt + noteLines * NoteLineHeightPt : 0);
 
-                double x = Clamp((double)p.POS_X / 100 * pageWidth, SafeMarginPt, pageWidth - SafeMarginPt - width);
-                double y = Clamp((double)p.POS_Y / 100 * pageHeight, SafeMarginPt, pageHeight - SafeMarginPt - block);
-                return new XRect(x, y, width, height);
+                // Rotated around the centre of stamp + note: the rotated box stays inside the margin.
+                double a = (double)p.ROTATION * Math.PI / 180;
+                double cos = Math.Abs(Math.Cos(a)), sin = Math.Abs(Math.Sin(a));
+                double halfW = (width * cos + block * sin) / 2, halfH = (width * sin + block * cos) / 2;
+                double cx = Clamp((double)p.POS_X / 100 * pageWidth + width / 2, SafeMarginPt + halfW, pageWidth - SafeMarginPt - halfW);
+                double cy = Clamp((double)p.POS_Y / 100 * pageHeight + block / 2, SafeMarginPt + halfH, pageHeight - SafeMarginPt - halfH);
+                return new XRect(cx - width / 2, cy - block / 2, width, height);
+            }
+
+            /// <summary>Rotation in degrees clockwise of a stamp on this page.</summary>
+            public double AngleOf(string stampType, double pageWidth, double pageHeight, int pageNo = 0) =>
+                (double)Pick(stampType, pageWidth, pageHeight, pageNo).ROTATION;
+
+            Position Pick(string stampType, double pageWidth, double pageHeight, int pageNo)
+            {
+                string orientation = OrientationOf(pageWidth, pageHeight);
+                return pageNo > 0 && pages.TryGetValue((stampType, pageNo), out Position own) && own.ORIENTATION == orientation
+                    ? own
+                    : positions[(stampType, orientation)];
+            }
+
+            /// <summary>
+            /// Draws a stamp image where the layout puts it on this page, rotated when set, with
+            /// note lines under it (CONTROLLED COPY). Returns the stamp rectangle (unrotated).
+            /// </summary>
+            public XRect Draw(XGraphics gfx, string stampType, double pageWidth, double pageHeight, XImage image,
+                int pageNo = 0, IList<string> note = null, XFont font = null, XBrush brush = null)
+            {
+                int lines = note?.Count ?? 0;
+                XRect rect = Place(stampType, pageWidth, pageHeight, (double)image.PixelHeight / image.PixelWidth, lines, pageNo);
+                double angle = AngleOf(stampType, pageWidth, pageHeight, pageNo);
+                double block = rect.Height + (lines > 0 ? NoteGapPt + lines * NoteLineHeightPt : 0);
+
+                XGraphicsState state = gfx.Save();
+                if (angle != 0) gfx.RotateAtTransform(angle, new XPoint(rect.X + rect.Width / 2, rect.Y + block / 2));
+                gfx.DrawImage(image, rect);
+                if (lines > 0) DrawNote(gfx, pageWidth, rect, note, font, brush, keepInMargin: angle == 0);
+                gfx.Restore(state);
+                return rect;
             }
 
             static double Clamp(double value, double min, double max) =>
@@ -120,16 +158,16 @@ namespace DMS.Services
 
         /// <summary>
         /// Draws note lines under a stamp, centred on it but kept inside the safe margin
-        /// (a note is often wider than the stamp).
+        /// (a note is often wider than the stamp). keepInMargin false = centred only (rotated stamp).
         /// </summary>
-        public static void DrawNote(XGraphics gfx, double pageWidth, XRect stamp, IEnumerable<string> lines, XFont font, XBrush brush)
+        public static void DrawNote(XGraphics gfx, double pageWidth, XRect stamp, IEnumerable<string> lines, XFont font, XBrush brush, bool keepInMargin = true)
         {
             int i = 0;
             foreach (string line in lines)
             {
                 double textWidth = gfx.MeasureString(line, font).Width;
                 double x = stamp.X + stamp.Width / 2 - textWidth / 2;
-                x = Math.Max(SafeMarginPt, Math.Min(x, pageWidth - SafeMarginPt - textWidth));
+                if (keepInMargin) x = Math.Max(SafeMarginPt, Math.Min(x, pageWidth - SafeMarginPt - textWidth));
                 double y = stamp.Bottom + NoteGapPt + i * NoteLineHeightPt;
                 gfx.DrawString(line, font, brush, new XRect(x, y, textWidth, NoteLineHeightPt), XStringFormats.TopLeft);
                 i++;
@@ -186,7 +224,7 @@ namespace DMS.Services
             using var connection = new SqlConnection(db.Database.GetConnectionString());
             connection.Open();
             using var command = connection.CreateCommand();
-            command.CommandText = @"SELECT STAMP_TYPE, ORIENTATION, POS_X, POS_Y, WIDTH_PCT, PAGE_NO FROM dbo.TB_R_DOCUMENT_STAMP_LAYOUT
+            command.CommandText = @"SELECT STAMP_TYPE, ORIENTATION, POS_X, POS_Y, WIDTH_PCT, PAGE_NO, ROTATION FROM dbo.TB_R_DOCUMENT_STAMP_LAYOUT
                 WHERE DOCUMENT_TRANSACTION_ID = @ID AND REVISION = @REVISION
                 ORDER BY CASE WHEN PAGE_NO IS NULL THEN 0 ELSE 1 END, PAGE_NO, STAMP_TYPE";
             command.Parameters.Add(new SqlParameter("@ID", documentTransactionId));
@@ -293,8 +331,9 @@ namespace DMS.Services
                 using var insert = connection.CreateCommand();
                 insert.Transaction = transaction;
                 insert.CommandText = @"INSERT INTO dbo.TB_R_DOCUMENT_STAMP_LAYOUT
-                    (DOCUMENT_TRANSACTION_ID, REVISION, STAMP_TYPE, ORIENTATION, POS_X, POS_Y, WIDTH_PCT, PAGE_NO, SOURCE, CREATED_BY, CREATED_DT)
-                    VALUES (@ID, @REVISION, @STAMP_TYPE, @ORIENTATION, @POS_X, @POS_Y, @WIDTH_PCT, @PAGE_NO, @SOURCE, @USERNAME, GETDATE())";
+                    (DOCUMENT_TRANSACTION_ID, REVISION, STAMP_TYPE, ORIENTATION, POS_X, POS_Y, WIDTH_PCT, PAGE_NO, ROTATION, SOURCE, CREATED_BY, CREATED_DT)
+                    VALUES (@ID, @REVISION, @STAMP_TYPE, @ORIENTATION, @POS_X, @POS_Y, @WIDTH_PCT, @PAGE_NO, @ROTATION, @SOURCE, @USERNAME, GETDATE())";
+                insert.Parameters.Add(new SqlParameter("@ROTATION", Math.Round(p.ROTATION, 2)));
                 insert.Parameters.Add(new SqlParameter("@PAGE_NO", (object)p.PAGE_NO ?? DBNull.Value));
                 insert.Parameters.Add(new SqlParameter("@ID", documentTransactionId));
                 insert.Parameters.Add(new SqlParameter("@REVISION", revision));
@@ -315,9 +354,12 @@ namespace DMS.Services
         {
             var list = new List<Position>();
             using var r = command.ExecuteReader();
-            int pageColumn = -1;
+            int pageColumn = -1, rotationColumn = -1;
             for (int i = 0; i < r.FieldCount; i++)
+            {
                 if (r.GetName(i) == "PAGE_NO") pageColumn = i;
+                if (r.GetName(i) == "ROTATION") rotationColumn = i;
+            }
             while (r.Read())
             {
                 list.Add(new Position
@@ -328,6 +370,7 @@ namespace DMS.Services
                     POS_Y = (decimal)r["POS_Y"],
                     WIDTH_PCT = (decimal)r["WIDTH_PCT"],
                     PAGE_NO = pageColumn < 0 || r.IsDBNull(pageColumn) ? null : r.GetInt32(pageColumn),
+                    ROTATION = rotationColumn < 0 || r.IsDBNull(rotationColumn) ? 0 : r.GetDecimal(rotationColumn),
                 });
             }
             return list;
@@ -340,8 +383,8 @@ namespace DMS.Services
             connection.Open();
             using var command = connection.CreateCommand();
             command.CommandText = documentId == null
-                ? "SELECT STAMP_TYPE, ORIENTATION, POS_X, POS_Y, WIDTH_PCT FROM dbo.TB_M_STAMP_LAYOUT WHERE DOCUMENT_ID IS NULL"
-                : "SELECT STAMP_TYPE, ORIENTATION, POS_X, POS_Y, WIDTH_PCT FROM dbo.TB_M_STAMP_LAYOUT WHERE DOCUMENT_ID = @DOCUMENT_ID";
+                ? "SELECT STAMP_TYPE, ORIENTATION, POS_X, POS_Y, WIDTH_PCT, ROTATION FROM dbo.TB_M_STAMP_LAYOUT WHERE DOCUMENT_ID IS NULL"
+                : "SELECT STAMP_TYPE, ORIENTATION, POS_X, POS_Y, WIDTH_PCT, ROTATION FROM dbo.TB_M_STAMP_LAYOUT WHERE DOCUMENT_ID = @DOCUMENT_ID";
             if (documentId != null) command.Parameters.Add(new SqlParameter("@DOCUMENT_ID", documentId.Value));
             return Read(command);
         }
@@ -381,6 +424,8 @@ namespace DMS.Services
                     return "A stamp is outside the page.";
                 if (p.WIDTH_PCT < 1 || p.WIDTH_PCT > 100)
                     return "Stamp width is out of range.";
+                if (p.ROTATION < -180 || p.ROTATION > 180)
+                    return "Stamp rotation is out of range.";
             }
             return null;
         }
@@ -407,8 +452,9 @@ namespace DMS.Services
                 using var insert = connection.CreateCommand();
                 insert.Transaction = transaction;
                 insert.CommandText = @"INSERT INTO dbo.TB_M_STAMP_LAYOUT
-                    (DOCUMENT_ID, STAMP_TYPE, ORIENTATION, POS_X, POS_Y, WIDTH_PCT, CREATED_BY, CREATED_DT, CHANGED_BY, CHANGED_DT)
-                    VALUES (@DOCUMENT_ID, @STAMP_TYPE, @ORIENTATION, @POS_X, @POS_Y, @WIDTH_PCT, @USERNAME, GETDATE(), @USERNAME, GETDATE())";
+                    (DOCUMENT_ID, STAMP_TYPE, ORIENTATION, POS_X, POS_Y, WIDTH_PCT, ROTATION, CREATED_BY, CREATED_DT, CHANGED_BY, CHANGED_DT)
+                    VALUES (@DOCUMENT_ID, @STAMP_TYPE, @ORIENTATION, @POS_X, @POS_Y, @WIDTH_PCT, @ROTATION, @USERNAME, GETDATE(), @USERNAME, GETDATE())";
+                insert.Parameters.Add(new SqlParameter("@ROTATION", Math.Round(p.ROTATION, 2)));
                 insert.Parameters.Add(new SqlParameter("@DOCUMENT_ID", (object)documentId ?? DBNull.Value));
                 insert.Parameters.Add(new SqlParameter("@STAMP_TYPE", p.STAMP_TYPE));
                 insert.Parameters.Add(new SqlParameter("@ORIENTATION", p.ORIENTATION));

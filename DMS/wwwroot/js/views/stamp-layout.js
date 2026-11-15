@@ -22,9 +22,9 @@ function slPlace(type) {
     return StampCore.place(stampLayoutConfig, gSl.positions, gSl.aspect, type, page.w, page.h);
 }
 
-function slSetPt(type, x, y, w) {
+function slSetPt(type, x, y, w, rot) {
     var page = slPage();
-    StampCore.setPt(stampLayoutConfig, gSl.positions, gSl.aspect, type, page.w, page.h, x, y, w);
+    StampCore.setPt(stampLayoutConfig, gSl.positions, gSl.aspect, type, page.w, page.h, x, y, w, rot);
 }
 
 function slEditable() { return stampLayoutConfig.canEdit && gSl.isCustom; }
@@ -46,7 +46,7 @@ function slRender() {
     $page.find(".sl-box").each(function () {
         var type = $(this).data("stamp");
         var r = slPlace(type);
-        $(this).css({ left: r.x * scale, top: r.y * scale, width: r.w * scale })
+        $(this).css(StampCore.boxCss(r, scale))
             .toggleClass("active", type === gSl.stamp)
             .toggleClass("editable", slEditable());
         $(this).find(".sl-note").css("height", (stampLayoutConfig.noteHeightPt - 3) * scale);
@@ -59,7 +59,9 @@ function slRender() {
     $("#slWidthText").text(Math.round(cur.w / StampCore.MM) + " mm");
     if (!$("#slX").is(":focus")) $("#slX").val(Math.round(cur.x / StampCore.MM));
     if (!$("#slY").is(":focus")) $("#slY").val(Math.round(cur.y / StampCore.MM));
-    $("#slX, #slY, #slGrid9 button").prop("disabled", !editable);
+    $("#slRot").val(cur.r);
+    if (!$("#slRotValue").is(":focus")) $("#slRotValue").val(cur.r);
+    $("#slX, #slY, #slRot, #slRotValue, .sl-rot-btn").prop("disabled", !editable);
 
     var isGlobal = gSl.scopeId === null;
     $("#slSave, #slRevert").toggle(editable || gSl.dirty);
@@ -207,14 +209,17 @@ function slBindDrag() {
         }
         if (!slEditable()) return;
         var r = slPlace(type);
-        gSl.drag = { startX: e.clientX, startY: e.clientY, x: r.x, y: r.y, w: r.w };
+        // The round handle above the stamp rotates it around its centre; the stamp itself moves.
+        var rotate = $(e.target).closest(".sl-rot").length > 0;
+        gSl.drag = { rotate: rotate, startX: e.clientX, startY: e.clientY, x: r.x, y: r.y, w: r.w };
         this.setPointerCapture(e.pointerId);
         e.preventDefault();
     }).on("pointermove", ".sl-box", function (e) {
         if (!gSl.drag) return;
         var scale = $("#slPage").innerWidth() / slPage().w;
         var d = gSl.drag;
-        slSetPt(gSl.stamp, d.x + (e.clientX - d.startX) / scale, d.y + (e.clientY - d.startY) / scale, d.w);
+        if (d.rotate) slSetPt(gSl.stamp, d.x, d.y, d.w, StampCore.angleFromPointer(this, e));
+        else slSetPt(gSl.stamp, d.x + (e.clientX - d.startX) / scale, d.y + (e.clientY - d.startY) / scale, d.w);
         gSl.dirty = true;
         slRender();
     }).on("pointerup pointercancel", ".sl-box", function () {
@@ -223,13 +228,8 @@ function slBindDrag() {
 }
 
 $(document).ready(function () {
-    // Grid buttons draw their own little stamp marker at their position.
-    $("#slGrid9 button").each(function () {
-        this.style.setProperty("--h", $(this).data("h"));
-        this.style.setProperty("--v", $(this).data("v"));
-    });
-
     StampCore.loadAspects($("#slPage"), gSl.aspect, slRender);
+    StampCore.addRotateHandles($("#slPage"));
     slBindDrag();
     slLoad(null);
 
@@ -258,13 +258,6 @@ $(document).ready(function () {
         slSelectStamp($(this).data("stamp"));
     });
 
-    $("#slGrid9 button").on("click", function () {
-        var page = slPage(), r = slPlace(gSl.stamp);
-        var q = StampCore.quick(stampLayoutConfig, r, page.w, page.h, $(this).data("h"), $(this).data("v"));
-        slSetPt(gSl.stamp, q.x, q.y, r.w);
-        slMarkDirty();
-    });
-
     $("#slWidth").on("input", function () {
         var r = slPlace(gSl.stamp);
         var w = Number($(this).val()) * StampCore.MM;
@@ -272,6 +265,18 @@ $(document).ready(function () {
         slSetPt(gSl.stamp, r.x + (r.w - w) / 2, r.y, w);
         slMarkDirty();
     });
+
+    // Rotation: slider, number box and quick buttons (2026-11-12).
+    function slRotateTo(deg) {
+        var r = slPlace(gSl.stamp);
+        slSetPt(gSl.stamp, r.x, r.y, r.w, StampCore.normAngle(deg));
+        slMarkDirty();
+    }
+    $("#slRot").on("input", function () { slRotateTo($(this).val()); });
+    $("#slRotValue").on("change", function () { slRotateTo($(this).val()); $(this).blur(); });
+    $("#slRotLeft").on("click", function () { slRotateTo(slPlace(gSl.stamp).r - 90); });
+    $("#slRotRight").on("click", function () { slRotateTo(slPlace(gSl.stamp).r + 90); });
+    $("#slRotZero").on("click", function () { slRotateTo(0); });
 
     $("#slX, #slY").on("change", function () {
         var r = slPlace(gSl.stamp);

@@ -551,38 +551,30 @@ namespace DMS.Controllers
         {
             try
             {
-                AjaxResult ajaxResult = new AjaxResult();
-                RepoResult repoResult = new RepoResult();
-
                 DocumentMaintenance oDocumentMaintenance = new DocumentMaintenance();
                 oDocumentMaintenance.DEPARTMENT_ID = GetLoginDepartmentId();
                 oDocumentMaintenance.REVISION_ALLOWAL_FLAG = "1";
 
-                if (q != null)
-                    oDocumentMaintenance.DOCUMENT_CODE = '*' + q + '*';
+                // Search by document number OR name, here rather than in the SP: the SP only
+                // matches DOCUMENT_CODE and builds its LIKE by string concatenation.
+                // page is 1-based (Select2 sends nothing for the first page, then 2, 3, ...).
+                int size = int.TryParse(pageLimit, out int s) && s > 0 ? Math.Min(s, 50) : 20;
+                int pageNo = int.TryParse(page, out int p) && p > 0 ? p : 1;
+                string term = (q ?? "").Trim();
 
-                int result, pageInt, skip;
+                var matches = documentMaintenanceRepo.Search(oDocumentMaintenance, GetLoginUsername(), db, null, null)
+                    .GroupBy(x => x.DOCUMENT_CODE).Select(x => x.First())
+                    .Where(x => term.Length == 0
+                        || (x.DOCUMENT_CODE ?? "").Contains(term, StringComparison.OrdinalIgnoreCase)
+                        || (x.DOCUMENT_TRANSACTION_NAME ?? "").Contains(term, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(x => x.DOCUMENT_CODE)
+                    .ToList();
 
-                if (int.TryParse(page, out result))
-                {
-                    pageInt = int.Parse(page);
-                }
-                else
-                {
-                    pageInt = 0;
-                }
+                var items = matches.Skip((pageNo - 1) * size).Take(size)
+                    .Select(x => new { id = x.DOCUMENT_CODE, text = x.DOCUMENT_CODE, name = x.DOCUMENT_TRANSACTION_NAME, revision = x.REVISION })
+                    .ToList();
 
-                skip = pageInt * int.Parse(pageLimit);
-
-                IList<DocumentMaintenance> dataList = documentMaintenanceRepo.Search(oDocumentMaintenance, GetLoginUsername(), db, null, null)
-                    .GroupBy(x => new { x.DOCUMENT_CODE }).Select(x => x.FirstOrDefault()).Skip(skip).Take(int.Parse(pageLimit)).ToList();
-
-                var list = new List<Select2>();
-                foreach (var data in dataList)
-                {
-                    list.Add(new Select2() { text = data.DOCUMENT_CODE, id = data.DOCUMENT_CODE });
-                }
-                return Json(new { status = true, items = list });
+                return Json(new { status = true, items, total = matches.Count, more = pageNo * size < matches.Count });
             }
             catch (Exception ex)
             {
@@ -790,7 +782,14 @@ namespace DMS.Controllers
             try
             {
                 DocumentMaintenance result = documentMaintenanceRepo.Search(data, null, db, 1, 1).FirstOrDefault();
-                return Json(new { status = true, data = result });
+
+                // The creator of a revision is the login user; the form shows the full name,
+                // like the Creator list (User/GetUserNameByDepartmentId: id USERNAME, text FULL_NAME).
+                string username = GetLoginUsername();
+                User me = UserRepo.Instance.GetByKey(new User { USERNAME = username }, db);
+                var creator = new { id = username, text = string.IsNullOrWhiteSpace(me?.FULL_NAME) ? username : me.FULL_NAME };
+
+                return Json(new { status = true, data = result, creator });
             }
             catch (Exception ex)
             {
@@ -854,6 +853,12 @@ namespace DMS.Controllers
             DBResult result = null;
             string folderName = "/Upload/";
             string webRootPath = Environment.WebRootPath;
+
+            // "MIGRATION" marks rows made by Legacy Document Import only (DocumentAccessService.IsMigrated).
+            // A new revision of a migrated document used to inherit it from the Source field.
+            // Edit keeps it: editing the migrated row itself must not turn it into a normal document.
+            if (string.Equals(screenMode, "ADD", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(data.SOURCE?.Trim(), "MIGRATION", StringComparison.OrdinalIgnoreCase)) data.SOURCE = null;
 
             // Path file lama (sebelum di-overwrite di bawah kalau ada file baru di-upload) -
             // dipakai untuk membersihkan file fisik + cache PDF lama saat file diganti di Edit.
@@ -2026,17 +2031,17 @@ namespace DMS.Controllers
 
                     if (masterImage != null)
                     {
-                        gfx.DrawImage(masterImage, layout.Place(Services.StampLayoutService.Master, pageWidth, pageHeight, Aspect(masterImage), 0, pageNo));
+                        layout.Draw(gfx, Services.StampLayoutService.Master, pageWidth, pageHeight, masterImage, pageNo);
                     }
 
                     if (bottomImage != null)
                     {
-                        gfx.DrawImage(bottomImage, layout.Place(bottomType, pageWidth, pageHeight, Aspect(bottomImage), 0, pageNo));
+                        layout.Draw(gfx, bottomType, pageWidth, pageHeight, bottomImage, pageNo);
                     }
                     else if (uncontrolledImage != null)
                     {
                         // The stamp image only, no text under it (Hendra 2026-11-12).
-                        gfx.DrawImage(uncontrolledImage, layout.Place(Services.StampLayoutService.Uncontrolled, pageWidth, pageHeight, Aspect(uncontrolledImage), 0, pageNo));
+                        layout.Draw(gfx, Services.StampLayoutService.Uncontrolled, pageWidth, pageHeight, uncontrolledImage, pageNo);
                     }
                     else if (uncontrolledNote != null)
                     {
@@ -2900,7 +2905,7 @@ namespace DMS.Controllers
         /// Published documents. Posted from a form into a new tab.
         /// </summary>
         [HttpPost]
-        public IActionResult ExportPdf(int documentTransactionId, string purpose, string recipient, string notes)
+        public IActionResult ExportPdf(int documentTransactionId, string purpose, string recipient, string notes, int? binderId = null)
         {
             const string title = "Dokumen tidak dapat diunduh";
             string username = GetLoginUsername();
@@ -2913,6 +2918,18 @@ namespace DMS.Controllers
             notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
             if (!Services.DocumentExportService.IsPurpose(purpose))
                 return Content(PreviewMessagePage(title, "Pilih tujuan unduhan."), "text/html; charset=utf-8");
+
+            // Controlled copy filed in a binder (2026-11-15): the holder department of the binder
+            // is the recipient unless another one is typed.
+            if (purpose != Services.DocumentExportService.Controlled) binderId = null;
+            if (binderId != null)
+            {
+                string holder = Services.DocumentBinderService.HolderLabel(db, binderId.Value);
+                if (holder == null)
+                    return Content(PreviewMessagePage(title, "Binder yang dipilih bukan binder Controlled Copy."), "text/html; charset=utf-8");
+                recipient ??= holder;
+            }
+
             if (purpose == Services.DocumentExportService.Controlled && recipient == null)
                 return Content(PreviewMessagePage(title, "Controlled Copy wajib diisi penerimanya."), "text/html; charset=utf-8");
             if (recipient?.Length > 200 || notes?.Length > 500)
@@ -2957,7 +2974,7 @@ namespace DMS.Controllers
 
                     // Numbered only once the approval PDF exists, so a failed render never uses up a number.
                     int? copyNo = Services.DocumentExportService.Record(db, documentTransactionId, document.DOCUMENT_CODE, document.REVISION,
-                        purpose, recipient, notes, username);
+                        purpose, recipient, notes, username, binderId);
 
                     string tempPdf = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "DCS_" + Guid.NewGuid().ToString("N") + ".pdf");
                     try
@@ -2965,7 +2982,9 @@ namespace DMS.Controllers
                         System.IO.File.Copy(basePdf, tempPdf);
                         if (purpose == Services.DocumentExportService.Master)
                         {
-                            AddImageStamps(tempPdf, tempPdf, webRootPath + StampMasterImage, null, layout: StampLayoutFor(document));
+                            // A migrated scan already carries the paper MASTER stamp (2026-11-13).
+                            if (!Services.DocumentAccessService.IsMigrated(db, document.DOCUMENT_TRANSACTION_ID))
+                                AddImageStamps(tempPdf, tempPdf, webRootPath + StampMasterImage, null, layout: StampLayoutFor(document));
                             suffix = "MASTER";
                         }
                         else
@@ -3023,10 +3042,8 @@ namespace DMS.Controllers
         private static void DrawControlledCopyStamp(XGraphics gfx, PdfPage page, int pageNo, XImage stamp, string note, Services.StampLayoutService.Layout layout)
         {
             double pageWidth = page.Width.Point, pageHeight = page.Height.Point;
-            XRect rect = layout.Place(Services.StampLayoutService.Controlled, pageWidth, pageHeight, Aspect(stamp), 1, pageNo);
-            gfx.DrawImage(stamp, rect);
-            Services.StampLayoutService.DrawNote(gfx, pageWidth, rect, new[] { note },
-                new XFont("Arial", 7, XFontStyleEx.Bold), StampNoteBrush());
+            layout.Draw(gfx, Services.StampLayoutService.Controlled, pageWidth, pageHeight, stamp, pageNo,
+                new[] { note }, new XFont("Arial", 7, XFontStyleEx.Bold), StampNoteBrush());
         }
 
         // COPY_QTY copies of the approval PDF in one file. Each copy is imported from a fresh
@@ -3134,7 +3151,9 @@ namespace DMS.Controllers
 
             int? id = currentDocument.DOCUMENT_TRANSACTION_ID;
             bool isPublished = currentDocument.STATUS == "5";
+            // A migrated scan already carries the paper MASTER stamp: no second one (2026-11-13).
             bool isMaster = viewerType == "2"
+                && !Services.DocumentAccessService.IsMigrated(db, id)
                 && (isPublished || Services.DocumentAccessService.IsReceivedByQms(db, id))
                 && Services.DocumentAccessService.IsDocumentControl(db, GetLoginUsername());
             bool isControlledCopy = viewerType == "3"
@@ -4180,7 +4199,7 @@ namespace DMS.Controllers
             string location = "DocumentMaintenance/ApproveReject";
             string function = "Approve Approval";
 
-            if (function != "approve")
+            if (mode != "approve")
             {
                 function = "Reject Approval";
             }

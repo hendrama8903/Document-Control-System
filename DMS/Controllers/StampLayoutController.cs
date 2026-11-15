@@ -182,12 +182,8 @@ namespace DMS.Controllers
                     if (!System.IO.File.Exists(imagePath)) continue;
                     using XImage image = XImage.FromFile(imagePath);
                     notes.TryGetValue(type, out string note);
-                    XRect rect = layout.Place(type, w, h, (double)image.PixelHeight / image.PixelWidth, note == null ? 0 : 1);
-                    gfx.DrawImage(image, rect);
-                    if (note != null)
-                        StampLayoutService.DrawNote(gfx, w, rect, new[] { note },
-                            new XFont("Arial", type == StampLayoutService.Controlled ? 7 : 6.5,
-                                type == StampLayoutService.Controlled ? XFontStyleEx.Bold : XFontStyleEx.Regular), red);
+                    layout.Draw(gfx, type, w, h, image, 0, note == null ? null : new[] { note },
+                        new XFont("Arial", 7, XFontStyleEx.Bold), red);
                 }
             }
 
