@@ -149,3 +149,47 @@
 @media (max-width: 560px) {
     #btn_toggleFolders, #btn_toggleStats, #btn_hideFolders { display: none !important; }
 }
+
+/* ---------- File Explorer view (Hendra 2026-11-13) ---------- */
+/* tree: My Folders section row */
+.dcd-folder-row.ud-tree-section { font-weight: 700; color: #101828; margin-top: 6px; }
+.dcd-folder-row.ud-tree-section .dcd-folder-icon { color: #B36B00; }
+
+/* subfolders of the open location, listed above its documents */
+.ud-folder-list {
+    margin: 0 16px 10px; border: 1px solid #EEF1F5; border-radius: 10px;
+    max-height: 190px; overflow-y: auto; background: #fff;
+}
+.ud-folder-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 12px; font-size: 13px; color: #344054;
+    border-bottom: 1px solid #F2F4F7; cursor: default; user-select: none;
+}
+.ud-folder-item:last-child { border-bottom: none; }
+.ud-folder-item:hover { background: #F4F6F8; }
+.ud-folder-item.selected, .ud-folder-item:focus { background: #E7F1FB; outline: none; }
+.ud-folder-item-icon { flex: none; width: 18px; text-align: center; font-size: 15px; color: #E3A008; }
+.ud-folder-item-name { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ud-folder-item-type { flex: none; width: 70px; font-size: 12px; color: #98A2B3; }
+.ud-folder-item-count { flex: none; width: 100px; text-align: right; font-size: 12px; color: #667085; }
+
+
+@media (max-width: 560px) {
+    .ud-folder-item-type { display: none; }
+}
+
+/* Accept button in the Acceptance column, and the Waiting for Acceptance count (2026-11-14) */
+.ud-accept-btn {
+    border: none; border-radius: 6px; padding: 4px 12px;
+    background: #2450D8; color: #fff; font-size: 12px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 5px;
+}
+.ud-accept-btn:hover { background: #1C3FA6; }
+.dcd-folder-count.ud-count-alert { background: #FDECEC; color: #C62828; font-weight: 700; }
+
+/* Folders panel stays within the screen; with many folders the tree scrolls inside it
+   (Hendra 2026-11-14). Header (title, + and hide) and footer stay in place. */
+.dp-layout-row > #dcdFolderPanel { max-height: calc(100vh - 120px); }
+#dcdFolderPanel .dcd-folder-tree { min-height: 0; scrollbar-width: thin; scrollbar-color: #D0D5DD transparent; }
+#dcdFolderPanel .dcd-folder-tree::-webkit-scrollbar { width: 6px; }
+#dcdFolderPanel .dcd-folder-tree::-webkit-scrollbar-thumb { background: #D0D5DD; border-radius: 3px; }

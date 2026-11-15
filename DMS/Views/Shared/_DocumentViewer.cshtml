@@ -1,0 +1,25 @@
+@* Document Viewer (Hendra 2026-11-12): the document preview in a pop up on the same page instead
+   of a new tab. Shared: include this partial plus css/views/Shared/_DocumentViewer.css and
+   js/document-viewer.js, then call DocViewer.open({ url, title, subtitle }). The url is the
+   same page that used to open in a new tab (the locked PDF.js preview: page, zoom, no print or
+   download), shown in a frame. First used in Document Registration. *@
+<div class="modal fade" id="modalDocViewer" tabindex="-1" role="dialog" aria-labelledby="dvTitle" aria-hidden="true">
+    <div class="modal-dialog dv-dialog">
+        <div class="modal-content dv-content">
+            <div class="dv-bar">
+                <div class="dv-heading">
+                    <div class="dv-title" id="dvTitle">Preview</div>
+                    <div class="dv-subtitle" id="dvSubtitle"></div>
+                </div>
+                <div class="dv-actions">
+                    <a class="dv-action" id="dvNewTab" href="#" target="_blank" rel="noopener" title="Open in new tab"><i class="fa fa-external-link"></i><span>New Tab</span></a>
+                    <button type="button" class="dv-action dv-close" data-dismiss="modal" title="Close (Esc)"><i class="fa fa-times"></i><span>Close</span></button>
+                </div>
+            </div>
+            <div class="dv-body">
+                <div class="dv-loading" id="dvLoading"><i class="fa fa-spinner fa-spin"></i> Loading document…</div>
+                <iframe class="dv-frame" id="dvFrame" title="Document preview"></iframe>
+            </div>
+        </div>
+    </div>
+</div>

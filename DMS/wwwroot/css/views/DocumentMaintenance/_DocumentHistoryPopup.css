@@ -5,3 +5,19 @@
     text-overflow: unset;
     line-height: 1.3;
 }
+
+/* isi baris rata tengah vertikal, termasuk saat sel Status punya keterangan tambahan */
+#datagridHistory .dx-datagrid-rowsview .dx-row > td {
+    vertical-align: middle;
+}
+
+/* keterangan revisi hasil migrasi rekap QMS (tanpa file) */
+#datagridHistory .dh-migration-note {
+    margin-top: 4px;
+    font-size: 11px;
+    color: #667085;
+    white-space: nowrap;
+    cursor: help;
+}
+
+#datagridHistory .dh-migration-note .fa { color: #98A2B3; margin-right: 3px; }

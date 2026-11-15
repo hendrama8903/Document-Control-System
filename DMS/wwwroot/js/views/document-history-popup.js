@@ -6,8 +6,8 @@ $(document).ready(function () {
         onHistoryPrepare();
     });
 
+    // No key: revisions brought in by Legacy Import have no DOCUMENT_TRANSACTION_ID.
     var historyGridStore = new DevExpress.data.CustomStore({
-        key: "DOCUMENT_TRANSACTION_ID",
         loadMode: "raw",
         load: function () {
             var d = $.Deferred();
@@ -28,7 +28,12 @@ $(document).ready(function () {
                     DOCUMENT_CODE: gHistoryDocumentCode
                 }
             }).done(function (result) {
-                d.resolve(result.data == "" ? [] : result.data);
+                if (!result || typeof result === "string") {
+                    console.error("Document history:", result);
+                    d.resolve([]);
+                    return;
+                }
+                d.resolve((result.data || []).filter(function (r) { return r != null; }));
             }).fail(function () {
                 d.reject("Data loading error");
             });
@@ -40,15 +45,15 @@ $(document).ready(function () {
     $("#datagridHistory").dxDataGrid({
         dataSource: historyGridStore,
         showBorders: true,
-        columnAutoWidth: true,
+        // Fixed column widths so everything fits the popup without a horizontal scroll.
+        // Document No is already in the popup title, so it is not repeated per row.
+        columnAutoWidth: false,
         allowColumnResizing: true,
         columnResizingMode: "widget",
-        wordWrapEnabled: false,
+        wordWrapEnabled: true,
         sorting: { mode: "none" },
         noDataText: "No previous revision for this document.",
         height: 400,
-        filterRow: { visible: true, applyFilter: "auto" },
-        headerFilter: { visible: true },
         paging: { pageSize: 10 },
         pager: {
             visible: true,
@@ -59,13 +64,22 @@ $(document).ready(function () {
             showNavigationButtons: true
         },
         columns: [
-            { dataField: "DOCUMENT_CODE", caption: "Document No" },
-            { dataField: "DOCUMENT_TRANSACTION_NAME", caption: "Document Name" },
+            {
+                caption: "No.",
+                alignment: "center",
+                width: 50,
+                cellTemplate: function (container, options) {
+                    var grid = options.component;
+                    container.text(grid.pageIndex() * grid.pageSize() + options.rowIndex + 1);
+                }
+            },
+            { dataField: "DOCUMENT_TRANSACTION_NAME", caption: "Document Name", minWidth: 180 },
             { dataField: "REVISION", caption: "Revision", alignment: "center", width: 80 },
             {
                 dataField: "STATUS_DISPLAY",
                 caption: "Status",
                 alignment: "center",
+                width: 170,
                 cellTemplate: function (container, options) {
                     var row = options.data;
                     var labelClass = "label label-danger";
@@ -81,22 +95,33 @@ $(document).ready(function () {
                     }
 
                     $("<span>").addClass(labelClass).text(row.STATUS_DISPLAY).appendTo(container);
+
+                    // Revisions brought in by Legacy Import from the QMS master list: only the
+                    // revision date was recorded there, the file itself is usually gone.
+                    if (isMigrationRecordWithoutFile(row)) {
+                        $("<div>").addClass("dh-migration-note")
+                            .attr("title", "Recorded from the master list during migration. The master list holds only the date of this revision, not its file.")
+                            .html('<i class="fa fa-info-circle"></i> From master list, no file')
+                            .appendTo(container);
+                    }
                 }
             },
             {
                 dataField: "DOCUMENT_DATE",
                 caption: "Document Date",
                 alignment: "center",
+                width: 115,
                 cellTemplate: function (container, options) {
                     var value = options.data.DOCUMENT_DATE;
                     container.text(value ? moment(value).format("DD-MM-YYYY") : "");
                 }
             },
-            { dataField: "CREATED_BY", caption: "Created By" },
+            { dataField: "CREATED_BY", caption: "Created By", width: 110 },
             {
                 dataField: "CREATED_DT",
                 caption: "Created Date",
                 alignment: "center",
+                width: 140,
                 cellTemplate: function (container, options) {
                     var value = options.data.CREATED_DT;
                     container.text(value ? moment(value).format("DD-MM-YYYY HH:mm") : "");
@@ -112,7 +137,12 @@ $(document).ready(function () {
                     var hasFile = !!historyRow.FILE_PATH;
 
                     var btn = $("<button>")
-                        .attr({ type: "button", title: hasFile ? "View" : "No file recorded for this revision" })
+                        .attr({
+                            type: "button",
+                            title: hasFile ? "View"
+                                : isMigrationRecordWithoutFile(historyRow) ? "No file: this revision was recorded from the master list during migration"
+                                : "No file recorded for this revision"
+                        })
                         .addClass("btn btn-sm adm-act-btn")
                         .addClass(hasFile ? "btn-primary" : "btn-default disabled")
                         .html('<i class="fa fa-file-pdf-o"></i>')
@@ -128,6 +158,10 @@ $(document).ready(function () {
         ]
     });
 });
+
+function isMigrationRecordWithoutFile(row) {
+    return row.SOURCE === "MIGRATION" && !row.FILE_PATH;
+}
 
 function onHistoryPrepare() {
     var row = getSelectedRowData();

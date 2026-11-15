@@ -10,6 +10,7 @@
                 <div class="dp-layout-main">
                     <div class="dp-card">
                         <div class="dcd-folder-header-block">
+                            @* plain path, shown only inside a folder (e.g. My Folders › Pedoman) *@
                             <div class="dcd-crumb" id="dcdCrumb"></div>
                             <div class="dcd-folder-title-row">
                                 <span class="dcd-folder-title" id="dcdFolderTitle">All Documents</span>
@@ -19,6 +20,8 @@
                         <div id="divSearch">
                             @Html.Partial("_SearchCriteria")
                         </div>
+                        @* Subfolders of the open location, listed above its documents like File Explorer *@
+                        <div class="ud-folder-list" id="udFolderList"></div>
                         <div id="divGrid">
                             @Html.Partial("_GridView")
                         </div>

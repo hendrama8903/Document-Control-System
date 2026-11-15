@@ -2,8 +2,7 @@
     var userDashboardConfig = {
         canAcknowledge: @Json.Serialize((bool)ViewData["Acknowledge"]),
         urls: {
-            moveDocumentsToFolder: "@Url.Action("MoveDocumentsToFolder", "UserDashboard")",
-            search: "@Url.Action("Search", "UserDashboard")",
+            moveDocumentsToFolder: "@Url.Action("MoveDocumentsToFolder", "UserDashboard")",            search: "@Url.Action("Search", "UserDashboard")",
             downloadExcel: "@Url.Action("DownloadExcel", "UserDashboard")",
             acknowledgeDocument: "@Url.Action("AcknowledgeDocument", "UserDashboard")",
             downloadDocument: '@Html.Raw(Url.Action("DownloadDocument", "UserDashboard", new { path = "-1" }))',
