@@ -1,0 +1,25 @@
+@* Administration > Access Rights Review - user access review for audit:
+   who holds which role, what that role can open and login activity
+   (request Hendra 2026-11-14). Uses the standard grid and toolbar. *@
+<link rel="stylesheet" href="~/css/views/AccessRight/Index.css" asp-append-version="true" />
+<section class="content">
+    <div class="row">
+        <div class="col-xs-12">
+            <div class="dp-card">
+                <div class="ar-tabs" id="arTabs">
+                    <button type="button" class="ar-tab active" data-tab="users"><i class="fa fa-users"></i> Users</button>
+                    <button type="button" class="ar-tab" data-tab="access"><i class="fa fa-list"></i> User Access</button>
+                    <button type="button" class="ar-tab" data-tab="matrix"><i class="fa fa-th"></i> Role Matrix</button>
+                    <button type="button" class="ar-tab" data-tab="logins"><i class="fa fa-sign-in"></i> Login History</button>
+                </div>
+                <div id="divSearch">
+                    @Html.Partial("_SearchCriteria")
+                </div>
+                <div id="divGrid">
+                    @Html.Partial("_GridView")
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+@Html.Partial("_Javascript")

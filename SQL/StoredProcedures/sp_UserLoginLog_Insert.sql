@@ -1,0 +1,20 @@
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- Catat satu percobaan login (lihat SQL/AccessRightReview_Migration.sql).
+-- Dipanggil AuthController.Validate; kegagalan mencatat tidak pernah
+-- menggagalkan login.
+CREATE OR ALTER PROCEDURE [dbo].[sp_UserLoginLog_Insert]
+	@USERNAME    VARCHAR(255),
+	@RESULT      VARCHAR(10),
+	@MESSAGE     VARCHAR(500) = NULL,
+	@CLIENT_IP   VARCHAR(64) = NULL,
+	@USER_AGENT  VARCHAR(500) = NULL
+AS
+BEGIN
+	SET NOCOUNT ON;
+	INSERT INTO dbo.TB_R_USER_LOGIN_LOG (LOGIN_DT, USERNAME, RESULT, MESSAGE, CLIENT_IP, USER_AGENT)
+	VALUES (GETDATE(), LEFT(ISNULL(@USERNAME, ''), 255), @RESULT, LEFT(@MESSAGE, 500), LEFT(@CLIENT_IP, 64), LEFT(@USER_AGENT, 500));
+END
+GO

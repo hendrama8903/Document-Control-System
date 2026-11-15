@@ -1,0 +1,11 @@
+/* Tabs above the standard toolbar */
+.ar-tabs { display: flex; gap: 4px; padding: 0 16px; border-bottom: 1px solid #E4E7EC; overflow-x: auto; }
+.ar-tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: 12px 14px 10px; color: #667085; font-weight: 600; font-size: 13px; white-space: nowrap; }
+.ar-tab:hover { color: #101828; }
+.ar-tab.active { color: #2450D8; border-bottom-color: #2450D8; }
+
+.ar-login-range { display: inline-block; width: 210px; }
+
+/* Role Matrix */
+#datagrid .ar-matrix-cell { color: #1E9E63; font-weight: 700; }
+#datagrid .ar-matrix-menu-row > td { background: #F9FAFB; font-weight: 600; }

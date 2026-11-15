@@ -4,6 +4,8 @@ using DMS.Models;
 using DMS.Models.DB;
 using DMS.Models.Repo;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using System.Data;
 using System.Text;
 
@@ -85,6 +87,7 @@ namespace DMS.Controllers
                         }
 
                         CreateSession(user, GenerateMenu(menus), menuURL, functionList);
+                        RecordLogin(user.USERNAME, "SUCCESS", null);
 
                         if (param != null) { param = param.Replace("&amp;", "&"); }
 
@@ -93,12 +96,14 @@ namespace DMS.Controllers
                     else
                     {
                         LogMonitoringRepo.Instance.WriteLog(processid, "3", "ERR", invalidMessage, location, "admin", db);
+                        RecordLogin(user.USERNAME, "FAILED", invalidMessage);
                         return Json(new { status = false, message = invalidMessage });
                     }
                 }
                 else
                 {
                     LogMonitoringRepo.Instance.WriteLog(processid, "3", "ERR", "invalid username", location, "admin", db);
+                    RecordLogin(data.USERNAME, "FAILED", "Unknown or inactive username");
                     return Json(new { status = false, message = "Invalid Username!" });
                 }
             }
@@ -106,6 +111,29 @@ namespace DMS.Controllers
             {
                 LogMonitoringRepo.Instance.WriteLog(processid, "3", "ERR", ex.Message, location, "admin", db);
                 return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Login history for Administration > Access Rights Review (2026-11-14).
+        /// A failure to record must never block the login itself.
+        /// </summary>
+        private void RecordLogin(string username, string result, string message)
+        {
+            if (string.IsNullOrWhiteSpace(username)) return;
+            try
+            {
+                db.Database.ExecuteSqlRaw(
+                    "EXEC [dbo].[sp_UserLoginLog_Insert] @USERNAME, @RESULT, @MESSAGE, @CLIENT_IP, @USER_AGENT",
+                    new SqlParameter("@USERNAME", username.Trim()),
+                    new SqlParameter("@RESULT", result),
+                    new SqlParameter("@MESSAGE", (object)message ?? DBNull.Value),
+                    new SqlParameter("@CLIENT_IP", (object)HttpContext.Connection.RemoteIpAddress?.ToString() ?? DBNull.Value),
+                    new SqlParameter("@USER_AGENT", (object)Request.Headers["User-Agent"].ToString() ?? DBNull.Value));
+            }
+            catch (Exception)
+            {
+                // ignore: login history is best effort
             }
         }
 
