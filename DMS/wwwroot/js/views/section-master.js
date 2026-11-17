@@ -7,6 +7,7 @@ function updateActionButtons() {
 
     $("#btn_edit").prop("disabled", count != 1);
     syncMasterStatusButton(getSelectedRowsData());
+    syncMasterRemoveButton(getSelectedRowsData());
 }
 
 function smRenderStats(data) {
@@ -34,6 +35,7 @@ $(document).ready(function () {
     $("#btn_add").prop("disabled", false);
     $("#btn_edit").prop("disabled", true);
     $("#btn_delete").prop("disabled", true);
+    $("#btn_remove").prop("disabled", true);
 
     var gridStore = new DevExpress.data.CustomStore({
         key: "SECTION_ID",
@@ -54,7 +56,8 @@ $(document).ready(function () {
             }).done(function (result) {
                 var data = result.data == "" ? [] : result.data;
                 smRenderStats(data);
-                d.resolve(data);
+                // which rows were never used, for Delete (2026-11-16)
+                attachMasterUsage(data, sectionMasterConfig.urls.usage, "SECTION", "SECTION_ID").done(function (rows) { d.resolve(rows); });
             }).fail(function () {
                 d.reject("Data loading error");
             });
@@ -204,6 +207,12 @@ function openRowActionMenu($btn, row) {
             grid.selectRows([row.SECTION_ID], false);
             onDeletePrepare();
         }));
+        if (isMasterUnused(row)) {
+            $menu.append(menuItem("dp-menu-delete", "fa-trash-o", "Delete", function () {
+                grid.selectRows([row.SECTION_ID], false);
+                onRemovePrepare();
+            }));
+        }
     }
 
     var offset = $btn.offset();
@@ -471,4 +480,18 @@ function deleteData() {
     $('#addEditDepartmentCode').val("").trigger("change");
     $('#addEditDepartmentCode').prop('disabled', false);
     setDataSelect2WithParam("addEditDepartmentCode", sectionMasterConfig.urls.departmentsByDivision, "Select department", gModelCode);
+}
+
+// ---------- Delete (never-used data only, request Hendra 2026-11-16) ----------
+$(document).ready(function () {
+    $("#btn_remove").on("click", function () {
+        onRemovePrepare();
+    });
+});
+
+function onRemovePrepare() {
+    confirmMasterRemove(getSelectedRowsData(), {
+        entity: "SECTION", idField: "SECTION_ID", nameField: "SECTION_NAME", label: "Section", plural: "sections",
+        removeUrl: sectionMasterConfig.urls.remove
+    });
 }

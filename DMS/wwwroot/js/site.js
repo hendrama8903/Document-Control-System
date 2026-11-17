@@ -403,6 +403,78 @@ function confirmMasterStatus(rows, options) {
     }, "Confirmation");
 }
 
+// ---------- Delete data master yang belum pernah dipakai (Division, Department, Section;
+// request Hendra 2026-11-16). Aturannya sama dengan Document Category: hanya data yang tidak
+// dipakai di mana pun, tetap soft delete (DELETE_FLAG = 2). Server memeriksa ulang saat Delete.
+
+// Menempelkan USED_BY ke setiap baris grid: "" = belum pernah dipakai (boleh dihapus),
+// teks = dipakai di mana, null = tidak diketahui (Delete dimatikan).
+function attachMasterUsage(rows, url, entity, idField) {
+    var d = $.Deferred();
+    $.ajax({ type: "GET", url: url, data: { entity: entity }, cache: false })
+        .done(function (result) {
+            var map = {};
+            if (result && result.status) {
+                result.data.forEach(function (u) { map[u.id] = u.usedBy; });
+            }
+            rows.forEach(function (r) { r.USED_BY = map.hasOwnProperty(r[idField]) ? map[r[idField]] : null; });
+            d.resolve(rows);
+        })
+        .fail(function () {
+            rows.forEach(function (r) { r.USED_BY = null; });
+            d.resolve(rows);
+        });
+    return d.promise();
+}
+
+function isMasterUnused(row) {
+    return row.USED_BY === "";
+}
+
+function syncMasterRemoveButton(rows) {
+    var $btn = $("#btn_remove");
+    var used = rows.filter(function (r) { return !isMasterUnused(r); });
+    $btn.prop("disabled", rows.length < 1 || used.length > 0);
+    $btn.attr("title", rows.length > 0 && used.length > 0
+        ? "Only data that has never been used can be deleted. Deactivate it instead."
+        : "Delete data that has never been used");
+}
+
+// options: entity, idField, nameField, label, plural, removeUrl
+function confirmMasterRemove(rows, options) {
+    if (rows.length < 1 || rows.some(function (r) { return !isMasterUnused(r); })) {
+        return;
+    }
+    var names = rows.map(function (r) { return r[options.nameField]; });
+    showDangerConfirm(
+        "Delete " + confirmSubject(options.label, names, options.plural) + "? "
+        + (rows.length > 1 ? "They have" : "It has") + " never been used, so no document or user is affected. "
+        + (rows.length > 1 ? "They" : "It") + " will no longer appear in this list or in any selection.",
+        function () {
+            popUpProgressShow();
+            $.ajax({
+                type: "POST",
+                url: options.removeUrl,
+                traditional: true,
+                data: { entity: options.entity, ids: rows.map(function (r) { return r[options.idField]; }) },
+                success: function (result) {
+                    popUpProgressHide();
+                    if (result.status == true) {
+                        showSuccessMesgGrowl(result.message);
+                    } else {
+                        showErrorMesgGrowl(result.message);
+                    }
+                    onSearch();
+                },
+                error: function () {
+                    popUpProgressHide();
+                    showErrorMesgGrowl("Could not delete the data.");
+                }
+            });
+        },
+        "Delete");
+}
+
 // Merah: data hilang atau tidak bisa dibatalkan. actionLabel = kata kerja, mis. "Delete".
 function showDangerConfirm(mesg, funcYes, actionLabel) {
     showConfirmMesg(mesg, funcYes, actionLabel, actionLabel, "Cancel", undefined, "msg-danger");

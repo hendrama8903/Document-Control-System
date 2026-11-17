@@ -50,6 +50,11 @@ BEGIN
 											SET @QUERY += ' AND ISNULL(S.DELETE_FLAG, 0) = 0 '
 										END
 									END
+									ELSE
+									BEGIN
+										-- 2026-11-16: DELETE_FLAG = 2 = Deleted (sp_MasterData_Remove), never listed
+										SET @QUERY += ' AND ISNULL(S.DELETE_FLAG, 0) <> 2 '
+									END
 
 									IF @DEPARTMENT_CODE IS NOT NULL
 									BEGIN

@@ -18,7 +18,7 @@ BEGIN
 										ROW_NUMBER() OVER (ORDER BY S.SECTION_CODE ASC) as RowNumber, 
 										S.SECTION_CODE
 									FROM [dbo].[TB_M_SECTION] S
-									WHERE S.DELETE_FLAG <> 1'
+									WHERE ISNULL(S.DELETE_FLAG, 0) = 0'
 									
 									IF @DEPARTMENT_CODE IS NOT NULL
 									BEGIN

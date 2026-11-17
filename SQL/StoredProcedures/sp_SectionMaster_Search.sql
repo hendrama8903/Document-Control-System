@@ -35,7 +35,7 @@ BEGIN
 										S.CHANGED_DT,
 										S.CHANGED_BY
 									FROM [dbo].[TB_M_SECTION] S
-									LEFT JOIN [dbo].[TB_M_DEPARTMENT] D ON D.DEPARTMENT_CODE = S.DEPARTMENT_CODE AND D.DELETE_FLAG != 1
+									LEFT JOIN [dbo].[TB_M_DEPARTMENT] D ON D.DEPARTMENT_CODE = S.DEPARTMENT_CODE AND D.DELETE_FLAG = 0
 									WHERE 1 = 1 '
 
 									IF ISNULL(@SHOW_ALL, '0') <> '1'
@@ -48,6 +48,11 @@ BEGIN
 										BEGIN
 											SET @QUERY += ' AND ISNULL(S.DELETE_FLAG, 0) = 0 '
 										END
+									END
+									ELSE
+									BEGIN
+										-- 2026-11-16: DELETE_FLAG = 2 = Deleted (sp_MasterData_Remove), never listed
+										SET @QUERY += ' AND ISNULL(S.DELETE_FLAG, 0) <> 2 '
 									END
 
 									IF @SECTION_CODE IS NOT NULL
