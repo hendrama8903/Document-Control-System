@@ -199,7 +199,14 @@ namespace DMS.Controllers
                     ExistingRevisions = existingDocs
                         .Where(x => !string.IsNullOrEmpty(x.DOCUMENT_CODE))
                         .GroupBy(x => x.DOCUMENT_CODE.ToUpperInvariant())
-                        .ToDictionary(g => g.Key, g => g.Max(x => x.REVISION ?? 0))
+                        .ToDictionary(g => g.Key, g => g.Max(x => x.REVISION ?? 0)),
+                    // former department -> current department(s), System Parameters DEPT_SUCCESSOR (2026-11-16)
+                    Successors = mSystemRepo.Search(new MSystem { SYSTEM_TYPE = "DEPT_SUCCESSOR" }, db, null, null)
+                        .Where(x => (x.STATUS ?? 1) == 1 && !string.IsNullOrWhiteSpace(x.SYSTEM_CODE) && !string.IsNullOrWhiteSpace(x.SYSTEM_VALUE))
+                        .GroupBy(x => x.SYSTEM_CODE.Trim().ToUpperInvariant())
+                        .ToDictionary(g => g.Key,
+                            g => g.First().SYSTEM_VALUE.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries).Select(v => v.Trim().ToUpperInvariant()).ToArray(),
+                            StringComparer.OrdinalIgnoreCase)
                 };
 
                 // WorkbookFactory needs a stream it can seek in.

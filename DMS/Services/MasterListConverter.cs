@@ -32,6 +32,22 @@ namespace DMS.Services
             public IList<MSystem> ProcessCodes { get; set; } = new List<MSystem>();
             /// <summary>Document Code (upper case) -> revision of the active document.</summary>
             public Dictionary<string, int> ExistingRevisions { get; set; } = new Dictionary<string, int>();
+            /// <summary>
+            /// Former department code (upper case) -> its current departments, from System Parameters
+            /// type DEPT_SUCCESSOR (2026-11-16). A department that was split has several successors:
+            /// a distribution to the old code goes to all of them, the document owner to the first.
+            /// The document number itself is never changed.
+            /// </summary>
+            public Dictionary<string, string[]> Successors { get; set; } = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        private const string SuccessorHint = " If it was renamed, merged or split in a reorganisation, add it under System Parameters > DEPT_SUCCESSOR (code = old department, value = new department codes).";
+
+        /// <summary>Active departments that replace a former department code; empty when none is set.</summary>
+        private static List<DepartmentMaster> SuccessorsOf(string code, Masters m)
+        {
+            if (code == null || !m.Successors.TryGetValue(code.Trim(), out string[] next)) return new List<DepartmentMaster>();
+            return next.Select(n => m.Departments.FirstOrDefault(d => Eq(d.DEPARTMENT_CODE, n))).Where(d => d != null).ToList();
         }
 
         public class OutRow
@@ -520,17 +536,34 @@ namespace DMS.Services
             DepartmentMaster headerDepartment = MatchName(doc.HeaderDepartment, departmentsOfDivision, d => d.DEPARTMENT_CODE, d => d.DEPARTMENT_NAME)
                 ?? MatchName(doc.HeaderDepartment, m.Departments, d => d.DEPARTMENT_CODE, d => d.DEPARTMENT_NAME);
             DepartmentMaster department = codeDepartment != null ? m.Departments.FirstOrDefault(d => Eq(d.DEPARTMENT_CODE, codeDepartment)) : headerDepartment;
+
+            // A department that no longer exists after a reorganisation: the number keeps the old
+            // code, the document is owned by the successor department (and its division).
+            bool bySuccessor = false;
+            if (department == null && codeDepartment != null)
+            {
+                DepartmentMaster successor = SuccessorsOf(codeDepartment, m).FirstOrDefault();
+                if (successor != null)
+                {
+                    department = successor;
+                    bySuccessor = true;
+                    row.DivisionCode = DivisionOf(successor);
+                    row.Warnings.Add("Department " + codeDepartment + " no longer exists; owner set to its successor "
+                        + successor.DEPARTMENT_CODE + " (" + DivisionOf(successor) + "). The document number is kept.");
+                }
+            }
+
             if (department == null)
             {
                 string hint = headerDepartment != null ? " Did you mean " + headerDepartment.DEPARTMENT_CODE + " - " + headerDepartment.DEPARTMENT_NAME + "?" : "";
                 row.Errors.Add(codeDepartment != null
-                    ? "Department \"" + codeDepartment + "\" is not in Department master (or is inactive)." + hint
+                    ? "Department \"" + codeDepartment + "\" is not in Department master (or is inactive)." + hint + SuccessorHint
                     : "Department \"" + doc.HeaderDepartment + "\" could not be matched to Department master. Type the Department Code.");
             }
             else
             {
                 row.DepartmentCode = department.DEPARTMENT_CODE;
-                if (division != null && !Eq(DivisionOf(department), division.DIVISION_CODE))
+                if (division != null && !bySuccessor && !Eq(DivisionOf(department), division.DIVISION_CODE))
                     row.Errors.Add("Department " + department.DEPARTMENT_CODE + " belongs to division " + DivisionOf(department) + ", not " + division.DIVISION_CODE + ".");
                 if (codeDepartment != null && !string.IsNullOrEmpty(doc.HeaderDepartment) && headerDepartment != null && headerDepartment.DEPARTMENT_CODE != department.DEPARTMENT_CODE)
                     row.Warnings.Add("The list header says department \"" + doc.HeaderDepartment + "\" (" + headerDepartment.DEPARTMENT_CODE + "), the number says " + department.DEPARTMENT_CODE + ".");
@@ -645,9 +678,17 @@ namespace DMS.Services
                             Eq(code, column) && ofDivision.Count > 0 ? ofDivision
                             : department != null ? new List<DepartmentMaster> { department }
                             : ofDivision;
+                        // former department: the copy is now held by its successor(s)
                         if (recipients.Count == 0)
                         {
-                            row.Errors.Add("Distribution code " + code + " (under " + column + ") is not a department or division with active departments in the master.");
+                            recipients = SuccessorsOf(code, m);
+                            if (recipients.Count > 0)
+                                row.Warnings.Add("Distribution " + code + " is a former department; registered to its successor "
+                                    + string.Join(", ", recipients.Select(r => r.DEPARTMENT_CODE)) + ".");
+                        }
+                        if (recipients.Count == 0)
+                        {
+                            row.Errors.Add("Distribution code " + code + " (under " + column + ") is not a department or division with active departments in the master." + SuccessorHint);
                             continue;
                         }
 
