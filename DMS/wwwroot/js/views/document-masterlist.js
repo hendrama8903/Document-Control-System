@@ -12,6 +12,25 @@ function viewAttachment(filePath, documentTransactionId) {
     window.open(link, '_blank');
 }
 
+// ---------- summary panel (2026-11-16) ----------
+function mlRenderStats(rows) {
+    var count = function (status) { return rows.filter(function (r) { return r.STATUS == status; }).length; };
+    $("#mlStatPublished").text(count(5));
+    $("#mlStatApproved").text(count(1));
+    $("#mlStatValid").text(count(5) + count(1));
+    $("#mlStatObsolete").text(count(4));
+}
+
+var mlCategoryPills = ["dms-pill-info", "dms-pill-success", "dms-pill-warning", "dms-pill-primary", "dms-pill-default"];
+function mlCategoryPillClass(code) {
+    var sum = 0;
+    for (var i = 0; i < (code || "").length; i++) sum += code.charCodeAt(i);
+    return mlCategoryPills[sum % mlCategoryPills.length];
+}
+
+// Default view: valid documents only (Approved, Published). Reset brings it back.
+var ML_DEFAULT_STATUS = [1, 5];
+
 $(document).ready(function () {
     var gridStore = new DevExpress.data.CustomStore({
         key: "DOCUMENT_TRANSACTION_ID",
@@ -29,7 +48,9 @@ $(document).ready(function () {
                     initialMode: false
                 }
             }).done(function (result) {
-                d.resolve(result.data == "" ? [] : result.data);
+                var rows = result.data == "" ? [] : result.data;
+                mlRenderStats(rows);
+                d.resolve(rows);
             }).fail(function () {
                 d.reject("Data loading error");
             });
@@ -57,9 +78,29 @@ $(document).ready(function () {
                     container.text(pageIndex * pageSize + options.row.rowIndex + 1);
                 }
             },
-            { dataField: "DOCUMENT_CODE", caption: "Document Code", fixed: true, fixedPosition: "left" },
+            {
+                dataField: "DOCUMENT_CODE",
+                caption: "Document Code",
+                fixed: true,
+                fixedPosition: "left",
+                cellTemplate: function (container, options) {
+                    var row = options.data;
+                    $("<i>").addClass("fa dms-file-icon " + dmsFileIconClass(row.FILE_PATH)).appendTo(container);
+                    $("<span>").addClass("ml-doc-link").text(row.DOCUMENT_CODE || "")
+                        .on("click", function () { viewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID); })
+                        .appendTo(container);
+                }
+            },
             { dataField: "DOCUMENT_TRANSACTION_NAME", caption: "Document Name" },
-            { dataField: "DOCUMENT_CATEGORY", caption: "Category" },
+            {
+                dataField: "DOCUMENT_CATEGORY",
+                caption: "Category",
+                alignment: "center",
+                cellTemplate: function (container, options) {
+                    if (!options.value) return;
+                    $("<span>").addClass("dms-pill " + mlCategoryPillClass(options.value)).text(options.value).appendTo(container);
+                }
+            },
             {
                 caption: "Division",
                 calculateCellValue: function (row) {
@@ -73,7 +114,15 @@ $(document).ready(function () {
                 }
             },
             { dataField: "CLASSIFIED_VAL", caption: "Classified" },
-            { dataField: "REVISION", caption: "Revision", alignment: "center", width: 80 },
+            {
+                dataField: "REVISION",
+                caption: "Revision",
+                alignment: "center",
+                width: 90,
+                cellTemplate: function (container, options) {
+                    $("<span>").addClass("dms-pill dms-pill-info").text("Rev. " + (options.value != null ? options.value : 0)).appendTo(container);
+                }
+            },
             {
                 dataField: "STATUS",
                 caption: "Status",
@@ -164,11 +213,17 @@ $(document).ready(function () {
                     }
 
                     $("<button>")
-                        .attr({ type: "button", title: "View" })
-                        .addClass("btn btn-primary btn-sm adm-act-btn")
-                        .html('<i class="fa fa-file-pdf-o"></i>')
-                        .on("click", function () {
-                            viewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+                        .attr({ type: "button", title: "More actions" })
+                        .addClass("dp-act-kebab")
+                        .html('<i class="fa fa-ellipsis-v"></i>')
+                        .on("click", function (e) {
+                            e.stopPropagation();
+                            var $menu = buildRowActionMenu();
+                            $menu.empty().append(menuItem("dp-menu-preview", "fa-eye", "View", function () {
+                                viewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+                            }));
+                            var offset = $(this).offset();
+                            $menu.css({ top: offset.top + $(this).outerHeight() + 4, left: offset.left - $menu.outerWidth() + $(this).outerWidth() }).show();
                         })
                         .appendTo(container);
                 }
@@ -176,7 +231,17 @@ $(document).ready(function () {
         ]
     }));
 
-    bindGridToolbar("columns filters reset refresh resize");
+    bindGridToolbar("columns filters refresh resize stats");
+
+    // Reset clears the column filters but keeps the default view (valid documents)
+    $("#btn_resetFilters").on("click", function () {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        grid.beginUpdate();
+        grid.clearFilter();
+        grid.clearSelection();
+        grid.columnOption("STATUS", "filterValues", ML_DEFAULT_STATUS);
+        grid.endUpdate();
+    });
 
     // Reset clears every filter; bring back the default "current, valid" status filter
     $("#btn_resetFilters").on("click", function () {

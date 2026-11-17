@@ -1,13 +1,60 @@
+@* Same layout as the other list pages (2026-11-16): a collapsible summary panel beside the grid. *@
+<link rel="stylesheet" href="~/css/views/shared/master-stats-panel.css" asp-append-version="true" />
 <section class="content">
     <div class="row">
         <div class="col-xs-12">
-            <div class="dp-card">
-                <div id="divSearch">
-                    @Html.Partial("_SearchCriteria")
+            <div class="dp-layout-row stats-collapsed" id="dpLayoutRow">
+                <div class="dp-layout-main">
+                    <div class="dp-card">
+                        <div id="divSearch">
+                            @Html.Partial("_SearchCriteria")
+                        </div>
+                        <div id="divGrid">
+                            @Html.Partial("_GridView")
+                        </div>
+                    </div>
                 </div>
-                <div id="divGrid">
-                    @Html.Partial("_GridView")
-                </div>
+
+                <aside class="dp-stats-panel" id="dpStatsPanel">
+                    <div class="dp-stats-panel-head">
+                        <span>Masterlist Summary</span>
+                        <button type="button" class="dp-stats-panel-close" id="btn_closeStatsPanel"><i class="fa fa-times"></i></button>
+                    </div>
+                    <div class="dp-stats-panel-body" id="mlStatsRow">
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon blue"><i class="fa fa-file-text-o"></i></div>
+                            <div>
+                                <span>Valid Documents</span>
+                                <b id="mlStatValid">-</b>
+                                <small>Approved and Published</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon green"><i class="fa fa-check-circle"></i></div>
+                            <div>
+                                <span>Published</span>
+                                <b id="mlStatPublished">-</b>
+                                <small>Effective</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon amber"><i class="fa fa-hourglass-half"></i></div>
+                            <div>
+                                <span>Approved</span>
+                                <b id="mlStatApproved">-</b>
+                                <small>Not yet published</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon red"><i class="fa fa-ban"></i></div>
+                            <div>
+                                <span>Obsolete</span>
+                                <b id="mlStatObsolete">-</b>
+                                <small>Replaced revisions</small>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
             </div>
         </div>
     </div>

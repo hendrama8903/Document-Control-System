@@ -178,6 +178,34 @@
     .ud-folder-item-type { display: none; }
 }
 
+/* Phone (2026-11-16), same treatment as Document Control: one column, every card the full
+   width (the grid card's 420px minimum made the page scroll sideways), Folders on top with
+   its own scrolling list, the grid, then Document Status - its toggle is hidden on a phone,
+   so the panel is shown instead of being unreachable. */
+@media (max-width: 576px) {
+    .dp-layout-row { flex-direction: column; flex-wrap: nowrap; row-gap: 12px; }
+    .dp-layout-main { flex: 1 1 auto; min-width: 0; }
+    .dp-layout-row > #dcdFolderPanel,
+    .dp-layout-row.folders-collapsed > #dcdFolderPanel {
+        flex: none; width: 100%; max-height: none; margin: 0;
+        opacity: 1; pointer-events: auto; border-color: #E3E8EF;
+    }
+    #dcdFolderPanel .dcd-folder-head { padding: 12px 14px; }
+    #dcdFolderPanel .dcd-folder-tree { flex: none; max-height: 220px; }
+    #dcdFolderPanel .dcd-folder-foot { display: none; }
+    .dp-layout-row .dcd-stats-panel,
+    .dp-layout-row.stats-collapsed .dcd-stats-panel {
+        flex: none; width: 100%; margin: 0;
+        opacity: 1; pointer-events: auto; border-color: #E3E8EF;
+        box-shadow: 0 4px 14px rgba(16,24,40,.04);
+    }
+    .dcd-stats-panel #btn_closeStatsPanel { display: none; }
+    .dcd-folder-header-block { padding: 12px 12px 0; }
+    .dcd-folder-title { font-size: 16px; }
+    .ud-folder-list { margin: 0 12px 10px; }
+    .ud-folder-item-count { width: auto; }
+}
+
 /* Accept button in the Acceptance column, and the Waiting for Acceptance count (2026-11-14) */
 .ud-accept-btn {
     border: none; border-radius: 6px; padding: 4px 12px;

@@ -155,31 +155,7 @@ $(document).ready(function () {
         ]
     }));
 
-    bindGridToolbar("columns filters refresh resize");
-
-    // ---------- toggle summary/KPI cards, so the grid below can move up ----------
-    $("#btn_toggleStats").on("click", function () {
-        var $btn = $(this);
-        var $icon = $btn.find("i");
-        var $row = $("#dsStatsRow");
-
-        $row.stop(true, true).animate(
-            { height: "toggle", marginTop: "toggle", marginBottom: "toggle", paddingTop: "toggle", paddingBottom: "toggle" },
-            {
-                duration: 220,
-                easing: "swing",
-                progress: function () {
-                    $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-                },
-                complete: function () {
-                    var collapsed = !$row.is(":visible");
-                    $icon.toggleClass("fa-chevron-up", !collapsed).toggleClass("fa-chevron-down", collapsed);
-                    $btn.attr("title", collapsed ? "Show Summary Cards" : "Hide Summary Cards");
-                    $("#datagrid").dxDataGrid("instance").option("height", computeGridHeight());
-                }
-            }
-        );
-    });
+    bindGridToolbar("columns filters reset refresh resize stats");
 
     $('body').tooltip({ selector: '[data-toggle="tooltip"]' });
 });

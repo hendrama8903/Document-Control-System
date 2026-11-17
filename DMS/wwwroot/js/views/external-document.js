@@ -29,6 +29,58 @@ function appendTypeDot(container, type) {
     }).appendTo(container);
 }
 
+// ---------- summary panel and Due for Review (2026-11-16) ----------
+var gDueForReview = false;
+
+function edReviewState(row) {
+    if (!row.NEXT_REVIEW_DATE) return null;
+    var next = moment(row.NEXT_REVIEW_DATE).startOf("day"), today = moment().startOf("day");
+    if (next.isBefore(today)) return "overdue";
+    if (!next.isAfter(moment(today).add(30, "days"))) return "due";
+    return null;
+}
+
+function edRenderStats(rows) {
+    $("#edStatTotal").text(rows.length);
+    $("#edStatActive").text(rows.filter(function (r) { return r.STATUS == "1"; }).length);
+    $("#edStatDue").text(rows.filter(function (r) { return edReviewState(r) === "due"; }).length);
+    $("#edStatOverdue").text(rows.filter(function (r) { return edReviewState(r) === "overdue"; }).length);
+}
+
+function edApplyDueFilter() {
+    var grid = $("#datagrid").dxDataGrid("instance");
+    // overdue documents are due too
+    grid.filter(gDueForReview ? [function (r) { return edReviewState(r) !== null; }, "=", true] : null);
+    $("#btn_dueForReview").toggleClass("active", gDueForReview);
+}
+
+function openRowActionMenu($btn, row) {
+    var $menu = buildRowActionMenu();
+    $menu.empty();
+    var grid = $("#datagrid").dxDataGrid("instance");
+
+    if (row.FILE_PATH && externalDocumentConfig.downloadFilePathFlag != "False") {
+        $menu.append(menuItem("dp-menu-download", "fa-download", "Download", function () { onDownload(row.FILE_PATH); }));
+    }
+    if ($("#btn_edit").length) {
+        $menu.append(menuItem("dp-menu-edit", "fa-pencil-square-o", "Edit", function () {
+            grid.selectRows([row.EXTERNAL_DOCUMENT_ID], false);
+            onEditPrepare();
+        }));
+    }
+    if ($("#btn_delete").length) {
+        $menu.append('<li class="divider"></li>');
+        $menu.append(menuItem("dp-menu-delete", "fa-trash-o", "Delete", function () {
+            grid.selectRows([row.EXTERNAL_DOCUMENT_ID], false);
+            onDeletePrepare();
+        }));
+    }
+    if ($menu.children().length === 0) return;
+
+    var offset = $btn.offset();
+    $menu.css({ top: offset.top + $btn.outerHeight() + 4, left: offset.left - $menu.outerWidth() + $btn.outerWidth() }).show();
+}
+
 $(document).ready(function () {
     $("#btn_add").prop("disabled", false);
     $("#btn_edit").prop("disabled", true);
@@ -50,7 +102,9 @@ $(document).ready(function () {
                     initialMode: false
                 }
             }).done(function (result) {
-                d.resolve(result.data == "" ? [] : result.data);
+                var rows = result.data == "" ? [] : result.data;
+                edRenderStats(rows);
+                d.resolve(rows);
             }).fail(function () {
                 d.reject("Data loading error");
             });
@@ -59,51 +113,23 @@ $(document).ready(function () {
         }
     });
 
-    $("#datagrid").dxDataGrid({
+    // Shared grid defaults (toolbar, paging, column chooser, phone layout) like the other
+    // list pages. The filter row opens with More Filters; rows stay grouped by External Type.
+    $("#datagrid").dxDataGrid(dmsGridOptions({
         dataSource: gridStore,
-        showBorders: true,
-        columnAutoWidth: true,
-        allowColumnResizing: true,
-        columnResizingMode: "widget",
-        wordWrapEnabled: false,
-        sorting: { mode: "none" },
-        noDataText: "Data not found.",
         height: computeGridHeight(),
-        filterRow: { visible: true, applyFilter: "auto" },
-        headerFilter: { visible: true },
-        groupPanel: { visible: true },
+        filterRow: { visible: false, applyFilter: "auto" },
         grouping: { autoExpandAll: true, contextMenuEnabled: true },
         summary: {
             groupItems: [
-                { column: "DOCUMENT_NAME", summaryType: "count", displayFormat: "{0} dokumen" }
+                { column: "DOCUMENT_NAME", summaryType: "count", displayFormat: "{0} documents" }
             ]
         },
-        toolbar: {
-            visible: true,
-            items: [
-                { name: "searchPanel" }
-            ]
-        },
-        searchPanel: { visible: true, width: 260, placeholder: "Cari dokumen..." },
         selection: {
             mode: "multiple",
             showCheckBoxesMode: "always",
             allowSelectAll: false
         },
-        paging: { pageSize: 10 },
-        pager: {
-            visible: true,
-            displayMode: "compact",
-            showPageSizeSelector: true,
-            allowedPageSizes: [10, 25, 50, 100],
-            showInfo: true,
-            showNavigationButtons: true
-        },
-        columnChooser: {
-            enabled: true,
-            mode: "select"
-        },
-        columnFixing: { enabled: true },
         onSelectionChanged: function (e) {
             if (e.selectedRowKeys.length > 1) {
                 e.component.selectRows(e.currentSelectedRowKeys, false);
@@ -170,10 +196,23 @@ $(document).ready(function () {
                 alignment: "right",
                 cellTemplate: function (container, options) {
                     var value = options.data.NEXT_REVIEW_DATE;
-                    container.text(value != null ? moment(value).format("DD-MM-YYYY") : "");
+                    if (value == null) return;
+                    var state = edReviewState(options.data);
+                    var $t = $("<span>").text(moment(value).format("DD-MM-YYYY")).appendTo(container);
+                    if (state) $t.addClass("dms-pill " + (state === "overdue" ? "dms-pill-danger" : "dms-pill-warning"))
+                        .attr("title", state === "overdue" ? "Review overdue" : "Review due within 30 days");
                 }
             },
-            { dataField: "STATUS_DISPLAY", caption: "Status", alignment: "center" },
+            {
+                dataField: "STATUS_DISPLAY",
+                caption: "Status",
+                alignment: "center",
+                cellTemplate: function (container, options) {
+                    if (!options.value) return;
+                    $("<span>").addClass("dms-pill " + (options.data.STATUS == "1" ? "dms-pill-success" : "dms-pill-default"))
+                        .text(options.value).appendTo(container);
+                }
+            },
             { dataField: "INTERNAL_IMPACT_DISPLAY", caption: "Internal Impact" },
             {
                 caption: "Impacted Document",
@@ -216,39 +255,38 @@ $(document).ready(function () {
                 fixedPosition: "right",
                 cellTemplate: function (container, options) {
                     var row = options.data;
-
-                    if (row.FILE_PATH == null || externalDocumentConfig.downloadFilePathFlag == "False") {
-                        return;
-                    }
-
                     $("<button>")
-                        .attr({ type: "button", title: "Download" })
-                        .addClass("btn btn-primary btn-sm")
-                        .html('<i class="fa fa-download"></i>')
-                        .on("click", function () {
-                            onDownload(row.FILE_PATH);
+                        .attr({ type: "button", title: "More actions" })
+                        .addClass("dp-act-kebab")
+                        .html('<i class="fa fa-ellipsis-v"></i>')
+                        .on("click", function (e) {
+                            e.stopPropagation();
+                            openRowActionMenu($(this), row);
                         })
                         .appendTo(container);
                 }
             }
         ]
+    }));
+
+    bindGridToolbar("columns filters refresh resize stats");
+
+    $("#btn_dueForReview").on("click", function () {
+        gDueForReview = !gDueForReview;
+        edApplyDueFilter();
     });
 
-    bindGridToolbar("columns resize");
+    // Reset also turns Due for Review off
+    $("#btn_resetFilters").on("click", function () {
+        var grid = $("#datagrid").dxDataGrid("instance");
+        gDueForReview = false;
+        grid.clearFilter();
+        grid.clearSelection();
+        edApplyDueFilter();
+    });
 
     $("#btn_export").on("click", function () {
         window.location.href = externalDocumentConfig.urls.downloadExcel;
-    });
-
-    $("#chk_due_for_review").on("change", function () {
-        var grid = $("#datagrid").dxDataGrid("instance");
-
-        if (this.checked) {
-            var horizon = moment().add(30, "days").format("YYYY-MM-DD");
-            grid.filter(["NEXT_REVIEW_DATE", "<=", horizon]);
-        } else {
-            grid.clearFilter();
-        }
     });
 
     $('body').tooltip({ selector: '[data-toggle="tooltip"]' });

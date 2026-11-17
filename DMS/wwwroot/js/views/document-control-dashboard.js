@@ -5,6 +5,8 @@
 var gIsQms = documentControlDashboardConfig.canDocumentControlAccess;
 
 function computeGridHeight() {
+    // Phone: as tall as the rows (see grid-common.js, 2026-11-16)
+    if (typeof dmsIsPhone === "function" && dmsIsPhone()) return "auto";
     var gridTop = $("#datagrid").offset().top;
     var footerHeight = $("#divFooter").outerHeight(true) || 0;
 

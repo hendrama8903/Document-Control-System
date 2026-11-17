@@ -1,5 +1,1 @@
-/* site.css forces .fa-chevron-up/-down to white globally (for a dark-background
-   use elsewhere) - override back to the normal dp-icon-btn color for this button. */
-#btn_toggleStats i {
-    color: #344054;
-}
+/* Document Submission uses the shared list layout (shared/master-stats-panel.css) since 2026-11-16. */

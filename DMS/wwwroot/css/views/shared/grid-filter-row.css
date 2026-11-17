@@ -23,3 +23,7 @@
     text-overflow: unset;
     line-height: 1.3;
 }
+
+/* Masterlist: document code opens the document, like Document Control (2026-11-16) */
+.ml-doc-link { color: #2450D8; font-weight: 600; cursor: pointer; }
+.ml-doc-link:hover { text-decoration: underline; }

@@ -2,7 +2,70 @@
 // A view can replace any global function here by declaring one with the same name.
 
 // Options shared by the app's grids. Anything passed in takes priority.
+// ---------- Frozen columns on a phone (2026-11-16) ----------
+// On a narrow screen the left frozen columns (No, Document No, ...) take most of the width and
+// the rest of the row scrolls in a thin strip beside them. Below 577px only the checkbox (left)
+// and the Action column (right) stay frozen; the others scroll with the row. They freeze again
+// when the screen gets wider (rotation, desktop). Every grid built with dmsGridOptions.
+var DMS_PHONE_QUERY = window.matchMedia ? window.matchMedia("(max-width: 576px)") : null;
+
+function dmsIsPhone() {
+    return !!(DMS_PHONE_QUERY && DMS_PHONE_QUERY.matches);
+}
+
+function dmsKeepsFrozen(col) {
+    return col.type === "selection" || col.fixedPosition === "right";
+}
+
+// On a phone the row number column ("No") is hidden and the row menu column (Action) is
+// narrowed, so the document columns get the width instead.
+var DMS_PHONE_ACTION_WIDTH = 52;
+
+function dmsMarkFrozenColumns(columns) {
+    var phone = dmsIsPhone();
+    (columns || []).forEach(function (col) {
+        if (!col || typeof col !== "object") return;
+        if (col.fixed && !dmsKeepsFrozen(col)) {
+            col.dmsFrozen = true;              // remember it was frozen on a wide screen
+            if (phone) col.fixed = false;
+        }
+        if (col.caption === "No" && !col.dataField && col.visible !== false) {
+            col.dmsPhoneHidden = true;
+            if (phone) col.visible = false;
+        }
+        if (col.caption === "Action" && col.fixedPosition === "right" && col.width) {
+            col.dmsWideWidth = col.width;
+            if (phone) col.width = DMS_PHONE_ACTION_WIDTH;
+        }
+        if (col.columns) dmsMarkFrozenColumns(col.columns);
+    });
+}
+
+function dmsApplyFrozenColumns() {
+    var phone = dmsIsPhone();
+    $(".dx-datagrid").closest(".dx-widget").each(function () {
+        var grid = $(this).data("dxDataGrid");
+        if (!grid) return;
+        var count = grid.columnCount();
+        grid.beginUpdate();
+        if (this.id === "datagrid") grid.option("height", computeGridHeight());
+        for (var i = 0; i < count; i++) {
+            if (grid.columnOption(i, "dmsFrozen")) grid.columnOption(i, "fixed", !phone);
+            if (grid.columnOption(i, "dmsPhoneHidden")) grid.columnOption(i, "visible", !phone);
+            var wide = grid.columnOption(i, "dmsWideWidth");
+            if (wide) grid.columnOption(i, "width", phone ? DMS_PHONE_ACTION_WIDTH : wide);
+        }
+        grid.endUpdate();
+    });
+}
+
+if (DMS_PHONE_QUERY) {
+    if (DMS_PHONE_QUERY.addEventListener) DMS_PHONE_QUERY.addEventListener("change", dmsApplyFrozenColumns);
+    else if (DMS_PHONE_QUERY.addListener) DMS_PHONE_QUERY.addListener(dmsApplyFrozenColumns);
+}
+
 function dmsGridOptions(options) {
+    if (options && options.columns) dmsMarkFrozenColumns(options.columns);
     return $.extend({
         showBorders: true,
         columnAutoWidth: true,
@@ -28,6 +91,11 @@ function dmsGridOptions(options) {
 }
 
 function computeGridHeight() {
+    // Phone: the grid is as tall as its rows. A screen-tall grid left a large empty area
+    // under a few rows and pushed the summary panel far down (2026-11-16).
+    if (dmsIsPhone()) {
+        return "auto";
+    }
     var gridTop = $("#datagrid").offset().top;
     var footerHeight = $("#divFooter").outerHeight(true) || 0;
 

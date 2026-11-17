@@ -1,16 +1,61 @@
+@* Same layout as the other list pages (2026-11-16): the toolbar inside the card and a
+   collapsible summary panel, instead of a page title with loose buttons above the grid. *@
+<link rel="stylesheet" href="~/css/views/shared/master-stats-panel.css" asp-append-version="true" />
 <section class="content">
     <div class="row">
         <div class="col-xs-12">
-            <div id="divTitle" >
-                <div class="content-header">
-                    <h1>@ViewData["Title"]</h1>
+            <div class="dp-layout-row stats-collapsed" id="dpLayoutRow">
+                <div class="dp-layout-main">
+                    <div class="dp-card">
+                        <div id="divSearch">
+                            @Html.Partial("_SearchCriteria")
+                        </div>
+                        <div id="divGrid">
+                            @Html.Partial("_GridView")
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div id="divSearch">
-                @Html.Partial("_SearchCriteria")
-            </div>
-            <div id="divGrid">
-                @Html.Partial("_GridView")
+
+                <aside class="dp-stats-panel" id="dpStatsPanel">
+                    <div class="dp-stats-panel-head">
+                        <span>External Document Summary</span>
+                        <button type="button" class="dp-stats-panel-close" id="btn_closeStatsPanel"><i class="fa fa-times"></i></button>
+                    </div>
+                    <div class="dp-stats-panel-body" id="edStatsRow">
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon blue"><i class="fa fa-file-text-o"></i></div>
+                            <div>
+                                <span>Total Documents</span>
+                                <b id="edStatTotal">-</b>
+                                <small>All external documents</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon green"><i class="fa fa-check-circle"></i></div>
+                            <div>
+                                <span>In Force</span>
+                                <b id="edStatActive">-</b>
+                                <small>Status Berlaku</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon amber"><i class="fa fa-clock-o"></i></div>
+                            <div>
+                                <span>Review Due</span>
+                                <b id="edStatDue">-</b>
+                                <small>Within 30 days</small>
+                            </div>
+                        </div>
+                        <div class="dp-stat-card">
+                            <div class="dp-stat-card-icon red"><i class="fa fa-exclamation-circle"></i></div>
+                            <div>
+                                <span>Review Overdue</span>
+                                <b id="edStatOverdue">-</b>
+                                <small>Past the review date</small>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
             </div>
         </div>
     </div>

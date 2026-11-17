@@ -157,6 +157,35 @@
     #btn_toggleFolders, #btn_toggleStats, #btn_hideFolders { display: none !important; }
 }
 
+/* Phone (2026-11-16): one column, every card the full width. The grid card had a 420px
+   minimum, so the page scrolled sideways and the Folders card sat at its desktop 260px.
+   Folders stays on top (its list scrolls when long), the grid below it, and Register
+   Overview (with Needs Action) at the bottom - its toggle is hidden here, so it is shown. */
+@media (max-width: 576px) {
+    .dp-layout-row { flex-direction: column; flex-wrap: nowrap; row-gap: 12px; }
+    .dp-layout-main { flex: 1 1 auto; min-width: 0; }
+    .dp-layout-row .dcd-folder-panel,
+    .dp-layout-row.folders-collapsed .dcd-folder-panel {
+        flex: none; width: 100%; margin: 0;
+        opacity: 1; pointer-events: auto; border-color: #E3E8EF;
+    }
+    .dcd-folder-panel .dcd-folder-head { padding: 12px 14px; }
+    .dcd-folder-panel .dcd-folder-tree { max-height: 190px; min-height: 0; flex: none; }
+    .dcd-folder-panel .dcd-folder-foot { display: none; }
+    .dcd-stats-panel,
+    .dp-layout-row.stats-collapsed .dcd-stats-panel {
+        flex: none; width: 100%; margin: 0;
+        opacity: 1; pointer-events: auto; border-color: #E3E8EF;
+        box-shadow: 0 4px 14px rgba(16,24,40,.04);
+    }
+    .dcd-stats-panel #btn_closeStatsPanel { display: none; }
+    .dcd-folder-header-block { padding: 12px 12px 0; }
+    .dcd-folder-title { font-size: 16px; }
+    .dcd-binder-bar { flex-direction: column; align-items: stretch; }
+    .dcd-binder-actions { display: grid; grid-template-columns: 1fr 1fr; }
+    .dcd-binder-actions .dp-btn { justify-content: center; }
+}
+
 /* bulk bar in the toolbar, shown while documents are ticked (2026-11-14) */
 .dcd-selection-bar {
     display: inline-flex; align-items: center; gap: 8px;

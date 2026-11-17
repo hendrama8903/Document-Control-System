@@ -187,7 +187,7 @@ $(document).ready(function () {
         ]
     }));
 
-    bindGridToolbar("columns filters refresh resize");
+    bindGridToolbar("columns filters reset refresh resize");
 
     $("#btn_approve_toolbar").on("click", function (e) {
         // stopPropagation - tanpa ini klik yang sama menyebar ke handler
@@ -257,7 +257,7 @@ function setStatsPanelCollapsed(collapsed) {
 
     $row.toggleClass("stats-collapsed", collapsed);
     $icon.toggleClass("fa-angle-double-right", !collapsed).toggleClass("fa-angle-double-left", collapsed);
-    $("#btn_toggleStats").attr("title", collapsed ? "Show Document Status" : "Hide Document Status");
+    $("#btn_toggleStats").attr("title", collapsed ? "Show Request Status" : "Hide Request Status");
     refreshToggleBadge();
 
     setTimeout(function () {

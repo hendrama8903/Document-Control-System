@@ -1835,6 +1835,57 @@ body.adm-body {
     flex-wrap: wrap;
 }
 
+/* Phone (2026-11-16): free wrapping left buttons of every width on ragged rows. The primary
+   action takes the first row, the other buttons an even two-column grid, and the right group
+   (columns, Export, summary panel) its own row. Used by every list page with .dp-toolbar. */
+@media (max-width: 576px) {
+    .dp-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        padding: 12px;
+    }
+    .dp-toolbar > * { min-width: 0; }   /* flex items do not shrink below their content otherwise */
+    /* three equal buttons per row (2026-11-16: two per row wasted space, and Export used
+       to stretch across its whole row) */
+    .dp-toolbar-left {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+    }
+    .dp-toolbar-left > * { width: 100%; min-width: 0; }
+    .dp-toolbar-left .dp-btn {
+        width: 100%; min-width: 0; justify-content: center;
+        gap: 5px; padding: 8px 6px; font-size: 12px;
+        overflow: hidden; text-overflow: ellipsis;
+    }
+    .dp-toolbar-left > .dp-btn-my-approval,
+    .dp-toolbar-left > .dcd-selection-bar { grid-column: 1 / -1; }
+    .dp-toolbar-right {
+        flex-wrap: nowrap;
+        justify-content: flex-end;
+        border-top: 1px solid #EEF1F5;
+        padding-top: 8px;
+    }
+    .dp-toolbar-right .dp-btn { flex: none; }
+    .dp-toolbar-right .dp-icon-btn { flex: none; }
+
+    /* summary panel under the grid: cards two per row instead of one long column */
+    .dp-stats-panel-body:not([style*="none"]) {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px !important;
+        padding: 12px !important;
+        white-space: normal !important;
+    }
+    .dp-stats-panel-body .dp-stat-card { padding: 10px; gap: 8px; min-width: 0; }
+    /* Needs Action items carry longer labels: one per row */
+    .dp-stats-panel-body.dcd-action-chips:not([style*="none"]) { grid-template-columns: 1fr; }
+    .dp-stats-panel-body .dp-stat-card span { white-space: normal; line-height: 1.25; }
+    .dp-stats-panel-head { padding: 12px 14px; }
+    .dp-stats-panel-foot { padding: 0 12px 12px; }
+}
+
 .dp-filter-row {
     display: flex;
     align-items: center;
@@ -1896,6 +1947,9 @@ body.adm-body {
 }
 
 .dp-btn-outline:hover { background: #F4F6F8; }
+/* a toggle that is on (More Filters open, Due for Review, ...) */
+.dp-btn-outline.active,
+.dp-btn-outline.active:hover { background: #E7F1FB; border-color: #2450D8; color: #1C3FA6; }
 
 .dp-btn-outline-danger {
     background: #fff;
