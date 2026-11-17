@@ -205,7 +205,8 @@ namespace DMS.Models.Repo
         /// yang sama dengan sp_WorkflowDoc_Create, jadi hasilnya sama dengan chain
         /// yang nanti dibuat.
         /// </summary>
-        public List<WorkflowPreviewStep> Preview(int? documentLevel, int? documentId, string documentCreator, DBContext db)
+        public List<WorkflowPreviewStep> Preview(int? documentLevel, int? documentId, string documentCreator, DBContext db,
+            string division = null, int? departmentId = null, string sectionCode = null)
         {
             var steps = new List<WorkflowPreviewStep>();
             var connection = db.Database.GetDbConnection();
@@ -220,6 +221,10 @@ namespace DMS.Models.Repo
                     command.Parameters.Add(new SqlParameter("@DOCUMENT_LEVEL", CheckNullValue(documentLevel)));
                     command.Parameters.Add(new SqlParameter("@DOCUMENT_ID", CheckNullValue(documentId)));
                     command.Parameters.Add(new SqlParameter("@DOCUMENT_CREATOR", CheckNullValue(documentCreator)));
+                    // Organisation of the document (owner department), 2026-11-17.
+                    command.Parameters.Add(new SqlParameter("@DIVISION", string.IsNullOrWhiteSpace(division) ? DBNull.Value : (object)division));
+                    command.Parameters.Add(new SqlParameter("@DEPARTMENT_ID", (object)departmentId ?? DBNull.Value));
+                    command.Parameters.Add(new SqlParameter("@SECTION_CODE", string.IsNullOrWhiteSpace(sectionCode) || sectionCode == "null" ? DBNull.Value : (object)sectionCode));
 
                     using (var r = command.ExecuteReader())
                     {

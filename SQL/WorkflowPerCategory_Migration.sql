@@ -119,6 +119,8 @@ GO
 
 -- Langkah-langkah alur beserta approver hasil pencarian sesuai cakupan
 -- jabatan. APPROVER NULL = tidak ada user dengan jabatan itu di cakupannya.
+-- SUPERSEDED 2026-11-17 by SQL/DocumentDepartmentScope_Migration.sql (adds the document's
+-- division / department / section). Do not run this part again on its own.
 CREATE OR ALTER FUNCTION dbo.fn_WorkflowDoc_Steps (@WORKFLOW_DOC_ID INT, @DOCUMENT_CREATOR VARCHAR(50))
 RETURNS TABLE
 AS

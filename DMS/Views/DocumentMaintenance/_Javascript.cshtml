@@ -6,6 +6,8 @@
     var documentMaintenanceConfig = {
         sessionUsernameJson: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Microsoft.AspNetCore.Http.SessionExtensions.GetString(Context.Session, "USERNAME") ?? "")),
         canDelete: @(((bool)ViewData["Delete"]) ? "true" : "false"),
+        // > 1: PIC (Departments Handled) or Div Head - Division / Department open (2026-11-17)
+        documentDepartmentCount: @(ViewData["DocumentDepartmentCount"] ?? 0),
         deleteFilePathFlag: "@ViewData["Delete-FilePath"]",
         templateCodes: @Html.Raw(ViewData["TemplateCodes"]),
         sessionPositionId: "@Html.Raw(HttpContextAccessor.HttpContext.Session.GetInt32("POSITION_ID"))",
@@ -43,6 +45,9 @@
             sectionMasterGetSectionCodeAndNameByDepartment: "@Url.Action("GetSectionCodeAndNameByDepartment", "SectionMaster")",
             addEdit: "@Url.Action("AddEdit", "DocumentMaintenance")",
             departmentMasterGetDivisionByUsername: "@Url.Action("GetDivisionByUsername", "DepartmentMaster")",
+            getDocumentDivisions: "@Url.Action("GetDocumentDivisions", "DocumentMaintenance")",
+            getDocumentDepartments: "@Url.Action("GetDocumentDepartments", "DocumentMaintenance")",
+            getDocumentCreators: "@Url.Action("GetDocumentCreators", "DocumentMaintenance")",
             deleteData: "@Url.Action("Delete", "DocumentMaintenance")",
             getByKey: "@Url.Action("GetByKey", "DocumentMaintenance")",
             p4DMaintenanceSearchDocumentApproval: "@Url.Action("SearchDocumentApproval", "P4DMaintenance")",

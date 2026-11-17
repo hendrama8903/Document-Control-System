@@ -448,10 +448,12 @@ $(document).ready(function () {
     setDataSelect2("addEditRoleId", userConfig.urls.roleGetRoleIdName, "- Choose -");
 
     setDataSelect2("addEditPosition", userConfig.urls.getPositionNameAndPositionID, "- Choose -");
+    loadPositionScopes();
     setDataSelect2WithParam("addEditDivision", userConfig.urls.systemValues, "- Choose -", "DIVISION");
     setDataSelect2WithParamMultiple("addEditDivisionMultiple", userConfig.urls.systemValues, "", "DIVISION");
     setDataSelect2("addEditDepartment", userConfig.urls.departmentMasterGetDepartmentIdAndNameByDivision, "- Choose -");
     setDataSelect2WithParam("addEditSection", userConfig.urls.sectionMasterGetSectionNameAndSectionIDByDepartment, "- Choose -", "");
+    initHandledDepartments();
 
     $("#rowDivisionMultiple").hide();
     $("#rowDivision").show();
@@ -654,8 +656,31 @@ function onEditPrepare(row) {
     });
 }
 
+// Organisation fields a position needs follow its Approver Scope in Position Master
+// (COMPANY / DIVISION / DEPARTMENT / SECTION), not a fixed list of position ids, so new
+// positions such as Supervisor or Coordinator work too (2026-11-17).
+var gPositionScopes = {};
+
+function loadPositionScopes() {
+    $.getJSON(userConfig.urls.getPositionNameAndPositionID, { pageLimit: 1000, page: 1 }, function (result) {
+        $.each((result && result.items) || [], function (i, item) {
+            gPositionScopes[item.id] = item.scope;
+        });
+    });
+}
+
+function positionScope(position) {
+    if (position == null || position === "") return "";
+    if (gPositionScopes[position]) return gPositionScopes[position];
+    if (position == '6' || position == '7') return "COMPANY";
+    if (position == '4' || position == '5') return "DIVISION";
+    if (position == '3') return "DEPARTMENT";
+    return "SECTION";
+}
+
 function setDivision(val) {
     var position = val;
+    var scope = positionScope(position);
 
     if (position == '5') { //Executive Officer
         //Set Multiple Division
@@ -666,7 +691,7 @@ function setDivision(val) {
         $('#addEditDivision').prop('disabled', true);
         $('#addEditDepartment').prop('disabled', true);
         $('#addEditSection').prop('disabled', true);
-    } else if (position == '6' || position == '7') { //Direktur || Presiden Direktur
+    } else if (scope == "COMPANY" || scope == "") { //Direktur, Presiden Direktur, or nothing chosen
         $("#rowDivision").show();
         $("#rowDivisionMultiple").hide();
         $('#addEditDivision').prop('disabled', true);
@@ -690,7 +715,8 @@ function setDepartment(val) {
     if (division == null || division == "") {
         $('#addEditDepartment').prop('disabled', true);
     } else {
-        if (position == '3' || position == '2' || position == '1') { //Dept. Head || Section Head || Staff
+        var scope = positionScope(position);
+        if (scope == "DEPARTMENT" || scope == "SECTION") { //Dept. Head, Specialist, Section Head, Supervisor, Staff, ...
             $('#addEditDepartment').prop('disabled', false);
         } else {
             $('#addEditDepartment').prop('disabled', true);
@@ -708,7 +734,7 @@ function setSection(val) {
     if (department == null || department == "") {
         $('#addEditSection').prop('disabled', true);
     } else {
-        if (position == '2' || position == '1') { //Section Head || Staff
+        if (positionScope(position) == "SECTION") { //Section Head, Supervisor, Coordinator, Staff, ...
             $('#addEditSection').prop('disabled', false);
         } else {
             $('#addEditSection').prop('disabled', true);
@@ -909,8 +935,36 @@ function restoreData() {
     });
 }
 
+// Departments Handled (document PIC, 2026-11-17): every active department, any division.
+function initHandledDepartments() {
+    $("#addEditHandledDepartment").select2({
+        multiple: true,
+        placeholder: "- None -",
+        width: "100%",
+        dropdownParent: $("#modalAddEditPosition"),
+        ajax: {
+            url: userConfig.urls.departmentMasterGetDepartmentIdAndNameByDivision,
+            dataType: "json",
+            delay: 250,
+            data: function (params) { return { q: params.term || "", pageLimit: 20, page: params.page || 1, param: "" }; },
+            processResults: function (data) {
+                return { results: data.items || [], pagination: { more: (data.items || []).length >= 20 } };
+            }
+        }
+    });
+}
+
+function setHandledDepartments(list) {
+    var $sel = $("#addEditHandledDepartment").empty();
+    (list || []).forEach(function (d) {
+        $sel.append(new Option(d.DEPARTMENT_CODE + " - " + d.DEPARTMENT_NAME, d.DEPARTMENT_ID, true, true));
+    });
+    $sel.trigger("change");
+}
+
 function onAddPositionPrepare(row) {
     gId = row.USERNAME;
+    setHandledDepartments([]);
 
     $('#addEditUsernamePosition').prop('disabled', true);
     $('#addEditUsernamePosition').val(gId);
@@ -924,6 +978,7 @@ function onAddPositionPrepare(row) {
         },
         success: function (result) {
             if (result.status == true) {
+                setHandledDepartments(result.handled);
                 if (result.data != null) {
                     var data = result.data;
                     var mode = result.mode;
@@ -1020,7 +1075,8 @@ function addEditPositionData() {
             DIVISION: $('#addEditDivision').val(),
             arrDivision: $("#addEditDivisionMultiple").val(),
             DEPARTMENT_ID: $('#addEditDepartment').val(),
-            SECTION_ID: $('#addEditSection').val()
+            SECTION_ID: $('#addEditSection').val(),
+            arrHandledDepartment: $("#addEditHandledDepartment").val() || []
         },
         success: function (result) {
             //popUpProgressHide();

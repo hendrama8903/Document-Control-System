@@ -705,11 +705,13 @@ namespace DMS.Controllers
 
                 IList<PositionMaster> dataList = positionRepo.Search(oPositionMaster, db, pageInt, int.Parse(pageLimit));
 
-                var list = new List<Select2>();
-                foreach (var data in dataList)
+                // scope = APPROVER_SCOPE: tells the form which organisation fields the position needs.
+                var list = dataList.Select(data => new
                 {
-                    list.Add(new Select2() { text = data.POSITION_NAME, id = data.POSITION_ID.ToString() });
-                }
+                    text = data.POSITION_NAME,
+                    id = data.POSITION_ID.ToString(),
+                    scope = string.IsNullOrWhiteSpace(data.APPROVER_SCOPE) ? "SECTION" : data.APPROVER_SCOPE.Trim().ToUpper()
+                }).ToList();
                 return Json(new { status = true, items = list });
             }
             catch (Exception ex)
@@ -725,20 +727,22 @@ namespace DMS.Controllers
                 UserPosition result = userRepo.PositionGetByKey(data, db);
                 if (result != null)
                 {
+                    // Departments Handled: a PIC prepares documents for these too (2026-11-17).
+                    var handled = Services.DocumentOrgService.Handled(db, data.USERNAME);
                     if (result.POSITION_ID == 5) //if Position EO
                     {
                         IList<UserPosition> listResult = userRepo.SearchPosition(data, db, null, null);
 
-                        return Json(new { status = true, data = listResult, mode = "multiple" });
+                        return Json(new { status = true, data = listResult, mode = "multiple", handled });
                     }
                     else
                     {
-                        return Json(new { status = true, data = result, mode = "normal" });
+                        return Json(new { status = true, data = result, mode = "normal", handled });
                     }
                 }
                 else
                 {
-                    return Json(new { status = true, data = result, mode = "normal" });
+                    return Json(new { status = true, data = result, mode = "normal", handled = Services.DocumentOrgService.Handled(db, data.USERNAME) });
                 }
             }
             catch (Exception ex)
@@ -749,7 +753,7 @@ namespace DMS.Controllers
 
 
         [HttpPost]
-        public JsonResult AddEditPosition(string screenMode, UserPosition data, List<string> arrDivision)
+        public JsonResult AddEditPosition(string screenMode, UserPosition data, List<string> arrDivision, List<string> arrHandledDepartment)
         {
             JsonResult denied = DenyWithoutFunction("USER-POSITION");
             if (denied != null)
@@ -782,6 +786,12 @@ namespace DMS.Controllers
                 else
                 {
                     result = userRepo.InsertUpdatePosition(data, GetLoginUsername(), db);
+                }
+
+                // Departments Handled (PIC), saved with the position (2026-11-17).
+                if (result != null && result.status)
+                {
+                    Services.DocumentOrgService.SaveHandled(db, data.USERNAME, arrHandledDepartment, GetLoginUsername());
                 }
 
                 return Json(result);

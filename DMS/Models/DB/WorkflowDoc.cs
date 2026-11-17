@@ -36,7 +36,7 @@ namespace DMS.Models.DB
     /// <summary>Satu langkah pratinjau approval chain (sp_WorkflowDoc_Preview).</summary>
     public class WorkflowPreviewStep
     {
-        public string STATUS { get; set; }              // OK / AUTO / SKIP / MISSING / NO_CREATOR / NO_WORKFLOW
+        public string STATUS { get; set; }              // OK / AUTO / SKIP / SAME / MISSING / NO_CREATOR / NO_WORKFLOW
         public string? CREATOR_POSITION { get; set; }
         public bool IS_CATEGORY_WORKFLOW { get; set; }
         public int? WORKFLOW_SEQ { get; set; }

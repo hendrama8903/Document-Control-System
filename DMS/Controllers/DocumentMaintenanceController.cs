@@ -92,7 +92,9 @@ namespace DMS.Controllers
             ViewData["Download"] = HttpContext.Session.GetString("functionList").Contains("DOCUMENT-DOWNLOAD");
             ViewData["Approve"] = HttpContext.Session.GetString("functionList").Contains("DOCUMENT-APPROVE");
             ViewData["Delete-FilePath"] = HttpContext.Session.GetString("functionList").Contains("DOCUMENT-DELETE-FILEPATH");
-
+            // More than one department = a PIC (Departments Handled) or Div Head: Division and
+            // Department stay open in the form (2026-11-17).
+            ViewData["DocumentDepartmentCount"] = Services.DocumentOrgService.DepartmentCount(db, GetLoginUsername());
 
             ViewData["Title"] = "Document Preparation";
 
@@ -699,7 +701,7 @@ namespace DMS.Controllers
         /// alur yang berlaku (khusus kategori / default level) dan siapa approvernya,
         /// dihitung dengan fungsi yang sama dengan sp_WorkflowDoc_Create (2026-11-06).
         /// </summary>
-        public JsonResult GetApprovalPreview(int? levelCode, int? documentId, string creator)
+        public JsonResult GetApprovalPreview(int? levelCode, int? documentId, string creator, string division, int? departmentId, string sectionCode)
         {
             try
             {
@@ -707,8 +709,53 @@ namespace DMS.Controllers
                 {
                     return Json(new { status = true, ready = false });
                 }
-                List<WorkflowPreviewStep> steps = WorkflowDocRepo.Instance.Preview(levelCode, documentId, creator, db);
+                // Approvers of the document's department (owner), see fn_WorkflowDoc_Steps (2026-11-17).
+                List<WorkflowPreviewStep> steps = WorkflowDocRepo.Instance.Preview(levelCode, documentId, creator, db, division, departmentId, sectionCode);
                 return Json(new { status = true, ready = true, steps });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        // ---------- Organisation choices in Document Preparation (2026-11-17) ----------
+        // Own position department, or the Departments Handled of a PIC
+        // (dbo.fn_User_DocumentDepartments). Select2 format.
+
+        public JsonResult GetDocumentDivisions(string q)
+        {
+            if (GetLoginUsername() == null) return Json(new { status = false, message = "Session expired." });
+            try
+            {
+                return Json(new { status = true, items = Services.DocumentOrgService.Divisions(db, GetLoginUsername(), q) });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public JsonResult GetDocumentDepartments(string q, string param)
+        {
+            if (GetLoginUsername() == null) return Json(new { status = false, message = "Session expired." });
+            try
+            {
+                return Json(new { status = true, items = Services.DocumentOrgService.Departments(db, GetLoginUsername(), param, q) });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
+        public JsonResult GetDocumentCreators(string q, string param)
+        {
+            if (GetLoginUsername() == null) return Json(new { status = false, message = "Session expired." });
+            try
+            {
+                if (!int.TryParse(param, out int departmentId)) return Json(new { status = true, items = new List<Select2>() });
+                return Json(new { status = true, items = Services.DocumentOrgService.Creators(db, GetLoginUsername(), departmentId, q) });
             }
             catch (Exception ex)
             {
@@ -848,6 +895,14 @@ namespace DMS.Controllers
             if (denied != null)
             {
                 return denied;
+            }
+
+            // The department on a new document (new or revision) must be one the user may
+            // prepare documents for: own position, or Departments Handled of a PIC (2026-11-17).
+            if (string.Equals(screenMode, "ADD", StringComparison.OrdinalIgnoreCase) && data.DEPARTMENT_ID != null
+                && !Services.DocumentOrgService.CanUseDepartment(db, GetLoginUsername(), data.DEPARTMENT_ID.Value))
+            {
+                return Json(new { status = false, message = "You cannot prepare documents for this department. Ask the administrator to add it to your Departments Handled." });
             }
 
             DBResult result = null;

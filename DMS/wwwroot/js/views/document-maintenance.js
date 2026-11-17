@@ -1229,6 +1229,8 @@ var SESSION_DEPARTMENT_NAME = documentMaintenanceConfig.sessionDepartmentName;
 var SESSION_SECTION_ID = documentMaintenanceConfig.sessionSectionId;
 var SESSION_SECTION_CODE = documentMaintenanceConfig.sessionSectionCode;
 var SESSION_SECTION_NAME = documentMaintenanceConfig.sessionSectionName;
+// PIC with Departments Handled (or Div Head): may choose Division / Department (2026-11-17).
+var CAN_CHOOSE_DEPARTMENT = Number(documentMaintenanceConfig.documentDepartmentCount || 0) > 1;
 
 $(document).ready(function () {
     //Updated By Arie (2023-08-24)
@@ -1242,8 +1244,8 @@ $(document).ready(function () {
     setDataSelect2WithParam("addEditProcessCode", documentMaintenanceConfig.urls.systemValues, "- Choose -", "PROCESS_CODE");
     setDataSelect2WithParam("addEditCompanyCode", documentMaintenanceConfig.urls.systemValues, "- Choose -", "COMPANY_CODE");
     setDataSelect2WithParam("addEditDivision", documentMaintenanceConfig.urls.systemValues, "- Choose -", "DIVISION");
-    setDataSelect2WithParam("addEditDepartment", documentMaintenanceConfig.urls.departmentMasterGetDepartmentIdAndNameByDivision, "- Choose -", "");
-    setDataSelect2WithParam("addEditDocumentCreator", documentMaintenanceConfig.urls.userGetUserNameByDepartmentId, "- Choose -", "");
+    setDataSelect2WithParam("addEditDepartment", documentMaintenanceConfig.urls.getDocumentDepartments, "- Choose -", "");
+    setDataSelect2WithParam("addEditDocumentCreator", documentMaintenanceConfig.urls.getDocumentCreators, "- Choose -", "");
     setDataSelect2("addEditSection", documentMaintenanceConfig.urls.sectionMasterGetSectionCodeAndName, "- Choose -");
 
     $("#btn_add").on("click", function () {
@@ -1338,7 +1340,8 @@ $(document).ready(function () {
 
     // Pratinjau approval chain (2026-11-06) - ikut berubah saat Level,
     // Document Code (kategori), atau Creator berubah.
-    $('#addEditDocumentLevel, #addEditDocumentCode, #addEditDocumentCreator').on('change', function () {
+    // 2026-11-17: also Department / Section - approvers come from the document's department.
+    $('#addEditDocumentLevel, #addEditDocumentCode, #addEditDocumentCreator, #addEditDepartment, #addEditSection').on('change', function () {
         scheduleApprovalPreview();
     });
     $('#addEditDivision').on('change', function () {
@@ -2320,7 +2323,12 @@ function refreshApprovalPreview() {
     $.ajax({
         type: "GET",
         url: documentMaintenanceConfig.urls.getApprovalPreview,
-        data: { levelCode: level, documentId: documentId, creator: creator },
+        data: {
+            levelCode: level, documentId: documentId, creator: creator,
+            division: $('#addEditDivision').val() || "",
+            departmentId: $('#addEditDepartment').val() || "",
+            sectionCode: $('#addEditSection').val() || ""
+        },
         success: function (result) {
             if (requestSeq !== gApprovalPreviewSeq) return;
             if (result.status != true || result.ready != true) { $box.hide().empty(); return; }
@@ -2361,10 +2369,11 @@ function renderApprovalPreview(steps) {
     var missing = [], skipped = [];
     steps.forEach(function (s, i) {
         if (i > 0) $steps.append('<span class="adf-ap-arrow"><i class="fa fa-chevron-right"></i></span>');
-        var cls = s.STATUS == "AUTO" ? "auto" : s.STATUS == "SKIP" ? "skip" : s.STATUS == "MISSING" ? "missing" : "";
+        var cls = s.STATUS == "AUTO" ? "auto" : (s.STATUS == "SKIP" || s.STATUS == "SAME") ? "skip" : s.STATUS == "MISSING" ? "missing" : "";
         var who = s.APPROVER
             ? esc(s.APPROVER_NAME || s.APPROVER) + (s.STATUS == "AUTO" ? ' <i class="fa fa-check" title="Creator - approved automatically"></i>' : '')
-            : (s.STATUS == "MISSING" ? 'Not found (mandatory)' : 'Not found - skipped');
+            : (s.STATUS == "MISSING" ? 'Not found (mandatory)'
+                : s.STATUS == "SAME" ? 'Same person as an earlier step' : 'Not found - skipped');
         $steps.append('<div class="adf-ap-step ' + cls + '"><b>' + esc(s.LABEL || s.POSITION_NAME) +
             (s.IS_MANDATORY ? ' *' : '') + '</b>' + esc(s.POSITION_NAME) + '<br>' + who + '</div>');
         if (s.STATUS == "MISSING") missing.push(s.POSITION_NAME);
@@ -2788,7 +2797,7 @@ function setPositionState(documentLevel) {
         }
     }
 
-    if (SESSION_DEPARTMENT_ID == null || SESSION_DEPARTMENT_ID == "" || SESSION_DEPARTMENT_ID == 0) {
+    if (SESSION_DEPARTMENT_ID == null || SESSION_DEPARTMENT_ID == "" || SESSION_DEPARTMENT_ID == 0 || CAN_CHOOSE_DEPARTMENT) {
         var division = $('#addEditDivision').val();
 
         if (division != null && division != "") {
@@ -2796,7 +2805,7 @@ function setPositionState(documentLevel) {
         }
     }
 
-    if (SESSION_DIVISION == null || SESSION_DIVISION == "" || SESSION_DIVISION == 0 || SESSION_POSITION_ID == "5") {
+    if (SESSION_DIVISION == null || SESSION_DIVISION == "" || SESSION_DIVISION == 0 || SESSION_POSITION_ID == "5" || CAN_CHOOSE_DEPARTMENT) {
         $('#addEditDivision').prop('disabled', false);
     }
 }
@@ -2805,12 +2814,12 @@ function setDepartment(val) {
     var division = val;
 
     if (division != null && division != "") {
-        if (SESSION_DIVISION == null || SESSION_DIVISION == "" || SESSION_DIVISION == 0 || SESSION_POSITION_ID == "5") {
+        if (SESSION_DIVISION == null || SESSION_DIVISION == "" || SESSION_DIVISION == 0 || SESSION_POSITION_ID == "5" || CAN_CHOOSE_DEPARTMENT) {
             $('#addEditDepartment').prop('disabled', false);
         }
 
         $('#addEditDepartment').val("").trigger("change");
-        setDataSelect2WithParam("addEditDepartment", documentMaintenanceConfig.urls.departmentMasterGetDepartmentIdAndNameByDivision, "- Choose -", division);
+        setDataSelect2WithParam("addEditDepartment", documentMaintenanceConfig.urls.getDocumentDepartments, "- Choose -", division);
     }
 }
 
@@ -2839,7 +2848,7 @@ function setDocumentCreator(val) {
     }
 
     $('#addEditDocumentCreator').val("").trigger("change");
-    setDataSelect2WithParam("addEditDocumentCreator", documentMaintenanceConfig.urls.userGetUserNameByDepartmentId, "- Choose -", val);
+    setDataSelect2WithParam("addEditDocumentCreator", documentMaintenanceConfig.urls.getDocumentCreators, "- Choose -", val);
 }
 
 // ---------- Penanda field wajib yang kosong (2026-11-10) ----------
@@ -3361,6 +3370,10 @@ function reset() {
 }
 
 function setValueFromLogin() {
+    // Divisions a PIC may choose: those of own + handled departments (2026-11-17).
+    if (CAN_CHOOSE_DEPARTMENT && SESSION_POSITION_ID != "5") {
+        setDataSelect2("addEditDivision", documentMaintenanceConfig.urls.getDocumentDivisions, "- Choose -");
+    }
     $('#addEditDivision').prop('disabled', true);
     $('#addEditDepartment').prop('disabled', true);
     $('#addEditSection').prop('disabled', true);
