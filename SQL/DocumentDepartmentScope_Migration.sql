@@ -11,9 +11,10 @@
 --
 -- 1. TB_M_USER_DEPT_SCOPE                  departments a PIC handles besides their own.
 -- 2. fn_User_DocumentDepartments(@USER)    departments a user may put on a document:
---      own position department; whole division for Div Head / EO (position without
---      department); every department for a position without division (President,
---      Director) and for DMS-ADMIN; plus TB_M_USER_DEPT_SCOPE.
+--      every department of the user's own division (changed 2026-11-17, before: only
+--      the own department, whole division only for Div Head / EO); every department
+--      for a position without division (President, Director) and for DMS-ADMIN; plus
+--      TB_M_USER_DEPT_SCOPE (departments of other divisions).
 -- 3. fn_WorkflowDoc_Steps gets the document's division / department / section:
 --      approvers are searched in the DOCUMENT's organisation (falls back to the
 --      creator's when not given). The creator approves a step of their own position
@@ -51,7 +52,9 @@ RETURN
       AND (
             EXISTS (SELECT 1 FROM dbo.TB_M_USER U WHERE U.USERNAME = @USERNAME AND U.ROLE_ID = 'DMS-ADMIN')
          OR EXISTS (SELECT 1 FROM dbo.TB_M_USER_POS P WHERE P.USERNAME = @USERNAME AND P.DEPARTMENT_ID = D.DEPARTMENT_ID)
-         OR EXISTS (SELECT 1 FROM dbo.TB_M_USER_POS P WHERE P.USERNAME = @USERNAME AND P.DEPARTMENT_ID IS NULL AND P.DIVISION = D.DIVISION)
+         -- any department of the user's own division (Hendra 2026-11-17: a user may prepare
+         -- documents for another department of the same division; its managers approve)
+         OR EXISTS (SELECT 1 FROM dbo.TB_M_USER_POS P WHERE P.USERNAME = @USERNAME AND P.DIVISION = D.DIVISION)
          OR EXISTS (SELECT 1 FROM dbo.TB_M_USER_POS P WHERE P.USERNAME = @USERNAME AND P.DEPARTMENT_ID IS NULL AND P.DIVISION IS NULL)
          OR EXISTS (SELECT 1 FROM dbo.TB_M_USER_DEPT_SCOPE S WHERE S.USERNAME = @USERNAME AND S.DEPARTMENT_ID = D.DEPARTMENT_ID)
       );
