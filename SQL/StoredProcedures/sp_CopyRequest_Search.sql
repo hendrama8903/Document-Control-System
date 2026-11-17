@@ -12,7 +12,7 @@ AS
 BEGIN
 	SET NOCOUNT ON;
 
-	-- Tim QMS (department ber-DOCUMENT_CONTROL_ACCESS=1, mis. QPD) harus bisa
+	-- Tim QMS (role DOC-CONTROL, lihat fn_User_IsDocumentControl) harus bisa
 	-- lihat & approve request dari SEMUA department, bukan cuma department
 	-- sendiri - kalau tidak, mereka tidak akan pernah lihat request yang perlu
 	-- di-approve dari department lain (bug ditemukan 2026-08-11: qad23/QPD
@@ -20,9 +20,8 @@ BEGIN
 	-- sp_P4DMaintenance_Search. Requester biasa (bukan QMS) tetap dibatasi
 	-- cuma lihat request department-nya sendiri.
 	DECLARE @IsQms INT = 0;
-	SELECT @IsQms = COUNT(D.DOCUMENT_CONTROL_ACCESS) FROM TB_M_USER_POS P
-	LEFT JOIN TB_M_DEPARTMENT D ON D.DIVISION = P.DIVISION
-	WHERE P.USERNAME = @USERNAME AND D.DOCUMENT_CONTROL_ACCESS = 1;
+	-- Document Control = role DOC-CONTROL or DMS-ADMIN (2026-11-17, was the department flag per division).
+	SET @IsQms = CAST(dbo.fn_User_IsDocumentControl(@USERNAME) AS INT);
 
 	-- Role Admin (DMS-ADMIN) selalu punya akses lintas department/division
 	-- penuh di sini juga, terlepas dari department/division akun itu sendiri -

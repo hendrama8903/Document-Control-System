@@ -26,10 +26,8 @@ BEGIN
 	DECLARE @DIVISION_IAD_COUNT INT
 	DECLARE @DEPARTMENT_COUNT INT
 	
-		SELECT @DIVISION_IAD_COUNT = COUNT(D.DOCUMENT_CONTROL_ACCESS) FROM TB_M_USER_POS P
-		LEFT JOIN TB_M_DEPARTMENT D ON D.DIVISION = P.DIVISION
-		WHERE P.USERNAME = @USERNAME
-		AND D.DOCUMENT_CONTROL_ACCESS = 1;
+		-- Document Control = role DOC-CONTROL or DMS-ADMIN (2026-11-17, was the department flag per division).
+	SET @DIVISION_IAD_COUNT = CAST(dbo.fn_User_IsDocumentControl(@USERNAME) AS INT);
 
 		-- Role Admin (DMS-ADMIN) selalu punya akses lintas department/division
 		-- penuh di sini, terlepas dari department/division akun itu sendiri -

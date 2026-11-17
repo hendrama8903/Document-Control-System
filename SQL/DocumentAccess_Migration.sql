@@ -40,12 +40,10 @@ CREATE OR ALTER FUNCTION [dbo].[fn_User_IsDocumentControl] (@USERNAME VARCHAR(50
 RETURNS BIT
 AS
 BEGIN
-	IF EXISTS (SELECT 1 FROM dbo.TB_M_USER WHERE USERNAME = @USERNAME AND ROLE_ID = 'DMS-ADMIN') RETURN 1;
-	IF EXISTS (
-		SELECT 1 FROM dbo.TB_M_USER_POS P
-		JOIN dbo.TB_M_DEPARTMENT D ON D.DIVISION = P.DIVISION
-		WHERE P.USERNAME = @USERNAME AND D.DOCUMENT_CONTROL_ACCESS = 1
-	) RETURN 1;
+	-- 2026-11-17: Document Control (QMS secretariat) is a ROLE, not the department flag
+	-- TB_M_DEPARTMENT.DOCUMENT_CONTROL_ACCESS matched per division (that gave the whole
+	-- division, e.g. every QAD user, access to all documents incl. confidential ones).
+	IF EXISTS (SELECT 1 FROM dbo.TB_M_USER WHERE USERNAME = @USERNAME AND ROLE_ID IN ('DMS-ADMIN', 'DOC-CONTROL')) RETURN 1;
 	RETURN 0;
 END
 GO

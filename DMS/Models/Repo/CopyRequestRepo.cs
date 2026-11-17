@@ -28,7 +28,7 @@ namespace DMS.Models.Repo
         // Scoping department/QMS-lihat-semua sekarang ditentukan di SP dari
         // @USERNAME (lihat sp_CopyRequest_Search - pola sama sp_P4DMaintenance_Search),
         // BUKAN dikirim sudah ter-resolve dari C# seperti sebelumnya - supaya
-        // tim QMS (department ber-DOCUMENT_CONTROL_ACCESS=1) otomatis lihat
+        // tim QMS (role DOC-CONTROL, dbo.fn_User_IsDocumentControl) otomatis lihat
         // semua department, bukan cuma department mereka sendiri.
         public IList<CopyRequest> Search(CopyRequest data, string loginUser, DBContext db, int? PageNumber, int? PageSize)
         {
