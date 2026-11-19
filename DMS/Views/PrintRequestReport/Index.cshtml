@@ -1,0 +1,49 @@
+@* Print Request Report (2026-11-19): approved Print Requests in the Master List layout -
+   QTY and request date per requesting division - in a DevExtreme grid like the other lists. *@
+<link rel="stylesheet" href="~/css/devextreme/dx.light.css" asp-append-version="true" />
+<script src="~/js/devextreme/dx.custom.js" asp-append-version="true"></script>
+<link rel="stylesheet" href="~/css/views/shared/grid-filter-row.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/views/DocumentMasterlist/Index.css" asp-append-version="true" />
+<section class="content">
+    <div class="row">
+        <div class="col-xs-12">
+            <div class="dp-card">
+                <div class="box-header dp-toolbar">
+                    <div class="dp-toolbar-left">
+                        <label class="ml-field">Request Date
+                            <input type="date" class="ml-select" id="prDateFrom" />
+                        </label>
+                        <label class="ml-field">to
+                            <input type="date" class="ml-select" id="prDateTo" />
+                        </label>
+                        <button type="button" class="dp-btn dp-btn-outline" id="btn_prFilters"><i class="fa fa-filter"></i> More Filters</button>
+                        <select class="ml-select" id="prDivision" title="Owner division"><option value="">All Divisions</option></select>
+                        <select class="ml-select" id="prDepartment" title="Owner department"><option value="">All Departments</option></select>
+                        <button type="button" class="dp-btn dp-btn-outline" id="btn_refresh"><i class="fa fa-refresh"></i> Refresh</button>
+                    </div>
+                    <div class="dp-toolbar-right">
+                        <button type="button" class="dp-icon-btn" id="btn_prColumns" title="Show/Hide Columns"><i class="fa fa-columns"></i> </button>
+                        <button type="button" class="dp-btn dp-btn-outline" id="btn_excel"><i class="fa fa-file-excel-o"></i> Excel</button>
+                        <button type="button" class="dp-btn dp-btn-outline" id="btn_pdf"><i class="fa fa-file-pdf-o"></i> PDF</button>
+                    </div>
+                </div>
+                <div class="box-body dms-grid">
+                    <div class="ml-matrix-head">
+                        <span class="ml-matrix-legend">Cell: QTY:Requesting department-Request date; W after the QTY = colour copy. <span class="ml-pending">Grey italic</span> = not printed yet. Approved requests only.</span>
+                    </div>
+                    <div id="prGrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<script type="text/javascript">
+    var printRequestReportConfig = {
+        urls: {
+            data: "@Url.Action("Data", "PrintRequestReport")",
+            excel: "@Url.Action("Excel", "PrintRequestReport")",
+            pdf: "@Url.Action("Pdf", "PrintRequestReport")"
+        }
+    };
+</script>
+<script src="~/js/views/print-request-report.js" asp-append-version="true"></script>
