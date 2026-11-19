@@ -15,6 +15,8 @@ namespace DMS.Models.DB
         public int? DEPARTMENT_ID { get; set; }
         public string? DEPARTMENT_CODE { get; set; }
         public string? DEPARTMENT_NAME { get; set; }
+        public string? DIVISION { get; set; }
+        public string? DIVISION_NAME { get; set; }
         public DateTime? RECEIVED_DATE { get; set; }
         public string? RECEIVED_BY { get; set; }
         public string? RECEIVED_BY_NAME { get; set; }
