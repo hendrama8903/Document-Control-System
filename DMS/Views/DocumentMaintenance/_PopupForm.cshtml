@@ -72,27 +72,26 @@ else
                         <div class="row">
                             @* Management System (2026-11-19): QMS / K3L / ... - the ones the user may create in;
                                a revision shows (and keeps) the system of its document *@
-                            <div class="col-md-4 form-group">
-                                <label class="control-label">Management System <span class="text-red">*</span></label>
+                            @* one row (2026-11-19): System | Document Type | Date | Document No *@
+                            <div class="col-md-2 form-group">
+                                <label class="control-label" title="Management System">System <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditMgmtSystem"></select>
                             </div>
-                            <div class="col-md-4 form-group">
+                            <div class="col-md-3 form-group">
                                 <label class="control-label">Document Type <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditDocumentType" onchange="onChangeDocumentType()" required></select>
                                 <input class="form-control" id="addEditDocumentId" type="hidden" />
                             </div>
-                            <div class="col-md-4 form-group">
+                            <div class="col-md-3 form-group">
                                 <label class="control-label">Date <span class="text-red">*</span></label>
                                 <input class="form-control" id="addEditDate" type="date" required />
                             </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-12 form-group">
-                                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; row-gap:2px;">
+                            <div class="col-md-4 form-group">
+                                <div class="adf-docno-head" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:nowrap; gap:6px;">
                                     <label class="control-label" style="margin-bottom:0;">Document No <span class="text-red">*</span></label>
                                     <div id="addEditNumberingModeGroup">
                                         <label style="font-weight:normal; display:inline-flex; align-items:center; margin-right:14px; margin-bottom:0; cursor:pointer;">
-                                            <input type="radio" name="addEditNumberingMode" id="addEditNumberingModeAuto" value="AUTO" checked="checked" onchange="onChangeNumberingMode()" style="margin:0 4px 0 0;" />Automatic
+                                            <input type="radio" name="addEditNumberingMode" id="addEditNumberingModeAuto" value="AUTO" checked="checked" onchange="onChangeNumberingMode()" style="margin:0 4px 0 0;" />Auto
                                         </label>
                                         <label style="font-weight:normal; display:inline-flex; align-items:center; margin-bottom:0; cursor:pointer;">
                                             <input type="radio" name="addEditNumberingMode" id="addEditNumberingModeManual" value="MANUAL" onchange="onChangeNumberingMode()" style="margin:0 4px 0 0;" />Manual
@@ -129,15 +128,15 @@ else
                         <div class="adf-section-title"><span class="adf-section-num"></span> Classification</div>
 
                         <div class="row">
-                            <div class="col-md-4 form-group">
-                                <label class="control-label">Document Level <span class="text-red">*</span></label>
+                            <div class="col-md-2 form-group">
+                                <label class="control-label" title="Document Level">Level <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditDocumentLevel" onchange="onChangeDocumentLevel()" required></select>
                             </div>
-                            <div class="col-md-4 form-group">
+                            <div class="col-md-5 form-group">
                                 <label class="control-label">Document Code <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditDocumentCode" required></select>
                             </div>
-                            <div class="col-md-4 form-group">
+                            <div class="col-md-5 form-group">
                                 <label class="control-label">Process Code <span id="mandatoryMarkProcessCode" class="text-red">*</span></label>
                                 <select class="form-control" id="addEditProcessCode" required></select>
                             </div>
@@ -146,11 +145,11 @@ else
                         @* Document Name shares its row with Classified (2026-11-19): a name field across
                            the whole page was far longer than any name *@
                         <div class="row">
-                            <div class="col-md-8 form-group">
+                            <div class="col-md-7 form-group">
                                 <label class="control-label">Document Name <span class="text-red">*</span></label>
                                 <input class="form-control" id="addEditDocumentName" type="text" oninput="removeWhiteSpace(this)" maxlength="255" required />
                             </div>
-                            <div class="col-md-4 form-group">
+                            <div class="col-md-5 form-group">
                                 <label class="control-label">Classified <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditClassified" required></select>
                             </div>
@@ -297,6 +296,8 @@ else
             <!-- Sticky Footer -->
             <div class="modal-footer">
                 <div class="col-xs-12 text-right">
+                    @* how many fields still need input, after a Save that did not pass (2026-11-19) *@
+                    <span class="adf-err-summary" id="adfErrSummary" style="display:none;"></span>
                     @if (pageMode)
                     {
                         <button type="button" class="btn dp-btn dp-btn-outline" id="btn_cancel">Cancel</button>

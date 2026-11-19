@@ -2896,13 +2896,26 @@ function markFieldInvalid(selector, message) {
     var $group = $el.closest('.form-group');
     if (!$group.length) return;
     $group.addClass('adf-invalid');
+    // short and on one line (2026-11-19): "Required" fits the narrow fields too; a longer
+    // message is cut with an ellipsis and shown whole as the tooltip
     if (!$group.children('.adf-err-msg').length) {
-        $group.append('<div class="adf-err-msg"><i class="fa fa-exclamation-circle"></i> ' + (message || 'This field is required') + '</div>');
+        var text = message || 'Required';
+        $('<div class="adf-err-msg">').attr('title', text)
+            .append('<i class="fa fa-exclamation-circle"></i> ').append(document.createTextNode(text))
+            .appendTo($group);
     }
 }
 
 function clearFieldInvalid($group) {
     $group.removeClass('adf-invalid').children('.adf-err-msg').remove();
+    dmUpdateErrSummary();
+}
+
+// "3 fields need attention" next to Save; it counts down as the user fills them in
+function dmUpdateErrSummary() {
+    var n = $('#modalAddEdit .form-group.adf-invalid').length;
+    $('#adfErrSummary').toggle(n > 0)
+        .html('<i class="fa fa-exclamation-triangle"></i> ' + n + (n === 1 ? ' field needs' : ' fields need') + ' attention');
 }
 
 // modalSelector: '#modalAddEdit' (New) atau '#modalEdit' (Edit)
@@ -2960,6 +2973,8 @@ function validateAddForm() {
         req('#addEditManualSeqNo', 'Enter the manual number, or switch back to Automatic');
     }
 
+    // Management System of a new document (a revision keeps its own, filled in and locked)
+    if ($('#addEditDocumentType').val() == "01") req('#addEditMgmtSystem');
     req('#addEditDate');
     req('#addEditDocumentLevel');
     req('#addEditDocumentCode');
@@ -2975,8 +2990,9 @@ function validateAddForm() {
     if (markVisible('#mandatoryMarkSection')) req('#addEditSection');
     req('#addEditCompanyCode');
     req('#addEditDocumentCreator');
-    req('#addEditDocumentUpload', 'Please upload the document file');
+    req('#addEditDocumentUpload', 'Upload the document file');
 
+    dmUpdateErrSummary();
     if (invalid) scrollToFirstInvalid();
     return invalid;
 }
@@ -3121,7 +3137,7 @@ function addEditData() {
 
         // Management System of a new document (2026-11-19); a revision keeps its own on the server
         if ($('#addEditDocumentType').val() == "01") {
-            data.append("MGMT_SYSTEM", $('#addEditMgmtSystem').val() || "QMS");
+            data.append("MGMT_SYSTEM", $('#addEditMgmtSystem').val());
         }
 
         if (documentNo != null && documentNo != "null" && documentNo != "") {
@@ -4133,12 +4149,32 @@ function fillMgmtSystemSelect(selected) {
     var list = gMgmtSystems.slice();
     if (selected && !list.some(function (s) { return s.Code === selected.Code; })) list.push(selected);
     $sel.empty();
-    list.forEach(function (s) { $('<option>').val(s.Code).text(s.Code + ' - ' + s.Name).appendTo($sel); });
-    var value = selected ? selected.Code : (list.some(function (s) { return s.Code === 'QMS'; }) ? 'QMS' : (list[0] ? list[0].Code : ''));
+    // empty option = the "- Choose -" placeholder, like the other fields; code only (name = tooltip)
+    $('<option>').val('').appendTo($sel);
+    list.forEach(function (s) { $('<option>').val(s.Code).text(s.Code).attr('title', s.Name).appendTo($sel); });
+    // a revision shows its own system; a user with one system gets it; otherwise the user chooses
+    var value = selected ? selected.Code : (list.length === 1 ? list[0].Code : '');
     $sel.val(value);
     // a revision keeps its system; a single choice needs no picking
     $sel.prop('disabled', !!selected || list.length <= 1);
+    dmInitMgmtSystemSelect2();
+    $sel.trigger('change.select2');
     applyMgmtSystemRules();
+}
+
+// select2 like the other fields: "- Choose -" until picked, codes only. No search box: there are only a few systems.
+function dmInitMgmtSystemSelect2() {
+    var $sel = $('#addEditMgmtSystem');
+    if ($sel.data('select2')) return;
+    // code only, in the field and in the list (the name is the tooltip)
+    var $modal = $sel.closest('.modal');
+    $sel.select2({
+        width: '100%',
+        placeholder: '- Choose -',
+        allowClear: true,   // the "x" like the other combos (not shown while a revision locks it)
+        minimumResultsForSearch: Infinity,
+        dropdownParent: $modal.length ? $modal : $(document.body)
+    });
 }
 
 function applyMgmtSystemRules() {

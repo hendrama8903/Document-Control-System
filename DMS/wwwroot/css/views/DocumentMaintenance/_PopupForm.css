@@ -613,7 +613,7 @@
     overflow: visible;
     padding: 0;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);   /* left wider (2026-11-19): Basic Information has four fields in one row */
     gap: 12px;
     align-items: start;
 }
@@ -823,3 +823,19 @@
 #modalAddEdit .adf-ap-badge.done { background: #ECFDF3; color: #027A48; }
 #modalAddEdit .adf-ap-badge.req { background: #FEF3F2; color: #B42318; }
 #modalAddEdit .adf-ap-badge.final { background: #EFF5FF; color: #1C3FA6; }
+
+
+/* one-row Basic Information (2026-11-19): compact Auto / Manual next to the Document No label */
+#addEditNumberingModeGroup label { font-size: 12px; margin-right: 8px !important; color: #475467; }
+#addEditNumberingModeGroup label:last-child { margin-right: 0 !important; }
+
+/* Document No label and Auto / Manual on one line */
+.adf-docno-head .control-label { white-space: nowrap; }
+#addEditNumberingModeGroup { display: inline-flex; align-items: center; white-space: nowrap; flex: none; }
+#addEditNumberingModeGroup input[type=radio] { margin-right: 3px !important; }
+
+/* validation (2026-11-19): one short line under a field, so narrow fields (System, Level) keep
+   the rows aligned; the whole message is the tooltip. Count of open fields next to Save. */
+#modalAddEdit .adf-err-msg { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.adf-err-summary { display: inline-block; margin-right: 14px; font-size: 13px; font-weight: 600; color: #B42318; vertical-align: middle; }
+.adf-err-summary .fa { margin-right: 4px; }
