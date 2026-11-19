@@ -1,5 +1,6 @@
 @* Same layout as the other list pages (2026-11-16): a collapsible summary panel beside the grid. *@
 <link rel="stylesheet" href="~/css/views/shared/master-stats-panel.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/views/DocumentMasterlist/Index.css" asp-append-version="true" />
 <section class="content">
     <div class="row">
         <div class="col-xs-12">
@@ -11,6 +12,14 @@
                         </div>
                         <div id="divGrid">
                             @Html.Partial("_GridView")
+                        </div>
+                        <div class="box-body dms-grid" id="divMatrix" style="display:none;">
+                            <div class="ml-matrix-head">
+                                <span class="ml-matrix-form">QCD/FR-QMS-00/004</span>
+                                <span class="ml-matrix-title">Master List Dokumen Internal</span>
+                                <span class="ml-matrix-legend">Distribution: Revision:Department-Date received. <span class="ml-outdated">Red</span> = the department still holds an older revision.</span>
+                            </div>
+                            <div id="mlMatrixGrid"></div>
                         </div>
                     </div>
                 </div>

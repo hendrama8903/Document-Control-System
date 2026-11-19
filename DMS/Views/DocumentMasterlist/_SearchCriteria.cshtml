@@ -1,14 +1,34 @@
 <div class="box-header dp-toolbar">
     <div class="dp-toolbar-left">
-        <button type="button" class="dp-btn dp-btn-outline" id="btn_toggleFilters"><i class="fa fa-filter"></i> More Filters</button>
-        <button type="button" class="dp-btn dp-btn-outline" id="btn_resetFilters"><i class="fa fa-undo"></i> Reset</button>
+        @* List = the register grid; Matrix = form QCD/FR-QMS-00/004 (revision dates +
+           distribution history per division), 2026-11-19 *@
+        <div class="ml-view-switch" role="group" aria-label="View">
+            <button type="button" class="active" id="btn_viewList" data-view="list"><i class="fa fa-list"></i> List</button>
+            <button type="button" id="btn_viewMatrix" data-view="matrix"><i class="fa fa-th"></i> Matrix</button>
+        </div>
+        <span class="ml-list-only">
+            <button type="button" class="dp-btn dp-btn-outline" id="btn_toggleFilters"><i class="fa fa-filter"></i> More Filters</button>
+            <button type="button" class="dp-btn dp-btn-outline" id="btn_resetFilters"><i class="fa fa-undo"></i> Reset</button>
+        </span>
+        <span class="ml-matrix-only" style="display:none;">
+            <button type="button" class="dp-btn dp-btn-outline" id="btn_matrixFilters"><i class="fa fa-filter"></i> More Filters</button>
+            <select class="ml-select" id="mlMatrixDivision" title="Owner division"><option value="">All Divisions</option></select>
+            <select class="ml-select" id="mlMatrixDepartment" title="Owner department"><option value="">All Departments</option></select>
+        </span>
         <button type="button" class="dp-btn dp-btn-outline" id="btn_refresh"><i class="fa fa-refresh"></i> Refresh</button>
     </div>
     <div class="dp-toolbar-right">
-        <button type="button" class="dp-icon-btn" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i> </button>
-        <button type="button" class="dp-btn dp-btn-outline" id="btn_export"><i class="fa fa-download"></i> Export</button>
-        <button type="button" class="dp-icon-btn dp-stats-toggle" id="btn_toggleStats" title="Show Summary">
-            <i class="fa fa-angle-double-left"></i>
-        </button>
+        <span class="ml-list-only">
+            <button type="button" class="dp-icon-btn" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i> </button>
+            <button type="button" class="dp-btn dp-btn-outline" id="btn_export"><i class="fa fa-download"></i> Export</button>
+            <button type="button" class="dp-icon-btn dp-stats-toggle" id="btn_toggleStats" title="Show Summary">
+                <i class="fa fa-angle-double-left"></i>
+            </button>
+        </span>
+        <span class="ml-matrix-only" style="display:none;">
+            <button type="button" class="dp-icon-btn" id="btn_matrixColumns" title="Show/Hide Columns"><i class="fa fa-columns"></i> </button>
+            <button type="button" class="dp-btn dp-btn-outline" id="btn_matrixExcel"><i class="fa fa-file-excel-o"></i> Excel</button>
+            <button type="button" class="dp-btn dp-btn-outline" id="btn_matrixPdf"><i class="fa fa-file-pdf-o"></i> PDF</button>
+        </span>
     </div>
 </div>

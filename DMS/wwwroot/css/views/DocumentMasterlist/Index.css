@@ -1,0 +1,77 @@
+/* Document Masterlist - List / Matrix switch and the matrix view (form QCD/FR-QMS-00/004, 2026-11-19) */
+
+.ml-view-switch { display: inline-flex; border: 1px solid #D0D5DD; border-radius: 6px; overflow: hidden; margin-right: 4px; vertical-align: middle; }
+.ml-view-switch button { border: 0; background: #fff; color: #344054; padding: 6px 12px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.ml-view-switch button + button { border-left: 1px solid #D0D5DD; }
+.ml-view-switch button:hover { background: #F4F6F8; }
+.ml-view-switch button.active { background: #E7F1FB; color: #1C3FA6; }
+
+.ml-select { height: 32px; border: 1px solid #D0D5DD; border-radius: 6px; padding: 0 8px; font-size: 13px; color: #344054; background: #fff; max-width: 260px; vertical-align: middle; }
+
+.ml-matrix-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 10px; }
+.ml-matrix-form { font-size: 11px; color: #667085; }
+.ml-matrix-title { font-size: 15px; font-weight: 700; color: #101828; text-transform: uppercase; letter-spacing: .3px; }
+.ml-matrix-legend { font-size: 12px; color: #667085; margin-left: auto; }
+
+.ml-matrix-scroll { overflow: auto; border: 1px solid #D0D5DD; border-radius: 6px; background: #fff; }
+.ml-matrix { border-collapse: separate; border-spacing: 0; font-size: 12px; color: #101828; min-width: 100%; }
+.ml-matrix th, .ml-matrix td { border-right: 1px solid #E4E7EC; border-bottom: 1px solid #E4E7EC; padding: 5px 7px; vertical-align: top; }
+.ml-matrix thead th { position: sticky; background: #EEF2FA; color: #1D2939; font-weight: 600; text-align: center; vertical-align: middle; white-space: nowrap; z-index: 2; }
+.ml-matrix thead tr:first-child th { top: 0; }
+.ml-matrix thead tr:nth-child(2) th { top: 29px; }
+.ml-matrix .ml-col-code { white-space: nowrap; font-weight: 500; }
+.ml-matrix td.ml-col-name { min-width: 220px; }
+.ml-matrix .ml-center { text-align: center; }
+.ml-matrix .ml-check { font-weight: 700; color: #17824F; }
+.ml-matrix .ml-rev { white-space: nowrap; color: #475467; }
+.ml-matrix .ml-rev-current { font-weight: 700; color: #101828; }
+.ml-matrix .ml-has-reason { text-decoration: underline dotted #98A2B3; cursor: help; }
+.ml-matrix td.ml-dist { white-space: nowrap; font-size: 11px; line-height: 1.45; color: #344054; min-width: 92px; }
+.ml-matrix tbody tr:not(.ml-group-row):hover td { background: #F9FAFB; }
+
+.ml-group-row td { background: #F4F6F8; font-size: 12px; color: #475467; }
+.ml-group-label { position: sticky; left: 7px; display: inline-block; }
+.ml-group-label > * { margin-right: 14px; }
+.ml-group-row b { color: #101828; }
+.ml-group-count { color: #667085; }
+
+.ml-outdated { color: #C62828; font-weight: 600; }
+.ml-matrix-empty { padding: 28px; text-align: center; color: #667085; }
+
+/* sortable headers (2026-11-19) */
+.ml-matrix thead th.ml-sortable { cursor: pointer; user-select: none; }
+.ml-matrix thead th.ml-sortable:hover { background: #E2E8F5; }
+.ml-matrix thead th.ml-sortable i { margin-left: 6px; color: #98A2B3; }
+.ml-matrix thead th.ml-sorted i { color: #1C3FA6; }
+
+/* freeze pane: No. .. Status Dokumen stay visible when scrolling right (left offsets set by mlFreezeColumns) */
+.ml-matrix .ml-frozen { position: sticky; z-index: 1; background: #fff; }
+.ml-matrix thead th.ml-frozen { z-index: 3; background: #EEF2FA; }
+.ml-matrix thead th.ml-frozen.ml-sortable:hover { background: #E2E8F5; }
+.ml-matrix tbody tr:not(.ml-group-row):hover td.ml-frozen { background: #F9FAFB; }
+.ml-matrix .ml-frozen-edge { border-right: 2px solid #B8C2D6; box-shadow: 4px 0 6px -4px rgba(16, 24, 40, .25); }
+/* phone: six frozen columns would fill the screen, so scroll them along */
+@media (max-width: 767px) {
+    .ml-matrix .ml-frozen { position: static; box-shadow: none; }
+    .ml-matrix thead th.ml-frozen { position: sticky; left: auto !important; }
+}
+
+/* Print Request Report (shares the matrix styles, 2026-11-19) */
+.ml-field { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: #475467; margin: 0 4px 0 0; vertical-align: middle; }
+.ml-field input.ml-select { width: 150px; }
+.ml-matrix .ml-pending { color: #98A2B3; font-style: italic; }
+.ml-matrix-legend .ml-pending { color: #98A2B3; font-style: italic; }
+.ml-matrix .ml-total { font-weight: 700; text-align: center; }
+.ml-matrix .ml-old-code { display: block; font-size: 11px; font-weight: 400; color: #667085; }
+
+/* Matrix and Print Request Report as DevExtreme grids (2026-11-19) */
+#mlMatrixGrid .dx-datagrid, #prGrid .dx-datagrid { font-size: 12px; }
+#mlMatrixGrid td.ml-dist, #prGrid td.ml-dist { font-size: 11px; line-height: 1.45; white-space: nowrap; vertical-align: top; }
+#mlMatrixGrid .ml-rev-current { font-weight: 700; color: #101828; }
+#mlMatrixGrid .ml-has-reason { text-decoration: underline dotted #98A2B3; cursor: help; }
+#mlMatrixGrid .ml-old-code, #prGrid .ml-old-code { display: block; font-size: 11px; font-weight: 400; color: #667085; white-space: normal; }
+#mlMatrixGrid .ml-col-code, #prGrid .ml-col-code { font-weight: 500; }
+#mlMatrixGrid td.ml-check { font-weight: 700; color: #17824F; }
+#prGrid .ml-pending { color: #98A2B3; font-style: italic; }
+#prGrid td.ml-total { font-weight: 700; }
+#mlMatrixGrid .dx-group-row td, #prGrid .dx-group-row td { font-weight: 600; color: #1D2939; background: #F4F6F8; }

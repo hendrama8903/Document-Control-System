@@ -917,7 +917,8 @@ body.adm-body {
 .adm-body .box.box-primary > .box-header .btn-box-tool:hover { color: #fff; }
 
 /* kartu pembungkus grid (pola #divGrid > .box-body dipakai semua modul) */
-.adm-body #divGrid > .box-body {
+.adm-body #divGrid > .box-body,
+.adm-body .dms-grid {
     background: var(--surface);
     border-radius: 5px;
     box-shadow: var(--shadow);
@@ -925,19 +926,22 @@ body.adm-body {
 }
 
 /* ---------- Polesan DevExtreme dxDataGrid (dipakai semua modul) ---------- */
-.adm-body #divGrid .dx-datagrid {
+.adm-body #divGrid .dx-datagrid,
+.adm-body .dms-grid .dx-datagrid {
     font-size: 13px;
     border: none;
     background: transparent;
 }
 
 /* header: tegas & sedikit tinted, garis bawah lebih jelas daripada garis antar-baris */
-.adm-body #divGrid .dx-datagrid-headers {
+.adm-body #divGrid .dx-datagrid-headers,
+.adm-body .dms-grid .dx-datagrid-headers {
     background: var(--paper-2);
     border-bottom: 2px solid var(--line-2);
 }
 
-.adm-body #divGrid .dx-datagrid-headers .dx-header-row > td {
+.adm-body #divGrid .dx-datagrid-headers .dx-header-row > td,
+.adm-body .dms-grid .dx-datagrid-headers .dx-header-row > td {
     color: var(--ink);
     font-weight: 700;
     border-color: var(--line);
@@ -945,34 +949,40 @@ body.adm-body {
 }
 
 /* garis antar-baris lebih lembut daripada default abu-abu tegas DevExtreme */
-.adm-body #divGrid .dx-datagrid-rowsview .dx-row > td {
+.adm-body #divGrid .dx-datagrid-rowsview .dx-row > td,
+.adm-body .dms-grid .dx-datagrid-rowsview .dx-row > td {
     border-color: var(--line);
 }
 
 /* zebra striping halus per baris data (aman untuk kolom fixed - dihitung per tabel) */
-.adm-body #divGrid .dx-datagrid-rowsview .dx-datagrid-table tbody > tr.dx-data-row:nth-of-type(even) {
+.adm-body #divGrid .dx-datagrid-rowsview .dx-datagrid-table tbody > tr.dx-data-row:nth-of-type(even),
+.adm-body .dms-grid .dx-datagrid-rowsview .dx-datagrid-table tbody > tr.dx-data-row:nth-of-type(even) {
     background: var(--paper);
 }
 
 /* hover baris - tint lembut supaya baris yang sedang dilihat gampang di-track mata */
-.adm-body #divGrid .dx-datagrid-rowsview .dx-datagrid-table tbody > tr.dx-data-row:hover > td {
+.adm-body #divGrid .dx-datagrid-rowsview .dx-datagrid-table tbody > tr.dx-data-row:hover > td,
+.adm-body .dms-grid .dx-datagrid-rowsview .dx-datagrid-table tbody > tr.dx-data-row:hover > td {
     background: var(--accent-soft);
 }
 
 /* baris group (mis. grouping External Type) - beda dari baris data biasa */
-.adm-body #divGrid .dx-datagrid-rowsview .dx-row.dx-group-row td {
+.adm-body #divGrid .dx-datagrid-rowsview .dx-row.dx-group-row td,
+.adm-body .dms-grid .dx-datagrid-rowsview .dx-row.dx-group-row td {
     background: var(--paper-2);
     font-weight: 600;
 }
 
 /* filter row menyatu dengan header, tidak seperti kotak terpisah */
-.adm-body #divGrid .dx-datagrid-filter-row td {
+.adm-body #divGrid .dx-datagrid-filter-row td,
+.adm-body .dms-grid .dx-datagrid-filter-row td {
     background: var(--surface);
     border-color: var(--line);
 }
 
 /* pager lebih lega dan tidak menempel rapat ke baris terakhir */
-.adm-body #divGrid .dx-datagrid-pager {
+.adm-body #divGrid .dx-datagrid-pager,
+.adm-body .dms-grid .dx-datagrid-pager {
     border-top: 1px solid var(--line);
     margin-top: 6px;
     padding-top: 10px;

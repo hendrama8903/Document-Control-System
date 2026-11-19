@@ -2,6 +2,7 @@ using DMS.Common.Controllers;
 using DMS.Models;
 using DMS.Models.DB;
 using DMS.Models.Repo;
+using DMS.Services;
 using Microsoft.AspNetCore.Mvc;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
@@ -125,6 +126,69 @@ namespace DMS.Controllers
 
             return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 "DOCUMENT-MASTERLIST-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss") + ".xlsx");
+        }
+
+        // ------------------------------------------------------------------ Matrix (form QCD/FR-QMS-00/004)
+        // 2026-11-19: the same register as a matrix of revision dates and distribution
+        // history per division. Screen, Excel and PDF all come from MasterListMatrixService.
+
+        private bool HasMenuAccess()
+        {
+            string menuURLList = HttpContext.Session.GetString("menuURL");
+            return HttpContext.Session.GetString("USERNAME") != null
+                && menuURLList != null && menuURLList.Contains("/DocumentMasterlist/Index");
+        }
+
+        [HttpGet]
+        public IActionResult MatrixData()
+        {
+            if (!HasMenuAccess()) return StatusCode(403);
+            try
+            {
+                return Json(MasterListMatrixService.Load(db));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
+        }
+
+        [HttpGet]
+        public IActionResult MatrixExcel(string division, string department, string sort, string dir)
+        {
+            if (!HasMenuAccess()) return StatusCode(403);
+            var report = LoadMatrix(division, department, sort, dir);
+            using var workbook = MasterListMatrixService.BuildWorkbook(report);
+            byte[] bytes = workbook.SaveDocument(DevExpress.Spreadsheet.DocumentFormat.Xlsx);
+            return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", MatrixFileName(division, department) + ".xlsx");
+        }
+
+        [HttpGet]
+        public IActionResult MatrixPdf(string division, string department, string sort, string dir)
+        {
+            if (!HasMenuAccess()) return StatusCode(403);
+            var report = LoadMatrix(division, department, sort, dir);
+            using var workbook = MasterListMatrixService.BuildWorkbook(report);
+            using var stream = new MemoryStream();
+            workbook.ExportToPdf(stream);
+            // inline (no download name): opens in a new tab, like the other printed forms
+            return File(stream.ToArray(), "application/pdf");
+        }
+
+        // the export follows the order chosen on screen (click a column header in the matrix)
+        private MasterListMatrixService.Report LoadMatrix(string division, string department, string sort, string dir)
+        {
+            var report = MasterListMatrixService.Load(db, division, department);
+            bool descending = string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
+            foreach (var g in report.Groups) MasterListMatrixService.Sort(g.Documents, sort, descending);
+            return report;
+        }
+
+        private static string MatrixFileName(string division, string department)
+        {
+            string scope = !string.IsNullOrWhiteSpace(department) ? department.Trim()
+                : !string.IsNullOrWhiteSpace(division) ? division.Trim() : "ALL";
+            return "MASTER-LIST-" + scope + "-" + DateTime.Now.ToString("yyyy-MM-dd_HHmmss");
         }
     }
 }
