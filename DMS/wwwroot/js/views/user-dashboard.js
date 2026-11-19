@@ -39,6 +39,22 @@ function updateHeaderStats(rows) {
     // panel is closed
     udLastNotAcknowledged = notAcknowledged;
     refreshToggleBadge();
+    udUpdateWaitingButton();
+}
+
+// ---------- Folders off (2026-11-19) ----------
+// One switch: the "folders-hidden" class on #dpLayoutRow in Index.cshtml. While it is on, the
+// sidebar is not shown and its "Waiting for Acceptance" location is the toolbar button below.
+function udFoldersEnabled() {
+    return !$("#dpLayoutRow").hasClass("folders-hidden");
+}
+
+function udUpdateWaitingButton() {
+    var $btn = $("#btn_udWaiting");
+    if (udFoldersEnabled() || !userDashboardConfig.canAcknowledge) { $btn.hide(); return; }
+    var n = udWaitingRows().length;
+    $btn.show().toggleClass("active", udLocation.type === "waiting");
+    $("#udWaitingCount").text(n).toggleClass("has-items", n > 0);
 }
 
 // ---------- docked "Document Status" panel toggle - top-level (not
@@ -149,6 +165,7 @@ function udOpen(loc) {
         dcdGetFolderPath(loc.id).forEach(function (f) { if (f.FOLDER_ID !== loc.id) gExpandedFolders.add(f.FOLDER_ID); });
     }
     renderFolderTree(); // also redraws the address bar and the folder list
+    udUpdateWaitingButton();
 
     var grid = $("#datagrid").data("dxDataGrid") ? $("#datagrid").dxDataGrid("instance") : null;
     if (grid) {
@@ -322,6 +339,12 @@ $(document).ready(function () {
         // row menu; a click only highlights the row
         selection: { mode: "single" },
         onContentReady: function (e) {
+            // ?DOCUMENT_CODE=... (a search result, an e-mail): filter on that document once
+            // (not when the link is for the Reference Documents tab)
+            if (!udDeepLinkApplied && new URLSearchParams(window.location.search).get("tab") !== "reference") {
+                udDeepLinkApplied = true;
+                dmsApplyDeepLink(e.component, { param: "DOCUMENT_CODE", column: "DOCUMENT_CODE" });
+            }
             var count = e.component.totalCount();
             $("#dcdFolderSubtitle").text(count >= 0 ? (count + " document" + (count !== 1 ? "s" : "")) : "");
         },
@@ -586,17 +609,19 @@ $(document).ready(function () {
             )
         );
 
-        $menu.append('<li class="divider"></li>');
-        $menu.append(
-            $('<li>').append(
-                $('<button type="button">')
-                    .html('<i class="fa fa-folder-o"></i> Move to Folder')
-                    .on("click", function () {
-                        $udRowMenu.hide();
-                        dcdMoveDocumentToFolder(row.DOCUMENT_TRANSACTION_ID, $btn);
-                    })
-            )
-        );
+        if (udFoldersEnabled()) {
+            $menu.append('<li class="divider"></li>');
+            $menu.append(
+                $('<li>').append(
+                    $('<button type="button">')
+                        .html('<i class="fa fa-folder-o"></i> Move to Folder')
+                        .on("click", function () {
+                            $udRowMenu.hide();
+                            dcdMoveDocumentToFolder(row.DOCUMENT_TRANSACTION_ID, $btn);
+                        })
+                )
+            );
+        }
 
         // use getBoundingClientRect (+ scroll offset) rather than jQuery's .offset() -
         // DevExtreme's fixed/frozen columns are transform-positioned, which throws off
@@ -611,6 +636,11 @@ $(document).ready(function () {
 
     // ---------- toggle the Folders sidebar (collapses to the left, grid
     // reflows into the freed width) ----------
+    // Waiting for Acceptance filter (folders hidden): on = only waiting documents, off = all
+    $("#btn_udWaiting").on("click", function () {
+        udOpen(udLocation.type === "waiting" ? { type: "all" } : { type: "waiting" });
+    });
+
     $("#btn_toggleFolders").on("click", function () {
         setFoldersPanelCollapsed(!$("#dpLayoutRow").hasClass("folders-collapsed"));
     });
@@ -757,3 +787,4 @@ function insertLog() {
         }
     });
 }
+var udDeepLinkApplied = false;

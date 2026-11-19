@@ -1,0 +1,7 @@
+@model string
+@* My Documents | Reference Documents switch (2026-11-19), at the start of the toolbar of both
+   cards. Model = the tab of this card. user-dashboard-reference.js handles the clicks. *@
+<div class="ud-view-switch" role="tablist">
+    <button type="button" class="ud-tab @(Model == "mine" ? "active" : "")" data-tab="mine"><i class="fa fa-folder-open-o"></i> My Documents</button>
+    <button type="button" class="ud-tab @(Model == "reference" ? "active" : "")" data-tab="reference"><i class="fa fa-book"></i> Reference Documents <span class="ud-ref-count"></span></button>
+</div>

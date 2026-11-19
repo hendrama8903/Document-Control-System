@@ -4,15 +4,18 @@
 var udRefLoaded = false;
 
 $(document).ready(function () {
-    $("#udTabs").on("click", ".ud-tab", function () { udShowTab($(this).data("tab")); });
+    $(document).on("click", ".ud-view-switch .ud-tab", function () { udShowTab($(this).data("tab")); });
     $("#btn_refRefresh").on("click", udLoadReference);
+
+    // ?tab=reference (a search result): open the Reference Documents tab
+    if (new URLSearchParams(window.location.search).get("tab") === "reference") udShowTab("reference");
 
     // the count on the tab, so the user sees there is something to read without opening it
     udLoadReference();
 });
 
 function udShowTab(tab) {
-    $("#udTabs .ud-tab").removeClass("active").filter('[data-tab="' + tab + '"]').addClass("active");
+    $(".ud-view-switch .ud-tab").removeClass("active").filter('[data-tab="' + tab + '"]').addClass("active");
     var reference = tab === "reference";
     $("#udRefPanel").toggle(reference);
     $("#dpLayoutRow").toggle(!reference);
@@ -30,7 +33,7 @@ function udLoadReference() {
             return;
         }
         var rows = result.data || [];
-        $("#udRefCount").text(rows.length).toggle(rows.length > 0);
+        $(".ud-ref-count").text(rows.length).toggle(rows.length > 0);
         udRenderReference(rows);
     });
 }
@@ -59,11 +62,16 @@ function udRenderReference(rows) {
     $grid.dxDataGrid(dmsGridOptions({
         dataSource: rows,
         keyExpr: "id",
+        // ?tab=reference&DOCUMENT_CODE=... : exact filter + "Showing ... / Show all" chip, once
+        onInitialized: function (e) {
+            if (new URLSearchParams(window.location.search).get("tab") === "reference")
+                setTimeout(function () { dmsApplyDeepLink(e.component, { param: "DOCUMENT_CODE", column: "code" }); }, 0);
+        },
         height: "auto",
         wordWrapEnabled: true,
         selection: { mode: "single" },
         searchPanel: { visible: true, width: 240, placeholder: "Search document no. or title..." },
-        noDataText: "No documents are shared with you for reading. Ask Document Control if you need to read another department's documents.",
+        noDataText: "No shared documents. Ask Document Control for access.",
         onRowDblClick: function (e) { if (e.rowType === "data") udOpenReference(e.data); },
         columns: [
             {

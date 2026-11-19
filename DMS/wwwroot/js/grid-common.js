@@ -216,3 +216,66 @@ function dmsFileIconClass(path) {
     if (["png", "jpg", "jpeg", "gif", "bmp"].indexOf(ext) >= 0) return "fa-file-image-o dms-file-image";
     return "fa-file-o dms-file-other";
 }
+
+// ---------- Opened on one document from a link (2026-11-19) ----------
+// A search result (or an e-mail) opens a list on one document: ?DOCUMENT_CODE=X, optionally
+// &from=search&q=... . The grid is filtered on exactly that value and a chip in the card's
+// toolbar says so: "Back to search", what is shown, and "Show all" to see the whole list again.
+// The matching row is highlighted. Call once when the grid is ready:
+//   dmsApplyDeepLink(grid, { param: "DOCUMENT_CODE", column: "DOCUMENT_CODE" })
+function dmsApplyDeepLink(grid, opts) {
+    var p = new URLSearchParams(window.location.search);
+    var value = p.get(opts.param);
+    if (!grid || !value || value === "null") return false;
+
+    grid.columnOption(opts.column, { filterValue: value, selectedFilterOperation: "=" });
+
+    var $toolbar = $(grid.element()).closest(".dp-card").find(".dp-toolbar-left").first();
+    $toolbar.find(".dms-deeplink").remove();
+    var $chip = $("<span>").addClass("dms-deeplink");
+    var q = p.get("q");
+    if (p.get("from") === "search" && q) {
+        $("<a>").addClass("dms-deeplink-back").attr("href", "/Search/Index?q=" + encodeURIComponent(q))
+            .append($("<i>").addClass("fa fa-arrow-left"), document.createTextNode(" Back to search \"" + q + "\""))
+            .appendTo($chip);
+    }
+    $("<span>").addClass("dms-deeplink-text")
+        .append($("<i>").addClass("fa fa-filter"), document.createTextNode(" Showing "), $("<b>").text(value))
+        .appendTo($chip);
+    var $clear = $("<button>").attr({ type: "button", title: "Show the whole list" }).addClass("dms-deeplink-clear")
+        .append($("<i>").addClass("fa fa-times"), document.createTextNode(" Show all"))
+        .appendTo($chip);
+    $toolbar.append($chip);
+
+    function forget() {
+        $chip.remove();
+        grid.off("optionChanged", onOption);
+        // the link's parameters go too, so a refresh shows the whole list
+        try {
+            ["from", "q", "tab", opts.param].forEach(function (k) { p.delete(k); });
+            var rest = p.toString();
+            history.replaceState(null, "", window.location.pathname + (rest ? "?" + rest : ""));
+        } catch (e) { }
+    }
+    // Reset (or a changed column filter) ends the deep link as well
+    function onOption(e) {
+        if (e.fullName && e.fullName.indexOf("filterValue") >= 0 && grid.columnOption(opts.column, "filterValue") !== value) forget();
+    }
+    $clear.on("click", function () {
+        grid.columnOption(opts.column, { filterValue: undefined, selectedFilterOperation: undefined });
+        forget();
+    });
+    setTimeout(function () { grid.on("optionChanged", onOption); }, 0);
+
+    // highlight the row once the filtered list is drawn
+    var flash = function () {
+        grid.off("contentReady", flash);
+        grid.getVisibleRows().forEach(function (row) {
+            if (row.rowType === "data" && String(grid.cellValue(row.rowIndex, opts.column)) === value) {
+                $(grid.getRowElement(row.rowIndex)).addClass("dms-row-flash");
+            }
+        });
+    };
+    grid.on("contentReady", flash);
+    return true;
+}

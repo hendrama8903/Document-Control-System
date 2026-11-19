@@ -41,6 +41,8 @@ namespace DMS.Controllers
             public string SNIPPET { get; set; }
             // visible only through Reference Access (fn_Document_AccessReason = 5): view only
             public bool IS_REFERENCE { get; set; }
+            // why the user may see it (fn_Document_AccessReason): picks the menu the result links to
+            public int ACCESS_REASON { get; set; }
         }
 
         public class PageModel
@@ -114,6 +116,7 @@ namespace DMS.Controllers
                         EXTRACT_METHOD = S("EXTRACT_METHOD"),
                         SNIPPET = S("SNIPPET"),
                         IS_REFERENCE = r["ACCESS_REASON"] != DBNull.Value && Convert.ToInt32(r["ACCESS_REASON"]) == 5,
+                        ACCESS_REASON = r["ACCESS_REASON"] == DBNull.Value ? 0 : Convert.ToInt32(r["ACCESS_REASON"]),
                     });
                 }
             }

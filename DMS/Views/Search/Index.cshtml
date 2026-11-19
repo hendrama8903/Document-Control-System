@@ -14,6 +14,41 @@
         return new Microsoft.AspNetCore.Html.HtmlString(encoded);
     }
 
+    // Where the document lives (2026-11-19): the menu that matches why the user may see it
+    // (fn_Document_AccessReason), opened on that document. Only menus the user has; otherwise the
+    // next one that fits, or no link.
+    string menus = Microsoft.AspNetCore.Http.SessionExtensions.GetString(Context.Session, "menuURL") ?? "";
+    (string label, string icon, string url)? OriginLink(DMS.Controllers.SearchController.Result r)
+    {
+        var candidates = new List<(string menu, string label, string icon, string url)>();
+        string code = Uri.EscapeDataString(r.DOCUMENT_CODE ?? "");
+        string dcd = "/DocumentControlDashboard/Index", prep = "/DocumentMaintenance/Index", mine = "/UserDashboard/Index";
+        if (r.SOURCE_TYPE == "EXTERNAL")
+        {
+            candidates.Add(("/ExternalDocument/Index", "External Document", "fa-globe",
+                "/ExternalDocument/Index?DOCUMENT_NAME=" + Uri.EscapeDataString(r.TITLE ?? "")));
+        }
+        else
+        {
+            switch (r.ACCESS_REASON)
+            {
+                case 1: candidates.Add((dcd, "Document Control", "fa-archive", dcd + "?DOCUMENT_CODE=" + code)); break;
+                case 3: candidates.Add((mine, "My Documents", "fa-folder-open-o", mine + "?DOCUMENT_CODE=" + code)); break;
+                case 5: candidates.Add((mine, "Reference Documents", "fa-book", mine + "?tab=reference&DOCUMENT_CODE=" + code)); break;
+                default: candidates.Add((prep, "Document Preparation", "fa-pencil-square-o", prep + "?DOCUMENT_CODE=" + code)); break;
+            }
+            // fall back to the other menus that list internal documents
+            candidates.Add((prep, "Document Preparation", "fa-pencil-square-o", prep + "?DOCUMENT_CODE=" + code));
+            candidates.Add((mine, "My Documents", "fa-folder-open-o", mine + "?DOCUMENT_CODE=" + code));
+            candidates.Add((dcd, "Document Control", "fa-archive", dcd + "?DOCUMENT_CODE=" + code));
+        }
+        // the list shows "Back to search" with these
+        string back = "&from=search&q=" + Uri.EscapeDataString(Model.Query ?? "");
+        foreach (var c in candidates)
+            if (menus.Contains(c.menu)) return (c.label, c.icon, c.url + back);
+        return null;
+    }
+
     string Snippet(string snippet)
     {
         if (string.IsNullOrWhiteSpace(snippet)) return null;
@@ -115,6 +150,11 @@
                             @if (!string.IsNullOrEmpty(r.CATEGORY_NAME)) { <span>@r.CATEGORY_NAME</span> }
                             @if (!string.IsNullOrEmpty(r.DEPARTMENT_NAME)) { <span><i class="fa fa-building-o"></i> @r.DEPARTMENT_NAME</span> }
                             @if (r.DOC_DATE != null) { <span><i class="fa fa-calendar-o"></i> @r.DOC_DATE.Value.ToString("dd MMM yyyy")</span> }
+                            @{ var origin = OriginLink(r); }
+                            @if (origin != null)
+                            {
+                                <a class="srch-origin" href="@origin.Value.url" title="Open the menu this document is in"><i class="fa @origin.Value.icon"></i> @origin.Value.label <i class="fa fa-angle-right"></i></a>
+                            }
                         </div>
                         @if (snippet != null)
                         {

@@ -36,3 +36,8 @@ mark { background: #FEF0C7; color: inherit; padding: 0 1px; border-radius: 3px; 
 /* not the blue Search button style of .srch-form button */
 .srch-form .dms-clear-btn { right: 10px; width: 28px; height: 28px; padding: 0; border-radius: 50%; background: transparent; color: #98A2B3; font-size: 17px; font-weight: 400; }
 .srch-form .dms-clear-btn:hover { background: #F2F4F7; color: #475467; }
+
+/* link to the menu the document is in (2026-11-19) */
+.srch-origin { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; color: #2450D8; white-space: nowrap; }
+.srch-origin:hover { text-decoration: underline; color: #1C3FA6; }
+@media (max-width: 767px) { .srch-origin { margin-left: 0; } }

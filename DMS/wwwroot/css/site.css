@@ -191,3 +191,22 @@ table.dataTable.table-condensed > thead > tr > th {
 }
 .dms-clear-btn:hover { color: #475467; background: #F2F4F7; }
 .dms-clearable.has-text .dms-clear-btn { display: inline-flex; }
+
+/* A list opened on one document from a link (dmsApplyDeepLink in grid-common.js, 2026-11-19) */
+.dms-deeplink {
+    display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 4px 6px 4px 10px; border-radius: 8px;
+    background: #EFF5FF; border: 1px solid #C7D9F7; font-size: 12.5px; color: #344054;
+}
+.dms-deeplink-back { color: #2450D8; font-weight: 600; white-space: nowrap; }
+.dms-deeplink-back:hover { text-decoration: underline; }
+.dms-deeplink-text .fa { color: #2450D8; margin-right: 2px; }
+.dms-deeplink-text b { color: #101828; }
+.dms-deeplink-clear {
+    border: 1px solid #C7D9F7; background: #fff; color: #1C3FA6; border-radius: 6px;
+    padding: 2px 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.dms-deeplink-clear:hover { background: #E7F1FB; }
+/* the row the link points to: a short highlight */
+@keyframes dmsRowFlash { from { background-color: #FFF3C4; } to { background-color: transparent; } }
+.dx-datagrid-rowsview tr.dms-row-flash > td { animation: dmsRowFlash 2.4s ease-out; }

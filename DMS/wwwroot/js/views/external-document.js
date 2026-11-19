@@ -118,6 +118,10 @@ $(document).ready(function () {
     $("#datagrid").dxDataGrid(dmsGridOptions({
         dataSource: gridStore,
         height: computeGridHeight(),
+        // ?DOCUMENT_NAME=... (a search result): exact filter + "Showing ... / Show all" chip, once
+        onInitialized: function (e) {
+            setTimeout(function () { dmsApplyDeepLink(e.component, { param: "DOCUMENT_NAME", column: "DOCUMENT_NAME" }); }, 0);
+        },
         filterRow: { visible: false, applyFilter: "auto" },
         grouping: { autoExpandAll: true, contextMenuEnabled: true },
         summary: {
