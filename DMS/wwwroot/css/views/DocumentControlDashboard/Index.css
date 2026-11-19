@@ -199,3 +199,9 @@
     background: transparent; color: #1C3FA6;
 }
 .dcd-selection-clear:hover { background: #DCE8FC; }
+
+/* Folder sidebar hidden for now (Hendra 2026-11-18): the panel and its Show Folders button are
+   not shown; the grid lists All Documents. Remove "folders-hidden" from #dpLayoutRow in
+   Index.cshtml to bring the sidebar back. */
+.dp-layout-row.folders-hidden .dcd-folder-panel,
+.dp-layout-row.folders-hidden #btn_toggleFolders { display: none !important; }

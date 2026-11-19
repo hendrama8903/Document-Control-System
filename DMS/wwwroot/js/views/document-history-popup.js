@@ -150,7 +150,7 @@ $(document).ready(function () {
 
                     if (hasFile) {
                         btn.on("click", function () {
-                            onViewAttachment(historyRow.FILE_PATH, historyRow.DOCUMENT_TRANSACTION_ID);
+                            onViewAttachment(historyRow.FILE_PATH, historyRow.DOCUMENT_TRANSACTION_ID, historyRow);
                         });
                     }
                 }

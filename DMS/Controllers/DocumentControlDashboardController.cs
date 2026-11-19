@@ -447,7 +447,7 @@ namespace DMS.Controllers
             string[] headers = {
                 "No", "Document No", "Document Name", "Category", "Revision", "Status",
                 "Effective Date", "Next Review", "Document Owner", "Acceptance",
-                "Department", "Classification", "Last Updated"
+                "Division", "Department", "Classification", "Last Updated"
             };
 
             IRow headerRow = sheet.CreateRow(0);
@@ -471,9 +471,12 @@ namespace DMS.Controllers
                 row.CreateCell(7).SetCellValue(item.NEXT_REVIEW_DATE?.ToString("dd-MM-yyyy") ?? "");
                 row.CreateCell(8).SetCellValue(item.OWNER_FULL_NAME);
                 row.CreateCell(9).SetCellValue((item.ACK_DONE ?? 0) + "/" + (item.ACK_TOTAL ?? 0));
-                row.CreateCell(10).SetCellValue(item.DEPARTMENT_CODE + " - " + item.DEPARTMENT_NAME);
-                row.CreateCell(11).SetCellValue(item.CLASSIFIED_VAL);
-                row.CreateCell(12).SetCellValue((item.CHANGED_DT ?? item.CREATED_DT)?.ToString("dd-MM-yyyy HH:mm") ?? "");
+                // Division added 2026-11-18, same as the grid
+                row.CreateCell(10).SetCellValue(string.IsNullOrEmpty(item.DIVISION) ? ""
+                    : string.IsNullOrEmpty(item.DIVISION_NAME) ? item.DIVISION : item.DIVISION + " - " + item.DIVISION_NAME);
+                row.CreateCell(11).SetCellValue(item.DEPARTMENT_CODE + " - " + item.DEPARTMENT_NAME);
+                row.CreateCell(12).SetCellValue(item.CLASSIFIED_VAL);
+                row.CreateCell(13).SetCellValue((item.CHANGED_DT ?? item.CREATED_DT)?.ToString("dd-MM-yyyy HH:mm") ?? "");
 
                 rowIndex++;
                 no++;

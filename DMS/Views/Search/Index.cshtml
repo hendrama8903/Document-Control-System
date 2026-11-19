@@ -42,7 +42,10 @@
 <section class="content">
     <div class="srch-wrap">
         <form class="srch-form" method="get" action="@Url.Action("Index", "Search")">
-            <input type="search" name="q" value="@Model.Query" placeholder="Search by document number, title, or words inside the document" maxlength="200" autofocus />
+            <span class="dms-clearable srch-field">
+                <input type="search" name="q" value="@Model.Query" placeholder="Search by document number, title, or words inside the document" maxlength="200" autofocus />
+                <button type="button" class="dms-clear-btn" title="Clear" aria-label="Clear search"><i class="fa fa-times-circle"></i></button>
+            </span>
             <button type="submit"><i class="fa fa-search"></i> Search</button>
         </form>
 
@@ -77,7 +80,14 @@
                 }
                 else
                 {
-                    openJs = "window.open('" + Url.Action("ViewAttachment", "DocumentMaintenance", new { FILE_PATH = r.FILE_PATH, DOCUMENT_TRANSACTION_ID = r.SOURCE_ID, type = ViewType(r) }) + "', '_blank')";
+                    // in-page book viewer, the same in every menu (2026-11-18)
+                    openJs = "dmsOpenDocViewer(" + System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        url = Url.Action("ViewAttachment", "DocumentMaintenance", new { FILE_PATH = r.FILE_PATH, DOCUMENT_TRANSACTION_ID = r.SOURCE_ID, type = ViewType(r) }),
+                        title = r.DOCUMENT_CODE ?? r.TITLE ?? "Document",
+                        subtitle = string.Join("  ·  ", new[] { r.TITLE, string.IsNullOrEmpty(r.REVISION) ? null : "Rev. " + r.REVISION }.Where(x => !string.IsNullOrEmpty(x))),
+                        badge = r.IS_REFERENCE ? "Reference · View Only" : null
+                    }) + ")";
                 }
                 string snippet = Snippet(r.SNIPPET);
 
@@ -93,6 +103,12 @@
                             @if (r.SOURCE_TYPE == "EXTERNAL")
                             {
                                 <span class="srch-badge ext">External</span>
+                            }
+                            @if (r.IS_REFERENCE)
+                            {
+                                <span class="srch-badge ref" title="Shared with you by Document Control for reading. View only: no download or print.">
+                                    <i class="fa fa-book"></i> Reference &middot; View Only
+                                </span>
                             }
                             <span class="srch-badge @StatusClass(r)">@(r.STATUS_NAME ?? "-")</span>
                             @if (!string.IsNullOrEmpty(r.REVISION)) { <span>Rev. @r.REVISION</span> }

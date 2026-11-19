@@ -4,6 +4,7 @@
         urls: {
             moveDocumentsToFolder: "@Url.Action("MoveDocumentsToFolder", "UserDashboard")",            search: "@Url.Action("Search", "UserDashboard")",
             downloadExcel: "@Url.Action("DownloadExcel", "UserDashboard")",
+            referenceDocuments: "@Url.Action("ReferenceDocuments", "UserDashboard")",
             acknowledgeDocument: "@Url.Action("AcknowledgeDocument", "UserDashboard")",
             downloadDocument: '@Html.Raw(Url.Action("DownloadDocument", "UserDashboard", new { path = "-1" }))',
             downloadAttachment: '@Html.Raw(Url.Action("downloadAttachment", "DocumentMaintenance", new { FILE_PATH = "-1", DOCUMENT_TRANSACTION_ID = "-2" }))',
@@ -12,3 +13,4 @@
     };
 </script>
 <script src="~/js/views/user-dashboard.js" asp-append-version="true"></script>
+<script src="~/js/views/user-dashboard-reference.js" asp-append-version="true"></script>

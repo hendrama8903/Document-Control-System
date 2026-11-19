@@ -39,6 +39,8 @@ namespace DMS.Controllers
             public string INDEX_STATUS { get; set; }
             public string EXTRACT_METHOD { get; set; }   // TEXT / OCR / TEXT+OCR / TEXT/NO-OCR
             public string SNIPPET { get; set; }
+            // visible only through Reference Access (fn_Document_AccessReason = 5): view only
+            public bool IS_REFERENCE { get; set; }
         }
 
         public class PageModel
@@ -111,6 +113,7 @@ namespace DMS.Controllers
                         INDEX_STATUS = S("INDEX_STATUS"),
                         EXTRACT_METHOD = S("EXTRACT_METHOD"),
                         SNIPPET = S("SNIPPET"),
+                        IS_REFERENCE = r["ACCESS_REASON"] != DBNull.Value && Convert.ToInt32(r["ACCESS_REASON"]) == 5,
                     });
                 }
             }

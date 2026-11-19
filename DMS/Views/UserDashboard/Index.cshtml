@@ -3,6 +3,32 @@
 <section class="content">
     <div class="row">
         <div class="col-xs-12">
+            @* Tabs (2026-11-18): the user's own documents, and documents shared for reading
+               through Reference Access (view only). *@
+            <div class="ud-tabs" id="udTabs">
+                <button type="button" class="ud-tab active" data-tab="mine"><i class="fa fa-folder-open-o"></i> My Documents</button>
+                <button type="button" class="ud-tab" data-tab="reference"><i class="fa fa-book"></i> Reference Documents <span class="ud-tab-count" id="udRefCount"></span></button>
+            </div>
+
+            <div class="dp-card ud-ref-panel" id="udRefPanel" style="display:none;">
+                <div class="ud-ref-intro">
+                    <i class="fa fa-info-circle"></i>
+                    <div>
+                        Documents of other departments that Document Control shared with you <b>for reading</b>.
+                        View only: they open with an <b>UNCONTROLLED COPY</b> stamp and cannot be downloaded or printed.
+                        Each one disappears when its access ends.
+                    </div>
+                </div>
+                <div class="box-header dp-toolbar">
+                    <div class="dp-toolbar-left">
+                        <button type="button" class="dp-btn dp-btn-outline" id="btn_refRefresh"><i class="fa fa-refresh"></i> Refresh</button>
+                    </div>
+                </div>
+                <div class="box-body">
+                    <div id="refGrid"></div>
+                </div>
+            </div>
+
             <div class="dp-layout-row stats-collapsed" id="dpLayoutRow">
                 @{ ViewData["FolderController"] = "UserDashboard"; }
                 @Html.Partial("~/Views/DocumentControlDashboard/_FolderTree.cshtml")

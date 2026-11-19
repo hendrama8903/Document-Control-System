@@ -147,6 +147,7 @@ function dcdRenderActionChips() {
     var active = gActionFilter ? dcdActionDef(gActionFilter) : null;
     $("#dcdActionActiveLabel").text(active ? active.label : "");
     $("#dcdActionActive").toggle(!!active);
+    $("#dcdFolderTitleRow").toggle(!!active);
 }
 
 var gActionTotal = 0;
@@ -245,7 +246,7 @@ function dcdCategoryPillClass(code) {
 }
 
 function dcdOpenDocument(row) {
-    onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+    onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID, row);
 }
 
 // ---------- per-row "more actions" kebab menu (request Hendra 2026-08-15:
@@ -314,9 +315,11 @@ function dcdOpenRowActionMenu($btn, row) {
         onHistoryPrepare();
     }));
 
-    $menu.append(dcdMenuItem("dp-menu-move", "fa-folder-o", "Move to Folder", function () {
-        dcdMoveDocumentsToFolder([row.DOCUMENT_TRANSACTION_ID], $btn);
-    }));
+    if (dcdFoldersEnabled()) {
+        $menu.append(dcdMenuItem("dp-menu-move", "fa-folder-o", "Move to Folder", function () {
+            dcdMoveDocumentsToFolder([row.DOCUMENT_TRANSACTION_ID], $btn);
+        }));
+    }
 
     var offset = $btn.offset();
     $menu.css({ top: offset.top + $btn.outerHeight() + 4, left: offset.left - $menu.outerWidth() + $btn.outerWidth() })
@@ -685,6 +688,12 @@ $(document).ready(function () {
 
 var dcdDeepLinkApplied = false;
 
+// Folders (sidebar, Move to Folder, row checkboxes) are hidden for now (Hendra 2026-11-18).
+// One switch: the "folders-hidden" class on #dpLayoutRow in Index.cshtml.
+function dcdFoldersEnabled() {
+    return !$("#dpLayoutRow").hasClass("folders-hidden");
+}
+
 // ---------- "Move to Folder" (bulk toolbar button + per-row kebab) ----------
 function dcdMoveDocumentsToFolder(documentTransactionIds, $anchor) {
     dcdOpenFolderPicker($anchor, function (folderId) {
@@ -750,16 +759,16 @@ $(document).ready(function () {
         dataSource: gridStore,
         height: computeGridHeight(),
         filterRow: { visible: false, applyFilter: "auto" },
-        selection: {
-            mode: "multiple",
-            showCheckBoxesMode: "always",
-            allowSelectAll: true
-        },
+        // The checkboxes only serve Move to Folder; while folders are hidden a click just
+        // highlights the row (History still selects its row through selectRows).
+        selection: dcdFoldersEnabled()
+            ? { mode: "multiple", showCheckBoxesMode: "always", allowSelectAll: true }
+            : { mode: "single" },
         // bulk bar: "3 selected · Move to Folder · x", only while documents are ticked
         onSelectionChanged: function (e) {
             var n = e.selectedRowKeys.length;
             $("#dcdSelectionCount").text(n + " selected");
-            $("#dcdSelectionBar").toggle(n > 0);
+            $("#dcdSelectionBar").toggle(n > 0 && dcdFoldersEnabled());
         },
         // double-click a document opens it, like a file in File Explorer
         onRowDblClick: function (e) {
@@ -767,7 +776,7 @@ $(document).ready(function () {
             if (e.rowType === "data" && !$(e.event.target).closest(".dcd-doc-link, .dp-act-kebab").length) { dcdOpenDocument(e.data); }
         },
         columns: [
-            { type: "selection", width: 40, fixed: true, fixedPosition: "left" },
+            { type: "selection", width: 40, fixed: true, fixedPosition: "left", visible: dcdFoldersEnabled() },
             {
                 caption: "No",
                 width: 50,
@@ -948,6 +957,15 @@ $(document).ready(function () {
                 }
             },
             {
+                // owning division (snapshot on the document), next to Department (Hendra 2026-11-18)
+                dataField: "DIVISION",
+                caption: "Division",
+                calculateDisplayValue: function (row) {
+                    if (!row.DIVISION) return "";
+                    return row.DIVISION_NAME ? row.DIVISION + " - " + row.DIVISION_NAME : row.DIVISION;
+                }
+            },
+            {
                 dataField: "DEPARTMENT_CODE",
                 caption: "Department",
                 calculateDisplayValue: function (row) {
@@ -1113,10 +1131,12 @@ function buildAcceptanceDetailGrid() {
     $("#acceptanceDetailGrid").dxDataGrid({
         dataSource: adpGridData,
         showBorders: true,
-        columnAutoWidth: true,
-        wordWrapEnabled: false,
+        // fit the panel width: long department names wrap instead of pushing Status out of
+        // view (Hendra 2026-11-18, the Status column was cut off)
+        columnAutoWidth: false,
+        wordWrapEnabled: true,
         height: "calc(100vh - 110px)",
-        searchPanel: { visible: true, width: "100%", placeholder: "Search department..." },
+        searchPanel: { visible: true, width: 300, placeholder: "Search department..." },
         groupPanel: { visible: false },
         grouping: { autoExpandAll: true },
         paging: { pageSize: 20 },
@@ -1136,7 +1156,7 @@ function buildAcceptanceDetailGrid() {
                 dataField: "STATUS",
                 caption: "Status",
                 alignment: "center",
-                width: 130,
+                width: 104,
                 cellTemplate: function (container, options) {
                     var d = options.data;
                     var pillClass = "adp-pill-default";
@@ -1366,22 +1386,11 @@ var gDocumentId = null;
 var gDocumentTransactionId = null;
 var gFilePath = null;
 
-function onViewAttachment(attachment, documentId) {
+function onViewAttachment(attachment, documentId, row) {
     gFilePath = attachment;
     gDocumentTransactionId = documentId;
-    viewAttachment();
-}
-
-function viewAttachment() {
-    if (gFilePath !== "null" && gFilePath !== null && gFilePath !== "") {
-        var link = documentControlDashboardConfig.urls.viewAttachment;
-        link = link.replace("-1", gFilePath);
-        link = link.replace("-2", gDocumentTransactionId);
-        link = link.replace("-3", "2");
-        window.open(link, '_blank');
-    } else {
-        showErrorMesgGrowl("This data does not have an attachment");
-    }
+    // in-page book viewer, the same in every menu (2026-11-18)
+    dmsViewDocument(documentControlDashboardConfig.urls.viewAttachment, attachment, documentId, "2", row);
 }
 
 function onDownloadAttachment(attachment, documentId) {

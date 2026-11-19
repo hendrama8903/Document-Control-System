@@ -73,6 +73,78 @@ namespace DMS.Controllers
             return View();
         }
 
+        /// <summary>
+        /// Reference Documents tab (request Hendra 2026-11-18): the documents the login user can
+        /// read only through Reference Access (dbo.fn_Document_AccessReason = 5) - view only - with
+        /// the date the access ends. Documents the user holds by any other right are in the
+        /// normal list, not here.
+        /// </summary>
+        [HttpGet]
+        public JsonResult ReferenceDocuments()
+        {
+            string username = GetLoginUsername();
+            if (username == null) return Json(new { status = false, message = "Session expired. Please log in again." });
+            if (!HasMenuAccess("/UserDashboard/Index")) return Json(new { status = false, message = "You are not authorized to use this feature." });
+
+            try
+            {
+                var rows = new List<object>();
+                var connection = Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetDbConnection(db.Database);
+                bool wasClosed = connection.State != ConnectionState.Open;
+                if (wasClosed) connection.Open();
+                try
+                {
+                    using var command = connection.CreateCommand();
+                    command.CommandText = @"
+                        SELECT D.DOCUMENT_TRANSACTION_ID, D.DOCUMENT_CODE, D.DOCUMENT_TRANSACTION_NAME, D.REVISION, D.DOCUMENT_DATE,
+                               D.FILE_PATH, ISNULL(OD.DEPARTMENT_CODE + ' - ' + OD.DEPARTMENT_NAME, D.DEPARTMENT_NAME) AS OWNER_DEPARTMENT,
+                               C.DOCUMENT_CODE AS CATEGORY_CODE, C.DOCUMENT_NAME AS CATEGORY_NAME, G.VALID_TO
+                        FROM dbo.TB_R_DOCUMENT D
+                        LEFT JOIN dbo.TB_M_DOCUMENT C ON C.DOCUMENT_ID = D.DOCUMENT_ID
+                        LEFT JOIN dbo.TB_M_DEPARTMENT OD ON OD.DEPARTMENT_ID = D.DEPARTMENT
+                        CROSS APPLY (SELECT MAX(RA.VALID_TO) AS VALID_TO
+                                     FROM dbo.TB_M_REFERENCE_ACCESS RA
+                                     WHERE RA.VIEWER_USERNAME = @U AND RA.OWNER_DEPARTMENT_ID = D.DEPARTMENT AND RA.[STATUS] = 1
+                                       AND (RA.DOCUMENT_ID IS NULL OR RA.DOCUMENT_ID = D.DOCUMENT_ID)
+                                       AND CAST(GETDATE() AS DATE) BETWEEN RA.VALID_FROM AND RA.VALID_TO) G
+                        WHERE G.VALID_TO IS NOT NULL
+                          AND dbo.fn_Document_AccessReason(@U, D.DOCUMENT_TRANSACTION_ID) = 5
+                        ORDER BY D.DOCUMENT_CODE";
+                    var p = command.CreateParameter();
+                    p.ParameterName = "@U";
+                    p.Value = username;
+                    command.Parameters.Add(p);
+
+                    using var r = command.ExecuteReader();
+                    while (r.Read())
+                    {
+                        rows.Add(new
+                        {
+                            id = Convert.ToInt32(r["DOCUMENT_TRANSACTION_ID"]),
+                            code = r["DOCUMENT_CODE"] as string,
+                            title = r["DOCUMENT_TRANSACTION_NAME"] as string,
+                            revision = r["REVISION"] == DBNull.Value ? null : r["REVISION"].ToString(),
+                            date = r["DOCUMENT_DATE"] == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(r["DOCUMENT_DATE"]),
+                            filePath = r["FILE_PATH"] as string,
+                            owner = r["OWNER_DEPARTMENT"] as string,
+                            category = r["CATEGORY_NAME"] as string,
+                            categoryCode = r["CATEGORY_CODE"] as string,
+                            validTo = Convert.ToDateTime(r["VALID_TO"]).ToString("yyyy-MM-dd")
+                        });
+                    }
+                }
+                finally
+                {
+                    if (wasClosed) connection.Close();
+                }
+                return Json(new { status = true, data = rows });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { status = false, message = ex.Message });
+            }
+        }
+
         public JsonResult GetByKey(DocumentControlMaintenance data)
         {
             try

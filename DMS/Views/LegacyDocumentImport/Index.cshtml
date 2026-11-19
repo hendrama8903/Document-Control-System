@@ -48,6 +48,7 @@
                                 <button type="button" class="dp-btn dp-btn-outline di-step-btn" id="btn_convert"><i class="fa fa-exchange"></i> Convert</button>
                             </div>
                             <div class="di-convert-result" id="mlResult"></div>
+                            <div class="di-alert" id="mlAlert" role="alert"></div>
                         </div>
                     </div>
 
@@ -90,6 +91,8 @@
                                 <button type="button" class="dp-btn dp-btn-primary di-step-btn" id="btn_preview"><i class="fa fa-eye"></i> Preview &amp; Validate</button>
                             </div>
 
+                            <div class="di-alert" id="importAlert" role="alert"></div>
+
                             <ul class="di-hints">
                                 <li><i class="fa fa-file-excel-o"></i> Excel up to 10 MB</li>
                                 <li><i class="fa fa-file-archive-o"></i> ZIP up to 100 MB, PDF or Excel files named as in the File Name column</li>
@@ -128,6 +131,7 @@
             </div>
 
             <div class="modal-body">
+                <div class="di-alert" id="reviewAlert" role="alert"></div>
                 <div id="reviewGrid"></div>
             </div>
 
@@ -139,6 +143,60 @@
                     {
                         <button type="button" class="dp-btn dp-btn-primary" id="btn_import" disabled><i class="fa fa-upload"></i> Import <span id="btnImportCount">0</span> Documents</button>
                     }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Conversion Log - shown after Convert (2026-11-17): every code the system does not know yet,
+     over all master lists at once, plus every error/warning of the conversion. -->
+<div class="modal fade" id="modalConvertLog" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="di-review-header">
+                <div class="di-review-icon"><i class="fa fa-list-alt"></i></div>
+                <div>
+                    <div class="di-review-title">Conversion Log</div>
+                    <div class="di-review-sub" id="clSub"></div>
+                </div>
+                <button type="button" class="di-modal-close" data-dismiss="modal" aria-label="Close" title="Close"><i class="fa fa-times"></i></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="di-cl-stats" id="clStats"></div>
+
+                <div class="di-alert" id="clFileProblems" role="alert"></div>
+
+                <div class="di-cl-section" id="clMissingSection">
+                    <div class="di-cl-head">
+                        <div>
+                            <div class="di-cl-title"><i class="fa fa-question-circle"></i> Codes Not in the System <span class="di-cl-count" id="clMissingCount">0</span></div>
+                            <div class="di-cl-desc">Every code over all master lists, listed once. Add a former department under System Parameters &gt; DEPT_SUCCESSOR (code = old department, value = new department codes), other codes in their master, then convert again.</div>
+                        </div>
+                        <button type="button" class="dp-btn dp-btn-outline" id="btn_copyMissing"><i class="fa fa-clipboard"></i> Copy Codes</button>
+                    </div>
+                    <div id="clMissingGrid"></div>
+                </div>
+
+                <div class="di-cl-section">
+                    <div class="di-cl-head">
+                        <div class="di-tabs" id="clTabs">
+                            <button type="button" class="di-tab active" data-filter="all">All <span id="clAllCount">0</span></button>
+                            <button type="button" class="di-tab" data-filter="error"><i class="fa fa-times-circle"></i> Error <span id="clErrorCount">0</span></button>
+                            <button type="button" class="di-tab" data-filter="warning"><i class="fa fa-exclamation-triangle"></i> Warning <span id="clWarningCount">0</span></button>
+                        </div>
+                        <button type="button" class="dp-btn dp-btn-outline" id="btn_exportLog"><i class="fa fa-download"></i> Export Log</button>
+                    </div>
+                    <div id="clLogGrid"></div>
+                </div>
+            </div>
+
+            <div class="di-final-actions">
+                <div class="di-final-note" id="clNote"></div>
+                <div class="di-final-right">
+                    <button type="button" class="dp-btn dp-btn-outline" data-dismiss="modal">Close</button>
+                    <button type="button" class="dp-btn dp-btn-primary" id="btn_downloadConverted"><i class="fa fa-file-excel-o"></i> Download Template</button>
                 </div>
             </div>
         </div>

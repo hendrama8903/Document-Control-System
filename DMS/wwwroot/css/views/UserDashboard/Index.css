@@ -221,3 +221,44 @@
 #dcdFolderPanel .dcd-folder-tree { min-height: 0; scrollbar-width: thin; scrollbar-color: #D0D5DD transparent; }
 #dcdFolderPanel .dcd-folder-tree::-webkit-scrollbar { width: 6px; }
 #dcdFolderPanel .dcd-folder-tree::-webkit-scrollbar-thumb { background: #D0D5DD; border-radius: 3px; }
+
+/* Segmented tabs: a white bar with the active tab filled in the primary colour, so the two
+   views read as a switch (2026-11-18, the underline tabs were too faint). */
+.ud-tabs {
+    display: inline-flex; gap: 4px; margin-bottom: 14px; padding: 5px;
+    background: #fff; border: 1px solid #E3E8EF; border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(16, 24, 40, .06); max-width: 100%; overflow-x: auto;
+}
+.ud-tab {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 18px; border: 0; border-radius: 9px; background: transparent;
+    color: #475467; font-size: 13.5px; font-weight: 600; white-space: nowrap; cursor: pointer;
+    transition: background .15s, color .15s;
+}
+.ud-tab .fa { font-size: 14px; color: #98A2B3; transition: color .15s; }
+.ud-tab:hover { background: #F2F4F7; color: #101828; }
+.ud-tab:hover .fa { color: #475467; }
+.ud-tab.active { background: #2450D8; color: #fff; box-shadow: 0 2px 6px rgba(36, 80, 216, .28); }
+.ud-tab.active .fa { color: #fff; }
+.ud-tab:focus-visible { outline: 2px solid #9DB5F0; outline-offset: 2px; }
+.ud-tab-count {
+    display: none; min-width: 20px; padding: 1px 7px; border-radius: 999px;
+    background: #F79009; color: #fff; font-size: 11.5px; font-weight: 700; text-align: center; line-height: 17px;
+}
+.ud-tab.active .ud-tab-count { background: #fff; color: #2450D8; }
+@media (max-width: 576px) {
+    .ud-tabs { display: flex; width: 100%; }
+    .ud-tab { flex: 1 1 0; justify-content: center; padding: 9px 10px; }
+}
+
+.ud-ref-intro {
+    display: flex; gap: 10px; align-items: flex-start;
+    margin: 14px 16px 0; padding: 10px 14px; border-radius: 10px;
+    background: #FFF8EC; border: 1px solid #F5D9A8; color: #6B4300; font-size: 12.5px; line-height: 1.55;
+}
+.ud-ref-intro .fa { color: #B36B00; font-size: 15px; margin-top: 2px; }
+#refGrid .dx-datagrid { font-size: 12.5px; }
+.ud-ref-open { font-weight: 600; color: #2450D8; }
+.ud-ref-left { display: block; font-size: 11px; color: #98A2B3; }
+.ud-ref-left.soon { color: #B54708; font-weight: 600; }
+.ud-ref-btn { padding: 3px 10px; font-size: 12px; }

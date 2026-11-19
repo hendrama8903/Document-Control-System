@@ -37,6 +37,8 @@
     <!-- Tema admin (harus paling akhir agar menimpa style di atas) -->
     <link rel="stylesheet" href="~/css/admin-theme.css" asp-append-version="true">
     <link rel="stylesheet" href="~/css/views/shared/_AdminLayout.css" asp-append-version="true" />
+    @* in-page document viewer popup used by every menu (2026-11-18) *@
+    <link rel="stylesheet" href="~/css/views/shared/doc-viewer-modal.css" asp-append-version="true" />
 </head>
 <body class="adm-body">
     <div class="adm-scrim" id="admScrim" onclick="admToggleNav(false)"></div>
@@ -81,11 +83,12 @@
                 </button>
                 <div class="adm-crumb">DCS &nbsp;/&nbsp; <b>@ViewData["Title"]</b></div>
                 @* Pencarian dokumen global - nomor, judul & ISI dokumen (full-text search, 2026-11-06) *@
-                <form class="adm-docsearch" method="get" action="@Url.Action("Index", "Search")" role="search">
+                <form class="adm-docsearch dms-clearable" method="get" action="@Url.Action("Index", "Search")" role="search">
                     <i class="fa fa-search"></i>
                     <input type="search" name="q" id="admDocSearch" placeholder="Search documents..." autocomplete="off"
                            value="@(Context.Request.Path.StartsWithSegments("/Search") ? Context.Request.Query["q"].ToString() : "")"
                            aria-label="Search documents by number, title or content" maxlength="200">
+                    <button type="button" class="dms-clear-btn" title="Clear" aria-label="Clear search"><i class="fa fa-times-circle"></i></button>
                 </form>
                 <link rel="stylesheet" href="~/css/views/shared/_AdminLayout-2.css" asp-append-version="true" />
                 <div class="adm-top-right">
@@ -138,6 +141,7 @@
     <script src="~/lib/blockUI/jquery.blockUI.js" asp-append-version="true"></script>
     <script src="~/lib/bootstrap-filestyle-2.1.0/src/bootstrap-filestyle.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/doc-viewer-modal.js" asp-append-version="true"></script>
     <script src="~/js/admin-theme.js" asp-append-version="true"></script>
     <script src="~/lib/moment/min/moment.min.js" asp-append-version="true"></script>
     <script src="~/dist/js/daterangepicker.js" asp-append-version="true"></script>

@@ -1,0 +1,56 @@
+@{
+    // Book-style document viewer (request Hendra 2026-11-18), opened inside the popup of
+    // My Documents via ViewAttachment?...&view=book. Pages are drawn on <canvas> with PDF.js,
+    // like PDFPreview.cshtml, so the browser's own PDF toolbar (print/download) never appears.
+    Layout = "~/Views/Shared/_EmptyLayout.cshtml";
+    string pdfUrl = Url.Content("~") + ViewData["FilePath"];
+}
+
+<link rel="stylesheet" href="~/lib/font-awesome/css/font-awesome.min.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/views/Preview/PDFBookPreview.css" asp-append-version="true" />
+
+<div id="bk-stage">
+    <div id="bk-book">
+        <div class="bk-slot bk-left"></div>
+        <div class="bk-slot bk-right"></div>
+        <div class="bk-spine"></div>
+        <div class="bk-leaf">
+            <div class="bk-face bk-front"></div>
+            <div class="bk-face bk-back"></div>
+        </div>
+    </div>
+</div>
+
+<button type="button" class="bk-side bk-side-prev" id="bk-side-prev" title="Previous (Left arrow)"><i class="fa fa-chevron-left"></i></button>
+<button type="button" class="bk-side bk-side-next" id="bk-side-next" title="Next (Right arrow)"><i class="fa fa-chevron-right"></i></button>
+
+<div id="bk-toolbar">
+    <button type="button" id="bk-first" title="First page (Home)"><i class="fa fa-step-backward"></i></button>
+    <button type="button" id="bk-prev" title="Previous (Left arrow)"><i class="fa fa-chevron-left"></i></button>
+    <div class="bk-pages">
+        <input type="text" id="bk-page-input" inputmode="numeric" title="Go to page" autocomplete="off" />
+        <span id="bk-page-total">/ -</span>
+    </div>
+    <button type="button" id="bk-next" title="Next (Right arrow)"><i class="fa fa-chevron-right"></i></button>
+    <button type="button" id="bk-last" title="Last page (End)"><i class="fa fa-step-forward"></i></button>
+    <span class="bk-sep"></span>
+    <button type="button" id="bk-zoom-out" title="Zoom out (-)"><i class="fa fa-search-minus"></i></button>
+    <button type="button" id="bk-zoom-label" class="bk-zoom-label" title="Fit to screen (0)">100%</button>
+    <button type="button" id="bk-zoom-in" title="Zoom in (+)"><i class="fa fa-search-plus"></i></button>
+    <span class="bk-sep"></span>
+    <button type="button" id="bk-rotate-left" title="Rotate left (Shift+R)"><i class="fa fa-undo"></i></button>
+    <button type="button" id="bk-rotate-right" title="Rotate right (R)"><i class="fa fa-repeat"></i></button>
+    <span class="bk-sep"></span>
+    <button type="button" id="bk-mode" title="Book / single page (B)"><i class="fa fa-book"></i></button>
+    <button type="button" id="bk-fullscreen" title="Full screen (F)"><i class="fa fa-expand"></i></button>
+</div>
+
+<div id="bk-loading"><div class="bk-spinner"></div><span>Loading document&hellip;</span></div>
+<div id="bk-blocked">Printing is not permitted for this document.<br />Please close the viewer and continue in the application.</div>
+
+<script src="~/lib/pdfjs/pdf.min.js" asp-append-version="true"></script>
+<script>
+    var BOOK_PDF_URL = '@Html.Raw(pdfUrl)';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '@Url.Content("~/lib/pdfjs/pdf.worker.min.js")';
+</script>
+<script src="~/js/views/pdf-book.js" asp-append-version="true"></script>

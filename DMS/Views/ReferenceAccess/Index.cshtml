@@ -1,0 +1,209 @@
+@* Administration > Reference Access (request Hendra 2026-11-18, tahap 1): Document Control lets a person
+   read the documents of another department for a set period. View only. *@
+<link rel="stylesheet" href="~/css/devextreme/dx.light.css" asp-append-version="true" />
+<script src="~/js/devextreme/dx.custom.js" asp-append-version="true"></script>
+<link rel="stylesheet" href="~/css/views/DivisionMaster/_PopupForm.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/views/ReferenceAccess/Index.css" asp-append-version="true" />
+
+<section class="content">
+    <div class="row">
+        <div class="col-xs-12">
+            <div class="dp-card">
+                <div class="ra-intro">
+                    <i class="fa fa-info-circle"></i>
+                    <div>
+                        Let a person <b>read</b> another department's documents for a set period, e.g. a GA staff member learning IT procedures.
+                        Readers see the approved, current revision with an <b>UNCONTROLLED COPY</b> stamp; they cannot download or print it,
+                        and it is not a distribution (no acknowledgment, no revision notice). Confidential documents are never shared.
+                        Access is per person: moving to another department neither gives nor removes it. When it is revoked or expires, the documents disappear from their search at once.
+                    </div>
+                </div>
+
+                <div class="box-header dp-toolbar">
+                    <div class="dp-toolbar-left">
+                        @if ((bool)ViewData["Add"])
+                        {
+                            <button type="button" class="dp-btn dp-btn-primary" id="btn_add"><i class="fa fa-plus"></i> New</button>
+                        }
+                        <div class="ra-tabs" id="raTabs">
+                            <button type="button" class="ra-tab active" data-state="">All <span data-count=""></span></button>
+                            <button type="button" class="ra-tab" data-state="Active">Active <span data-count="Active"></span></button>
+                            <button type="button" class="ra-tab" data-state="Scheduled">Scheduled <span data-count="Scheduled"></span></button>
+                            <button type="button" class="ra-tab" data-state="Expired">Expired <span data-count="Expired"></span></button>
+                            <button type="button" class="ra-tab" data-state="Revoked">Revoked <span data-count="Revoked"></span></button>
+                        </div>
+                    </div>
+                    <div class="dp-toolbar-right">
+                        <button type="button" class="dp-btn dp-btn-outline" id="btn_refresh"><i class="fa fa-refresh"></i> Refresh</button>
+                    </div>
+                </div>
+                <div class="box-body">
+                    <div id="datagrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Add / Edit -->
+<div class="modal fade" id="modalRaForm" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <div class="dvf-header">
+                <div class="dvf-header-icon"><i class="fa fa-book"></i></div>
+                <div>
+                    <div class="dvf-header-title" id="raFormTitle">New Reference Access</div>
+                    <div class="dvf-header-sub" id="raFormSub">Let people read another department's documents</div>
+                </div>
+                <button type="button" class="dvf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
+            </div>
+
+            <div class="dvf-body">
+                <input type="hidden" id="raId" />
+
+                <div class="dvf-row">
+                    <div class="dvf-row-left">
+                        <div class="dvf-icon"><i class="fa fa-user"></i></div>
+                        <div>
+                            <div class="dvf-label">Reader <span class="text-red">*</span></div>
+                            <div class="dvf-sub">Who may read</div>
+                        </div>
+                    </div>
+                    <div class="dvf-row-right">
+                        <select id="raViewer" class="form-control" style="width:100%;"></select>
+                    </div>
+                </div>
+
+                <div class="dvf-row">
+                    <div class="dvf-row-left">
+                        <div class="dvf-icon"><i class="fa fa-building-o"></i></div>
+                        <div>
+                            <div class="dvf-label">Owner Department <span class="text-red">*</span></div>
+                            <div class="dvf-sub">Whose documents</div>
+                        </div>
+                    </div>
+                    <div class="dvf-row-right">
+                        <select id="raOwner" class="form-control" style="width:100%;"></select>
+                    </div>
+                </div>
+
+                <div class="dvf-row">
+                    <div class="dvf-row-left">
+                        <div class="dvf-icon"><i class="fa fa-folder-open-o"></i></div>
+                        <div>
+                            <div class="dvf-label">Document Category</div>
+                            <div class="dvf-sub">Empty = all categories</div>
+                        </div>
+                    </div>
+                    <div class="dvf-row-right">
+                        <select id="raCategory" class="form-control" style="width:100%;"></select>
+                    </div>
+                </div>
+
+                <div class="dvf-row">
+                    <div class="dvf-row-left">
+                        <div class="dvf-icon"><i class="fa fa-calendar"></i></div>
+                        <div>
+                            <div class="dvf-label">Valid Period <span class="text-red">*</span></div>
+                            <div class="dvf-sub">Access ends automatically</div>
+                        </div>
+                    </div>
+                    <div class="dvf-row-right">
+                        <div class="ra-dates">
+                            <input type="date" class="form-control" id="raFrom" />
+                            <span>to</span>
+                            <input type="date" class="form-control" id="raTo" />
+                        </div>
+                        <div class="ra-quick">
+                            <button type="button" data-months="1">1 month</button>
+                            <button type="button" data-months="3">3 months</button>
+                            <button type="button" data-months="6">6 months</button>
+                            <button type="button" data-months="12">1 year</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dvf-row">
+                    <div class="dvf-row-left">
+                        <div class="dvf-icon"><i class="fa fa-comment-o"></i></div>
+                        <div>
+                            <div class="dvf-label">Reason <span class="text-red">*</span></div>
+                            <div class="dvf-sub">What they need to learn</div>
+                        </div>
+                    </div>
+                    <div class="dvf-row-right">
+                        <textarea class="form-control" id="raReason" rows="3" maxlength="500" placeholder="e.g. GA learns the IT asset procedures before taking over asset handling"></textarea>
+                    </div>
+                </div>
+
+                <div class="ra-preview" id="raPreview"></div>
+            </div>
+
+            <div class="dvf-footer">
+                <button type="button" class="dvf-btn dvf-btn-cancel" data-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
+                <button type="button" class="dvf-btn dvf-btn-primary" id="btn_save"><i class="fa fa-save"></i> Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Revoke -->
+<div class="modal fade" id="modalRaRevoke" role="dialog" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <div class="dvf-header ra-header-danger">
+                <div class="dvf-header-icon"><i class="fa fa-ban"></i></div>
+                <div>
+                    <div class="dvf-header-title">Revoke Reference Access</div>
+                    <div class="dvf-header-sub" id="raRevokeSub"></div>
+                </div>
+                <button type="button" class="dvf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
+            </div>
+            <div class="dvf-body">
+                <p class="ra-revoke-note">The reader department loses access to these documents right away, including links they opened before. This cannot be undone; add a new access if it is needed again.</p>
+                <label class="dvf-label" for="raRevokeReason">Reason <span class="text-red">*</span></label>
+                <textarea class="form-control" id="raRevokeReason" rows="3" maxlength="500" placeholder="e.g. Learning completed"></textarea>
+            </div>
+            <div class="dvf-footer">
+                <button type="button" class="dvf-btn dvf-btn-cancel" data-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
+                <button type="button" class="dvf-btn ra-btn-danger" id="btn_revoke"><i class="fa fa-ban"></i> Revoke</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- History / Documents -->
+<div class="modal fade" id="modalRaInfo" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="dvf-header">
+                <div class="dvf-header-icon"><i class="fa" id="raInfoIcon"></i></div>
+                <div>
+                    <div class="dvf-header-title" id="raInfoTitle"></div>
+                    <div class="dvf-header-sub" id="raInfoSub"></div>
+                </div>
+                <button type="button" class="dvf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
+            </div>
+            <div class="dvf-body">
+                <div id="raInfoGrid"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    var referenceAccessConfig = {
+        canAdd: @(((bool)ViewData["Add"]) ? "true" : "false"),
+        canEdit: @(((bool)ViewData["Edit"]) ? "true" : "false"),
+        canRevoke: @(((bool)ViewData["Revoke"]) ? "true" : "false"),
+        urls: {
+            options: "@Url.Action("Options", "ReferenceAccess")",
+            search: "@Url.Action("Search", "ReferenceAccess")",
+            save: "@Url.Action("Save", "ReferenceAccess")",
+            revoke: "@Url.Action("Revoke", "ReferenceAccess")",
+            history: "@Url.Action("History", "ReferenceAccess")",
+            documents: "@Url.Action("Documents", "ReferenceAccess")"
+        }
+    };
+</script>
+<script src="~/js/views/reference-access.js" asp-append-version="true"></script>

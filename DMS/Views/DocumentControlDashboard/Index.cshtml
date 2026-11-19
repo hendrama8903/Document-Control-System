@@ -4,16 +4,17 @@
 <section class="content">
     <div class="row">
         <div class="col-xs-12">
-            <div class="dp-layout-row stats-collapsed" id="dpLayoutRow">
+            @* folders-hidden: folders are hidden for now - sidebar, Move to Folder and the row checkboxes (Hendra 2026-11-18); remove the class to bring them back *@
+            <div class="dp-layout-row stats-collapsed folders-hidden" id="dpLayoutRow">
                 @Html.Partial("_FolderTree")
 
                 <div class="dp-layout-main">
                     <div class="dp-card">
                         <div class="dcd-folder-header-block">
                             <div class="dcd-crumb" id="dcdCrumb"></div>
-                            <div class="dcd-folder-title-row">
-                                <span class="dcd-folder-title" id="dcdFolderTitle">All Documents</span>
-                                <span class="dcd-folder-subtitle" id="dcdFolderSubtitle"></span>
+                            @* Folder title + document count ("All Documents · 5 documents") removed
+                               2026-11-19; the row now only appears while a Needs Action filter is on. *@
+                            <div class="dcd-folder-title-row" id="dcdFolderTitleRow" style="display:none;">
                                 @* shown only while a Needs Action filter is on (it is set in the
                                    Register Overview panel, which may be closed) *@
                                 <span class="dcd-action-active" id="dcdActionActive" style="display:none;">

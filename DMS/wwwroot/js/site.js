@@ -691,3 +691,21 @@ function addDataToURLWithoutReload(data) {
     // Use pushState to modify the URL without reloading the page
     window.history.pushState({ data: data }, '', url);
 }
+
+// Clear (x) button inside search boxes (2026-11-18), see .dms-clearable in site.css.
+(function ($) {
+    function sync($box) {
+        $box.toggleClass("has-text", ($box.find("input").val() || "").length > 0);
+    }
+    $(document).on("input change", ".dms-clearable input", function () {
+        sync($(this).closest(".dms-clearable"));
+    });
+    $(document).on("click", ".dms-clear-btn", function (e) {
+        e.preventDefault();
+        var $box = $(this).closest(".dms-clearable");
+        $box.find("input").val("").trigger("input").focus();
+    });
+    $(function () {
+        $(".dms-clearable").each(function () { sync($(this)); });
+    });
+})(jQuery);

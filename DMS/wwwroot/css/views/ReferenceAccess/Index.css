@@ -1,0 +1,54 @@
+/* Administration > Reference Access (2026-11-18). The popups reuse the dvf-* form styles of
+   DivisionMaster/_PopupForm.css. */
+#modalRaForm .modal-content, #modalRaRevoke .modal-content, #modalRaInfo .modal-content { border: none; border-radius: 14px; overflow: hidden; padding: 0; }
+#modalRaInfo .dvf-body { padding: 16px 22px 20px; max-height: 65vh; overflow-y: auto; }
+
+.ra-intro {
+    display: flex; gap: 10px; align-items: flex-start;
+    margin: 14px 16px 0; padding: 10px 14px; border-radius: 10px;
+    background: #F4F8FF; border: 1px solid #C7D9F7; color: #344054; font-size: 12.5px; line-height: 1.55;
+}
+.ra-intro .fa { color: #2450D8; font-size: 15px; margin-top: 2px; }
+
+.ra-tabs { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: 4px; }
+.ra-tab {
+    border: 1px solid #E3E8EF; background: #fff; border-radius: 999px;
+    padding: 5px 12px; font-size: 12.5px; font-weight: 600; color: #667085; cursor: pointer;
+}
+.ra-tab span { font-weight: 700; margin-left: 2px; }
+.ra-tab.active { background: #2450D8; border-color: #2450D8; color: #fff; }
+
+.ra-state { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+.ra-state::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.ra-state.Active { background: #ECFDF3; color: #027A48; }
+.ra-state.Scheduled { background: #EFF8FF; color: #175CD3; }
+.ra-state.Expired { background: #F2F4F7; color: #667085; }
+.ra-state.Revoked { background: #FEF3F2; color: #B42318; }
+.ra-sub { display: block; font-size: 11px; color: #98A2B3; margin-top: 2px; white-space: normal; }
+.ra-ends-soon { color: #B54708; font-weight: 600; }
+.ra-link { color: #2450D8; cursor: pointer; font-weight: 600; }
+.ra-link:hover { text-decoration: underline; }
+
+.ra-dates { display: flex; align-items: center; gap: 8px; }
+.ra-dates input { flex: 1 1 0; min-width: 0; }
+.ra-dates span { color: #98A2B3; font-size: 12px; }
+.ra-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ra-quick button {
+    border: 1px solid #D5DDE8; background: #fff; border-radius: 999px;
+    padding: 3px 10px; font-size: 11.5px; color: #475467; cursor: pointer;
+}
+.ra-quick button:hover { border-color: #2450D8; color: #2450D8; }
+
+.ra-preview {
+    display: none; margin: 4px 0 16px; padding: 10px 14px; border-radius: 10px;
+    background: #FFF8EC; border: 1px solid #F5D9A8; color: #8A5300; font-size: 12.5px; line-height: 1.5;
+}
+.ra-preview.show { display: block; }
+
+.ra-header-danger { background: linear-gradient(135deg, #C62828, #9F1F1F); }
+.ra-btn-danger { background: #C62828; color: #fff; }
+.ra-btn-danger:hover { background: #9F1F1F; }
+.ra-revoke-note { margin: 16px 0 12px; font-size: 12.5px; color: #475467; line-height: 1.55; }
+#modalRaRevoke .dvf-body { padding-bottom: 18px; }
+
+#datagrid .dx-datagrid, #raInfoGrid .dx-datagrid { font-size: 12.5px; }

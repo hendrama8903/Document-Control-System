@@ -57,7 +57,8 @@ namespace DMS.Controllers
                     users = r.Users,
                     items = r.Items,
                     roles = r.Roles,
-                    trackingSince = r.TrackingSince
+                    trackingSince = r.TrackingSince,
+                    referenceAccess = r.ReferenceAccess
                 });
             }
             catch (Exception ex)
@@ -88,6 +89,8 @@ namespace DMS.Controllers
             public List<Dictionary<string, object>> Items;
             public List<Dictionary<string, object>> Roles;
             public DateTime? TrackingSince;
+            // Reference Access grants (2026-11-18), with READERS = usernames of the reader department
+            public List<Dictionary<string, object>> ReferenceAccess;
         }
 
         private Review LoadReview(string roleId, string status, string keyword)
@@ -103,14 +106,41 @@ namespace DMS.Controllers
             var first = Query(null, Array.Empty<SqlParameter>(), "SELECT MIN(LOGIN_DT) AS FIRST_DT FROM dbo.TB_R_USER_LOGIN_LOG")[0];
             if (first.Count > 0 && first[0]["FIRST_DT"] is DateTime d) since = d;
 
+            // Reference Access (2026-11-18): read-only rights of one person on another department's
+            // documents, given by Document Control. Shown per grant and per user, since it does
+            // not come from the user's role.
+            var grants = Query(null, Array.Empty<SqlParameter>(),
+                ReferenceAccessController.ListSql + " ORDER BY RA.[STATUS] DESC, RA.VALID_TO DESC, RA.REFERENCE_ACCESS_ID DESC")[0];
+
+            foreach (var g in grants)
+            {
+                g["READER"] = ReferenceAccessController.ReaderLabel(g);
+                g["CATEGORY"] = g["DOCUMENT_ID"] == null ? "All categories" : Str(g, "CATEGORY_CODE") + " - " + Str(g, "CATEGORY_NAME");
+            }
+
+            // Per user: the grants in effect today (Active), e.g. "ITD (All categories) until 31-12-2026".
+            var active = grants.Where(g => Str(g, "STATE") == "Active").ToList();
+            foreach (var u in users)
+            {
+                var mine = active.Where(g => string.Equals(Str(g, "VIEWER_USERNAME"), Str(u, "USERNAME"), StringComparison.OrdinalIgnoreCase)).ToList();
+                u["REFERENCE_ACCESS_COUNT"] = mine.Count;
+                u["REFERENCE_ACCESS"] = string.Join("; ", mine.Select(ReferenceText));
+                u["REFERENCE_ACCESS_IDS"] = mine.Select(g => Convert.ToInt32(g["REFERENCE_ACCESS_ID"])).ToList();
+            }
+
             return new Review
             {
                 Users = users,
                 Items = matrix[0],
                 Roles = matrix[1],
-                TrackingSince = since
+                TrackingSince = since,
+                ReferenceAccess = grants
             };
         }
+
+        private static string ReferenceText(Dictionary<string, object> g) =>
+            (Str(g, "OWNER_CODE") ?? "#" + g["OWNER_DEPARTMENT_ID"]) + " (" + (g["DOCUMENT_ID"] == null ? "All categories" : Str(g, "CATEGORY_CODE")) + ")"
+            + " until " + Convert.ToDateTime(g["VALID_TO"]).ToString("dd-MM-yyyy");
 
         private static bool Granted(Dictionary<string, object> item, string role) =>
             (Str(item, "GRANTED_ROLES") ?? "").Split(',').Any(x => string.Equals(x, role, StringComparison.OrdinalIgnoreCase));
@@ -193,6 +223,7 @@ namespace DMS.Controllers
                 ("Active users", r.Users.Count(u => Convert.ToInt32(u["IS_ACTIVE"]) == 1).ToString()),
                 ("Admin role users (active)", r.Users.Count(u => Convert.ToInt32(u["IS_ACTIVE"]) == 1 && string.Equals(Str(u, "ROLE_ID"), AdminRole, StringComparison.OrdinalIgnoreCase)).ToString()),
                 ("Roles", r.Roles.Count.ToString()),
+                ("Reference access in effect", r.ReferenceAccess.Count(g => Str(g, "STATE") == "Active") + " (see sheet Reference Access)"),
                 ("Login history since", r.TrackingSince?.ToString("dd MMM yyyy") ?? "Not recorded yet"),
             };
             foreach (var (k, v) in info)
@@ -215,7 +246,7 @@ namespace DMS.Controllers
             string[] uh = { "No", "Username", "Full Name", "Reg. No", "Email", "Role ID", "Role Name", "Account Type", "Status",
                 "Position - Org. Unit", "Division", "Department", "Menus", "Functions", "Last Login", "Days Since Login",
                 "Logins (90 days)", "Failed Logins (30 days)", "Created By", "Created", "Changed By", "Changed",
-                "Review Decision", "Reviewer Notes" };
+                "Reference Access (read only)", "Review Decision", "Reviewer Notes" };
             Header(us, 0, st, uh);
             int n = 1;
             foreach (var u in r.Users)
@@ -252,6 +283,7 @@ namespace DMS.Controllers
                 Txt(x, c++, u["CREATED_DT"] is DateTime cd ? cd.ToString("yyyy-MM-dd") : "", st.Text);
                 Txt(x, c++, Str(u, "CHANGED_BY"), st.Text);
                 Txt(x, c++, u["CHANGED_DT"] is DateTime chd ? chd.ToString("yyyy-MM-dd") : "", st.Text);
+                Txt(x, c++, Str(u, "REFERENCE_ACCESS"), st.Text);
                 Txt(x, c++, "", st.Input);
                 Txt(x, c++, "", st.Input);
                 n++;
@@ -264,7 +296,7 @@ namespace DMS.Controllers
                 v.ShowErrorBox = true;
                 us.AddValidationData(v);
             }
-            Finish(us, uh.Length, r.Users.Count, new[] { 5, 16, 24, 10, 30, 14, 22, 14, 10, 40, 30, 34, 8, 9, 16, 10, 10, 12, 14, 12, 14, 12, 16, 40 });
+            Finish(us, uh.Length, r.Users.Count, new[] { 5, 16, 24, 10, 30, 14, 22, 14, 10, 40, 30, 34, 8, 9, 16, 10, 10, 12, 14, 12, 14, 12, 34, 16, 40 });
 
             // 3. User access detail (user x menu/function)
             ISheet ud = wb.CreateSheet("User Access Detail");
@@ -286,6 +318,21 @@ namespace DMS.Controllers
                     Txt(x, 6, Str(i, "ITEM_TYPE") == "MENU" ? "Menu" : "Function", st.Text);
                     Txt(x, 7, Str(i, "FUNCTION_ID"), st.Text);
                     Txt(x, 8, Str(i, "FUNCTION_NAME"), st.Text);
+                }
+                // Reference Access in effect through the user's department (2026-11-18)
+                var ids = u["REFERENCE_ACCESS_IDS"] as List<int> ?? new List<int>();
+                foreach (var g in r.ReferenceAccess.Where(g => ids.Contains(Convert.ToInt32(g["REFERENCE_ACCESS_ID"]))))
+                {
+                    IRow x = ud.CreateRow(n++);
+                    Txt(x, 0, Str(u, "USERNAME"), st.Text);
+                    Txt(x, 1, Str(u, "FULL_NAME"), st.Text);
+                    Txt(x, 2, Convert.ToInt32(u["IS_ACTIVE"]) == 1 ? "Active" : "Inactive", st.Text);
+                    Txt(x, 3, role, st.Text);
+                    Txt(x, 4, "Reference Access", st.Text);
+                    Txt(x, 5, (Str(g, "OWNER_CODE") ?? "") + " - " + Str(g, "OWNER_NAME") + " documents", st.Text);
+                    Txt(x, 6, "Read only", st.Text);
+                    Txt(x, 7, "", st.Text);
+                    Txt(x, 8, Str(g, "CATEGORY") + ", until " + Convert.ToDateTime(g["VALID_TO"]).ToString("dd-MM-yyyy"), st.Text);
                 }
             }
             Finish(ud, dh.Length, n - 1, new[] { 16, 24, 10, 18, 18, 28, 10, 26, 36 });
@@ -317,7 +364,50 @@ namespace DMS.Controllers
             widths.AddRange(roleCols.Select(_ => 14));
             Finish(rm, mh.Count, n - 1, widths.ToArray(), freezeCols: 5);
 
-            // 5. Login history (last 90 days)
+            // 5. Reference Access (2026-11-18): read-only rights on another department's
+            // documents, given by Document Control for a set period; reviewed per grant.
+            ISheet ra = wb.CreateSheet("Reference Access");
+            string[] rh = { "No", "Reader", "Reader Department", "Reader Status", "Owner Department", "Category", "Valid From", "Valid To", "Status",
+                "Documents", "Reason", "Created By", "Created", "Revoked By", "Revoked", "Revoke Reason",
+                "Review Decision", "Reviewer Notes" };
+            Header(ra, 0, st, rh);
+            n = 1;
+            foreach (var g in r.ReferenceAccess)
+            {
+                IRow x = ra.CreateRow(n);
+                int c = 0;
+                Num(x, c++, n, st.Text);
+                Txt(x, c++, Str(g, "READER"), st.Text);
+                Txt(x, c++, Str(g, "VIEWER_DEPARTMENTS"), st.Text);
+                Txt(x, c++, Convert.ToInt32(g["VIEWER_ACTIVE"]) == 1 ? "Active" : "Inactive", st.Text);
+                Txt(x, c++, (Str(g, "OWNER_CODE") ?? "#" + g["OWNER_DEPARTMENT_ID"]) + " - " + Str(g, "OWNER_NAME"), st.Text);
+                Txt(x, c++, Str(g, "CATEGORY"), st.Text);
+                Txt(x, c++, Convert.ToDateTime(g["VALID_FROM"]).ToString("yyyy-MM-dd"), st.Text);
+                Txt(x, c++, Convert.ToDateTime(g["VALID_TO"]).ToString("yyyy-MM-dd"), st.Text);
+                Txt(x, c++, Str(g, "STATE"), st.Text);
+                Num(x, c++, Convert.ToInt32(g["DOCUMENT_COUNT"]), st.Center);
+                Txt(x, c++, Str(g, "REASON"), st.Wrap);
+                Txt(x, c++, Str(g, "CREATED_BY"), st.Text);
+                Txt(x, c++, g["CREATED_DT"] is DateTime gc ? gc.ToString("yyyy-MM-dd") : "", st.Text);
+                Txt(x, c++, Str(g, "REVOKED_BY"), st.Text);
+                Txt(x, c++, g["REVOKED_DT"] is DateTime gr ? gr.ToString("yyyy-MM-dd") : "", st.Text);
+                Txt(x, c++, Str(g, "REVOKE_REASON"), st.Wrap);
+                bool open = Str(g, "STATE") == "Active" || Str(g, "STATE") == "Scheduled";
+                Txt(x, c++, "", open ? st.Input : st.Text);
+                Txt(x, c++, "", open ? st.Input : st.Text);
+                n++;
+            }
+            if (r.ReferenceAccess.Count > 0)
+            {
+                var dv = ra.GetDataValidationHelper();
+                var v = dv.CreateValidation(dv.CreateExplicitListConstraint(new[] { "Keep", "Shorten", "Revoke" }),
+                    new CellRangeAddressList(1, r.ReferenceAccess.Count, rh.Length - 2, rh.Length - 2));
+                v.ShowErrorBox = true;
+                ra.AddValidationData(v);
+            }
+            Finish(ra, rh.Length, r.ReferenceAccess.Count, new[] { 5, 32, 18, 12, 30, 26, 12, 12, 11, 10, 44, 14, 12, 14, 12, 30, 16, 40 });
+
+            // 6. Login history (last 90 days)
             ISheet lg = wb.CreateSheet("Login History");
             string[] lh = { "Time", "Username", "Full Name", "Result", "Message", "IP Address", "Browser / Device" };
             Header(lg, 0, st, lh);

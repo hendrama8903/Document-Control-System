@@ -111,18 +111,58 @@
 .di-convert-result.ok { display: block; background: var(--di-green-light); color: #17824F; border: 1px solid var(--di-green-border); }
 .di-convert-result.check { display: block; background: var(--di-amber-light); color: #8A5300; border: 1px solid var(--di-amber-border); }
 
+/* Errors that stop the whole upload stay on screen until closed or the next try, instead of a
+   growl that disappears (2026-11-17). */
+.di-alert { display: none; position: relative; margin-top: 12px; padding: 10px 40px 10px 14px; border-radius: 10px; font-size: 12.5px; line-height: 1.5; background: var(--di-red-light); color: var(--di-red); border: 1px solid var(--di-red-border); }
+.di-alert.show { display: flex; gap: 10px; align-items: flex-start; }
+.di-alert > .fa { font-size: 15px; margin-top: 2px; }
+.di-alert-title { font-weight: 700; }
+.di-alert-text { color: #8E1F1F; overflow-wrap: anywhere; }
+.di-alert-close { position: absolute; top: 7px; right: 8px; width: 24px; height: 24px; border: none; border-radius: 6px; background: transparent; color: var(--di-red); cursor: pointer; }
+.di-alert-close:hover { background: #fff; }
+#modalReview .di-alert { margin: 0 0 12px; }
+
+.di-msg-list { margin: 0; padding-left: 16px; }
+.di-row-no { color: var(--di-muted); font-variant-numeric: tabular-nums; }
+
 @media (max-width: 640px) {
     .di-card { padding: 4px 16px; }
     .di-step { gap: 12px; }
     .di-step-btn { flex: 1 1 100%; }
 }
 
-/* ---------- Review popup ---------- */
-#modalReview .modal-content { border: none; border-radius: 14px; overflow: hidden; padding: 0; }
+/* ---------- Review popup / Conversion Log popup ---------- */
+#modalReview .modal-content, #modalConvertLog .modal-content { border: none; border-radius: 14px; overflow: hidden; padding: 0; }
 #modalReview .modal-header, #modalReview .modal-footer { display: none; }
-#modalReview .modal-dialog { width: 94%; max-width: 1180px; }
+#modalReview .modal-dialog, #modalConvertLog .modal-dialog { width: 94%; max-width: 1180px; }
 #modalReview .modal-body { padding: 14px 22px 18px; max-height: 60vh; overflow-y: auto; }
+#modalConvertLog .modal-body { padding: 16px 22px 18px; max-height: 68vh; overflow-y: auto; }
 
+/* Conversion Log (2026-11-17) */
+.di-cl-stats { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.di-cl-stat { flex: 1 1 140px; border: 1px solid var(--di-border); border-radius: 10px; padding: 10px 14px; background: #fff; }
+.di-cl-stat b { display: block; font-size: 20px; line-height: 1.2; color: var(--di-text); font-variant-numeric: tabular-nums; }
+.di-cl-stat span { font-size: 12px; color: var(--di-muted); }
+.di-cl-stat.error { border-color: var(--di-red-border); background: var(--di-red-light); }
+.di-cl-stat.error b { color: var(--di-red); }
+.di-cl-stat.warning { border-color: var(--di-amber-border); background: var(--di-amber-light); }
+.di-cl-stat.warning b { color: var(--di-amber); }
+.di-cl-stat.ok b { color: var(--di-green); }
+#modalConvertLog .di-alert { margin: 0 0 14px; }
+.di-cl-section { margin-top: 6px; margin-bottom: 18px; }
+.di-cl-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.di-cl-head > div:first-child { flex: 1 1 420px; min-width: 0; }
+.di-cl-title { font-size: 14px; font-weight: 700; color: var(--di-text); }
+.di-cl-title .fa { color: var(--di-red); margin-right: 4px; }
+.di-cl-count { display: inline-block; min-width: 22px; padding: 1px 8px; margin-left: 4px; border-radius: 999px; background: var(--di-red-light); color: var(--di-red); font-size: 12px; text-align: center; }
+.di-cl-desc { font-size: 12px; color: var(--di-muted); margin-top: 3px; line-height: 1.5; }
+.di-code { font-family: Consolas, "Courier New", monospace; font-weight: 700; color: var(--di-text); }
+.di-sev { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+.di-sev.error { background: var(--di-red-light); color: var(--di-red); }
+.di-sev.warning { background: var(--di-amber-light); color: #8A5300; }
+.di-docs-more { color: var(--di-muted); }
+#clMissingGrid .dx-datagrid, #clLogGrid .dx-datagrid { font-size: 12.5px; }
+#clMissingGrid .dx-datagrid-headers, #clLogGrid .dx-datagrid-headers { font-size: 12px; color: var(--di-muted); }
 .di-review-header {
     display: flex; align-items: center; gap: 12px;
     padding: 16px 22px;

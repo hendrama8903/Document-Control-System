@@ -328,7 +328,7 @@ $(document).ready(function () {
         // double-click a document opens it, like a file in File Explorer
         onRowDblClick: function (e) {
             if (e.rowType === "data" && e.data.STATUS != 0) {
-                onViewAttachment(e.data.FILE_PATH, e.data.DOCUMENT_TRANSACTION_ID);
+                onViewAttachment(e.data.FILE_PATH, e.data.DOCUMENT_TRANSACTION_ID, e.data);
             }
         },
         columns: [
@@ -571,7 +571,7 @@ $(document).ready(function () {
                     .html('<i class="fa fa-eye"></i> View')
                     .on("click", function () {
                         $udRowMenu.hide();
-                        onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+                        onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID, row);
                     })
             )
         );
@@ -683,19 +683,28 @@ function downloadAttachment() {
     }
 }
 
-function onViewAttachment(attachment, documentId) {
+var gViewRow = null;
+
+function onViewAttachment(attachment, documentId, row) {
     gAttachmentPath = attachment;
     gDocumentId = documentId;
+    gViewRow = row || null;
     viewAttachment();
 }
 
 function viewAttachment() {
     if (gAttachmentPath !== "null" && gAttachmentPath !== null) {
         var link = userDashboardConfig.urls.viewAttachment;
-        link = link.replace("-1", gAttachmentPath);
+        link = link.replace("-1", encodeURIComponent(gAttachmentPath));
         link = link.replace("-2", gDocumentId);
         link = link.replace("-3", "3");
-        window.open(link, '_blank');
+        // in-page book viewer instead of a new tab (Hendra 2026-11-18)
+        var r = gViewRow || {};
+        dmsOpenDocViewer({
+            url: link,
+            title: r.DOCUMENT_CODE || "Document",
+            subtitle: [r.DOCUMENT_NAME, r.REVISION != null && r.REVISION !== "" ? "Rev. " + r.REVISION : null].filter(Boolean).join("  ·  ")
+        });
     } else {
         showErrorMesgGrowl("This data does not have an attachment");
     }

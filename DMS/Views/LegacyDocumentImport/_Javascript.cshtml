@@ -34,8 +34,49 @@
             setActiveTab($(this).data("filter"));
         });
 
+        $(document).on("click", ".di-alert-close", function () {
+            hideAlert($(this).closest(".di-alert").attr("id"));
+        });
+
         setupConverter();
     });
+
+    // ---------- Error display (2026-11-17) ----------
+    // Errors that stop the whole upload (missing/too large/unreadable file, server or connection
+    // problem) go into a red box that stays until it is closed or the user tries again; per-row
+    // problems stay in the review grid. The server never sends technical details, only a
+    // plain message (with a reference number when IT has to look at the log).
+    var MAX_EXCEL_BYTES = 10 * 1024 * 1024;
+    var MAX_ZIP_BYTES = 100 * 1024 * 1024;
+
+    function showAlert(id, title, message) {
+        var $box = $("#" + id).empty().addClass("show");
+        $("<i>").addClass("fa fa-times-circle").appendTo($box);
+        var $body = $("<div>").appendTo($box);
+        $("<div>").addClass("di-alert-title").text(title).appendTo($body);
+        $("<div>").addClass("di-alert-text").text(message).appendTo($body);
+        $("<button type='button' class='di-alert-close' title='Close'><i class='fa fa-times'></i></button>").appendTo($box);
+    }
+
+    function hideAlert(id) {
+        $("#" + id).removeClass("show").empty();
+    }
+
+    // HTTP status / jQuery textStatus -> what the user can do about it.
+    function requestErrorText(status, textStatus) {
+        if (textStatus === "timeout") return "The server took too long to answer. Try again with a smaller ZIP, or import the documents in several batches.";
+        if (textStatus === "parsererror") return "The server sent an unexpected answer. Your session may have expired - refresh the page, log in again and retry.";
+        if (status === 0) return "No connection to the server. Check the network connection, then try again.";
+        if (status === 413) return "The upload is larger than the server accepts (Excel up to 10 MB, ZIP up to 100 MB). Split the documents into several ZIP files and import them in batches.";
+        if (status === 401 || status === 403) return "Your session has expired or you no longer have access to this menu. Refresh the page and log in again.";
+        if (status === 404) return "The import service was not found. Refresh the page; if it keeps happening, contact IT.";
+        if (status >= 500) return "The server ran into a problem (HTTP " + status + "). Try again; if it keeps happening, contact IT with the time it happened.";
+        return "The request failed (HTTP " + status + "). Try again; if it keeps happening, contact IT.";
+    }
+
+    function tooLargeText(label, file, limit) {
+        return label + " \"" + file.name + "\" is " + formatFileSize(file.size) + "; the limit is " + formatFileSize(limit) + ".";
+    }
 
     // ---------- Convert from Master List (2026-11-12) ----------
     // Sends the master lists plus only the NAMES of the files in the chosen folder; the server
@@ -52,6 +93,8 @@
                 .text(files.length === 0 ? "Choose one or more .xlsx files" : files.length === 1 ? files[0].name : files.length + " master lists")
                 .attr("title", $.map(files, function (f) { return f.name; }).join("\n"));
             $("#mlResult").removeClass("ok check").text("");
+            hideAlert("mlAlert");
+            gConverted = null;   // the template of the previous lists no longer applies
         });
 
         $("#mlFolder").on("change", function () {
@@ -69,9 +112,10 @@
     function convertMasterList() {
         var lists = document.getElementById("mlFiles").files;
         if (lists.length === 0) {
-            showErrorMesgGrowl("Choose at least one master list.");
+            showAlert("mlAlert", "Nothing to convert", "Choose at least one master list (.xlsx or .xls) first.");
             return;
         }
+        hideAlert("mlAlert");
 
         var names = $.map($.grep(document.getElementById("mlFolder").files, function (f) {
             return DOC_EXT.test(f.name) && f.name.indexOf("~$") !== 0;
@@ -88,42 +132,273 @@
         fetch("@Url.Action("ConvertMasterList", "LegacyDocumentImport")", { method: "POST", body: formData, credentials: "same-origin" })
             .then(function (response) {
                 var type = response.headers.get("Content-Type") || "";
-                if (type.indexOf("application/json") >= 0) {
-                    return response.json().then(function (json) { throw new Error(json.message || "Conversion failed."); });
-                }
-                if (!response.ok) throw new Error("Conversion failed (" + response.status + ").");
-                var rows = Number(response.headers.get("X-Convert-Rows") || 0);
-                var errors = Number(response.headers.get("X-Convert-Errors") || 0);
-                var warnings = Number(response.headers.get("X-Convert-Warnings") || 0);
-                var name = "Import_Template_From_Master_List.xlsx";
-                var match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(response.headers.get("Content-Disposition") || "");
-                if (match) name = decodeURIComponent(match[1]);
-                return response.blob().then(function (blob) {
-                    var url = URL.createObjectURL(blob);
-                    var link = document.createElement("a");
-                    link.href = url;
-                    link.download = name;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+                if (!response.ok && type.indexOf("application/json") < 0) throw new Error(requestErrorText(response.status));
+                // an expired session answers with the login page (HTML, status 200)
+                if (type.indexOf("application/json") < 0) throw new Error(requestErrorText(200, "parsererror"));
+                return response.json();
+            })
+            .then(function (result) {
+                if (!result || result.status !== true) throw new Error((result && result.message) || "Conversion failed.");
 
-                    var text = rows + " row(s) converted and downloaded as " + name + ".";
-                    if (errors || warnings) {
-                        text += " " + errors + " row(s) to fix (red) and " + warnings + " to check (yellow); column N says why.";
-                    } else {
-                        text += " Nothing to fix. Check the rows, then upload the file below with the ZIP of the documents.";
-                    }
-                    $("#mlResult").addClass(errors || warnings ? "check" : "ok").text(text);
-                });
+                // Not downloaded automatically (request Hendra 2026-11-18): the user reads the log
+                // first and downloads the template with the button in the popup.
+                gConverted = { name: result.fileName, base64: result.file };
+
+                var missingErrors = (result.missingCodes || []).filter(function (c) { return c.severity === "error"; }).length;
+                var text = result.rows + " row(s) converted.";
+                if (result.errorRows || result.warningRows) {
+                    text += " " + result.errorRows + " row(s) to fix (red) and " + result.warningRows + " to check (yellow)"
+                        + (missingErrors ? ", " + missingErrors + " code(s) not in the system" : "") + ".";
+                } else {
+                    text += " Nothing to fix.";
+                }
+                $("#mlResult").addClass(result.errorRows || result.warningRows ? "check" : "ok").text(text + " ");
+                $("<a href='#' class='di-cl-open'>").text("Open the conversion log to download the template").appendTo("#mlResult");
+
+                showConvertLog(result);
             })
             .catch(function (err) {
-                showErrorMesgGrowl(err.message);
+                // fetch rejects with a TypeError when the server cannot be reached at all
+                showAlert("mlAlert", "Conversion failed", err instanceof TypeError ? requestErrorText(0) : err.message);
             })
             .then(function () {
                 popUpProgressHide();
                 $("#btn_convert").prop("disabled", false);
             });
+    }
+
+    // ---------- Conversion Log popup (2026-11-17) ----------
+    // After Convert: every code the system does not know yet, over all master lists at once, and
+    // every error/warning of the conversion - before, these were only in column N of the file.
+    var gConverted = null;   // { name, base64 } of the last converted template
+    var gLog = [];           // conversion log lines
+    var gMissing = [];       // codes not in the system
+    var gLogTab = "all";
+
+    var MISSING_ACTION = {
+        Department: "Former department: map it under System Parameters > DEPT_SUCCESSOR. Otherwise add it in Department Master.",
+        Division: "Add it in Division Master, or correct the document number.",
+        Category: "Add it in Document Category master, or correct the document type.",
+        Section: "Add it in Section Master (optional, the row can still be imported).",
+        Company: "Add it under System Parameters > COMPANY_CODE.",
+        Process: "Add it under System Parameters > PROCESS_CODE."
+    };
+
+    $(function () {
+        $("#btn_downloadConverted").on("click", downloadConverted);
+        $("#btn_copyMissing").on("click", copyMissingCodes);
+        $("#btn_exportLog").on("click", exportConvertLog);
+        $("#mlResult").on("click", ".di-cl-open", function (e) {
+            e.preventDefault();
+            $("#modalConvertLog").modal("show");
+        });
+        $("#clTabs").on("click", ".di-tab", function () { setLogTab($(this).data("filter")); });
+        // DevExtreme measures its width when shown; the popup is hidden while the grids are built
+        $("#modalConvertLog").on("shown.bs.modal", function () {
+            ["clMissingGrid", "clLogGrid"].forEach(function (id) {
+                var grid = $("#" + id).data("dxDataGrid");
+                if (grid) grid.updateDimensions();
+            });
+        });
+    });
+
+    function downloadConverted() {
+        if (!gConverted) return;
+        var bytes = atob(gConverted.base64);
+        var buffer = new Uint8Array(bytes.length);
+        for (var i = 0; i < bytes.length; i++) buffer[i] = bytes.charCodeAt(i);
+        var blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+        saveBlob(blob, gConverted.name);
+    }
+
+    function saveBlob(blob, name) {
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement("a");
+        link.href = url;
+        link.download = name;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
+
+    function showConvertLog(result) {
+        gLog = result.log || [];
+        gMissing = result.missingCodes || [];
+        var logErrors = gLog.filter(function (l) { return l.level === "error"; }).length;
+        var logWarnings = gLog.length - logErrors;
+        var missingErrors = gMissing.filter(function (c) { return c.severity === "error"; }).length;
+
+        $("#clSub").text(result.rows + " row(s) from " + (result.files || []).length + " master list(s). Download the filled template with the button below.");
+
+        // summary tiles
+        var $stats = $("#clStats").empty();
+        function stat(value, label, cls) {
+            $("<div>").addClass("di-cl-stat " + (cls || "")).append($("<b>").text(value), $("<span>").text(label)).appendTo($stats);
+        }
+        stat(result.rows, "Rows converted");
+        stat(result.errorRows, "Rows to fix (red)", result.errorRows ? "error" : "ok");
+        stat(result.warningRows, "Rows to check (yellow)", result.warningRows ? "warning" : "ok");
+        stat(gMissing.length, "Codes not in the system", missingErrors ? "error" : gMissing.length ? "warning" : "ok");
+
+        // master lists that could not be read at all
+        var problems = (result.files || []).filter(function (f) { return f.problem; });
+        if (problems.length) {
+            showAlert("clFileProblems", problems.length + " master list(s) skipped",
+                problems.map(function (f) { return f.name + ": " + f.problem; }).join("  |  "));
+        } else {
+            hideAlert("clFileProblems");
+        }
+
+        $("#clMissingSection").toggle(gMissing.length > 0);
+        $("#clMissingCount").text(gMissing.length);
+        renderMissingGrid();
+
+        $("#clAllCount").text(gLog.length);
+        $("#clErrorCount").text(logErrors);
+        $("#clWarningCount").text(logWarnings);
+        renderLogGrid();
+        setLogTab(logErrors ? "error" : "all");
+
+        var $note = $("#clNote").removeClass("ok error");
+        if (result.errorRows) {
+            $note.addClass("error").html('<i class="fa fa-times-circle"></i> ' + result.errorRows + " row(s) cannot be imported yet"
+                + (missingErrors ? " - start with the " + missingErrors + " missing code(s)" : ""));
+        } else {
+            $note.addClass("ok").html('<i class="fa fa-check-circle"></i> No errors - check the yellow rows, then upload the template');
+        }
+
+        $("#modalConvertLog").modal("show");
+    }
+
+    function renderMissingGrid() {
+        if ($("#clMissingGrid").data("dxDataGrid")) {
+            $("#clMissingGrid").dxDataGrid("instance").option("dataSource", gMissing);
+            return;
+        }
+        $("#clMissingGrid").dxDataGrid({
+            dataSource: gMissing,
+            showBorders: true,
+            columnAutoWidth: true,
+            wordWrapEnabled: true,
+            allowColumnResizing: true,
+            noDataText: "Every code is in the system.",
+            paging: { pageSize: 10 },
+            pager: { visible: "auto", showInfo: true },
+            sorting: { mode: "none" },
+            columns: [
+                { dataField: "type", caption: "Type", width: 100 },
+                {
+                    dataField: "code", caption: "Code", width: 110,
+                    cellTemplate: function (c, o) { $("<span class='di-code'>").text(o.value).appendTo(c); }
+                },
+                {
+                    dataField: "severity", caption: "Severity", width: 90,
+                    cellTemplate: function (c, o) { $("<span>").addClass("di-sev " + o.value).text(o.value === "error" ? "Error" : "Warning").appendTo(c); }
+                },
+                { dataField: "usedIn", caption: "Used In" },
+                {
+                    caption: "Documents", minWidth: 200,
+                    calculateCellValue: function (r) { return (r.documents || []).join(", "); },
+                    cellTemplate: function (c, o) {
+                        var docs = o.data.documents || [];
+                        $("<span>").text(docs.length + " - " + docs.slice(0, 3).join(", ")).appendTo(c);
+                        if (docs.length > 3) $("<span class='di-docs-more'>").text(" +" + (docs.length - 3) + " more").appendTo(c);
+                        $(c).attr("title", docs.join("\n"));
+                    }
+                },
+                { caption: "Master Lists", calculateCellValue: function (r) { return (r.masterLists || []).join(", "); } },
+                { caption: "What To Do", minWidth: 220, calculateCellValue: function (r) { return MISSING_ACTION[r.type] || ""; } }
+            ]
+        });
+    }
+
+    function renderLogGrid() {
+        if ($("#clLogGrid").data("dxDataGrid")) {
+            $("#clLogGrid").dxDataGrid("instance").option("dataSource", gLog);
+            return;
+        }
+        $("#clLogGrid").dxDataGrid({
+            dataSource: gLog,
+            showBorders: true,
+            columnAutoWidth: true,
+            wordWrapEnabled: true,
+            allowColumnResizing: true,
+            noDataText: "No errors or warnings.",
+            paging: { pageSize: 20 },
+            pager: { visible: "auto", showInfo: true },
+            searchPanel: { visible: true, width: 240, placeholder: "Search code, document, message..." },
+            sorting: { mode: "none" },
+            columns: [
+                {
+                    dataField: "level", caption: "", width: 34, alignment: "center",
+                    cellTemplate: function (c, o) {
+                        $("<i>").addClass("fa di-status-icon " + o.value + " " + (o.value === "error" ? "fa-times-circle" : "fa-exclamation-triangle")).appendTo(c);
+                    }
+                },
+                { dataField: "source", caption: "Master List, Row", width: 220 },
+                { dataField: "documentCode", caption: "Document No.", width: 180 },
+                { dataField: "revisions", caption: "Rev", width: 60, alignment: "center" },
+                {
+                    dataField: "message", caption: "Message", minWidth: 300,
+                    cellTemplate: function (c, o) { $("<span>").addClass("di-msg-" + o.data.level).text(o.value).appendTo(c); }
+                }
+            ]
+        });
+    }
+
+    function setLogTab(filter) {
+        gLogTab = filter;
+        $("#clTabs .di-tab").removeClass("active");
+        $("#clTabs .di-tab[data-filter='" + filter + "']").addClass("active");
+        var grid = $("#clLogGrid").dxDataGrid("instance");
+        if (filter === "all") grid.clearFilter("dataSource"); else grid.filter(["level", "=", filter]);
+    }
+
+    function copyMissingCodes() {
+        var lines = ["Type\tCode\tSeverity\tUsed In\tDocuments\tMaster Lists"].concat(gMissing.map(function (c) {
+            return [c.type, c.code, c.severity, c.usedIn, (c.documents || []).length, (c.masterLists || []).join(", ")].join("\t");
+        }));
+        var text = lines.join("\n");
+        var done = function () { showSuccessMesgGrowl(gMissing.length + " code(s) copied - paste them into Excel or a message to QMS."); };
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+        } else {
+            fallbackCopy(text);
+            done();
+        }
+    }
+
+    function fallbackCopy(text) {
+        var $area = $("<textarea>").val(text).css({ position: "fixed", top: 0, left: 0, opacity: 0 }).appendTo("body");
+        $area[0].select();
+        try { document.execCommand("copy"); } catch (e) { }
+        $area.remove();
+    }
+
+    function csvCell(v) {
+        var s = String(v == null ? "" : v).replace(/"/g, '""');
+        return /[",\n]/.test(s) ? '"' + s + '"' : s;
+    }
+
+    // One CSV with both parts: the missing codes, then every log line.
+    function exportConvertLog() {
+        var lines = [];
+        if (gMissing.length) {
+            lines.push("Codes not in the system");
+            lines.push(["Type", "Code", "Severity", "Used In", "Documents", "Master Lists", "What To Do"].join(","));
+            gMissing.forEach(function (c) {
+                lines.push([c.type, c.code, c.severity, c.usedIn, (c.documents || []).join(" "), (c.masterLists || []).join(", "), MISSING_ACTION[c.type] || ""].map(csvCell).join(","));
+            });
+            lines.push("");
+        }
+        lines.push("Conversion log");
+        lines.push(["Level", "Master List, Row", "Document No.", "Rev", "Message"].join(","));
+        gLog.forEach(function (l) {
+            lines.push([l.level, l.source, l.documentCode, l.revisions, l.message].map(csvCell).join(","));
+        });
+        // BOM so Excel opens it as UTF-8
+        saveBlob(new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" }), "Conversion_Log.csv");
     }
 
     // ---------- Dropzones ----------
@@ -178,6 +453,7 @@
     // mockup) - so the user can drop/browse again to replace it. Only the
     // colored "selected file" row below toggles.
     function showSelectedFile(zone, file) {
+        hideAlert("importAlert");
         zone.classList.add("filled");
         zone.classList.remove("missing");
         var fileBox = $(zone).find(".di-dz-file");
@@ -207,6 +483,8 @@
         resetDropzone("dzZip");
 
         $("#modalReview").modal("hide");
+        hideAlert("importAlert");
+        hideAlert("reviewAlert");
         gLastRows = [];
         gActiveTab = "all";
         $("#btn_import").prop("disabled", true);
@@ -223,10 +501,30 @@
         $("#dzExcel").toggleClass("missing", noExcel);
         $("#dzZip").toggleClass("missing", noZip);
         if (noExcel || noZip) {
-            showErrorMesgGrowl(noExcel && noZip ? "Choose the Excel template and the documents ZIP first."
+            showAlert("importAlert", "Files missing", noExcel && noZip ? "Choose the Excel template and the documents ZIP first."
                 : noExcel ? "Choose the Excel template first." : "Choose the documents ZIP first.");
             return;
         }
+
+        // Check the sizes here, so a too-large file is not uploaded first only to be refused.
+        var excelTooLarge = excelInput.files[0].size > MAX_EXCEL_BYTES;
+        var zipTooLarge = zipInput.files[0].size > MAX_ZIP_BYTES;
+        $("#dzExcel").toggleClass("missing", excelTooLarge);
+        $("#dzZip").toggleClass("missing", zipTooLarge);
+        if (excelTooLarge || zipTooLarge) {
+            var sizeText = [];
+            if (excelTooLarge) sizeText.push(tooLargeText("Excel file", excelInput.files[0], MAX_EXCEL_BYTES));
+            if (zipTooLarge) sizeText.push(tooLargeText("ZIP file", zipInput.files[0], MAX_ZIP_BYTES) + " Split the documents into several ZIP files and import them in batches.");
+            showAlert("importAlert", "File too large", sizeText.join(" "));
+            return;
+        }
+
+        // A problem with the whole request is shown where the user is looking: in the review
+        // popup during Import, on the page during Preview.
+        var alertId = commitMode ? "reviewAlert" : "importAlert";
+        var failTitle = commitMode ? "Import failed" : "Validation failed";
+        hideAlert("importAlert");
+        hideAlert("reviewAlert");
 
         var formData = new FormData();
         formData.append("excelFile", excelInput.files[0]);
@@ -242,13 +540,17 @@
             url: "@Url.Action("ProcessImport", "LegacyDocumentImport")",
             contentType: false,
             processData: false,
+            dataType: "json",
+            timeout: 10 * 60 * 1000,
             data: formData,
             success: function (result) {
                 popUpProgressHide();
                 $("#btn_preview").prop("disabled", false);
 
-                if (result.status != true) {
-                    showErrorMesgGrowl(result.message);
+                if (!result || result.status != true) {
+                    showAlert(alertId, failTitle, (result && result.message) || requestErrorText(200, "parsererror"));
+                    // the rows were not imported, so Import may be tried again after a fix
+                    if (commitMode) updateImportButton();
                     return;
                 }
 
@@ -265,10 +567,11 @@
                     renderReview(result.data, "preview");
                 }
             },
-            error: function (result) {
+            error: function (xhr, textStatus) {
                 popUpProgressHide();
                 $("#btn_preview").prop("disabled", false);
-                showErrorMesgGrowl(result);
+                showAlert(alertId, failTitle, requestErrorText(xhr.status, textStatus));
+                if (commitMode) updateImportButton();
             }
         });
     }
@@ -315,7 +618,7 @@
         // tombol ini aktif lagi.
         var importCount = mode === "preview" ? (readyCount + warningCount) : 0;
         $("#btnImportCount").text(importCount);
-        $("#btn_import").prop("disabled", mode !== "preview" || importCount === 0 || errorCount > 0);
+        updateImportButton();
 
         // Footer note in the color of the outcome; after an import it reports the result
         // (before, the preview note stayed there).
@@ -339,6 +642,12 @@
         $("#modalReview").modal("show");
         renderGrid();
         setActiveTab("all");
+    }
+
+    function updateImportButton() {
+        var errorCount = gLastRows.filter(function (r) { return r._category === "error"; }).length;
+        var importCount = gLastRows.length - errorCount;
+        $("#btn_import").prop("disabled", gLastMode !== "preview" || importCount === 0 || errorCount > 0);
     }
 
     function setActiveTab(filter) {
@@ -388,6 +697,16 @@
                         $("<i>").addClass("fa " + iconClass + " di-status-icon " + options.value).appendTo(container);
                     }
                 },
+                {
+                    // the Excel row to fix (row 1 is the header)
+                    dataField: "rowNumber",
+                    caption: "Row",
+                    width: 60,
+                    alignment: "center",
+                    cellTemplate: function (container, options) {
+                        $("<span>").addClass("di-row-no").text(options.value != null ? options.value : "-").appendTo(container);
+                    }
+                },
                 { dataField: "documentCode", caption: "Document No.", calculateCellValue: function (row) { return row.documentCode || "-"; } },
                 { dataField: "revision", caption: "Revision", width: 90, alignment: "center", calculateCellValue: function (row) { return row.revision != null ? row.revision : "-"; } },
                 { dataField: "documentName", caption: "Document Title", calculateCellValue: function (row) { return row.documentName || "-"; } },
@@ -397,6 +716,13 @@
                     caption: "Message",
                     minWidth: 220,
                     cellTemplate: function (container, options) {
+                        // several validation errors on one row: one per line instead of "a; b; c"
+                        var errors = gLastMode === "preview" && options.data._category === "error" ? (options.data.errors || []) : [];
+                        if (errors.length > 1) {
+                            var $list = $("<ul>").addClass("di-msg-list di-msg-error").appendTo(container);
+                            errors.forEach(function (e) { $("<li>").text(e).appendTo($list); });
+                            return;
+                        }
                         $("<span>").addClass("di-msg-" + options.data._category).text(buildMessage(options.data)).appendTo(container);
                     }
                 }
@@ -425,11 +751,12 @@
     function exportResultCsv() {
         if (gLastRows.length === 0) return;
 
-        var headers = ["Status", "Document No.", "Revision", "Document Title", "File Name", "Message"];
+        var headers = ["Row", "Status", "Document No.", "Revision", "Document Title", "File Name", "Message"];
         var lines = [headers.join(",")];
 
         gLastRows.forEach(function (row) {
             var cells = [
+                row.rowNumber != null ? row.rowNumber : "",
                 row._category,
                 row.documentCode || "",
                 row.revision != null ? row.revision : "",

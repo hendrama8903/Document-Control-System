@@ -77,6 +77,9 @@ namespace DMS.Services
             if (access != Access.Allowed) return access;
 
             string path = "/" + (relativePath ?? "").Replace('\\', '/').TrimStart('/');
+            // HR memos of Organization Change (2026-11-19): only through OrgChangeController.Attachment (menu check)
+            if (path.StartsWith("/Upload/ATTACHMENT/ORG_CHANGE/", StringComparison.OrdinalIgnoreCase))
+                return Access.Denied;
             if (!path.StartsWith("/Upload/ATTACHMENT/DOCUMENT_TRANSACTION/", StringComparison.OrdinalIgnoreCase))
                 return Access.Allowed;
 
@@ -141,6 +144,23 @@ namespace DMS.Services
             && Scalar(db, @"SELECT CAST(CASE WHEN EXISTS (
                     SELECT 1 FROM dbo.fn_User_RecipientDepartments(@U, @T)
                 ) THEN 1 ELSE 0 END AS BIT)", ("@U", username), ("@T", documentTransactionId)) is bool b && b;
+
+        public const string ReferenceOnlyMessage = "You can read this document through Reference Access, which is view only. Download and print are not available; ask Document Control if you need a copy.";
+
+        /// <summary>
+        /// The user sees the document only through Reference Access (dbo.fn_Document_AccessReason
+        /// = 5, request Hendra 2026-11-18): read in the preview, never downloaded or printed.
+        /// Any other right to the document (creator, approver, distribution, own division,
+        /// Document Control) comes first, so those users are not limited by this.
+        /// </summary>
+        public static bool IsReferenceOnly(DBContext db, string username, int? documentTransactionId) =>
+            !string.IsNullOrEmpty(username) && documentTransactionId != null
+            && Scalar(db, "SELECT dbo.fn_Document_AccessReason(@U, @T)", ("@U", username), ("@T", documentTransactionId)) is byte reason
+            && reason == 5;
+
+        /// <summary><see cref="IsReferenceOnly"/> for a file path; the document is looked up from the path, not from the browser.</summary>
+        public static bool IsReferenceOnlyFile(DBContext db, string username, string filePath) =>
+            !string.IsNullOrEmpty(filePath) && IsReferenceOnly(db, username, FindDocumentByFile(db, filePath));
 
         public static bool HasFunction(HttpContext http, string functionId) =>
             (http.Session.GetString("functionList") ?? "")

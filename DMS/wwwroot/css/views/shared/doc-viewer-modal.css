@@ -1,0 +1,64 @@
+/* In-page document viewer popup (2026-11-18), see js/doc-viewer-modal.js */
+.dms-dv {
+    position: fixed; inset: 0; z-index: 3000;
+    display: flex; align-items: center; justify-content: center; padding: 2.5vh 2vw;
+    background: rgba(10, 14, 22, .62); backdrop-filter: blur(3px);
+    opacity: 0; visibility: hidden; transition: opacity .2s, visibility .2s;
+}
+.dms-dv.open { opacity: 1; visibility: visible; }
+body.dms-dv-lock { overflow: hidden; }
+
+.dms-dv-window {
+    width: min(1500px, 100%); height: 100%;
+    display: flex; flex-direction: column; overflow: hidden;
+    border-radius: 16px; background: #1C2027;
+    box-shadow: 0 30px 80px rgba(0,0,0,.5);
+    transform: translateY(14px) scale(.985); transition: transform .22s ease-out;
+}
+.dms-dv.open .dms-dv-window { transform: none; }
+
+.dms-dv-header {
+    flex: none; display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px 12px 18px;
+    background: linear-gradient(135deg, #2450D8, #1C3FA6); color: #fff;
+}
+.dms-dv-icon {
+    flex: none; width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.18); font-size: 15px;
+}
+.dms-dv-heading { flex: 1 1 auto; min-width: 0; }
+.dms-dv-title { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dms-dv-sub { font-size: 12px; color: rgba(255,255,255,.82); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.dms-dv-badge {
+    flex: none; padding: 3px 10px; border-radius: 999px;
+    background: #FFF4E5; color: #9A4A00; font-size: 11.5px; font-weight: 700;
+}
+.dms-dv-btn {
+    flex: none; width: 36px; height: 36px; border: 0; border-radius: 10px;
+    background: rgba(255,255,255,.12); color: #fff; font-size: 16px; cursor: pointer;
+    transition: background .15s;
+}
+.dms-dv-btn:hover { background: rgba(255,255,255,.24); }
+
+.dms-dv-body { position: relative; flex: 1 1 auto; min-height: 0; background: #252A33; }
+.dms-dv-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }
+.dms-dv-loading {
+    position: absolute; inset: 0; z-index: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    color: #E6E8EC; font-size: 13.5px; background: #252A33;
+}
+.dms-dv-spinner {
+    width: 38px; height: 38px; border-radius: 50%;
+    border: 3px solid rgba(255,255,255,.15); border-top-color: #6F91F0;
+    animation: dmsDvSpin .8s linear infinite;
+}
+@keyframes dmsDvSpin { to { transform: rotate(360deg); } }
+
+@media (max-width: 640px) {
+    .dms-dv { padding: 0; }
+    .dms-dv-window { border-radius: 0; }
+    .dms-dv-badge { display: none !important; }
+}
+/* never print the viewer with the page behind it */
+@media print { .dms-dv { display: none !important; } }

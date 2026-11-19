@@ -1533,6 +1533,13 @@ namespace DMS.Controllers
             IActionResult fileDenied = FileAccessDenied(db, documentMaintenance.FILE_PATH);
             if (fileDenied != null) return fileDenied;
 
+            // Reference Access is view only (2026-11-18). DownloadDocument of the dashboards
+            // redirects here for non-source files, so this one check covers them too.
+            if (Services.DocumentAccessService.IsReferenceOnlyFile(db, GetLoginUsername(), documentMaintenance.FILE_PATH))
+            {
+                Response.StatusCode = 403;
+                return Content(PreviewMessagePage("Download is not available", Services.DocumentAccessService.ReferenceOnlyMessage), "text/html; charset=utf-8");
+            }
 
             try
             {
@@ -1718,6 +1725,14 @@ namespace DMS.Controllers
         }
         //end custom
 
+        // ?view=book (2026-11-18): the book-style viewer shown in the in-page popup of My
+        // Documents (two pages side by side, page turns). Every other caller keeps the classic
+        // single-page viewer. Same file, same stamps, same print/download deterrents.
+        private string PdfPreviewView() =>
+            string.Equals(Request.Query["view"], "book", StringComparison.OrdinalIgnoreCase)
+                ? "~/Views/Preview/PDFBookPreview.cshtml"
+                : "~/Views/Preview/PDFPreview.cshtml";
+
         public IActionResult ViewAttachment(DocumentMaintenance documentMaintenance, string type)
         {
             DBResult result;
@@ -1825,7 +1840,7 @@ namespace DMS.Controllers
                         // HTTP cache-nya sendiri walau isi file di server sudah beda (bug lama,
                         // ketauan pas nambahin stempel gambar - request user 2026-08-09).
                         ViewData["FilePath"] = servePath + "?v=" + DateTime.UtcNow.Ticks;
-                        return View("~/Views/Preview/PDFPreview.cshtml");
+                        return View(PdfPreviewView());
                     }
                     // ✅ SAMPAI SINI
 
@@ -1874,7 +1889,7 @@ namespace DMS.Controllers
                 ViewData["Title"] = "Document Preview";
                 // Cache-buster - lihat komentar di cabang cached-PDF di atas.
                 ViewData["FilePath"] = serveRelative + "?v=" + DateTime.UtcNow.Ticks;
-                return View("~/Views/Preview/PDFPreview.cshtml");
+                return View(PdfPreviewView());
             }
             catch (Exception ex)
             {
@@ -3214,9 +3229,14 @@ namespace DMS.Controllers
             bool isControlledCopy = viewerType == "3"
                 && (isPublished || currentDocument.STATUS == "1")
                 && Services.DocumentAccessService.IsDistributedToUser(db, GetLoginUsername(), id);
+            // Reference Access (2026-11-18): read for learning, not a held copy - UNCONTROLLED
+            // COPY in the bottom slot, whatever view type the browser asked for.
+            bool isReference = !isMaster && !isControlledCopy
+                && Services.DocumentAccessService.IsReferenceOnly(db, GetLoginUsername(), id);
 
             return (isMaster ? webRootPath + StampMasterImage : null,
-                    isControlledCopy ? webRootPath + StampControlledCopyImage : null,
+                    isControlledCopy ? webRootPath + StampControlledCopyImage
+                        : isReference ? webRootPath + StampUncontrolledCopyImage : null,
                     null);
         }
 
@@ -4741,6 +4761,10 @@ namespace DMS.Controllers
         {
             JsonResult fileDeniedJson = FileAccessDeniedJson(db, documentMaintenance.FILE_PATH);
             if (fileDeniedJson != null) return fileDeniedJson;
+
+            // Reference Access is view only (2026-11-18)
+            if (Services.DocumentAccessService.IsReferenceOnlyFile(db, GetLoginUsername(), documentMaintenance.FILE_PATH))
+                return Json(new { status = false, message = Services.DocumentAccessService.ReferenceOnlyMessage });
 
             DBResult result;
             try

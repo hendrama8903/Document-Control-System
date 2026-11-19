@@ -1,6 +1,6 @@
 // Access Rights Review. Server values come from accessRightConfig in the view.
 // One standard #datagrid (grid-common.js); each tab rebuilds it with its own columns.
-var arData = { users: [], items: [], roles: [], trackingSince: null };
+var arData = { users: [], items: [], roles: [], trackingSince: null, referenceAccess: [] };
 var arTab = "users";
 var arLoginStart, arLoginEnd;
 
@@ -93,6 +93,14 @@ function arUsersGrid() {
             },
             { dataField: "LOGIN_COUNT_90D", caption: "Logins (90 Days)", alignment: "center", dataType: "number" },
             { dataField: "FAILED_LOGIN_30D", caption: "Failed Logins (30 Days)", alignment: "center", dataType: "number" },
+            {
+                // read-only rights on other departments' documents, through the user's department (2026-11-18)
+                dataField: "REFERENCE_ACCESS", caption: "Reference Access", allowHeaderFiltering: false,
+                cellTemplate: function (container, options) {
+                    if (!options.value) { container.text("-"); return; }
+                    container.attr("title", options.value).text(options.data.REFERENCE_ACCESS_COUNT + " access(es)");
+                }
+            },
             arStatusColumn(arUserActive),
             { dataField: "CREATED_BY", caption: "Created By", visible: false },
             {
@@ -122,6 +130,18 @@ function arAccessRows() {
                 FUNCTION_ID: i.FUNCTION_ID, FUNCTION_NAME: i.FUNCTION_NAME
             });
         });
+        // Reference Access in effect through the user's department (2026-11-18)
+        (u.REFERENCE_ACCESS_IDS || []).forEach(function (id) {
+            var g = arData.referenceAccess.filter(function (x) { return x.REFERENCE_ACCESS_ID === id; })[0];
+            if (!g) return;
+            rows.push({
+                KEY: u.USERNAME + "|REF|" + id,
+                USERNAME: u.USERNAME, FULL_NAME: u.FULL_NAME, ROLE_ID: u.ROLE_ID, ROLE_NAME: u.ROLE_NAME, IS_ACTIVE: u.IS_ACTIVE,
+                PARENT_NAME: "Reference Access", MENU_NAME: (g.OWNER_CODE || "") + " - " + (g.OWNER_NAME || "") + " documents",
+                ITEM_TYPE: "REFERENCE", FUNCTION_ID: "",
+                FUNCTION_NAME: g.CATEGORY + ", until " + arDate(g.VALID_TO)
+            });
+        });
     });
     return rows;
 }
@@ -139,11 +159,62 @@ function arAccessGrid() {
             { dataField: "MENU_NAME", caption: "Menu" },
             {
                 dataField: "ITEM_TYPE", caption: "Type", alignment: "center",
-                calculateCellValue: function (row) { return row.ITEM_TYPE === "MENU" ? "Menu" : "Function"; }
+                calculateCellValue: function (row) { return row.ITEM_TYPE === "MENU" ? "Menu" : row.ITEM_TYPE === "REFERENCE" ? "Read Only" : "Function"; }
             },
             { dataField: "FUNCTION_ID", caption: "Function ID", visible: false },
             { dataField: "FUNCTION_NAME", caption: "Function" },
             arStatusColumn(arUserActive)
+        ]
+    };
+}
+
+// Reference Access grants (2026-11-18): who may read which department's documents, until when
+var AR_REF_STATE_COLORS = {
+    Active: { bg: "#ECFDF3", fg: "#027A48" }, Scheduled: { bg: "#EFF8FF", fg: "#175CD3" },
+    Expired: { bg: "#F2F4F7", fg: "#667085" }, Revoked: { bg: "#FEF3F2", fg: "#B42318" }
+};
+
+function arReferenceGrid() {
+    function dept(code, name, id) { return code ? code + " - " + name : "(deleted #" + id + ")"; }
+    return {
+        dataSource: arData.referenceAccess,
+        keyExpr: "REFERENCE_ACCESS_ID",
+        noDataText: "No reference access. Document Control manages it in Administration > Reference Access.",
+        columns: [
+            arNoColumn(),
+            { dataField: "READER", caption: "Reader" },
+            { dataField: "VIEWER_DEPARTMENTS", caption: "Reader Department" },
+            arStatusColumn(function (row) { return row.VIEWER_ACTIVE == 1; }, ["Active User", "Inactive User"]),
+            { caption: "Owner Department", calculateCellValue: function (r) { return dept(r.OWNER_CODE, r.OWNER_NAME, r.OWNER_DEPARTMENT_ID); } },
+            { dataField: "CATEGORY", caption: "Category" },
+            {
+                dataField: "VALID_FROM", caption: "Valid From", alignment: "right", allowHeaderFiltering: false,
+                cellTemplate: function (container, options) { container.text(arDate(options.value)); }
+            },
+            {
+                dataField: "VALID_TO", caption: "Valid To", alignment: "right", allowHeaderFiltering: false,
+                cellTemplate: function (container, options) { container.text(arDate(options.value)); }
+            },
+            {
+                dataField: "STATE", caption: "Status", alignment: "center",
+                cellTemplate: function (container, options) {
+                    var c = AR_REF_STATE_COLORS[options.value] || AR_REF_STATE_COLORS.Expired;
+                    $("<span>").addClass("um-role-pill").css({ background: c.bg, color: c.fg }).text(options.value).appendTo(container);
+                }
+            },
+            { dataField: "DOCUMENT_COUNT", caption: "Documents", alignment: "center", dataType: "number" },
+            { dataField: "REASON", caption: "Reason" },
+            { dataField: "CREATED_BY", caption: "Created By" },
+            {
+                dataField: "CREATED_DT", caption: "Created Date", alignment: "right", allowHeaderFiltering: false,
+                cellTemplate: function (container, options) { container.text(arDate(options.value)); }
+            },
+            { dataField: "REVOKED_BY", caption: "Revoked By", visible: false },
+            {
+                dataField: "REVOKED_DT", caption: "Revoked Date", alignment: "right", visible: false, allowHeaderFiltering: false,
+                cellTemplate: function (container, options) { container.text(arDate(options.value)); }
+            },
+            { dataField: "REVOKE_REASON", caption: "Revoke Reason", visible: false }
         ]
     };
 }
@@ -230,7 +301,7 @@ function arBuildGrid() {
     var old = $grid.data("dxDataGrid");
     if (old) { old.dispose(); $grid.empty(); }
 
-    var options = { users: arUsersGrid, access: arAccessGrid, matrix: arMatrixGrid, logins: arLoginGrid }[arTab]();
+    var options = { users: arUsersGrid, access: arAccessGrid, matrix: arMatrixGrid, reference: arReferenceGrid, logins: arLoginGrid }[arTab]();
     $grid.dxDataGrid(dmsGridOptions($.extend({
         height: computeGridHeight(),
         filterRow: { visible: $("#btn_toggleFilters").hasClass("active"), applyFilter: "auto" }
