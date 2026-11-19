@@ -19,6 +19,13 @@ namespace DMS.Services
     {
         public const string FormNumber = "QCD/FR-QMS-00/004";
         public const string FormTitle = "MASTER LIST DOKUMEN INTERNAL";
+        public const string AllCode = "ALL";
+        public const string AllDivision = "All Division";
+        public const string AllDepartment = "All Department";
+
+        /// <summary>Form title of a sheet: the system is named when it is not QMS, e.g. "... (K3L)".</summary>
+        public static string TitleFor(Group g) => g == null || string.IsNullOrEmpty(g.MgmtSystem) || g.MgmtSystem == "QMS"
+            ? FormTitle : FormTitle + " (" + g.MgmtSystem + ")";
         public const string FormRevision = "REVISI: 00";
         private const int MinRevisionColumns = 6;   // Revisi Ke- 0..5, as on the paper form
 
@@ -45,6 +52,10 @@ namespace DMS.Services
 
         public class Group
         {
+            /// <summary>Management System of the sheet (QMS / K3L / ..., 2026-11-19).</summary>
+            public string MgmtSystem { get; set; } = "QMS";
+            /// <summary>QMS manuals and procedures (Level 1-2): one company-wide sheet, "All Division / All Department".</summary>
+            public bool CompanyWide { get; set; }
             public string Division { get; set; }
             public string DivisionName { get; set; }
             public string DepartmentCode { get; set; }
@@ -56,6 +67,8 @@ namespace DMS.Services
         {
             public int TransactionId { get; set; }
             public string Code { get; set; }
+            /// <summary>Management System (QMS / K3L / ..., 2026-11-19).</summary>
+            public string MgmtSystem { get; set; }
             /// <summary>Numbers it had before a renumbering revision ("QCD/SOP-QPD-00/002"), or null.</summary>
             public string OldCodes { get; set; }
             public string Name { get; set; }
@@ -124,12 +137,13 @@ namespace DMS.Services
 
         // ------------------------------------------------------------------ data
 
-        public static Report Load(DBContext db, string division = null, string department = null)
+        public static Report Load(DBContext db, string division = null, string department = null, string mgmtSystem = null)
         {
             var sets = Query(db, "sp_DocumentMasterlist_Matrix", new[]
             {
                 new SqlParameter("@DIVISION", (object)Blank(division) ?? DBNull.Value),
                 new SqlParameter("@DEPARTMENT_CODE", (object)Blank(department) ?? DBNull.Value),
+                new SqlParameter("@MGMT_SYSTEM", (object)Blank(mgmtSystem) ?? DBNull.Value),
             });
 
             var report = new Report { GeneratedAt = DateTime.Now };
@@ -139,16 +153,24 @@ namespace DMS.Services
             foreach (var r in sets[0])
             {
                 string div = Str(r, "DIVISION"), dept = Str(r, "DEPARTMENT_CODE");
-                string key = div + "|" + dept;
+                // Management System (2026-11-19): a sheet per system; QMS Level 1-2 (manuals and
+                // procedures) belong to the whole company - one "All Division / All Department" sheet,
+                // as on the paper QMS master list. Other systems keep their owning department.
+                string system = Str(r, "MGMT_SYSTEM") ?? "QMS";
+                bool companyWide = system == "QMS" && r["CATEGORY_LEVEL"] != null && Convert.ToInt32(r["CATEGORY_LEVEL"]) <= 2;
+                string key = system + "|" + (companyWide ? "*" : div + "|" + dept);
                 if (!groups.TryGetValue(key, out var g))
                 {
-                    g = new Group
-                    {
-                        Division = div,
-                        DivisionName = Str(r, "DIVISION_NAME"),
-                        DepartmentCode = dept,
-                        DepartmentName = Str(r, "DEPARTMENT_NAME")
-                    };
+                    g = companyWide
+                        ? new Group { MgmtSystem = system, CompanyWide = true, Division = AllCode, DivisionName = AllDivision, DepartmentCode = AllCode, DepartmentName = AllDepartment }
+                        : new Group
+                        {
+                            MgmtSystem = system,
+                            Division = div,
+                            DivisionName = Str(r, "DIVISION_NAME"),
+                            DepartmentCode = dept,
+                            DepartmentName = Str(r, "DEPARTMENT_NAME")
+                        };
                     groups[key] = g;
                     report.Groups.Add(g);
                 }
@@ -158,6 +180,7 @@ namespace DMS.Services
                     TransactionId = Convert.ToInt32(r["DOCUMENT_TRANSACTION_ID"]),
                     Code = Str(r, "DOCUMENT_CODE"),
                     OldCodes = Str(r, "OLD_CODES"),
+                    MgmtSystem = Str(r, "MGMT_SYSTEM"),
                     Name = Str(r, "DOCUMENT_TRANSACTION_NAME"),
                     Category = Str(r, "CATEGORY_CODE"),
                     Confidential = Str(r, "CLASSIFIED") == "2",
@@ -225,6 +248,10 @@ namespace DMS.Services
             int maxRev = docsByCode.Values.SelectMany(d => d.Revisions.Keys.Append(d.Revision)).DefaultIfEmpty(0).Max();
             report.RevisionColumns = Math.Max(MinRevisionColumns, maxRev + 1);
             foreach (var g in report.Groups) Sort(g.Documents, null, false);
+            // QMS first, its company-wide sheet before the departments, then the other systems
+            report.Groups = report.Groups
+                .OrderBy(g => g.MgmtSystem == "QMS" ? 0 : 1).ThenBy(g => g.MgmtSystem, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(g => g.CompanyWide ? 0 : 1).ToList();
             return report;
         }
 
@@ -239,6 +266,8 @@ namespace DMS.Services
                 using var command = connection.CreateCommand();
                 command.CommandText = "[dbo].[" + procedure + "]";
                 command.CommandType = CommandType.StoredProcedure;
+                var transaction = db.Database.CurrentTransaction;   // join an open EF transaction (tests, callers in a tx)
+                if (transaction != null) command.Transaction = Microsoft.EntityFrameworkCore.Storage.DbContextTransactionExtensions.GetDbTransaction(transaction);
                 foreach (var p in parameters) command.Parameters.Add(p);
                 using var rd = command.ExecuteReader();
                 do
@@ -285,7 +314,11 @@ namespace DMS.Services
                 for (int i = 0; i < groups.Count; i++)
                 {
                     Worksheet sheet = i == 0 ? wb.Worksheets[0] : wb.Worksheets.Add();
-                    sheet.Name = QmsFormSheet.SheetName(groups[i].DepartmentCode ?? groups[i].Division ?? "Master List", usedNames);
+                    var grp = groups[i];
+                    string baseName = grp.CompanyWide ? "All Division" : (grp.DepartmentCode ?? grp.Division ?? "Master List");
+                    if (!string.IsNullOrEmpty(grp.MgmtSystem) && grp.MgmtSystem != "QMS") baseName = grp.MgmtSystem + " " + baseName;
+                    else if (grp.CompanyWide) baseName = "QMS " + baseName;
+                    sheet.Name = QmsFormSheet.SheetName(baseName, usedNames);
                     FillSheet(sheet, report, groups[i]);
                 }
                 wb.Worksheets.ActiveWorksheet = wb.Worksheets[0];
@@ -306,7 +339,7 @@ namespace DMS.Services
             var widths = new List<double> { 1.5, 5, 19, 32, 8, 7, 7 };
             widths.AddRange(Enumerable.Repeat(9.0, revCols));
             widths.AddRange(Enumerable.Repeat(11.0, lastCol - colFirstDiv + 1));
-            QmsFormSheet.WriteHeader(sheet, widths.ToArray(), FormNumber, FormTitle,
+            QmsFormSheet.WriteHeader(sheet, widths.ToArray(), FormNumber, TitleFor(group),
                 group.DivisionName ?? group.Division, group.DepartmentName ?? group.DepartmentCode, report.GeneratedAt);
 
             // ---- two-level table header

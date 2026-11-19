@@ -81,7 +81,7 @@ namespace DMS.Controllers
 
             string[] headers = {
                 "No", "Document Code", "Document Name", "Category", "Division", "Department",
-                "Classified", "Revision", "Status", "Effective Date", "Last Change", "Owner"
+                "Classified", "Revision", "Status", "Effective Date", "Last Change", "Owner", "System"
             };
 
             IRow headerRow = sheet.CreateRow(0);
@@ -107,6 +107,7 @@ namespace DMS.Controllers
                 row.CreateCell(9).SetCellValue(item.DOCUMENT_DATE?.ToString("dd-MM-yyyy") ?? "");
                 row.CreateCell(10).SetCellValue(string.Join(" - ", new[] { item.ITEM_CHANGED, item.REASON }.Where(x => !string.IsNullOrEmpty(x))));
                 row.CreateCell(11).SetCellValue(item.DOCUMENT_CREATOR);
+                row.CreateCell(12).SetCellValue(item.MGMT_SYSTEM ?? "QMS");
 
                 rowIndex++;
                 no++;
@@ -154,20 +155,20 @@ namespace DMS.Controllers
         }
 
         [HttpGet]
-        public IActionResult MatrixExcel(string division, string department, string sort, string dir)
+        public IActionResult MatrixExcel(string division, string department, string sort, string dir, string mgmtSystem)
         {
             if (!HasMenuAccess()) return StatusCode(403);
-            var report = LoadMatrix(division, department, sort, dir);
+            var report = LoadMatrix(division, department, sort, dir, mgmtSystem);
             using var workbook = MasterListMatrixService.BuildWorkbook(report);
             byte[] bytes = workbook.SaveDocument(DevExpress.Spreadsheet.DocumentFormat.Xlsx);
             return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", MatrixFileName(division, department) + ".xlsx");
         }
 
         [HttpGet]
-        public IActionResult MatrixPdf(string division, string department, string sort, string dir)
+        public IActionResult MatrixPdf(string division, string department, string sort, string dir, string mgmtSystem)
         {
             if (!HasMenuAccess()) return StatusCode(403);
-            var report = LoadMatrix(division, department, sort, dir);
+            var report = LoadMatrix(division, department, sort, dir, mgmtSystem);
             using var workbook = MasterListMatrixService.BuildWorkbook(report);
             using var stream = new MemoryStream();
             workbook.ExportToPdf(stream);
@@ -176,9 +177,9 @@ namespace DMS.Controllers
         }
 
         // the export follows the order chosen on screen (click a column header in the matrix)
-        private MasterListMatrixService.Report LoadMatrix(string division, string department, string sort, string dir)
+        private MasterListMatrixService.Report LoadMatrix(string division, string department, string sort, string dir, string mgmtSystem = null)
         {
-            var report = MasterListMatrixService.Load(db, division, department);
+            var report = MasterListMatrixService.Load(db, division, department, mgmtSystem);
             bool descending = string.Equals(dir, "desc", StringComparison.OrdinalIgnoreCase);
             foreach (var g in report.Groups) MasterListMatrixService.Sort(g.Documents, sort, descending);
             return report;

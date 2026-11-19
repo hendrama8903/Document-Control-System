@@ -22,6 +22,8 @@ namespace DMS.Models.DB
         public string? ITEM_CHANGED { get; set; }
         public string? REASON { get; set; }
         public string? DOCUMENT_CREATOR { get; set; }
+        // Management System (QMS / K3L / ..., 2026-11-19), from sp_DocumentMaintenance_Masterlist
+        public string? MGMT_SYSTEM { get; set; }
         public string? FILE_PATH { get; set; }
         public string? CREATED_BY { get; set; }
         public DateTime? CREATED_DT { get; set; }

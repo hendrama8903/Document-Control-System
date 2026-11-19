@@ -11,7 +11,8 @@ GO
 --   4. divisions      the active divisions = the distribution columns
 CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentMasterlist_Matrix]
     @DIVISION         VARCHAR(50) = NULL,   -- owning division (NULL = all)
-    @DEPARTMENT_CODE  VARCHAR(50) = NULL    -- owning department (NULL = all)
+    @DEPARTMENT_CODE  VARCHAR(50) = NULL,   -- owning department (NULL = all)
+    @MGMT_SYSTEM      VARCHAR(10) = NULL    -- QMS / K3L / ... (NULL = all, 2026-11-19)
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -21,6 +22,7 @@ BEGIN
         D.DOCUMENT_CODE,
         D.DOCUMENT_TRANSACTION_NAME,
         DCAT.DOCUMENT_CODE AS CATEGORY_CODE,
+        DCAT.LEVEL AS CATEGORY_LEVEL,   -- QMS Level 1-2 = company-wide sheet (2026-11-19)
         D.CLASSIFIED,
         ISNULL(D.REVISION, 0) AS REVISION,
         D.DOCUMENT_DATE,
@@ -29,6 +31,7 @@ BEGIN
         ISNULL(D.DIVISION_NAME, DSYS.DIVISION_NAME) AS DIVISION_NAME,
         ISNULL(D.DEPARTMENT_CODE, DEP.DEPARTMENT_CODE) AS DEPARTMENT_CODE,
         ISNULL(D.DEPARTMENT_NAME, DEP.DEPARTMENT_NAME) AS DEPARTMENT_NAME,
+        ISNULL(D.MGMT_SYSTEM, 'QMS') AS MGMT_SYSTEM,
         -- older numbers of a document renumbered at a revision (2026-11-19), newest first
         CASE WHEN D.PREVIOUS_DOCUMENT_CODE IS NULL THEN NULL ELSE
             (SELECT STRING_AGG(LIN.CODE, ', ') WITHIN GROUP (ORDER BY LIN.DEPTH) FROM dbo.fn_Document_CodeLineage(D.DOCUMENT_CODE) LIN WHERE LIN.DEPTH > 0) END AS OLD_CODES
@@ -41,7 +44,8 @@ BEGIN
       AND D.STATUS IN ('1', '5')
       AND D.DOCUMENT_CODE IS NOT NULL
       AND (@DIVISION IS NULL OR D.DIVISION = @DIVISION)
-      AND (@DEPARTMENT_CODE IS NULL OR ISNULL(D.DEPARTMENT_CODE, DEP.DEPARTMENT_CODE) = @DEPARTMENT_CODE);
+      AND (@DEPARTMENT_CODE IS NULL OR ISNULL(D.DEPARTMENT_CODE, DEP.DEPARTMENT_CODE) = @DEPARTMENT_CODE)
+      AND (@MGMT_SYSTEM IS NULL OR ISNULL(D.MGMT_SYSTEM, 'QMS') = @MGMT_SYSTEM);
 
     -- every number of each document (its own + the numbers it had before a renumbering)
     SELECT X.DOCUMENT_CODE AS CUR_CODE, LIN.CODE

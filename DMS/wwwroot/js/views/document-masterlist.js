@@ -83,6 +83,8 @@ $(document).ready(function () {
                         .appendTo(container);
                 }
             },
+            // Management System (2026-11-19): QMS / K3L / ...
+            { dataField: "MGMT_SYSTEM", caption: "System", width: 90, alignment: "center" },
             { dataField: "DOCUMENT_TRANSACTION_NAME", caption: "Document Name" },
             {
                 dataField: "DOCUMENT_CATEGORY",
@@ -289,6 +291,7 @@ function mlLoadMatrix() {
     $.ajax({ type: "GET", url: documentMasterlistConfig.urls.matrixData, cache: false })
         .done(function (report) {
             mlMatrix = report;
+            mlFillSystemFilter();
             mlFillDivisionFilter();
             mlBuildGrid();
         })
@@ -324,14 +327,19 @@ function mlFillDepartmentFilter() {
 // one grid row per document; No = place in its department by document number (form order)
 function mlRows() {
     var rows = [];
-    mlMatrix.Groups.forEach(function (g) {
+    mlMatrix.Groups.forEach(function (g, gi) {
         g.Documents.slice().sort(function (a, b) { return (mlSeqNumber(a.Code) - mlSeqNumber(b.Code)) || (a.Code || "").localeCompare(b.Code || ""); })
             .forEach(function (doc, i) {
                 rows.push($.extend({}, doc, {
                     No: i + 1,
+                    GroupOrder: gi,
+                    MgmtSystem: doc.MgmtSystem || "QMS",
                     Division: g.Division,
                     DepartmentCode: g.DepartmentCode,
-                    Owner: (g.Division || "-") + " · " + (g.DivisionName || "") + "  /  " + (g.DepartmentCode || "-") + " · " + (g.DepartmentName || "")
+                    // the sheet: system (when not QMS) + owner; QMS Level 1-2 = "All Division / All Department"
+                    Owner: (g.MgmtSystem && g.MgmtSystem !== "QMS" ? g.MgmtSystem + "  |  " : "")
+                        + (g.CompanyWide ? "QMS  |  All Division  /  All Department"
+                            : (g.Division || "-") + " · " + (g.DivisionName || "") + "  /  " + (g.DepartmentCode || "-") + " · " + (g.DepartmentName || ""))
                 }));
             });
     });
@@ -341,8 +349,9 @@ function mlRows() {
 function mlApplyOwnerFilter() {
     var grid = $("#mlMatrixGrid").data("dxDataGrid");
     if (!grid) return;
-    var division = $("#mlMatrixDivision").val(), dept = $("#mlMatrixDepartment").val(), f = [];
-    if (division) f.push(["Division", "=", division]);
+    var division = $("#mlMatrixDivision").val(), dept = $("#mlMatrixDepartment").val(), sys = $("#mlMatrixSystem").val(), f = [];
+    if (sys) f.push(["MgmtSystem", "=", sys]);
+    if (division) { if (f.length) f.push("and"); f.push(["Division", "=", division]); }
     if (dept) { if (f.length) f.push("and"); f.push(["DepartmentCode", "=", dept]); }
     grid.filter(f.length ? f : null);
 }
@@ -397,9 +406,12 @@ function mlBuildGrid() {
         groupPanel: { visible: false },
         noDataText: "No valid documents for this filter.",
         columns: [
-            { dataField: "Owner", caption: "Department", groupIndex: 0, allowHiding: false },
+            // groups in the server order: QMS company-wide sheet, QMS departments, then other systems
+            { dataField: "Owner", caption: "Department", groupIndex: 0, allowHiding: false,
+              calculateSortValue: function (row) { return ("0000" + row.GroupOrder).slice(-4); } },
             { dataField: "Division", visible: false, showInColumnChooser: false },
             { dataField: "DepartmentCode", visible: false, showInColumnChooser: false },
+            { dataField: "MgmtSystem", visible: false, showInColumnChooser: false },
             { dataField: "No", caption: "No.", width: 52, alignment: "center", allowSorting: false, allowFiltering: false, fixed: true, fixedPosition: "left" },
             {
                 dataField: "Code", caption: "No. Dokumen", width: 190, fixed: true, fixedPosition: "left", sortIndex: 0, sortOrder: "asc",
@@ -457,13 +469,14 @@ function mlExportSort() {
 
 function mlExportUrl(base) {
     var division = $("#mlMatrixDivision").val(), dept = $("#mlMatrixDepartment").val(), s = mlExportSort();
-    return base + "?" + $.param({ division: division || "", department: dept || "", sort: s.field, dir: s.dir });
+    return base + "?" + $.param({ division: division || "", department: dept || "", sort: s.field, dir: s.dir, mgmtSystem: $("#mlMatrixSystem").val() || "" });
 }
 
 $(document).ready(function () {
     $(".ml-view-switch button").on("click", function () { mlSetView($(this).data("view")); });
     $("#mlMatrixDivision").on("change", function () { mlFillDepartmentFilter(); mlApplyOwnerFilter(); });
     $("#mlMatrixDepartment").on("change", mlApplyOwnerFilter);
+    $("#mlMatrixSystem").on("change", mlApplyOwnerFilter);
     // Refresh reloads whichever view is open (the list grid binds its own handler too)
     $("#btn_refresh").on("click", function () { if ($("#divMatrix").is(":visible")) mlLoadMatrix(); else mlMatrix = null; });
     $("#btn_matrixExcel").on("click", function () { window.location.href = mlExportUrl(documentMasterlistConfig.urls.matrixExcel); });
@@ -482,3 +495,14 @@ $(document).ready(function () {
     try { saved = localStorage.getItem("dms.masterlist.view"); } catch (e) { }
     if (saved === "matrix") mlSetView("matrix");
 });
+
+// Management System filter (2026-11-19): the systems that have documents in the matrix
+function mlFillSystemFilter() {
+    var $sys = $("#mlMatrixSystem"), keep = $sys.val(), seen = {};
+    $sys.find("option:gt(0)").remove();
+    mlMatrix.Groups.forEach(function (g) {
+        g.Documents.forEach(function (d) { seen[d.MgmtSystem || "QMS"] = true; });
+    });
+    Object.keys(seen).sort().forEach(function (code) { $("<option>").val(code).text(code).appendTo($sys); });
+    $sys.val(seen[keep] ? keep : "");
+}
