@@ -361,12 +361,13 @@ namespace DMS.Models.Repo
                 new SqlParameter ( "@MANUAL_SEQ_NO", CheckNullValue(data.MANUAL_SEQ_NO) ),
                 new SqlParameter ( "@RELATED_DIVISIONS", CheckNullValue(data.RELATED_DIVISIONS) ),
                 returnMsg,
-                returnId
+                returnId,
+                new SqlParameter ( "@RENUMBER", data.RENUMBER == true )
             };
 
             string query = "EXEC @RETURN_VAL = [dbo].[sp_DocumentMaintenance_Insert] @DOCUMENT_TRANSACTION_ID, @DOCUMENT_ID,@DOCUMENT_CODE,@DOCUMENT_TRANSACTION_NAME,@DOCUMENT_TYPE," +
                 "@PROCESS_CODE,@COMPANY_CODE,@SECTION_CODE,@ITEM_CHANGED,@REASON,@EXTERNAL_FLAG,@REFERENCE_NO,@SOURCE,@DOCUMENT_DATE,@FILE_PATH,@STATUS,@REVISION," +
-                "@APPROVAL_ID,@DELETE_FLAG,@DIVISION,@CLASSIFIED,@DEPARTMENT_ID, @IMPACT_OTHER_FLAG, @LEVEL_CODE, @CREATED_BY,@CHANGED_BY, @MENU_ID, @DOCUMENT_CREATOR, @MANUAL_SEQ_NO, @RELATED_DIVISIONS, @RETURN_MSG OUTPUT, @RETURN_ID OUTPUT";
+                "@APPROVAL_ID,@DELETE_FLAG,@DIVISION,@CLASSIFIED,@DEPARTMENT_ID, @IMPACT_OTHER_FLAG, @LEVEL_CODE, @CREATED_BY,@CHANGED_BY, @MENU_ID, @DOCUMENT_CREATOR, @MANUAL_SEQ_NO, @RELATED_DIVISIONS, @RETURN_MSG OUTPUT, @RETURN_ID OUTPUT, @RENUMBER = @RENUMBER";
             int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString(), Convert.ToInt32(returnId.Value));

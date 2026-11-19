@@ -39,7 +39,8 @@ BEGIN
 		F.FOLDER_NAME AS BINDER_NAME
 	FROM [dbo].[TB_R_DOCUMENT_EXPORT] E
 	LEFT JOIN [dbo].[TB_M_DOCUMENT_FOLDER] F ON F.FOLDER_ID = E.FOLDER_ID AND ISNULL(F.DELETE_FLAG, 0) = 0
-	WHERE E.DOCUMENT_CODE = @CODE
+	-- every number the document had: copies of revisions before a renumbering stay listed (2026-11-19)
+	WHERE E.DOCUMENT_CODE IN (SELECT LIN.CODE FROM dbo.fn_Document_CodeLineage(dbo.fn_Document_LatestCode(@CODE)) LIN)
 	  AND E.PURPOSE = 'CONTROLLED'
 	ORDER BY E.REVISION DESC, E.COPY_NO;
 END

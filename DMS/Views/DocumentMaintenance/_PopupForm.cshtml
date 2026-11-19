@@ -62,6 +62,16 @@
                                 </div>
                                 @*Updated By Arie - 2023-08-24*@
                                 <select class="form-control" id="addEditDocumentNo2" onchange="onChangeDocumentNo()" required></select>
+                                @* Revision with a new number (Organization Change tahap 3, 2026-11-19, QMS): optional;
+                                   the new number is made from the current owner department when saved and the old
+                                   number stays as its reference. The revision number continues. *@
+                                <div id="addEditRenumberGroup" class="adf-renumber hide">
+                                    <label class="adf-renumber-check">
+                                        <input type="checkbox" id="addEditRenumber" onchange="onChangeRenumber()" />
+                                        Give this revision a new document number
+                                    </label>
+                                    <div class="adf-renumber-hint" id="addEditRenumberHint"></div>
+                                </div>
                             </div>
                         </div>
                     </div>

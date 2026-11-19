@@ -40,7 +40,11 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentMaintenance_Insert]
 		-- backward compatible).
 		@RELATED_DIVISIONS VARCHAR(MAX) = NULL,
 		@RETURN_MSG VARCHAR(MAX) OUTPUT,
-		@RETURN_ID	 		VARCHAR(MAX) OUTPUT
+		@RETURN_ID	 		VARCHAR(MAX) OUTPUT,
+		-- Ganti nomor saat revisi (Organization Change tahap 3, 2026-11-19): 1 = the revision gets a new
+		-- number from the current owner department; the old number is kept in PREVIOUS_DOCUMENT_CODE.
+		-- Last parameter, passed by name, so the positional call of the older parameters is unchanged.
+		@RENUMBER BIT = 0
 AS
 BEGIN TRY
 	DECLARE @PROCESS_ID BIGINT
@@ -49,6 +53,8 @@ BEGIN TRY
 	, @rev_DOCUMENT_ID int
 	, @rev_REVISION int
 	, @rev_STATUS varchar(1)
+	, @rev_PREVIOUS_CODE varchar(50)
+	, @OLD_DOCUMENT_CODE varchar(50)
 
 	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'Document Maintenance', 'Insert', @LOCATION, @CREATED_BY
 
@@ -178,7 +184,7 @@ BEGIN TRY
 	IF @DOCUMENT_TYPE = '02' --REVISION
 	BEGIN
 		SELECT @rev_DOCUMENT_TRANSACTION_ID = DOCUMENT_TRANSACTION_ID
-			,@rev_DOCUMENT_ID = DOCUMENT_ID, @rev_REVISION = REVISION, @rev_STATUS = STATUS
+			,@rev_DOCUMENT_ID = DOCUMENT_ID, @rev_REVISION = REVISION, @rev_STATUS = STATUS, @rev_PREVIOUS_CODE = PREVIOUS_DOCUMENT_CODE
 		FROM TB_R_DOCUMENT
 		WHERE DOCUMENT_CODE = @DOCUMENT_CODE ORDER BY REVISION DESC
 
@@ -190,6 +196,16 @@ BEGIN TRY
 		IF @rev_STATUS = '0'
 		BEGIN
 			SET @RETURN_MSG = 'ERROR: A revision is already pending approval for this document';
+			SET @RETURN_ID = 0;
+			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @CREATED_BY
+			RETURN 0;
+		END
+
+		-- a pending revision that got a new number carries this number as its reference (2026-11-19)
+		IF EXISTS (SELECT 1 FROM TB_R_DOCUMENT WHERE PREVIOUS_DOCUMENT_CODE = @DOCUMENT_CODE AND DOCUMENT_CODE <> @DOCUMENT_CODE
+		           AND STATUS = '0' AND ISNULL(DELETE_FLAG, 0) = 0)
+		BEGIN
+			SET @RETURN_MSG = 'ERROR: A revision with a new number is already pending approval for this document';
 			SET @RETURN_ID = 0;
 			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @CREATED_BY
 			RETURN 0;
@@ -222,6 +238,52 @@ BEGIN TRY
 			SET @RETURN_ID = 0;
 			EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @CREATED_BY
 			RETURN 0;
+		END
+	END
+
+	-- Ganti nomor saat revisi (2026-11-19, QMS): the revision gets a new number built from the
+	-- current owner (department, section, category, process, company) like a new document; the
+	-- old number becomes its reference. The revision number continues. Without @RENUMBER a
+	-- revision keeps the number and carries the reference of an earlier change forward.
+	IF @DOCUMENT_TYPE = '02'
+	BEGIN
+		SET @OLD_DOCUMENT_CODE = @rev_PREVIOUS_CODE;
+		IF @RENUMBER = 1
+		BEGIN
+			DECLARE @rn_DEPARTMENT_CODE VARCHAR(50), @rn_DOC_CODE VARCHAR(50), @rn_NEW_CODE VARCHAR(25), @rn_MSG VARCHAR(500);
+			SET @rn_DEPARTMENT_CODE = (SELECT DEPARTMENT_CODE FROM TB_M_DEPARTMENT WHERE DEPARTMENT_ID = @DEPARTMENT_ID);
+			SET @rn_DOC_CODE = (SELECT DOCUMENT_CODE FROM TB_M_DOCUMENT WHERE DOCUMENT_ID = ISNULL(@rev_DOCUMENT_ID, @DOCUMENT_ID));
+
+			EXEC sp_generate_doc_no
+				@LEVEL_CODE, @DIVISION, @rn_DEPARTMENT_CODE, @SECTION_CODE, @rn_DOC_CODE,
+				@PROCESS_CODE, @COMPANY_CODE, @DOCUMENT_DATE, NULL,
+				@rn_NEW_CODE OUTPUT, @rn_MSG OUTPUT;
+
+			IF @rn_MSG IS NOT NULL OR @rn_NEW_CODE IS NULL
+			BEGIN
+				SET @RETURN_MSG = ISNULL(@rn_MSG, 'ERROR: The new document number could not be made');
+				SET @RETURN_ID = 0;
+				EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @CREATED_BY
+				RETURN 0;
+			END
+			IF @rn_NEW_CODE = @DOCUMENT_CODE
+			BEGIN
+				SET @RETURN_MSG = 'ERROR: The new number would be the same as the current one; save the revision without changing the number';
+				SET @RETURN_ID = 0;
+				EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @CREATED_BY
+				RETURN 0;
+			END
+			IF EXISTS (SELECT 1 FROM TB_R_DOCUMENT WHERE DOCUMENT_CODE = @rn_NEW_CODE AND ISNULL(DELETE_FLAG, 0) = 0)
+			   OR EXISTS (SELECT 1 FROM TB_R_DOCUMENT_HISTORY WHERE DOCUMENT_CODE = @rn_NEW_CODE)
+			BEGIN
+				SET @RETURN_MSG = 'ERROR: The new number ' + @rn_NEW_CODE + ' is already used by another document. Check Document Numbering for this department';
+				SET @RETURN_ID = 0;
+				EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @CREATED_BY
+				RETURN 0;
+			END
+
+			SET @OLD_DOCUMENT_CODE = @DOCUMENT_CODE;
+			SET @DOCUMENT_CODE = @rn_NEW_CODE;
 		END
 	END
 
@@ -359,7 +421,8 @@ BEGIN TRY
 		   ,DEPARTMENT_CODE
 		   ,DEPARTMENT_NAME
 			 ,IMPACT_OTHER_FLAG
-			 ,DOCUMENT_CREATOR)
+			 ,DOCUMENT_CREATOR
+			 ,PREVIOUS_DOCUMENT_CODE)
      VALUES
            (@DOCUMENT_CODE
            ,@DOCUMENT_TRANSACTION_NAME
@@ -392,7 +455,8 @@ BEGIN TRY
 		   ,@snap_DEPARTMENT_CODE
 		   ,@snap_DEPARTMENT_NAME
 			 ,@IMPACT_OTHER_FLAG
-			 ,@DOCUMENT_CREATOR)
+			 ,@DOCUMENT_CREATOR
+			 ,IIF(@DOCUMENT_TYPE = '02', @OLD_DOCUMENT_CODE, NULL))
 
 	DECLARE @curr_DOCUMENT_TRANSACTION_ID int
 	SET @curr_DOCUMENT_TRANSACTION_ID = SCOPE_IDENTITY();

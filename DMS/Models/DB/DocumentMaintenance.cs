@@ -73,5 +73,9 @@ namespace DMS.Models.DB
         // bukan kolom TB_R_DOCUMENT (lihat TB_R_DOCUMENT_RELATED_DIVISION).
         [NotMapped]
         public string? RELATED_DIVISIONS { get; set; }
+        // Revision with a new number (Organization Change tahap 3, 2026-11-19): the number is
+        // built from the current owner department, the old one becomes the reference.
+        [NotMapped]
+        public bool? RENUMBER { get; set; }
     }
 }

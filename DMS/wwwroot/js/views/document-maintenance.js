@@ -529,7 +529,7 @@ function openRowActionMenu($btn, row) {
     $menu.empty();
 
     $menu.append(menuItem("dp-menu-preview", "fa-file-pdf-o", "Preview PDF", function () {
-        onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID);
+        onViewAttachment(row.FILE_PATH, row.DOCUMENT_TRANSACTION_ID, row);
     }));
 
     $menu.append(menuItem("dp-menu-preview", "fa-file-excel-o", "Preview Excel", function () {
@@ -679,7 +679,7 @@ $(document).ready(function () {
     $('#btn_preview_filepath').on('click', function (e) {
         e.preventDefault();
         if (gFilePath) {
-            onViewAttachment(gFilePath, gDocumentId);
+            onViewAttachment(gFilePath, gDocumentId, { DOCUMENT_NAME: $("#addEditDocumentName").val() });
         }
     });
 
@@ -837,7 +837,7 @@ function onViewDetail(row) {
 $(document).ready(function () {
     $("#btnDdPreview").on("click", function () {
         if (!gDetailRow) return;
-        onViewAttachment(gDetailRow.FILE_PATH, gDetailRow.DOCUMENT_TRANSACTION_ID);
+        onViewAttachment(gDetailRow.FILE_PATH, gDetailRow.DOCUMENT_TRANSACTION_ID, gDetailRow);
     });
 
     $("#btnDdDownload").on("click", function () {
@@ -2255,8 +2255,15 @@ function loadDocumentReferences(documentCode) {
                 var name = (r.DocumentCode ? r.DocumentCode + ' - ' : '') + (r.Title || '');
                 var meta = [r.SourceType === "EXTERNAL" ? "External" : (r.Revision != null ? "Rev. " + r.Revision : null), r.StatusName, r.DepartmentName].filter(Boolean).join(' · ');
                 var snippet = r.Snippet ? '<div class="adf-ref-snip">… ' + insightEsc(r.Snippet).replace(codeRe, function (m) { return '<mark>' + m + '</mark>'; }) + ' …</div>' : '';
-                $panel.append('<div class="adf-ref"><div class="adf-ref-main"><a onclick="window.open(\'' + open.replace(/'/g, "%27") + '\', \'_blank\')">' + insightEsc(name) + '</a> <span>' + insightEsc(meta) + '</span>' +
+                var $ref = $('<div class="adf-ref"><div class="adf-ref-main"><a href="#">' + insightEsc(name) + '</a> <span>' + insightEsc(meta) + '</span>' +
                     (r.ByOcr ? ' <span class="adf-tag">OCR</span>' : '') + snippet + '</div></div>');
+                // internal documents open in the in-page viewer (2026-11-18); an external document is a file download
+                $ref.find("a").on("click", function (e) {
+                    e.preventDefault();
+                    if (r.SourceType === "EXTERNAL") window.open(open, "_blank");
+                    else dmsOpenDocViewer({ url: open, title: r.DocumentCode || "Document", subtitle: [r.Title, r.Revision != null ? "Rev. " + r.Revision : null].filter(Boolean).join("  ·  ") });
+                });
+                $panel.append($ref);
             });
             $panel.show();
         }
@@ -2429,6 +2436,8 @@ function refreshManualNoPrefix() {
 
 function onChangeDocumentType() {
     reset();
+    $('#addEditRenumber').prop('checked', false);
+    $('#addEditRenumberGroup').addClass('hide');
     $('#addEditImpactPanel, #addEditFileCheck').hide().empty();  // OCR tahap 2
 
     if ($('#addEditDocumentType').val() == "01") //NEW
@@ -2651,6 +2660,8 @@ function onChangeDocumentNo() {
 
                     $('#addEditReferenceNo').val(data.REFERENCE_NO);
                     $('#addEditSource').val(data.SOURCE === "MIGRATION" ? "" : data.SOURCE);  // import marker, not a real source
+
+                    showRenumberOption(data);
 
                     // Analisis dampak revisi (OCR tahap 2, 2026-11-06)
                     loadDocumentReferences(data.DOCUMENT_CODE);
@@ -3086,6 +3097,10 @@ function addEditData() {
             data.append("DOCUMENT_TYPE", $('#addEditDocumentType').val());
         }
 
+        if ($('#addEditDocumentType').val() == "02" && $('#addEditRenumber').is(':checked')) {
+            data.append("RENUMBER", "true");   // new number at this revision (2026-11-19)
+        }
+
         if (documentNo != null && documentNo != "null" && documentNo != "") {
             data.append("DOCUMENT_CODE", $('#addEditDocumentNo').val());
         }
@@ -3363,6 +3378,8 @@ function reset() {
 
     $('#addEditNumberingModeAuto').prop('checked', true);
     $('#addEditNumberingModeGroup').addClass('hide');
+    $('#addEditRenumber').prop('checked', false);
+    $('#addEditRenumberGroup').addClass('hide');
     $('#addEditDocumentNo').removeClass('hide');
     $('#addEditManualNoGroup').addClass('hide');
     $('#addEditManualSeqNo').val('');
@@ -3804,23 +3821,11 @@ function downloadAttachment() {
     }
 }
 
-function onViewAttachment(attachment, documentId) {
+function onViewAttachment(attachment, documentId, row) {
     gAttachmentPath = attachment;
     gDocumentId = documentId;
-    viewAttachment();
-}
-
-function viewAttachment()
-{
-    if (gAttachmentPath !== "null" && gAttachmentPath !== null && gAttachmentPath !== "") {
-        var link = documentMaintenanceConfig.urls.viewAttachment;
-        link = link.replace("-1", gAttachmentPath);
-        link = link.replace("-2", gDocumentId);
-        link = link.replace("-3", "1");
-        window.open(link, '_blank');
-    } else {
-        showErrorMesgGrowl("This data does not have an attachment");
-    }
+    // in-page book viewer, the same in every menu (2026-11-18)
+    dmsViewDocument(documentMaintenanceConfig.urls.viewAttachment, attachment, documentId, "1", row);
 }
 
 function onExcelPreview(filePath) {
@@ -3946,4 +3951,45 @@ function openLogModal(documentId) {
     });
 
     $("#modalDocumentLog").modal();
+}
+
+// ---------- Revision with a new document number (Organization Change tahap 3, 2026-11-19) ----------
+// QMS: after a reorganisation the number may stay; it may change at a revision, with the old
+// number as the reference. The new number is made from the current owner (division, department,
+// section, category) when the revision is saved; the revision number continues.
+var gRenumberData = null;
+
+function showRenumberOption(data) {
+    gRenumberData = data;
+    $('#addEditRenumber').prop('checked', false);
+    $('#addEditRenumberGroup').removeClass('hide');
+    updateRenumberHint();
+}
+
+// the number still carries a code that is not the owner's department any more
+function renumberSuggested(data) {
+    var code = (data.DOCUMENT_CODE || "").toUpperCase(), dept = (data.DEPARTMENT_CODE || "").toUpperCase();
+    return dept && code.indexOf(dept) < 0;
+}
+
+function updateRenumberHint() {
+    var data = gRenumberData || {}, on = $('#addEditRenumber').is(':checked');
+    var $h = $('#addEditRenumberHint').empty().removeClass('adf-renumber-warn');
+    if (on) {
+        $h.text("A new number is made from " + (data.DIVISION || "") + " / " + (data.DEPARTMENT_CODE || "")
+            + " when you save. " + data.DOCUMENT_CODE + " stays as its reference (shown as 'dulu' in the Master List); the revision number continues"
+            + (String(data.LEVEL_CODE) == "3" || String(data.LEVEL_CODE) == "4" ? ". Check the Section: it is part of the new number." : "."));
+    } else if (renumberSuggested(data)) {
+        $h.addClass('adf-renumber-warn').text("This number does not carry the owner's department code ("
+            + data.DEPARTMENT_CODE + "), e.g. after a reorganisation. Keeping it is fine; you may give it a new number.");
+    } else {
+        $h.text("Optional. Keep the number unless it has to change (QMS).");
+    }
+}
+
+function onChangeRenumber() {
+    var level = String((gRenumberData || {}).LEVEL_CODE);
+    // the section is part of the new number of a level 3 / 4 document: allow choosing the current one
+    $('#addEditSection').prop('disabled', !($('#addEditRenumber').is(':checked') && (level == "3" || level == "4")));
+    updateRenumberHint();
 }

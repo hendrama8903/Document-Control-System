@@ -194,3 +194,9 @@
         border-color: #E3E8EF; box-shadow: 0 4px 14px rgba(16,24,40,.04); margin-top: 16px;
     }
 }
+
+/* Revision with a new document number (Organization Change tahap 3, 2026-11-19) */
+.adf-renumber { margin-top: 8px; padding: 8px 10px; border: 1px dashed #C7D9F7; border-radius: 8px; background: #F8FAFF; }
+.adf-renumber-check { font-weight: 600; font-size: 12.5px; color: #1D2939; margin: 0; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.adf-renumber-hint { font-size: 11.5px; color: #667085; margin-top: 4px; line-height: 1.45; }
+.adf-renumber-hint.adf-renumber-warn { color: #B54708; }

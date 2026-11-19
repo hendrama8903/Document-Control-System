@@ -48,7 +48,7 @@ BEGIN
 										ISNULL(S.SECTION_NAME, SEC.SECTION_NAME) SECTION_NAME,
 										ISNULL(S.EXTERNAL_FLAG, '''') EXTERNAL_FLAG,
 										CAST(S.DOCUMENT_DATE as date) DOCUMENT_DATE,
-										ISNULL((SELECT MIN(HS.DOCUMENT_DATE) FROM TB_R_DOCUMENT_HISTORY HS WHERE HS.REVISION = 0 AND HS.DOCUMENT_CODE = S.DOCUMENT_CODE), S.DOCUMENT_DATE)  DOCUMENT_REVISION_0_DATE,
+										ISNULL((SELECT MIN(HS.DOCUMENT_DATE) FROM TB_R_DOCUMENT_HISTORY HS WHERE HS.REVISION = 0 AND HS.DOCUMENT_CODE IN (SELECT LIN.CODE FROM dbo.fn_Document_CodeLineage(S.DOCUMENT_CODE) LIN)), S.DOCUMENT_DATE)  DOCUMENT_REVISION_0_DATE,
 										ISNULL(S.FILE_PATH, '''') FILE_PATH,
 										ISNULL(S.DEPARTMENT, 0) DEPARTMENT_ID,
 										ISNULL(S.DEPARTMENT_CODE, D.DEPARTMENT_CODE) AS DEPARTMENT_CODE,
@@ -123,7 +123,13 @@ BEGIN
 
 									IF ISNULL(@DOCUMENT_CODE, '') <> '' --@DOCUMENT_NO IS NOT NULL
 									BEGIN
-										SET @QUERY += ' AND S.DOCUMENT_CODE LIKE ''' + REPLACE(@DOCUMENT_CODE , '*', '%') + ''' '
+										-- A document that got a new number at a revision (2026-11-19): its older
+										-- revisions carry the old number, so an exact number lists the whole chain.
+										IF CHARINDEX('*', @DOCUMENT_CODE) = 0
+											SET @QUERY += ' AND S.DOCUMENT_CODE IN (SELECT LIN.CODE FROM dbo.fn_Document_CodeLineage(dbo.fn_Document_LatestCode('''
+												+ REPLACE(@DOCUMENT_CODE, '''', '''''') + ''')) LIN) '
+										ELSE
+											SET @QUERY += ' AND S.DOCUMENT_CODE LIKE ''' + REPLACE(REPLACE(@DOCUMENT_CODE, '''', ''''''), '*', '%') + ''' '
 									END
 
 	SET @QUERY += '
