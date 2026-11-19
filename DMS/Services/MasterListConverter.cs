@@ -30,6 +30,8 @@ namespace DMS.Services
             public IList<MSystem> Classifications { get; set; } = new List<MSystem>();
             public IList<MSystem> CompanyCodes { get; set; } = new List<MSystem>();
             public IList<MSystem> ProcessCodes { get; set; } = new List<MSystem>();
+            /// <summary>Management System codes (QMS, K3L, SMK3, EMS): a sheet named like one gives the rows its system (2026-11-19).</summary>
+            public IList<string> MgmtSystems { get; set; } = new List<string>();
             /// <summary>Document Code (upper case) -> revision of the active document.</summary>
             public Dictionary<string, int> ExistingRevisions { get; set; } = new Dictionary<string, int>();
             /// <summary>
@@ -64,6 +66,8 @@ namespace DMS.Services
             public string Reason { get; set; }
             // "APP:12-04-2017; INF:12-04-2017" - only on the latest revision row.
             public string Distribution { get; set; }
+            /// <summary>Management System from the sheet name (QMS / K3L / ...), or null = read from the number.</summary>
+            public string MgmtSystem { get; set; }
             public string Source { get; set; }
             public List<string> Errors { get; } = new List<string>();
             public List<string> Warnings { get; } = new List<string>();
@@ -136,6 +140,7 @@ namespace DMS.Services
             public bool StatusTwice;
             public string HeaderDivision;
             public string HeaderDepartment;
+            public string SheetName;
             public List<(int Revision, DateTime? Date, string Raw, string Comment)> Revisions = new();
             // Cells under "Distribusi Dokumen": column header (a division code) and the text.
             public List<(string Column, string Raw)> Distribution = new();
@@ -191,7 +196,9 @@ namespace DMS.Services
             foreach (Doc doc in docs)
             {
                 string source = doc.Source + ", row " + doc.ExcelRow;
-                var shared = new OutRow { DocumentCode = doc.Code, DocumentName = doc.Name, Source = source };
+                // sheet "SMK3" / "K3L" / ... = that management system (Master List PROSEDUR.xlsx, 2026-11-19)
+                string sheetSystem = m.MgmtSystems.FirstOrDefault(c => Eq(c, (doc.SheetName ?? "").Trim()));
+                var shared = new OutRow { DocumentCode = doc.Code, DocumentName = doc.Name, Source = source, MgmtSystem = sheetSystem };
                 Resolve(doc, shared, m, result);
 
                 if (seenCodes.TryGetValue(doc.Code, out Doc first))
@@ -298,7 +305,7 @@ namespace DMS.Services
             {
                 DocumentCode = s.DocumentCode, DocumentName = s.DocumentName, CategoryCode = s.CategoryCode,
                 DivisionCode = s.DivisionCode, DepartmentCode = s.DepartmentCode, ClassificationCode = s.ClassificationCode,
-                Source = s.Source
+                Source = s.Source, MgmtSystem = s.MgmtSystem
             };
             row.Errors.AddRange(s.Errors);
             row.Warnings.AddRange(s.Warnings);
@@ -390,7 +397,8 @@ namespace DMS.Services
                     Name = nameCol >= 0 ? Clean(Text(row.GetCell(nameCol))) : null,
                     Type = typeCol >= 0 ? Clean(Text(row.GetCell(typeCol))) : null,
                     HeaderDivision = division,
-                    HeaderDepartment = department
+                    HeaderDepartment = department,
+                    SheetName = sheet.SheetName
                 };
 
                 foreach (var s in statusCols)
@@ -806,11 +814,11 @@ namespace DMS.Services
             ICellStyle warningDate = workbook.CreateCellStyle(); warningDate.CloneStyleFrom(warningStyle); warningDate.DataFormat = date.DataFormat;
 
             IRow header = template.GetRow(0);
-            header.CreateCell(12).SetCellValue("Source (not imported)");
-            header.CreateCell(13).SetCellValue("Check (not imported)");
+            header.CreateCell(13).SetCellValue("Source (not imported)");
+            header.CreateCell(14).SetCellValue("Check (not imported)");
             template.SetColumnWidth(11, 40 * 256);
-            template.SetColumnWidth(12, 34 * 256);
-            template.SetColumnWidth(13, 80 * 256);
+            template.SetColumnWidth(13, 34 * 256);
+            template.SetColumnWidth(14, 80 * 256);
 
             int r = 1;
             foreach (OutRow o in result.Rows)
@@ -842,11 +850,12 @@ namespace DMS.Services
                 Put(9, null);
                 Put(10, o.Reason);
                 Put(11, o.Distribution);
-                Put(12, o.Source);
-                Put(13, string.Join(" ", o.Errors.Select(e => "ERROR: " + e).Concat(o.Warnings.Select(w => "CHECK: " + w))));
+                Put(12, o.MgmtSystem);
+                Put(13, o.Source);
+                Put(14, string.Join(" ", o.Errors.Select(e => "ERROR: " + e).Concat(o.Warnings.Select(w => "CHECK: " + w))));
             }
             template.CreateFreezePane(0, 1);
-            template.SetAutoFilter(new CellRangeAddress(0, Math.Max(0, r - 1), 0, 13));
+            template.SetAutoFilter(new CellRangeAddress(0, Math.Max(0, r - 1), 0, 14));
 
             ISheet sheet = workbook.CreateSheet("Conversion");
             workbook.SetSheetOrder("Conversion", 1);

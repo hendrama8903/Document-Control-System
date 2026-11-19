@@ -104,7 +104,7 @@ namespace DMS.Controllers
             IWorkbook workbook = new XSSFWorkbook();
             {
                 templateSheet = workbook.CreateSheet("Template");
-                string[] headers = { "File Name", "Document Code", "Document Name", "Category Code", "Division Code", "Department Code", "Classification Code", "Revision", "Document Date (DD-MM-YYYY)", "Document Creator", "Revision Reason (optional)", "Distribution (optional)" };
+                string[] headers = { "File Name", "Document Code", "Document Name", "Category Code", "Division Code", "Department Code", "Classification Code", "Revision", "Document Date (DD-MM-YYYY)", "Document Creator", "Revision Reason (optional)", "Distribution (optional)", "Management System (optional)" };
                 IRow headerRow = templateSheet.CreateRow(0);
                 for (int i = 0; i < headers.Length; i++)
                 {
@@ -122,6 +122,8 @@ namespace DMS.Controllers
                 IRow noteLine2 = referenceSheet.CreateRow(refRow++);
                 noteLine2.CreateCell(0).SetCellValue("File Name is required only on the row with the highest Revision for that Document Code (it becomes the active document). Older revision rows may leave File Name blank.");
                 IRow noteLine3 = referenceSheet.CreateRow(refRow++);
+                IRow noteLine4 = referenceSheet.CreateRow(refRow++);
+                noteLine4.CreateCell(0).SetCellValue("Management System (optional): QMS, K3L, SMK3 or EMS. Empty = read from the number (HMMI/PRO/K3L/006 -> K3L, /SMK3/ -> SMK3, /ENV/ -> EMS), otherwise QMS.");
                 noteLine3.CreateCell(0).SetCellValue("Distribution (optional, latest revision row only): departments that already hold the document and the date they received it, e.g. \"APP:12-04-2017; INF:12-04-2017\". The document is then registered in P4D as sent and acknowledged on that date.");
                 refRow += 1;
 
@@ -229,6 +231,7 @@ namespace DMS.Controllers
                     Classifications = mSystemRepo.Search(new MSystem { SYSTEM_TYPE = "CLASSIFIED" }, db, null, null),
                     CompanyCodes = mSystemRepo.Search(new MSystem { SYSTEM_TYPE = "COMPANY_CODE" }, db, null, null),
                     ProcessCodes = mSystemRepo.Search(new MSystem { SYSTEM_TYPE = "PROCESS_CODE" }, db, null, null),
+                    MgmtSystems = Services.MgmtSystemService.AllSystems(db).Select(s => s.Code).ToList(),
                     ExistingRevisions = existingDocs
                         .Where(x => !string.IsNullOrEmpty(x.DOCUMENT_CODE))
                         .GroupBy(x => x.DOCUMENT_CODE.ToUpperInvariant())
@@ -390,10 +393,12 @@ namespace DMS.Controllers
                     IList<DivisionMaster> divisions = divisionMasterRepo.Search(new DivisionMaster(), db, null, null);
                     IList<DepartmentMaster> departments = departmentMasterRepo.Search(new DepartmentMaster(), db, null, null);
                     IList<MSystem> classifications = mSystemRepo.Search(new MSystem { SYSTEM_TYPE = "CLASSIFIED" }, db, null, null);
+                    var mgmtSystems = Services.MgmtSystemService.AllSystems(db);
 
                     foreach (LegacyDocumentImportRow row in rows)
                     {
                         ValidateRow(row, zipEntries, categories, divisions, departments, classifications);
+                        ResolveMgmtSystem(row, mgmtSystems);
                     }
 
                     string DistributionText(LegacyDocumentImportRow r) =>
@@ -415,6 +420,7 @@ namespace DMS.Controllers
                                 isHistoryOnlyAppend = x.IsHistoryOnlyAppend,
                                 revision = x.Revision,
                                 distribution = DistributionText(x),
+                                mgmtSystem = x.ResolvedMgmtSystem,
                                 errors = x.Errors
                             }),
                             validCount = rows.Count(x => x.Valid),
@@ -503,7 +509,8 @@ namespace DMS.Controllers
                                         DOCUMENT_DATE = row.DocumentDate,
                                         FILE_PATH = folderPath + savedFileName,
                                         DOCUMENT_CREATOR = string.IsNullOrEmpty(row.DocumentCreator) ? username : row.DocumentCreator,
-                                        REASON = ReasonOf(row, "Digitalisasi dokumen lama")
+                                        REASON = ReasonOf(row, "Digitalisasi dokumen lama"),
+                                        MGMT_SYSTEM = row.ResolvedMgmtSystem
                                     };
 
                                     string distribution = row.ResolvedDistribution.Count == 0 ? null
@@ -577,7 +584,8 @@ namespace DMS.Controllers
                                         DOCUMENT_DATE = row.DocumentDate,
                                         FILE_PATH = historyFilePath,
                                         DOCUMENT_CREATOR = string.IsNullOrEmpty(row.DocumentCreator) ? username : row.DocumentCreator,
-                                        REASON = ReasonOf(row, "Digitalisasi dokumen lama (histori)")
+                                        REASON = ReasonOf(row, "Digitalisasi dokumen lama (histori)"),
+                                        MGMT_SYSTEM = row.ResolvedMgmtSystem
                                     };
 
                                     DBResult historyResult = documentMaintenanceRepo.ImportLegacyHistoryInsert(historyData, username, db);
@@ -612,6 +620,7 @@ namespace DMS.Controllers
                             documentName = x.Row.DocumentName,
                             revision = x.Row.Revision,
                             distribution = DistributionText(x.Row),
+                            mgmtSystem = x.Row.ResolvedMgmtSystem,
                             status = x.Status,
                             message = x.Message
                         }),
@@ -839,6 +848,24 @@ namespace DMS.Controllers
             ValidateDistribution(row, departments);
         }
 
+        // Column M (2026-11-19): the Management System of the row. Empty = the system whose number
+        // code is a part of the number (HMMI/PRO/K3L/006 -> K3L, /ENV/ -> EMS), otherwise QMS.
+        // Archived systems are fine here: an import brings old documents.
+        private static void ResolveMgmtSystem(LegacyDocumentImportRow row, List<Services.MgmtSystemService.Option> systems)
+        {
+            if (!string.IsNullOrWhiteSpace(row.MgmtSystem))
+            {
+                var chosen = systems.FirstOrDefault(s => string.Equals(s.Code, row.MgmtSystem.Trim(), StringComparison.OrdinalIgnoreCase));
+                if (chosen == null) row.AddError("Management System '" + row.MgmtSystem + "' does not match any system (" + string.Join(", ", systems.Select(s => s.Code)) + ").");
+                else row.ResolvedMgmtSystem = chosen.Code;
+                return;
+            }
+            string[] parts = (row.DocumentCode ?? "").ToUpperInvariant().Split('/');
+            var fromNumber = systems.FirstOrDefault(s => !string.IsNullOrEmpty(s.NumberCode)
+                && parts.Take(Math.Max(parts.Length - 1, 0)).Skip(1).Contains(s.NumberCode.ToUpperInvariant()));
+            row.ResolvedMgmtSystem = fromNumber?.Code ?? "QMS";
+        }
+
         // Column L "APP:12-04-2017; INF:12-04-2017" -> departments + received date (2026-11-12).
         // Only the active revision can carry it: the import registers that revision in P4D.
         private void ValidateDistribution(LegacyDocumentImportRow row, IList<DepartmentMaster> departments)
@@ -920,7 +947,8 @@ namespace DMS.Controllers
                         DocumentDate = GetCellDate(excelRow, 8),
                         DocumentCreator = GetCellString(excelRow, 9),
                         RevisionReason = GetCellString(excelRow, 10),
-                        Distribution = GetCellString(excelRow, 11)
+                        Distribution = GetCellString(excelRow, 11),
+                        MgmtSystem = GetCellString(excelRow, 12)
                     };
 
                     rows.Add(row);

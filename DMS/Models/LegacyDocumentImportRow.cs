@@ -17,6 +17,10 @@ namespace DMS.Models
         // Column L (optional, 2026-11-12): departments that already hold this revision,
         // "APP:12-04-2017; INF:12-04-2017". Only on the latest revision row.
         public string? Distribution { get; set; }
+        // Column M (optional, 2026-11-19): Management System code (QMS / K3L / SMK3 / EMS). Empty =
+        // read from the number (HMMI/PRO/K3L/006 -> K3L), otherwise QMS.
+        public string? MgmtSystem { get; set; }
+        public string? ResolvedMgmtSystem { get; set; }
 
         public bool Valid { get; set; } = true;
         public List<string> Errors { get; set; } = new List<string>();

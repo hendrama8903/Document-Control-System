@@ -711,6 +711,7 @@
                 { dataField: "revision", caption: "Revision", width: 90, alignment: "center", calculateCellValue: function (row) { return row.revision != null ? row.revision : "-"; } },
                 { dataField: "documentName", caption: "Document Title", calculateCellValue: function (row) { return row.documentName || "-"; } },
                 { dataField: "fileName", caption: "File Name", calculateCellValue: function (row) { return row.fileName || "-"; } },
+                { dataField: "mgmtSystem", caption: "System", width: 80, alignment: "center", calculateCellValue: function (row) { return row.mgmtSystem || "-"; } },
                 { dataField: "distribution", caption: "Distribution", calculateCellValue: function (row) { return row.distribution || "-"; } },
                 {
                     caption: "Message",
