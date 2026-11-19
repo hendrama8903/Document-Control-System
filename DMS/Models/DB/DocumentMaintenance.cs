@@ -77,5 +77,8 @@ namespace DMS.Models.DB
         // built from the current owner department, the old one becomes the reference.
         [NotMapped]
         public bool? RENUMBER { get; set; }
+        // Management System of a new document (QMS / K3L / ..., 2026-11-19); a revision keeps its own
+        [NotMapped]
+        public string? MGMT_SYSTEM { get; set; }
     }
 }

@@ -85,18 +85,51 @@ namespace DMS.Controllers
                 }
             }
 
-            // add authorization function
-            ViewData["Add"] = HttpContext.Session.GetString("functionList").Contains("DOCUMENT-ADD");
-            ViewData["Edit"] = HttpContext.Session.GetString("functionList").Contains("DOCUMENT-EDIT");
-            ViewData["Delete"] = HttpContext.Session.GetString("functionList").Contains("DOCUMENT-DELETE");
-            ViewData["Download"] = HttpContext.Session.GetString("functionList").Contains("DOCUMENT-DOWNLOAD");
-            ViewData["Approve"] = HttpContext.Session.GetString("functionList").Contains("DOCUMENT-APPROVE");
-            ViewData["Delete-FilePath"] = HttpContext.Session.GetString("functionList").Contains("DOCUMENT-DELETE-FILEPATH");
+            SetPageViewData();
+            ViewData["Title"] = "Document Preparation";
+            return View();
+        }
+
+        /// <summary>
+        /// New Document on its own page (2026-11-19, was a popup on Index): the same form
+        /// (_PopupForm, rendered without the modal) and the same script. ?revise=CODE opens it as a
+        /// revision of that document. Saving goes to AddEdit as before.
+        /// </summary>
+        public IActionResult Create(string revise)
+        {
+            if (HttpContext.Session.GetString("USERNAME") == null)
+            {
+                string param = "/DocumentMaintenance/Create" + (string.IsNullOrEmpty(revise) ? "" : "?revise=" + Uri.EscapeDataString(revise));
+                return RedirectToAction("Login", "Auth", new { param });
+            }
+            string menuURLList = HttpContext.Session.GetString("menuURL") ?? "";
+            if (!menuURLList.Contains("/DocumentMaintenance/Index")
+                || !(HttpContext.Session.GetString("functionList") ?? "").Contains("DOCUMENT-ADD"))
+            {
+                Response.StatusCode = 403;
+                return View("Error403");
+            }
+
+            SetPageViewData();
+            ViewData["PageMode"] = true;
+            ViewData["Revise"] = revise;
+            ViewData["Title"] = string.IsNullOrEmpty(revise) ? "New Document" : "Revise Document";
+            return View("Create");
+        }
+
+        // Rights and lists used by the list page and by the New Document page.
+        private void SetPageViewData()
+        {
+            string functions = HttpContext.Session.GetString("functionList") ?? "";
+            ViewData["Add"] = functions.Contains("DOCUMENT-ADD");
+            ViewData["Edit"] = functions.Contains("DOCUMENT-EDIT");
+            ViewData["Delete"] = functions.Contains("DOCUMENT-DELETE");
+            ViewData["Download"] = functions.Contains("DOCUMENT-DOWNLOAD");
+            ViewData["Approve"] = functions.Contains("DOCUMENT-APPROVE");
+            ViewData["Delete-FilePath"] = functions.Contains("DOCUMENT-DELETE-FILEPATH");
             // More than one department = a PIC (Departments Handled) or Div Head: Division and
             // Department stay open in the form (2026-11-17).
             ViewData["DocumentDepartmentCount"] = Services.DocumentOrgService.DepartmentCount(db, GetLoginUsername());
-
-            ViewData["Title"] = "Document Preparation";
 
             // Kode dokumen yang punya master template pengesahan (wwwroot/document/Template/{CODE}.xls
             // atau .xlsx) - dipakai toolbar utk menampilkan tombol "Download Template" hanya utk kode
@@ -110,8 +143,6 @@ namespace DMS.Controllers
                     .ToList()
                 : new List<string>();
             ViewData["TemplateCodes"] = System.Text.Json.JsonSerializer.Serialize(templateCodes);
-
-            return View();
         }
 
         // Daftar divisi utk checkbox "Related Division" (fitur SPR/SIPOCOR Level 2,
@@ -676,12 +707,12 @@ namespace DMS.Controllers
         }
 
         public JsonResult GetManualNoPrefix(int? levelCode, string division, int? departmentId, string sectionCode,
-            int? documentId, string processCode, string companyCode, DateTime? documentDate)
+            int? documentId, string processCode, string companyCode, DateTime? documentDate, string mgmtSystem = null)
         {
             try
             {
                 string prefix = documentMaintenanceRepo.GetManualNoPrefix(
-                    levelCode, division, departmentId, sectionCode, documentId, processCode, companyCode, documentDate, db);
+                    levelCode, division, departmentId, sectionCode, documentId, processCode, companyCode, documentDate, db, mgmtSystem);
 
                 if (string.IsNullOrEmpty(prefix))
                 {
@@ -694,6 +725,22 @@ namespace DMS.Controllers
             {
                 return Json(new { status = false, message = ex.Message });
             }
+        }
+
+        /// <summary>Management systems the login user may create documents in (form, 2026-11-19).</summary>
+        [HttpGet]
+        public JsonResult GetMgmtSystemOptions()
+        {
+            if (GetLoginUsername() == null) return Json(new { status = false, message = "Session expired." });
+            return Json(new { status = true, items = Services.MgmtSystemService.CreatableSystems(db, GetLoginUsername()) });
+        }
+
+        /// <summary>The management system of the document being revised (it keeps it).</summary>
+        [HttpGet]
+        public JsonResult GetDocumentMgmtSystem(string documentCode)
+        {
+            if (GetLoginUsername() == null) return Json(new { status = false, message = "Session expired." });
+            return Json(new { status = true, system = Services.MgmtSystemService.OfDocument(db, documentCode) });
         }
 
         /// <summary>
@@ -1703,8 +1750,10 @@ namespace DMS.Controllers
                                 .Replace("{DOCUMENT_CODE}", documentMaintenance.DOCUMENT_CODE),
                         };
 
-                        documentControlAccessUsers = documentControlAccessUsers
-                            .Where(obj => obj.USERNAME != GetLoginUsername()).ToList();
+                        // Management System (2026-11-19): the Document Control of this document's system
+                        var systemControllers = Services.DocumentAccessService.DocumentControlUsernamesFor(db, documentMaintenance.DOCUMENT_TRANSACTION_ID);
+                        documentControlAccessUsers = UserRepo.Instance.Search(new User(), db, null, null)
+                            .Where(obj => systemControllers.Contains(obj.USERNAME) && obj.USERNAME != GetLoginUsername()).ToList();
 
                         foreach (User user in documentControlAccessUsers)
                         {
@@ -2863,7 +2912,7 @@ namespace DMS.Controllers
             string username = GetLoginUsername();
             if (string.IsNullOrEmpty(username)) return Unauthorized();
             bool hasFunction = HttpContext.Session.GetString("functionList")?.Contains("P4D-STAMPLAYOUT") == true;
-            if (!hasFunction || !Services.DocumentAccessService.IsDocumentControl(db, username)) return Forbid();
+            if (!hasFunction || !Services.DocumentAccessService.IsDocumentControlFor(db, username, documentTransactionId)) return Forbid();
 
             try
             {
@@ -2916,6 +2965,9 @@ namespace DMS.Controllers
                     return Content(PreviewMessagePage(title, "Baris Print Request tidak ditemukan."), "text/html; charset=utf-8");
                 if (header.STATUS != "2")
                     return Content(PreviewMessagePage(title, "Print Request ini belum disetujui QMS."), "text/html; charset=utf-8");
+                // Management System (2026-11-19): only the Document Control of the document's system prints it
+                if (!Services.DocumentAccessService.IsDocumentControlFor(db, username, line.DOCUMENT_TRANSACTION_ID))
+                    return Content(PreviewMessagePage(title, "Dokumen ini dicetak oleh Document Control sistem manajemennya."), "text/html; charset=utf-8");
 
                 bool isReprint = line.PRINT_STATUS == "1";
                 if (isReprint && string.IsNullOrWhiteSpace(reprintReason))
@@ -3225,7 +3277,7 @@ namespace DMS.Controllers
             bool isMaster = viewerType == "2"
                 && !Services.DocumentAccessService.IsMigrated(db, id)
                 && (isPublished || Services.DocumentAccessService.IsReceivedByQms(db, id))
-                && Services.DocumentAccessService.IsDocumentControl(db, GetLoginUsername());
+                && Services.DocumentAccessService.IsDocumentControlFor(db, GetLoginUsername(), id);
             bool isControlledCopy = viewerType == "3"
                 && (isPublished || currentDocument.STATUS == "1")
                 && Services.DocumentAccessService.IsDistributedToUser(db, GetLoginUsername(), id);

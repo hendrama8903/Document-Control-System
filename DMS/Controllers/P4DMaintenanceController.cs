@@ -435,7 +435,10 @@ namespace DMS.Controllers
 
             if (documentControlMaintenance != null)
             {
-                IList<UserPosition> userPositions = UserRepo.Instance.SearchPosition(new UserPosition { DOCUMENT_CONTROL_ACCESS = "1" }, db, null, null);
+                // Management System (2026-11-19): the Document Control of the document's system (QA for QMS, SHE for K3L)
+                IList<UserPosition> userPositions = Services.DocumentAccessService
+                    .DocumentControlUsernamesFor(db, documentControlMaintenance.DOCUMENT_TRANSACTION_ID)
+                    .Select(u => new UserPosition { USERNAME = u }).ToList();
                 if (userPositions.Count > 0)
                 {
                     string dateString = documentControlMaintenance.DOCUMENT_DATE?.ToString("dd MMM yyyy", CultureInfo.InvariantCulture) ?? "-";

@@ -117,7 +117,7 @@ namespace DMS.Services
         public static bool CanDownloadSource(DBContext db, string username, int? documentTransactionId)
         {
             if (string.IsNullOrEmpty(username)) return false;
-            if (IsDocumentControl(db, username)) return true;
+            if (IsDocumentControlFor(db, username, documentTransactionId)) return true;
             if (documentTransactionId == null) return false;
             return Scalar(db, @"SELECT CAST(CASE WHEN EXISTS (
                     SELECT 1 FROM dbo.TB_R_DOCUMENT WHERE DOCUMENT_TRANSACTION_ID = @T AND (DOCUMENT_CREATOR = @U OR CREATED_BY = @U)
@@ -186,6 +186,41 @@ namespace DMS.Services
 
         public static bool IsDocumentControl(DBContext db, string username) =>
             Scalar(db, "SELECT dbo.fn_User_IsDocumentControl(@U)", ("@U", username)) is bool b && b;
+
+        /// <summary>
+        /// Document Control of THIS document's management system (IMS tahap 2, 2026-11-19):
+        /// QA for QMS, SHE for K3L, ... (fn_User_IsDocumentControlFor). Revision rows in the history
+        /// count too. Unknown document: the plain IsDocumentControl.
+        /// </summary>
+        public static bool IsDocumentControlFor(DBContext db, string username, int? documentTransactionId)
+        {
+            if (string.IsNullOrEmpty(username)) return false;
+            if (documentTransactionId == null) return IsDocumentControl(db, username);
+            return Scalar(db, @"SELECT dbo.fn_User_IsDocumentControlFor(@U, COALESCE(
+                    (SELECT TOP 1 MGMT_SYSTEM FROM dbo.TB_R_DOCUMENT WHERE DOCUMENT_TRANSACTION_ID = @T),
+                    (SELECT TOP 1 MGMT_SYSTEM FROM dbo.TB_R_DOCUMENT_HISTORY WHERE DOCUMENT_TRANSACTION_ID = @T)))",
+                ("@U", username), ("@T", documentTransactionId)) is bool b && b;
+        }
+
+        /// <summary>Active users that are Document Control of the document's system (who gets its notifications).</summary>
+        public static HashSet<string> DocumentControlUsernamesFor(DBContext db, int? documentTransactionId) =>
+            new HashSet<string>(OrgChangeService.Query(db, @"
+                DECLARE @S VARCHAR(10) = COALESCE(
+                    (SELECT TOP 1 MGMT_SYSTEM FROM dbo.TB_R_DOCUMENT WHERE DOCUMENT_TRANSACTION_ID = @T),
+                    (SELECT TOP 1 MGMT_SYSTEM FROM dbo.TB_R_DOCUMENT_HISTORY WHERE DOCUMENT_TRANSACTION_ID = @T));
+                SELECT USERNAME FROM dbo.TB_M_USER
+                WHERE ISNULL(DELETE_FLAG, 0) = 0 AND dbo.fn_User_IsDocumentControlFor(USERNAME, @S) = 1
+                  -- admins see everything but were never on these mails unless listed as controller
+                  AND (ISNULL(ROLE_ID, '') <> 'DMS-ADMIN' OR EXISTS (SELECT 1 FROM dbo.TB_M_MGMT_SYSTEM_USER X
+                       WHERE X.USERNAME = TB_M_USER.USERNAME AND X.USER_ROLE = 'CONTROLLER' AND X.MGMT_SYSTEM_CODE = ISNULL(@S, 'QMS')))",
+                ("@T", (object)documentTransactionId ?? DBNull.Value))
+                .Select(r => r["USERNAME"] as string), StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Document Control of the system of the document with this number (notifications).</summary>
+        public static bool IsDocumentControlForCode(DBContext db, string username, string documentCode) =>
+            !string.IsNullOrEmpty(username) && Scalar(db, @"SELECT dbo.fn_User_IsDocumentControlFor(@U,
+                    (SELECT TOP 1 MGMT_SYSTEM FROM dbo.TB_R_DOCUMENT WHERE DOCUMENT_CODE = @C AND ISNULL(DELETE_FLAG, 0) = 0 ORDER BY REVISION DESC))",
+                ("@U", username), ("@C", documentCode ?? "")) is bool b && b;
 
         static bool IsOwnSignature(DBContext db, string username, string path) =>
             Scalar(db, "SELECT CAST(CASE WHEN EXISTS (SELECT 1 FROM dbo.TB_M_USER WHERE USERNAME = @U AND SIGNATURE_PATH = @P) THEN 1 ELSE 0 END AS BIT)",

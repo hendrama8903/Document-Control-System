@@ -44,7 +44,10 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_DocumentMaintenance_Insert]
 		-- Ganti nomor saat revisi (Organization Change tahap 3, 2026-11-19): 1 = the revision gets a new
 		-- number from the current owner department; the old number is kept in PREVIOUS_DOCUMENT_CODE.
 		-- Last parameter, passed by name, so the positional call of the older parameters is unchanged.
-		@RENUMBER BIT = 0
+		@RENUMBER BIT = 0,
+		-- Management System (2026-11-19): QMS / K3L / ... of a new document; a revision keeps the
+		-- system of the document it revises. Last parameter, by name.
+		@MGMT_SYSTEM VARCHAR(10) = NULL
 AS
 BEGIN TRY
 	DECLARE @PROCESS_ID BIGINT
@@ -55,12 +58,46 @@ BEGIN TRY
 	, @rev_STATUS varchar(1)
 	, @rev_PREVIOUS_CODE varchar(50)
 	, @OLD_DOCUMENT_CODE varchar(50)
+	, @SYS_CODE varchar(10)
+	, @SYS_NUMBER varchar(10)
+	, @SYS_ACTIVE bit
 
 	EXEC sp_StartLog @PROCESS_ID OUTPUT, 'Document Maintenance', 'Insert', @LOCATION, @CREATED_BY
 
 	IF ISNULL(@DOCUMENT_TYPE, '') = '' OR ISNULL(@DOCUMENT_TYPE, 'null') = 'null'
 	BEGIN
 		SET @RETURN_MSG = 'ERROR: Document Type should not be null';
+		SET @RETURN_ID = 0;
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @CREATED_BY
+		RETURN 0;
+	END
+
+	-- Management System (2026-11-19): a new document takes the chosen one (QMS when none), a
+	-- revision the one of the document it revises. An archived system takes no new documents;
+	-- when a system lists its creators, only they may create or revise its documents.
+	IF @DOCUMENT_TYPE = '02'
+		SELECT TOP 1 @SYS_CODE = MGMT_SYSTEM FROM TB_R_DOCUMENT
+		WHERE DOCUMENT_CODE = @DOCUMENT_CODE AND ISNULL(DELETE_FLAG, 0) = 0 ORDER BY REVISION DESC;
+	SET @SYS_CODE = ISNULL(NULLIF(@SYS_CODE, ''), ISNULL(NULLIF(@MGMT_SYSTEM, ''), 'QMS'));
+	SELECT @SYS_NUMBER = NULLIF(NUMBER_CODE, ''), @SYS_ACTIVE = IS_ACTIVE FROM TB_M_MGMT_SYSTEM WHERE MGMT_SYSTEM_CODE = @SYS_CODE;
+	IF @SYS_ACTIVE IS NULL
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Unknown management system ' + @SYS_CODE;
+		SET @RETURN_ID = 0;
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @CREATED_BY
+		RETURN 0;
+	END
+	IF @DOCUMENT_TYPE = '01' AND @SYS_ACTIVE = 0
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: ' + @SYS_CODE + ' is archived and takes no new documents';
+		SET @RETURN_ID = 0;
+		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @CREATED_BY
+		RETURN 0;
+	END
+	IF EXISTS (SELECT 1 FROM TB_M_MGMT_SYSTEM_USER WHERE MGMT_SYSTEM_CODE = @SYS_CODE AND USER_ROLE = 'CREATOR')
+	   AND NOT EXISTS (SELECT 1 FROM TB_M_MGMT_SYSTEM_USER WHERE MGMT_SYSTEM_CODE = @SYS_CODE AND USER_ROLE = 'CREATOR' AND USERNAME = @CREATED_BY)
+	BEGIN
+		SET @RETURN_MSG = 'ERROR: Only the appointed creators may create or revise ' + @SYS_CODE + ' documents';
 		SET @RETURN_ID = 0;
 		EXEC sp_WriteLog @PROCESS_ID, '3', 'ERR', @RETURN_MSG, @LOCATION, @CREATED_BY
 		RETURN 0;
@@ -119,7 +156,8 @@ BEGIN TRY
 			RETURN 0;
 		END
 
-		IF @LEVEL_CODE = '2'
+		-- the process code is part of a QMS Level 2 number; other systems use their own code
+		IF @LEVEL_CODE = '2' AND @SYS_NUMBER IS NULL
 		BEGIN
 			IF @PROCESS_CODE IS NULL OR LEN(@PROCESS_CODE) < 1
 			BEGIN
@@ -257,7 +295,7 @@ BEGIN TRY
 			EXEC sp_generate_doc_no
 				@LEVEL_CODE, @DIVISION, @rn_DEPARTMENT_CODE, @SECTION_CODE, @rn_DOC_CODE,
 				@PROCESS_CODE, @COMPANY_CODE, @DOCUMENT_DATE, NULL,
-				@rn_NEW_CODE OUTPUT, @rn_MSG OUTPUT;
+				@rn_NEW_CODE OUTPUT, @rn_MSG OUTPUT, @pSystemCode = @SYS_NUMBER;
 
 			IF @rn_MSG IS NOT NULL OR @rn_NEW_CODE IS NULL
 			BEGIN
@@ -307,7 +345,8 @@ BEGIN TRY
 				@DOCUMENT_DATE,
 				@MANUAL_SEQ_NO,
 				@DOCUMENT_CODE OUTPUT,
-				@genDocNoMsg OUTPUT
+				@genDocNoMsg OUTPUT,
+				@pSystemCode = @SYS_NUMBER   -- Management System number code (2026-11-19)
 
 			IF @genDocNoMsg IS NOT NULL
 			BEGIN
@@ -422,7 +461,8 @@ BEGIN TRY
 		   ,DEPARTMENT_NAME
 			 ,IMPACT_OTHER_FLAG
 			 ,DOCUMENT_CREATOR
-			 ,PREVIOUS_DOCUMENT_CODE)
+			 ,PREVIOUS_DOCUMENT_CODE
+			 ,MGMT_SYSTEM)
      VALUES
            (@DOCUMENT_CODE
            ,@DOCUMENT_TRANSACTION_NAME
@@ -456,7 +496,8 @@ BEGIN TRY
 		   ,@snap_DEPARTMENT_NAME
 			 ,@IMPACT_OTHER_FLAG
 			 ,@DOCUMENT_CREATOR
-			 ,IIF(@DOCUMENT_TYPE = '02', @OLD_DOCUMENT_CODE, NULL))
+			 ,IIF(@DOCUMENT_TYPE = '02', @OLD_DOCUMENT_CODE, NULL)
+			 ,@SYS_CODE)
 
 	DECLARE @curr_DOCUMENT_TRANSACTION_ID int
 	SET @curr_DOCUMENT_TRANSACTION_ID = SCOPE_IDENTITY();

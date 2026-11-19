@@ -1,18 +1,51 @@
 <!-- RECOMMIT DINA -->
 <link rel="stylesheet" href="~/css/views/DocumentMaintenance/_PopupForm.css" asp-append-version="true" />
-
-<div class="modal fade" id="modalAddEdit" role="dialog" aria-labelledby="basicModal" aria-hidden="true" data-backdrop="static" data-keyboard="false">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <!-- Header -->
-            <div class="adf-header">
-                <div class="adf-header-icon"><i class="fa fa-file-text-o"></i></div>
-                <div>
-                    <div class="adf-header-title" id="modal-title">New Document</div>
-                    <div class="adf-header-sub">Fill in the document information below</div>
+@{
+    // New Document has its own page since 2026-11-19 (DocumentMaintenance/Create): the same form
+    // without the modal around it. The id "modalAddEdit" stays, the styles and script use it.
+    bool pageMode = ViewData["PageMode"] as bool? == true;
+}
+@if (pageMode)
+{
+    @Html.Raw("<div id=\"modalAddEdit\" class=\"adf-page\"><div class=\"modal-content\">")
+}
+else
+{
+    @Html.Raw("<div class=\"modal fade\" id=\"modalAddEdit\" role=\"dialog\" aria-labelledby=\"basicModal\" aria-hidden=\"true\" data-backdrop=\"static\" data-keyboard=\"false\"><div class=\"modal-dialog modal-lg\"><div class=\"modal-content\">")
+}
+            @if (pageMode)
+            {
+                @* On its own page the form looks like the other pages: a toolbar card, no popup header *@
+                <div class="adf-page-toolbar">
+                    <div class="box-header dp-toolbar">
+                        <div class="dp-toolbar-left">
+                            <button type="button" class="dp-btn dp-btn-outline" id="btn_backToList"><i class="fa fa-arrow-left"></i> Back</button>
+                            <div class="adf-page-title">
+                                <b id="modal-title">@ViewData["Title"]</b>
+                                <span>Fill in the document information below</span>
+                            </div>
+                        </div>
+                        <div class="dp-toolbar-right">
+                            @* the approval-sheet templates, often needed while filling in the form *@
+                            <button type="button" class="dp-btn dp-btn-outline" id="btn_templateCenter" style="display:none;">
+                                <i class="fa fa-download"></i> Template
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <button type="button" class="adf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
-            </div>
+            }
+            else
+            {
+                <!-- Header -->
+                <div class="adf-header">
+                    <div class="adf-header-icon"><i class="fa fa-file-text-o"></i></div>
+                    <div>
+                        <div class="adf-header-title" id="modal-title">New Document</div>
+                        <div class="adf-header-sub">Fill in the document information below</div>
+                    </div>
+                    <button type="button" class="adf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
+                </div>
+            }
 
             <!-- Horizontal stepper DIHAPUS (request Hendra 2026-08-20, supaya
                  konten dapat ruang lebih) - klik-scroll-ke-section &
@@ -30,20 +63,31 @@
                          wajar kalau kotaknya masih kosong sampai step 2 & 3 dilengkapi,
                          karena listener perubahan field-field itu tidak bergantung pada
                          urutan tampil di DOM. -->
+                    @* Two columns on the New Document page (2026-11-19): Basic Information + Classification
+                       on the left, Organization + Attachment on the right, so the form fits one screen *@
+                    <div class="adf-col">
                     <div class="adf-section" id="adfSectionDocType">
                         <div class="adf-section-title"><span class="adf-section-num"></span> Basic Information</div>
 
                         <div class="row">
-                            <div class="col-md-3 form-group">
+                            @* Management System (2026-11-19): QMS / K3L / ... - the ones the user may create in;
+                               a revision shows (and keeps) the system of its document *@
+                            <div class="col-md-4 form-group">
+                                <label class="control-label">Management System <span class="text-red">*</span></label>
+                                <select class="form-control" id="addEditMgmtSystem"></select>
+                            </div>
+                            <div class="col-md-4 form-group">
                                 <label class="control-label">Document Type <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditDocumentType" onchange="onChangeDocumentType()" required></select>
                                 <input class="form-control" id="addEditDocumentId" type="hidden" />
                             </div>
-                            <div class="col-md-2 form-group">
+                            <div class="col-md-4 form-group">
                                 <label class="control-label">Date <span class="text-red">*</span></label>
                                 <input class="form-control" id="addEditDate" type="date" required />
                             </div>
-                            <div class="col-md-7 form-group">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12 form-group">
                                 <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; row-gap:2px;">
                                     <label class="control-label" style="margin-bottom:0;">Document No <span class="text-red">*</span></label>
                                     <div id="addEditNumberingModeGroup">
@@ -68,7 +112,7 @@
                                 <div id="addEditRenumberGroup" class="adf-renumber hide">
                                     <label class="adf-renumber-check">
                                         <input type="checkbox" id="addEditRenumber" onchange="onChangeRenumber()" />
-                                        Give this revision a new document number
+                                        New document number
                                     </label>
                                     <div class="adf-renumber-hint" id="addEditRenumberHint"></div>
                                 </div>
@@ -85,11 +129,11 @@
                         <div class="adf-section-title"><span class="adf-section-num"></span> Classification</div>
 
                         <div class="row">
-                            <div class="col-md-2 form-group">
+                            <div class="col-md-4 form-group">
                                 <label class="control-label">Document Level <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditDocumentLevel" onchange="onChangeDocumentLevel()" required></select>
                             </div>
-                            <div class="col-md-3 form-group">
+                            <div class="col-md-4 form-group">
                                 <label class="control-label">Document Code <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditDocumentCode" required></select>
                             </div>
@@ -97,16 +141,18 @@
                                 <label class="control-label">Process Code <span id="mandatoryMarkProcessCode" class="text-red">*</span></label>
                                 <select class="form-control" id="addEditProcessCode" required></select>
                             </div>
-                            <div class="col-md-3 form-group">
-                                <label class="control-label">Classified <span class="text-red">*</span></label>
-                                <select class="form-control" id="addEditClassified" required></select>
-                            </div>
                         </div>
 
+                        @* Document Name shares its row with Classified (2026-11-19): a name field across
+                           the whole page was far longer than any name *@
                         <div class="row">
-                            <div class="col-md-12 form-group">
+                            <div class="col-md-8 form-group">
                                 <label class="control-label">Document Name <span class="text-red">*</span></label>
                                 <input class="form-control" id="addEditDocumentName" type="text" oninput="removeWhiteSpace(this)" maxlength="255" required />
+                            </div>
+                            <div class="col-md-4 form-group">
+                                <label class="control-label">Classified <span class="text-red">*</span></label>
+                                <select class="form-control" id="addEditClassified" required></select>
                             </div>
                         </div>
 
@@ -121,22 +167,13 @@
                              Organization diisi, lewat lockCreatorDivisionRole() -
                              urutan render tidak masalah. -->
                         <div id="adfSectionRelatedDivision" style="display:none;">
+                            @* 2026-11-19: no search box and no "Show more" - every division as a small tile *@
                             <div class="rd-header">
                                 <div>
                                     <div class="rd-title">Related Division</div>
-                                    <div class="rd-desc">Click a division to set its role - Related needs to acknowledge ("Mengetahui"); Not Related is the default.</div>
-                                </div>
-                                <div class="rd-search-wrap">
-                                    <i class="fa fa-search"></i>
-                                    <input type="text" id="relatedDivisionSearch" placeholder="Search division..." oninput="filterRelatedDivisionCheckboxes()" />
                                 </div>
                             </div>
                             <div class="row" id="relatedDivisionCheckboxes"></div>
-                            <div class="rd-showmore" id="relatedDivisionShowMore" style="display:none;">
-                                <a href="javascript:void(0);" onclick="toggleRelatedDivisionShowMore()">
-                                    <span id="relatedDivisionShowMoreText">Show more</span> <i class="fa fa-chevron-down"></i>
-                                </a>
-                            </div>
                         </div>
 
                         <!-- Panel External dipadatkan (2026-11-10): saat tidak dicentang
@@ -170,6 +207,9 @@
                         </div>
                     </div>
 
+                    </div>
+                    <div class="adf-col">
+
                     <!-- Step: Organization - divisi pemilik dokumen ini, dipakai step
                          berikutnya (Document Details) utk bikin prefix nomor otomatis,
                          dan (kalau Document Code = SPR & Level = 2) utk tandai Main PIC
@@ -193,11 +233,12 @@
                         </div>
 
                         <div class="row">
-                            <div class="col-md-6 form-group">
+                            @* aligned with Division / Department above *@
+                            <div class="col-md-4 form-group">
                                 <label class="control-label">Company Code <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditCompanyCode" required></select>
                             </div>
-                            <div class="col-md-6 form-group">
+                            <div class="col-md-4 form-group">
                                 <label class="control-label">Creator <span class="text-red">*</span></label>
                                 <select class="form-control" id="addEditDocumentCreator" required></select>
                             </div>
@@ -225,7 +266,7 @@
                                 <label class="control-label">Document Upload <span class="text-red">*</span></label>
                                 <div class="adf-dropzone" id="addEditDropzone">
                                     <i class="fa fa-cloud-upload dz-icon"></i>
-                                    <div class="dz-text" id="addEditDropzoneText">Drag &amp; drop file here<br>or <span class="dz-browse">Browse File</span></div>
+                                    <div class="dz-text" id="addEditDropzoneText">Drag &amp; drop file here <br>or <span class="dz-browse">Browse File</span></div>
                                     <div class="dz-hint">Allowed: XLSX, XLS (Max. 20 MB)</div>
                                 </div>
                                 <input type="file" id="addEditDocumentUpload" accept=".xlsx,.xls" style="position:absolute; width:1px; height:1px; opacity:0; overflow:hidden;" required>
@@ -248,6 +289,7 @@
                             </div>
                         </div>
                     </div>
+                    </div>
 
                 </div>
             </div>
@@ -255,10 +297,15 @@
             <!-- Sticky Footer -->
             <div class="modal-footer">
                 <div class="col-xs-12 text-right">
-                    <button type="button" class="btn dp-btn dp-btn-outline" id="btn_cancel" data-dismiss="modal">Cancel</button>
+                    @if (pageMode)
+                    {
+                        <button type="button" class="btn dp-btn dp-btn-outline" id="btn_cancel">Cancel</button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn dp-btn dp-btn-outline" id="btn_cancel" data-dismiss="modal">Cancel</button>
+                    }
                     <button type="button" class="btn dp-btn dp-btn-primary" id="btn_save">Save</button>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
+@Html.Raw(pageMode ? "</div></div>" : "</div></div></div>")

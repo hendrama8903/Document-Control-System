@@ -89,13 +89,14 @@ namespace DMS.Models.Repo
                 new SqlParameter ( "@DOCUMENT_CREATOR", CheckNullValue(data.DOCUMENT_CREATOR) ),
                 new SqlParameter ( "@REASON", CheckNullValue(data.REASON) ),
                 new SqlParameter ( "@DISTRIBUTION", CheckNullValue(distribution) ),
+                new SqlParameter ( "@MGMT_SYSTEM", CheckNullValue(data.MGMT_SYSTEM) ),
                 new SqlParameter ( "@CREATED_BY", loginUser ),
                 returnMsg,
                 returnId
             };
 
             string query = "EXEC @RETURN_VAL = [dbo].[sp_DocumentMaintenance_ImportLegacyInsert] @DOCUMENT_CODE, @DOCUMENT_TRANSACTION_NAME, @DOCUMENT_ID, @LEVEL_CODE, " +
-                "@DIVISION, @DEPARTMENT, @CLASSIFIED, @REVISION, @DOCUMENT_DATE, @FILE_PATH, @DOCUMENT_CREATOR, @REASON, @CREATED_BY, @RETURN_MSG OUTPUT, @RETURN_ID OUTPUT, @DISTRIBUTION = @DISTRIBUTION";
+                "@DIVISION, @DEPARTMENT, @CLASSIFIED, @REVISION, @DOCUMENT_DATE, @FILE_PATH, @DOCUMENT_CREATOR, @REASON, @CREATED_BY, @RETURN_MSG OUTPUT, @RETURN_ID OUTPUT, @DISTRIBUTION = @DISTRIBUTION, @MGMT_SYSTEM = @MGMT_SYSTEM";
             int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString(), Convert.ToInt32(returnId.Value));
@@ -123,11 +124,12 @@ namespace DMS.Models.Repo
                 new SqlParameter ( "@DOCUMENT_CREATOR", CheckNullValue(data.DOCUMENT_CREATOR) ),
                 new SqlParameter ( "@REASON", CheckNullValue(data.REASON) ),
                 new SqlParameter ( "@CREATED_BY", loginUser ),
+                new SqlParameter ( "@MGMT_SYSTEM", CheckNullValue(data.MGMT_SYSTEM) ),
                 returnMsg
             };
 
             string query = "EXEC @RETURN_VAL = [dbo].[sp_DocumentMaintenance_ImportLegacyHistoryInsert] @DOCUMENT_CODE, @DOCUMENT_TRANSACTION_NAME, @DOCUMENT_ID, @LEVEL_CODE, " +
-                "@DIVISION, @DEPARTMENT, @CLASSIFIED, @REVISION, @DOCUMENT_DATE, @FILE_PATH, @DOCUMENT_CREATOR, @REASON, @CREATED_BY, @RETURN_MSG OUTPUT";
+                "@DIVISION, @DEPARTMENT, @CLASSIFIED, @REVISION, @DOCUMENT_DATE, @FILE_PATH, @DOCUMENT_CREATOR, @REASON, @CREATED_BY, @RETURN_MSG OUTPUT, @MGMT_SYSTEM = @MGMT_SYSTEM";
             int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString());
@@ -247,7 +249,7 @@ namespace DMS.Models.Repo
         }
 
         public string GetManualNoPrefix(int? levelCode, string division, int? departmentId, string sectionCode,
-            int? documentId, string processCode, string companyCode, DateTime? documentDate, DBContext db)
+            int? documentId, string processCode, string companyCode, DateTime? documentDate, DBContext db, string mgmtSystem = null)
         {
             var connection = db.Database.GetDbConnection();
             bool wasClosed = connection.State != System.Data.ConnectionState.Open;
@@ -268,6 +270,7 @@ namespace DMS.Models.Repo
                     command.Parameters.Add(new SqlParameter("@PROCESS_CODE", CheckNullValue(processCode)));
                     command.Parameters.Add(new SqlParameter("@COMPANY_CODE", CheckNullValue(companyCode)));
                     command.Parameters.Add(new SqlParameter("@DOCUMENT_DATE", CheckNullValue(documentDate)));
+                    command.Parameters.Add(new SqlParameter("@MGMT_SYSTEM", CheckNullValue(mgmtSystem)));
 
                     using (var reader = command.ExecuteReader())
                     {
@@ -362,12 +365,13 @@ namespace DMS.Models.Repo
                 new SqlParameter ( "@RELATED_DIVISIONS", CheckNullValue(data.RELATED_DIVISIONS) ),
                 returnMsg,
                 returnId,
-                new SqlParameter ( "@RENUMBER", data.RENUMBER == true )
+                new SqlParameter ( "@RENUMBER", data.RENUMBER == true ),
+                new SqlParameter ( "@MGMT_SYSTEM", CheckNullValue(data.MGMT_SYSTEM) )
             };
 
             string query = "EXEC @RETURN_VAL = [dbo].[sp_DocumentMaintenance_Insert] @DOCUMENT_TRANSACTION_ID, @DOCUMENT_ID,@DOCUMENT_CODE,@DOCUMENT_TRANSACTION_NAME,@DOCUMENT_TYPE," +
                 "@PROCESS_CODE,@COMPANY_CODE,@SECTION_CODE,@ITEM_CHANGED,@REASON,@EXTERNAL_FLAG,@REFERENCE_NO,@SOURCE,@DOCUMENT_DATE,@FILE_PATH,@STATUS,@REVISION," +
-                "@APPROVAL_ID,@DELETE_FLAG,@DIVISION,@CLASSIFIED,@DEPARTMENT_ID, @IMPACT_OTHER_FLAG, @LEVEL_CODE, @CREATED_BY,@CHANGED_BY, @MENU_ID, @DOCUMENT_CREATOR, @MANUAL_SEQ_NO, @RELATED_DIVISIONS, @RETURN_MSG OUTPUT, @RETURN_ID OUTPUT, @RENUMBER = @RENUMBER";
+                "@APPROVAL_ID,@DELETE_FLAG,@DIVISION,@CLASSIFIED,@DEPARTMENT_ID, @IMPACT_OTHER_FLAG, @LEVEL_CODE, @CREATED_BY,@CHANGED_BY, @MENU_ID, @DOCUMENT_CREATOR, @MANUAL_SEQ_NO, @RELATED_DIVISIONS, @RETURN_MSG OUTPUT, @RETURN_ID OUTPUT, @RENUMBER = @RENUMBER, @MGMT_SYSTEM = @MGMT_SYSTEM";
             int affectedRow = db.Database.ExecuteSqlRaw(query, param.ToArray());
 
             DBResult result = new DBResult(Convert.ToBoolean(returnVal.Value), returnMsg.Value.ToString(), Convert.ToInt32(returnId.Value));

@@ -1,0 +1,97 @@
+@* Master Data > Management System (IMS tahap 1, 2026-11-19): QMS, K3L, SMK3, EMS ...
+   Logic: Controllers/ManagementSystemController, Services/MgmtSystemService. *@
+<link rel="stylesheet" href="~/css/devextreme/dx.light.css" asp-append-version="true" />
+<script src="~/js/devextreme/dx.custom.js" asp-append-version="true"></script>
+<link rel="stylesheet" href="~/css/views/DivisionMaster/_PopupForm.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/views/ManagementSystem/Index.css" asp-append-version="true" />
+
+<section class="content">
+    <div class="row">
+        <div class="col-xs-12">
+            <div class="dp-card">
+                <div class="ms-intro">
+                    <i class="fa fa-info-circle"></i>
+                    <span>Each document belongs to one system. The <b>number code</b> goes into Level 1-2 numbers (HMMI/PRO/<b>K3L</b>/001). Archived systems take no new documents.</span>
+                </div>
+                <div class="box-header dp-toolbar">
+                    <div class="dp-toolbar-left">
+                        @if ((bool)ViewData["Add"])
+                        {
+                            <button type="button" class="dp-btn dp-btn-primary" id="btn_add"><i class="fa fa-plus"></i> New</button>
+                        }
+                    </div>
+                    <div class="dp-toolbar-right">
+                        <button type="button" class="dp-btn dp-btn-outline" id="btn_refresh"><i class="fa fa-refresh"></i> Refresh</button>
+                    </div>
+                </div>
+                <div class="box-body dms-grid">
+                    <div id="datagrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="modal fade" id="modalMsForm" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="dvf-header">
+                <div class="dvf-header-icon"><i class="fa fa-cubes"></i></div>
+                <div>
+                    <div class="dvf-header-title" id="msFormTitle">New Management System</div>
+                    <div class="dvf-header-sub">QMS, K3L, ...</div>
+                </div>
+                <button type="button" class="dvf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
+            </div>
+            <div class="dvf-body">
+                <div class="ms-grid2">
+                    <div>
+                        <label class="dvf-label" for="msCode">Code <span class="text-red">*</span></label>
+                        <input id="msCode" class="form-control" maxlength="10" placeholder="e.g. K3L" />
+                    </div>
+                    <div>
+                        <label class="dvf-label" for="msNumberCode">Number Code</label>
+                        <input id="msNumberCode" class="form-control" maxlength="10" placeholder="Empty = QMS pattern" />
+                    </div>
+                </div>
+                <label class="dvf-label" for="msName">Name <span class="text-red">*</span></label>
+                <input id="msName" class="form-control" maxlength="200" />
+                <div class="ms-grid2">
+                    <div>
+                        <label class="dvf-label" for="msStandard">Standard</label>
+                        <input id="msStandard" class="form-control" maxlength="200" placeholder="e.g. ISO 45001" />
+                    </div>
+                    <div>
+                        <label class="dvf-label" for="msSortNo">Order</label>
+                        <input id="msSortNo" class="form-control" type="number" min="0" value="0" />
+                    </div>
+                </div>
+                <label class="dvf-label" for="msCreators">Creators</label>
+                <select id="msCreators" class="form-control" multiple="multiple" style="width:100%"></select>
+                <div class="ms-hint">Empty = every user may create documents of this system.</div>
+                <label class="dvf-label" for="msControllers">Document Control</label>
+                <select id="msControllers" class="form-control" multiple="multiple" style="width:100%"></select>
+                <div class="ms-hint">Sees, prints and stamps this system's documents. Empty = DOC-CONTROL users not assigned to another system.</div>
+                <label class="ms-check"><input type="checkbox" id="msActive" checked /> Active (takes new documents)</label>
+                <div class="ms-hint" id="msNumberLock" style="display:none;">The number code is fixed: documents already carry it.</div>
+            </div>
+            <div class="dvf-footer">
+                <button type="button" class="dvf-btn dvf-btn-cancel" data-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
+                <button type="button" class="dvf-btn dvf-btn-primary" id="btn_save"><i class="fa fa-save"></i> Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    var managementSystemConfig = {
+        canAdd: @(((bool)ViewData["Add"]) ? "true" : "false"),
+        canEdit: @(((bool)ViewData["Edit"]) ? "true" : "false"),
+        urls: {
+            search: "@Url.Action("Search", "ManagementSystem")",
+            users: "@Url.Action("Users", "ManagementSystem")",
+            save: "@Url.Action("Save", "ManagementSystem")"
+        }
+    };
+</script>
+<script src="~/js/views/management-system.js" asp-append-version="true"></script>

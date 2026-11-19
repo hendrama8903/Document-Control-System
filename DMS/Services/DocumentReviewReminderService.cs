@@ -45,7 +45,6 @@ namespace DMS.Services
             }
 
             IList<User> allUsers = userRepo.Search(new User(), db, null, null);
-            List<User> documentControlUsers = allUsers.Where(x => x.DOCUMENT_CONTROL_ACCESS == "1").ToList();
 
             IList<MSystem> emailTemplate = mSystemRepo.Search(new MSystem { SYSTEM_TYPE = "DOCUMENT_REVIEW_REMINDER_EMAIL_TEMPLATE" }, db, null, null);
             IList<MSystem> notificationTemplate = mSystemRepo.Search(new MSystem { SYSTEM_TYPE = "DOCUMENT_REVIEW_REMINDER_NOTIFICATION" }, db, null, null);
@@ -67,7 +66,9 @@ namespace DMS.Services
                     recipients.Add(creator);
                 }
 
-                foreach (User docControlUser in documentControlUsers)
+                // Management System (2026-11-19): the Document Control of this document's system
+                var systemControllers = DocumentAccessService.DocumentControlUsernamesFor(db, document.DOCUMENT_TRANSACTION_ID);
+                foreach (User docControlUser in allUsers.Where(u => systemControllers.Contains(u.USERNAME)))
                 {
                     if (!recipients.Any(x => x.USERNAME == docControlUser.USERNAME))
                     {

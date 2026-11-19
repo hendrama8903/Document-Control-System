@@ -1,0 +1,21 @@
+@* New Document on its own page (2026-11-19, was a popup on Document Preparation): the same form
+   partial and script; documentMaintenancePage.pageMode switches the script to page behaviour
+   (no modal, back to the list after saving, warning before leaving with unsaved input).
+   The page title is in the top bar like every page; the form renders its own toolbar card. *@
+<link rel="stylesheet" href="~/css/devextreme/dx.light.css" asp-append-version="true" />
+<script src="~/js/devextreme/dx.custom.js" asp-append-version="true"></script>
+<link rel="stylesheet" href="~/css/views/DocumentMaintenance/Index.css" asp-append-version="true" />
+
+<section class="content">
+    @Html.Partial("_PopupForm")
+</section>
+
+@Html.Partial("_TemplateCenterPopup")
+<script type="text/javascript">
+    // read by document-maintenance.js before its own config is used
+    var documentMaintenancePage = {
+        pageMode: true,
+        revise: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewData["Revise"] as string ?? ""))
+    };
+</script>
+@Html.Partial("_Javascript")

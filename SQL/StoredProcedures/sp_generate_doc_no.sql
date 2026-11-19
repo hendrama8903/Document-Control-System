@@ -13,7 +13,10 @@ CREATE OR ALTER PROCEDURE [dbo].[sp_generate_doc_no]
 	@pDate AS DATE,
 	@pManualSeq AS INT = NULL,
 	@pDocNo AS VARCHAR (25) OUTPUT,
-	@pReturnMsg AS VARCHAR(500) OUTPUT
+	@pReturnMsg AS VARCHAR(500) OUTPUT,
+	-- Management System (2026-11-19): its NUMBER_CODE (e.g. K3L) replaces the year (Level 1) and
+	-- the process code (Level 2), e.g. HMMI/PRO/K3L/006. NULL = the QMS pattern. Last, by name.
+	@pSystemCode AS VARCHAR(10) = NULL
 
 AS
 BEGIN
@@ -30,12 +33,12 @@ BEGIN
 	IF @pDocLevel = 1
 	   BEGIN
 	   SET @vYear = YEAR(@pDate);
-		 SET @vDocNo = @pCompanyCode + '/' + @pDocCode + '/' + CAST (@vYear as VARCHAR) ;
+		 SET @vDocNo = @pCompanyCode + '/' + @pDocCode + '/' + ISNULL(NULLIF(@pSystemCode, ''), CAST (@vYear as VARCHAR)) ;
 		 END;
 		ELSE
 		IF @pDocLevel = 2
 		   BEGIN
-				 SET @vDocNo = @pCompanyCode + '/' + @pDocCode + '/' + @pProcessCode
+				 SET @vDocNo = @pCompanyCode + '/' + @pDocCode + '/' + ISNULL(NULLIF(@pSystemCode, ''), @pProcessCode)
 			 END;
 			 ELSE
 		IF @pDocLevel = 4

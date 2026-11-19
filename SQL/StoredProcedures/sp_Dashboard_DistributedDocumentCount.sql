@@ -25,6 +25,11 @@ BEGIN
 									AND S.OPERATION_TYPE = 1
 									AND S.STATUS IN (4,5) '
 									
+									-- Management System (2026-11-19): Document Control sees the documents of its own systems
+									-- (plus its own departments), see fn_User_IsDocumentControlFor.
+									IF @USERNAME IS NOT NULL AND @DIVISION_IAD_COUNT = 1
+										SET @QUERY += ' AND (dbo.fn_User_IsDocumentControlFor(''' + REPLACE(@USERNAME, '''', '''''') + ''', (SELECT X.MGMT_SYSTEM FROM TB_R_DOCUMENT X WHERE X.DOCUMENT_TRANSACTION_ID = S.DOCUMENT_TRANSACTION_ID)) = 1 OR S.DEPARTMENT_ID IN (SELECT DEPARTMENT_ID FROM TB_M_USER_POS WHERE USERNAME = ''' + REPLACE(@USERNAME, '''', '''''') + ''')) ';
+
 									IF @USERNAME IS NOT NULL AND @DIVISION_IAD_COUNT = 0
 										BEGIN										
 										SELECT @DIVISION_COUNT = COUNT(DIVISION) FROM TB_M_USER_POS WHERE USERNAME = @USERNAME;

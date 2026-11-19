@@ -1,4 +1,6 @@
 // DocumentMaintenance. Server values come from documentMaintenanceConfig in the view.
+// New Document page (DocumentMaintenance/Create, 2026-11-19): the same script without the list.
+var gDmPageMode = typeof documentMaintenancePage !== "undefined" && documentMaintenancePage.pageMode === true;
 var gCanDelete = documentMaintenanceConfig.canDelete;
 
 // ---------- "My Approval": dokumen yang sedang menunggu approval user login
@@ -86,6 +88,7 @@ function setStatsPanelCollapsed(collapsed) {
 }
 
 $(document).ready(function () {
+    if (gDmPageMode) return;   // the list and its grids live on the Index page only
     $("#btn_add").prop("disabled", false);
     $("#btn_edit").prop("disabled", true);
     $("#btn_delete").prop("disabled", true);
@@ -494,10 +497,8 @@ $(document).ready(function () {
     if (urlParams.get("myApproval") === "1") {
         setMyApprovalOnly(true);
     }
-    var linkedCode = urlParams.get("DOCUMENT_CODE");
-    if (linkedCode && linkedCode !== "null") {
-        $("#datagrid").dxDataGrid("instance").columnOption("DOCUMENT_CODE", "filterValue", linkedCode);
-    }
+    // ?DOCUMENT_CODE=... (search result, e-mail): exact filter + "Showing ... / Show all" chip
+    dmsApplyDeepLink($("#datagrid").dxDataGrid("instance"), { param: "DOCUMENT_CODE", column: "DOCUMENT_CODE" });
 
 });
 
@@ -612,7 +613,7 @@ $(document).ready(function () {
         if (fileName) {
             $('#addEditDropzoneText').html('<span class="dz-filename"><i class="fa fa-file-excel-o"></i> ' + fileName + '</span>');
         } else {
-            $('#addEditDropzoneText').html('Drag &amp; drop file here<br>or <span class="dz-browse">Browse File</span>');
+            $('#addEditDropzoneText').html('Drag &amp; drop file here <br>or <span class="dz-browse">Browse File</span>');
         }
     });
 
@@ -625,7 +626,7 @@ $(document).ready(function () {
 
 function clearDocumentUpload() {
     $('#addEditDocumentUpload').val('');
-    $('#addEditDropzoneText').html('Drag &amp; drop file here<br>or <span class="dz-browse">Browse File</span>');
+    $('#addEditDropzoneText').html('Drag &amp; drop file here <br>or <span class="dz-browse">Browse File</span>');
 }
 
 $(document).ready(function () {
@@ -1918,9 +1919,14 @@ function onDownloadTemplate(code) {
     window.location.href = link.replace("-1", code);
 }
 
+// New opens the New Document page (2026-11-19; it was a popup here).
 function onAddPrepare() {
+    window.location.href = documentMaintenanceConfig.urls.create;
+}
+
+// Empty form in ADD mode; on the New Document page at load.
+function initAddForm() {
     gScreenMode = 'ADD';
-    $('#modal-title').html("New Document");
     $('#addEditDocumentType').val("").trigger("change");
 
     reset();
@@ -1928,12 +1934,6 @@ function onAddPrepare() {
     $('#addEditImpactPanel, #addEditFileCheck').hide().empty();
 
     gFilePath = null;
-
-    $("#modalAddEdit").modal();
-    $('#modalAddEdit').on('shown.bs.modal', function () {
-        $('#addEditDocumentType').focus();
-    });
-
 }
 
 function generateDocumentNo() {
@@ -1971,7 +1971,7 @@ var gRelatedDivisionExpanded = false;
 // dinaikkan ke 18 supaya 17 divisi saat ini muat semua tanpa "Show more"
 // (request Hendra 2026-08-20); mekanismenya tetap ada utk jaga-jaga kalau
 // daftar divisi bertambah banyak nanti.
-var RELATED_DIVISION_VISIBLE_LIMIT = 18;
+var RELATED_DIVISION_VISIBLE_LIMIT = 100;   // 2026-11-19: no search and no "Show more", every division is shown
 
 function updateRelatedDivisionVisibility() {
     var level = $('#addEditDocumentLevel').val();
@@ -2348,6 +2348,8 @@ function refreshApprovalPreview() {
     });
 }
 
+// Approval flow as a timeline (2026-11-19): numbered steps joined by a line, each with its role,
+// the approver's name and position; the colour of the circle tells the status.
 function renderApprovalPreview(steps) {
     var $box = $('#addEditApprovalPreview').removeClass('has-error').empty();
     var esc = function (s) { return $('<div>').text(s == null ? "" : s).html(); };
@@ -2356,43 +2358,58 @@ function renderApprovalPreview(steps) {
     var $title = $('<div class="adf-ap-title"><i class="fa fa-sitemap"></i> Approval Flow</div>');
     if (first.STATUS == "NO_CREATOR") {
         $box.addClass('has-error').append($title)
-            .append('<div class="adf-ap-msg"><i class="fa fa-times-circle"></i> The selected creator has no position in User Position - the document cannot be submitted.</div>')
+            .append('<div class="adf-ap-msg"><i class="fa fa-times-circle"></i> The creator has no position in User Position, so the document cannot be submitted.</div>')
             .show();
         return;
     }
     if (first.STATUS == "NO_WORKFLOW") {
         $box.addClass('has-error').append($title)
-            .append('<div class="adf-ap-msg"><i class="fa fa-times-circle"></i> No approval workflow is set up for this Document Level and creator position (' + esc(first.CREATOR_POSITION) + '). Ask the admin to add it in Approval Workflow Setup.</div>')
+            .append('<div class="adf-ap-msg"><i class="fa fa-times-circle"></i> No approval workflow for this level and position (' + esc(first.CREATOR_POSITION) + '). Ask the admin to add it in Approval Workflow Setup.</div>')
             .show();
         return;
     }
 
-    $title.append(first.IS_CATEGORY_WORKFLOW
-        ? '<span class="adf-ap-tag cat">Category workflow</span>'
-        : '<span class="adf-ap-tag">Default workflow for this level</span>');
+    var approvers = steps.filter(function (s) { return s.STATUS != "SKIP" && s.STATUS != "SAME"; }).length;
+    $title.append('<span class="adf-ap-count">' + approvers + ' step' + (approvers != 1 ? 's' : '') + '</span>')
+        .append(first.IS_CATEGORY_WORKFLOW
+            ? '<span class="adf-ap-tag cat">Category workflow</span>'
+            : '<span class="adf-ap-tag">Default workflow</span>');
     $box.append($title);
 
-    var $steps = $('<div class="adf-ap-steps"></div>');
+    var $flow = $('<div class="adf-ap-flow"></div>');
     var missing = [], skipped = [];
+    var lastActive = -1;
+    steps.forEach(function (s, i) { if (s.STATUS != "SKIP" && s.STATUS != "SAME" && s.STATUS != "MISSING") lastActive = i; });
+
     steps.forEach(function (s, i) {
-        if (i > 0) $steps.append('<span class="adf-ap-arrow"><i class="fa fa-chevron-right"></i></span>');
-        var cls = s.STATUS == "AUTO" ? "auto" : (s.STATUS == "SKIP" || s.STATUS == "SAME") ? "skip" : s.STATUS == "MISSING" ? "missing" : "";
-        var who = s.APPROVER
-            ? esc(s.APPROVER_NAME || s.APPROVER) + (s.STATUS == "AUTO" ? ' <i class="fa fa-check" title="Creator - approved automatically"></i>' : '')
-            : (s.STATUS == "MISSING" ? 'Not found (mandatory)'
-                : s.STATUS == "SAME" ? 'Same person as an earlier step' : 'Not found - skipped');
-        $steps.append('<div class="adf-ap-step ' + cls + '"><b>' + esc(s.LABEL || s.POSITION_NAME) +
-            (s.IS_MANDATORY ? ' *' : '') + '</b>' + esc(s.POSITION_NAME) + '<br>' + who + '</div>');
+        var state = s.STATUS == "AUTO" ? "done" : s.STATUS == "MISSING" ? "missing"
+            : (s.STATUS == "SKIP" || s.STATUS == "SAME") ? "skip" : "next";
+        var mark = state == "done" ? '<i class="fa fa-check"></i>' : state == "missing" ? '!' : String(i + 1);
+        var name = s.APPROVER ? esc(s.APPROVER_NAME || s.APPROVER)
+            : s.STATUS == "MISSING" ? 'Not found' : s.STATUS == "SAME" ? 'Same person' : 'Skipped';
+        var badges = '';
+        if (state == "done") badges += '<span class="adf-ap-badge done">Creator</span>';
+        if (s.IS_MANDATORY && state != "done") badges += '<span class="adf-ap-badge req">Required</span>';
+        if (i == lastActive && state == "next") badges += '<span class="adf-ap-badge final">Final</span>';
+
+        $flow.append(
+            '<div class="adf-ap-node ' + state + '">' +
+                '<div class="adf-ap-dot">' + mark + '</div>' +
+                '<div class="adf-ap-role">' + esc(s.LABEL || s.POSITION_NAME) + '</div>' +
+                '<div class="adf-ap-name">' + name + '</div>' +
+                '<div class="adf-ap-pos">' + esc(s.POSITION_NAME) + '</div>' +
+                (badges ? '<div class="adf-ap-badges">' + badges + '</div>' : '') +
+            '</div>');
         if (s.STATUS == "MISSING") missing.push(s.POSITION_NAME);
         if (s.STATUS == "SKIP") skipped.push(s.POSITION_NAME);
     });
-    $box.append($steps);
+    $box.append($flow);
 
     if (missing.length > 0) {
-        $box.addClass('has-error').append('<div class="adf-ap-msg"><i class="fa fa-times-circle"></i> Mandatory approver not found: ' + esc(missing.join(", ")) +
-            '. The document cannot be saved until User Position is completed.</div>');
+        $box.addClass('has-error').append('<div class="adf-ap-msg"><i class="fa fa-times-circle"></i> Required approver not found: ' + esc(missing.join(", ")) +
+            '. Complete User Position before saving.</div>');
     } else if (skipped.length > 0) {
-        $box.append('<div class="adf-ap-note"><i class="fa fa-info-circle"></i> ' + esc(skipped.join(", ")) + ' will be skipped (nobody holds this position for the selected creator).</div>');
+        $box.append('<div class="adf-ap-note"><i class="fa fa-info-circle"></i> Skipped: ' + esc(skipped.join(", ")) + ' (no one holds this position).</div>');
     }
     $box.show();
 }
@@ -2421,7 +2438,8 @@ function refreshManualNoPrefix() {
             documentId: documentId,
             processCode: $('#addEditProcessCode').val(),
             companyCode: $('#addEditCompanyCode').val(),
-            documentDate: $('#addEditDate').val()
+            documentDate: $('#addEditDate').val(),
+            mgmtSystem: $('#addEditMgmtSystem').val() || ""
         },
         success: function (result) {
             if (requestSeq !== gManualNoPrefixRequestSeq) return;
@@ -3101,6 +3119,11 @@ function addEditData() {
             data.append("RENUMBER", "true");   // new number at this revision (2026-11-19)
         }
 
+        // Management System of a new document (2026-11-19); a revision keeps its own on the server
+        if ($('#addEditDocumentType').val() == "01") {
+            data.append("MGMT_SYSTEM", $('#addEditMgmtSystem').val() || "QMS");
+        }
+
         if (documentNo != null && documentNo != "null" && documentNo != "") {
             data.append("DOCUMENT_CODE", $('#addEditDocumentNo').val());
         }
@@ -3290,6 +3313,13 @@ function addEditData() {
         success: function (result) {
             //popUpProgressHide();
             if (result.status == true) {
+                if (gDmPageMode && gScreenMode == "ADD") {
+                    // back to the list, which shows the message (New Document page, 2026-11-19)
+                    gDmLeaving = true;
+                    try { sessionStorage.setItem("dms.documentMaintenance.flash", result.message || "Document saved."); } catch (e) { }
+                    window.location.href = documentMaintenanceConfig.urls.index;
+                    return;
+                }
                 showSuccessMesgGrowl(result.message);
                 onSearch();
                 popUpProgressHide();
@@ -3976,14 +4006,12 @@ function updateRenumberHint() {
     var data = gRenumberData || {}, on = $('#addEditRenumber').is(':checked');
     var $h = $('#addEditRenumberHint').empty().removeClass('adf-renumber-warn');
     if (on) {
-        $h.text("A new number is made from " + (data.DIVISION || "") + " / " + (data.DEPARTMENT_CODE || "")
-            + " when you save. " + data.DOCUMENT_CODE + " stays as its reference (shown as 'dulu' in the Master List); the revision number continues"
-            + (String(data.LEVEL_CODE) == "3" || String(data.LEVEL_CODE) == "4" ? ". Check the Section: it is part of the new number." : "."));
+        $h.text("New " + (data.DIVISION || "") + "/" + (data.DEPARTMENT_CODE || "") + " number on save. Reference: " + data.DOCUMENT_CODE + "."
+            + (String(data.LEVEL_CODE) == "3" || String(data.LEVEL_CODE) == "4" ? " Check the Section." : ""));
     } else if (renumberSuggested(data)) {
-        $h.addClass('adf-renumber-warn').text("This number does not carry the owner's department code ("
-            + data.DEPARTMENT_CODE + "), e.g. after a reorganisation. Keeping it is fine; you may give it a new number.");
+        $h.addClass('adf-renumber-warn').text("Number uses an old department code (now " + data.DEPARTMENT_CODE + "). Optional.");
     } else {
-        $h.text("Optional. Keep the number unless it has to change (QMS).");
+        $h.text("Optional.");
     }
 }
 
@@ -3993,3 +4021,164 @@ function onChangeRenumber() {
     $('#addEditSection').prop('disabled', !($('#addEditRenumber').is(':checked') && (level == "3" || level == "4")));
     updateRenumberHint();
 }
+
+// ---------- New Document page (DocumentMaintenance/Create, 2026-11-19) ----------
+// The form used to be a popup on the list. On its own page it has a URL (also ?revise=CODE),
+// survives a refresh warning, and returns to the list after saving.
+var gDmDirty = false;     // the user changed something since the page opened
+var gDmLeaving = false;   // leaving on purpose (saved, or confirmed discard)
+
+function dmBackToList() {
+    if (!gDmDirty) {
+        gDmLeaving = true;
+        window.location.href = documentMaintenanceConfig.urls.index;
+        return;
+    }
+    showConfirmMesg("The document is not saved. Leave this page and discard what you entered?", function () {
+        gDmLeaving = true;
+        window.location.href = documentMaintenanceConfig.urls.index;
+    }, "Discard Changes", "Leave", "Stay", null, "msg-danger");
+}
+
+$(document).ready(function () {
+    // list page: the message of a document saved on the New Document page
+    if (!gDmPageMode) {
+        try {
+            var flash = sessionStorage.getItem("dms.documentMaintenance.flash");
+            if (flash) {
+                sessionStorage.removeItem("dms.documentMaintenance.flash");
+                showSuccessMesgGrowl(flash);
+            }
+        } catch (e) { }
+        return;
+    }
+
+    initAddForm();
+    initDownloadTemplateDropdown();
+    $("#btn_templateCenter").off("click").on("click", function () { openTemplateCenter(); });
+
+    // ?revise=CODE: open as a revision of that document
+    var revise = documentMaintenancePage.revise;
+    if (revise) {
+        $("#addEditDocumentType").select2("trigger", "select", { data: { id: "02", text: "Revision" } });
+        setSelect2Option("#addEditDocumentNo2", revise, revise);
+    } else {
+        $("#addEditDocumentType").focus();
+    }
+
+    // what the user types, ticks or picks counts as unsaved input; defaults the form fills in
+    // by itself while loading do not (select2 passes the mouse/key event only for a user pick)
+    $("#modalAddEdit").on("input change", ":input", function (e) {
+        if (e.originalEvent) gDmDirty = true;
+    });
+    $("#modalAddEdit").on("select2:select select2:unselect", function (e) {
+        if (e.params && e.params.originalEvent) gDmDirty = true;
+    });
+    $("#addEditDropzone").on("drop", function () { gDmDirty = true; });
+    $("#btn_cancel, #btn_backToList").on("click", dmBackToList);
+
+
+    window.addEventListener("beforeunload", function (e) {
+        if (gDmDirty && !gDmLeaving) {
+            e.preventDefault();
+            e.returnValue = "";
+        }
+    });
+});
+
+
+// New Document page: the card fills the screen down to the same bottom gap as the grid card of
+// the list page (computeGridHeight leaves 40px under the grid, the pager sits inside the card).
+function dmSizePageCard() {
+    if (!gDmPageMode) return;
+    var $card = $("#modalAddEdit.adf-page > .modal-content");
+    if (!$card.length || dmsIsPhone()) { $card.css("min-height", ""); return; }
+    var footer = $("#divFooter").outerHeight(true) || 0;
+    var h = Math.max(420, $(window).height() - $card.offset().top - footer - 16);
+    $card.css("min-height", h);
+    // never a page scroll bar: take off whatever still sticks out (page padding below the card)
+    var over = document.documentElement.scrollHeight - window.innerHeight;
+    if (over > 0) $card.css("min-height", Math.max(420, h - over));
+}
+$(document).ready(function () {
+    if (!gDmPageMode) return;
+    dmSizePageCard();
+    $(window).on("resize", dmSizePageCard);
+    $(window).on("load", dmSizePageCard);   // fonts and dropdowns can change the height a little
+});
+
+// ---------- Management System in the form (2026-11-19) ----------
+// QMS / K3L / ...: the systems the user may create in. A system with its own number code (K3L)
+// puts that code where a QMS Level 2 number has the process code, so Process Code is not asked.
+// A revision shows the system of its document, locked: it keeps it.
+var gMgmtSystems = [];
+var gMgmtRevisionSystem = null;   // the system of the document being revised
+
+function dmMgmtSystemOf(code) {
+    if (gMgmtRevisionSystem && gMgmtRevisionSystem.Code === code) return gMgmtRevisionSystem;
+    return gMgmtSystems.filter(function (s) { return s.Code === code; })[0] || null;
+}
+
+function loadMgmtSystemOptions() {
+    $.getJSON(documentMaintenanceConfig.urls.getMgmtSystemOptions).done(function (result) {
+        gMgmtSystems = (result && result.status === true && result.items) || [];
+        fillMgmtSystemSelect(null);
+    });
+}
+
+// selected = a code to show (a revision's system); null = the default for a new document
+function fillMgmtSystemSelect(selected) {
+    var $sel = $('#addEditMgmtSystem');
+    if (!$sel.length) return;
+    var list = gMgmtSystems.slice();
+    if (selected && !list.some(function (s) { return s.Code === selected.Code; })) list.push(selected);
+    $sel.empty();
+    list.forEach(function (s) { $('<option>').val(s.Code).text(s.Code + ' - ' + s.Name).appendTo($sel); });
+    var value = selected ? selected.Code : (list.some(function (s) { return s.Code === 'QMS'; }) ? 'QMS' : (list[0] ? list[0].Code : ''));
+    $sel.val(value);
+    // a revision keeps its system; a single choice needs no picking
+    $sel.prop('disabled', !!selected || list.length <= 1);
+    applyMgmtSystemRules();
+}
+
+function applyMgmtSystemRules() {
+    var sys = dmMgmtSystemOf($('#addEditMgmtSystem').val());
+    var ownNumber = !!(sys && sys.NumberCode);
+    if (String($('#addEditDocumentLevel').val()) == "2" && ownNumber) {
+        // the system code replaces the process code in the number
+        $('#mandatoryMarkProcessCode').hide();
+        if ($('#addEditDocumentType').val() == "01") {
+            $('#addEditProcessCode').val(null).trigger('change.select2').prop('disabled', true);
+        }
+    }
+    refreshManualNoPrefix();
+}
+
+$(document).ready(function () {
+    if (!$('#addEditMgmtSystem').length) return;
+    loadMgmtSystemOptions();
+    $('#addEditMgmtSystem').on('change', function () {
+        // back to a QMS-type system: Level 2 asks the process code again
+        if (String($('#addEditDocumentLevel').val()) == "2" && $('#addEditDocumentType').val() == "01") {
+            $('#addEditProcessCode').prop('disabled', false);
+            $('#mandatoryMarkProcessCode').show();
+        }
+        applyMgmtSystemRules();
+    });
+    // the level / type handlers set Process Code first; the system rule goes after them
+    $('#addEditDocumentLevel').on('change', function () { setTimeout(applyMgmtSystemRules, 0); });
+    $('#addEditDocumentType').on('change', function () {
+        gMgmtRevisionSystem = null;
+        fillMgmtSystemSelect(null);
+        if ($(this).val() == "02") $('#addEditMgmtSystem').prop('disabled', true);
+    });
+    // a revision: show the system of the chosen document
+    $('#addEditDocumentNo2').on('change', function () {
+        var code = $(this).val();
+        if (!code || $('#addEditDocumentType').val() != "02") return;
+        $.getJSON(documentMaintenanceConfig.urls.getDocumentMgmtSystem, { documentCode: code }).done(function (result) {
+            gMgmtRevisionSystem = result && result.system ? result.system : null;
+            fillMgmtSystemSelect(gMgmtRevisionSystem || { Code: 'QMS', Name: 'Quality Management System', NumberCode: null });
+        });
+    });
+});

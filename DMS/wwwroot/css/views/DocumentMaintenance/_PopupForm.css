@@ -586,3 +586,240 @@
 .revision-lookup-code { font-weight: 600; }
 .revision-lookup-name { font-size: 12px; color: #6B7280; white-space: normal; }
 .select2-results__option--highlighted .revision-lookup-name { color: rgba(255, 255, 255, 0.85); }
+
+/* ---------- New Document on its own page (DocumentMaintenance/Create, 2026-11-19) ----------
+   Same form as the popup (#modalAddEdit) but dressed like the other pages: the title is in the
+   top bar, a toolbar card on top (dp-card + dp-toolbar), each section a plain card on the page
+   background, full width, and Cancel / Save in a toolbar that stays at the bottom. */
+#modalAddEdit.adf-page .modal-content {
+    display: block;
+    max-height: none;
+    overflow: visible;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+#modalAddEdit.adf-page .adf-page-toolbar { margin-bottom: 12px; }
+#modalAddEdit.adf-page .adf-page-toolbar .dp-toolbar { padding: 10px 16px; }
+#modalAddEdit.adf-page .adf-page-title { display: flex; flex-direction: column; line-height: 1.25; margin-left: 4px; }
+#modalAddEdit.adf-page .adf-page-title b { font-size: 15px; font-weight: 700; color: #101828; }
+#modalAddEdit.adf-page .adf-page-title span { font-size: 12px; color: #667085; }
+
+#modalAddEdit.adf-page .adf-body { display: block; background: transparent; }
+/* two columns (2026-11-19): Basic Information + Classification on the left, Organization +
+   Attachment on the right, compact spacing so the whole form fits one screen */
+#modalAddEdit.adf-page .adf-content {
+    overflow: visible;
+    padding: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+}
+#modalAddEdit.adf-page .adf-section {
+    border-radius: 12px;          /* same as .dp-card */
+    padding: 12px 16px 2px;
+    margin-bottom: 12px;
+    scroll-margin-top: 70px;      /* clear of the top bar when a field is scrolled into view */
+}
+
+#modalAddEdit.adf-page .modal-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    margin: 0;
+    padding: 12px 16px;
+    background: #fff;
+    border: 1px solid #E3E8EE;
+    border-radius: 12px;
+    box-shadow: 0 -6px 16px rgba(16, 24, 40, .06);
+}
+#modalAddEdit.adf-page .modal-footer .col-xs-12 { padding: 0; }
+#modalAddEdit.adf-page .modal-footer { padding: 10px 16px; }
+#modalAddEdit.adf-page .adf-section-title { margin-bottom: 8px; padding-bottom: 6px; }
+#modalAddEdit.adf-page .form-group { margin-bottom: 10px; }
+#modalAddEdit.adf-page .external-panel { margin-bottom: 10px; }
+#modalAddEdit.adf-page .adf-dropzone { padding: 10px 12px; }
+#modalAddEdit.adf-page .adf-approval-preview { margin-bottom: 10px; }
+/* the two columns stack on narrower screens */
+@media (max-width: 1199px) {
+    #modalAddEdit.adf-page .adf-content { grid-template-columns: minmax(0, 1fr); gap: 0; }
+}
+@media (max-width: 767px) {
+    #modalAddEdit.adf-page .adf-section { padding: 12px 12px 4px; }
+}
+
+
+/* ---------- New Document page: plain top bar and buttons, laptop-height form (2026-11-19) ---------- */
+/* top: Back / title / Template as a plain row, no card */
+#modalAddEdit.adf-page .adf-page-toolbar { margin-bottom: 10px; }
+#modalAddEdit.adf-page .adf-page-toolbar .dp-toolbar { background: transparent; border: none; padding: 0; }
+/* bottom: Cancel / Save right-aligned under the form, no card */
+#modalAddEdit.adf-page .modal-footer {
+    position: static;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+/* the compact field size of the popups (admin-theme.css only applies it inside .modal) */
+.adm-body #modalAddEdit.adf-page label { font-size: 12.5px; font-weight: 600; }
+.adm-body #modalAddEdit.adf-page .form-group > .control-label { margin-bottom: 4px; }
+.adm-body #modalAddEdit.adf-page input.form-control,
+.adm-body #modalAddEdit.adf-page select.form-control { height: 34px !important; padding: 6px 10px; font-size: 13px; }
+.adm-body #modalAddEdit.adf-page .select2-container .select2-selection--single { height: 34px !important; }
+.adm-body #modalAddEdit.adf-page .select2-container .select2-selection--single .select2-selection__rendered { line-height: 32px !important; font-size: 13px; }
+.adm-body #modalAddEdit.adf-page .select2-container .select2-selection--single .select2-selection__arrow { height: 32px !important; }
+.adm-body #modalAddEdit.adf-page .input-group-addon { padding: 6px 10px; font-size: 13px; }
+
+/* tighter cards */
+#modalAddEdit.adf-page .adf-section { padding: 10px 14px 0; margin-bottom: 10px; }
+#modalAddEdit.adf-page .adf-content { gap: 10px; }
+#modalAddEdit.adf-page .adf-section-title { margin-bottom: 8px; padding-bottom: 6px; font-size: 13px; }
+#modalAddEdit.adf-page .form-group { margin-bottom: 8px; }
+#modalAddEdit.adf-page .adf-err-msg { margin-top: 2px; }
+#modalAddEdit.adf-page .external-panel { margin-bottom: 10px; padding: 6px 10px; }
+
+/* Document No: Automatic / Manual on the label's line */
+#modalAddEdit.adf-page #addEditNumberingModeGroup label { font-size: 12px; font-weight: 500; margin-right: 10px !important; }
+#modalAddEdit.adf-page #addEditNumberingModeGroup label:last-child { margin-right: 0 !important; }
+
+/* upload: one row instead of a tall box */
+#modalAddEdit.adf-page .adf-dropzone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    min-height: 76px;
+    padding: 8px 12px;
+}
+#modalAddEdit.adf-page .adf-dropzone .dz-icon { font-size: 22px; margin: 0; }
+#modalAddEdit.adf-page .adf-dropzone .dz-text { font-size: 12.5px; }
+#modalAddEdit.adf-page .adf-dropzone .dz-text br { display: none; }
+#modalAddEdit.adf-page .adf-dropzone .dz-hint { flex-basis: 100%; font-size: 11px; margin: 0; }
+
+/* ---------- New Document page as ONE card, like the list pages (2026-11-19) ----------
+   The whole form is a single dp-card: toolbar on top (as on Document Preparation), the four
+   parts inside without boxes of their own (thin dividers instead), Cancel / Save at the bottom. */
+#modalAddEdit.adf-page .modal-content {
+    background: #fff;
+    border: 1px solid #E3E8EE;
+    border-radius: 12px;          /* same as .dp-card */
+    overflow: hidden;
+}
+#modalAddEdit.adf-page .adf-page-toolbar { margin: 0; }
+#modalAddEdit.adf-page .adf-page-toolbar .dp-toolbar {
+    background: #fff;
+    border-bottom: 1px solid #E3E8EE;
+    padding: 12px 16px;
+}
+
+#modalAddEdit.adf-page .adf-body { padding: 14px 18px 4px; }
+#modalAddEdit.adf-page .adf-content { column-gap: 0; row-gap: 0; }
+#modalAddEdit.adf-page .adf-col:first-child { padding-right: 22px; }
+#modalAddEdit.adf-page .adf-col + .adf-col { padding-left: 22px; border-left: 1px solid #EEF1F4; }
+
+/* the parts: no box, a divider between the two parts of a column */
+#modalAddEdit.adf-page .adf-section {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    margin: 0 0 10px;
+}
+#modalAddEdit.adf-page .adf-section + .adf-section { border-top: 1px solid #EEF1F4; padding-top: 12px; }
+#modalAddEdit.adf-page .adf-section-title { border-bottom: none; padding-bottom: 0; margin-bottom: 10px; }
+
+#modalAddEdit.adf-page .modal-footer {
+    padding: 12px 16px;
+    background: #fff;
+    border-top: 1px solid #E3E8EE;
+}
+
+@media (max-width: 1199px) {
+    #modalAddEdit.adf-page .adf-col:first-child { padding-right: 0; }
+    #modalAddEdit.adf-page .adf-col + .adf-col { padding-left: 0; border-left: none; border-top: 1px solid #EEF1F4; padding-top: 12px; }
+}
+
+/* the card is as tall as the grid card of the list page; Cancel / Save stay at its bottom */
+#modalAddEdit.adf-page .modal-content { display: flex; flex-direction: column; }
+#modalAddEdit.adf-page .adf-body { flex: 1 1 auto; }
+/* no line above Cancel / Save */
+#modalAddEdit.adf-page .modal-footer { border-top: none; }
+/* no line between the two columns */
+#modalAddEdit.adf-page .adf-col + .adf-col { border-left: none; }
+/* External Document: a plain checkbox row, no box (also when ticked) */
+#modalAddEdit.adf-page .external-panel,
+#modalAddEdit.adf-page .external-panel:has(#addEditExternal:checked) {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    margin: 2px 0 8px;
+}
+#modalAddEdit.adf-page .external-panel .ext-fields { border-top: none; padding-top: 0; margin-top: 8px; }
+
+/* Related Division: small tiles in a tight grid, no search, no "Show more" (2026-11-19) */
+#modalAddEdit #adfSectionRelatedDivision { margin: 2px 0 8px; }
+#modalAddEdit #adfSectionRelatedDivision .rd-header { margin-bottom: 6px; }
+#modalAddEdit #relatedDivisionCheckboxes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+    gap: 6px;
+    margin: 0;
+}
+/* Bootstrap's .row clearfix pseudo-elements would take grid cells */
+#modalAddEdit #relatedDivisionCheckboxes::before,
+#modalAddEdit #relatedDivisionCheckboxes::after { display: none; }
+#modalAddEdit #relatedDivisionCheckboxes .rd-col { width: auto; float: none; padding: 0; margin: 0; }
+#modalAddEdit #relatedDivisionCheckboxes .rd-tile { padding: 3px 4px 3px 8px; gap: 4px; border-radius: 6px; min-height: 30px; }
+#modalAddEdit #relatedDivisionCheckboxes .rd-tile b { font-size: 11.5px; }
+#modalAddEdit #relatedDivisionCheckboxes .rd-lock-label { font-size: 9px; }
+#modalAddEdit #relatedDivisionCheckboxes .rd-role-btn { width: 20px; height: 20px; }
+#modalAddEdit #relatedDivisionCheckboxes .rd-role-icon { font-size: 10px; }
+/* let the role menu of a tile open past the card edge; the toolbar keeps the rounded top */
+#modalAddEdit.adf-page .modal-content { overflow: visible; }
+#modalAddEdit.adf-page .adf-page-toolbar .dp-toolbar { border-radius: 12px 12px 0 0; }
+#modalAddEdit.adf-page .modal-footer { border-radius: 0 0 12px 12px; }
+
+/* ---------- Approval flow as a timeline (2026-11-19) ---------- */
+#modalAddEdit .adf-approval-preview { background: #fff; padding: 10px 14px 12px; }
+#modalAddEdit .adf-ap-title { margin-bottom: 10px; }
+#modalAddEdit .adf-ap-count { font-size: 11.5px; font-weight: 600; color: #667085; }
+#modalAddEdit .adf-ap-flow { display: flex; align-items: flex-start; }
+#modalAddEdit .adf-ap-node { position: relative; flex: 1 1 0; min-width: 0; padding-right: 10px; }
+/* the line from this step's circle to the next one */
+#modalAddEdit .adf-ap-node:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 11px;
+    left: 30px;
+    right: 6px;
+    height: 2px;
+    background: #D5DDE8;
+}
+#modalAddEdit .adf-ap-node.done:not(:last-child)::after { background: #1D9E6C; }
+#modalAddEdit .adf-ap-dot {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    border: 2px solid #2450D8; color: #2450D8; background: #fff;
+    margin-bottom: 6px;
+}
+#modalAddEdit .adf-ap-node.done .adf-ap-dot { border-color: #1D9E6C; background: #1D9E6C; color: #fff; }
+#modalAddEdit .adf-ap-node.skip .adf-ap-dot { border: 2px dashed #C0C8D2; color: #98A2B3; }
+#modalAddEdit .adf-ap-node.missing .adf-ap-dot { border-color: #D92D20; background: #D92D20; color: #fff; }
+#modalAddEdit .adf-ap-role { font-size: 11px; font-weight: 600; color: #667085; }
+#modalAddEdit .adf-ap-name { font-size: 12.5px; font-weight: 700; color: #101828; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#modalAddEdit .adf-ap-pos { font-size: 11.5px; color: #667085; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#modalAddEdit .adf-ap-node.skip .adf-ap-name, #modalAddEdit .adf-ap-node.skip .adf-ap-pos { color: #98A2B3; font-weight: 500; }
+#modalAddEdit .adf-ap-node.missing .adf-ap-name { color: #B42318; }
+#modalAddEdit .adf-ap-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+#modalAddEdit .adf-ap-badge { font-size: 10px; font-weight: 700; padding: 0 7px; border-radius: 999px; line-height: 17px; }
+#modalAddEdit .adf-ap-badge.done { background: #ECFDF3; color: #027A48; }
+#modalAddEdit .adf-ap-badge.req { background: #FEF3F2; color: #B42318; }
+#modalAddEdit .adf-ap-badge.final { background: #EFF5FF; color: #1C3FA6; }
