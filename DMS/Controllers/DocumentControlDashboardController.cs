@@ -56,6 +56,13 @@ namespace DMS.Controllers
             ViewData["ExportPdf"] = Services.DocumentAccessService.HasFunction(HttpContext, Services.DocumentExportService.FunctionId);
 
 
+            // Management System filter (2026-11-19): a Document Control of exactly one system starts on it
+            var systems = Services.MgmtSystemService.AllSystems(db);
+            string login = HttpContext.Session.GetString("USERNAME");
+            var mine = systems.Where(s => Services.MgmtSystemService.IsDocumentControlFor(db, login, s.Code)).Select(s => s.Code).ToList();
+            ViewData["MgmtSystems"] = systems;
+            ViewData["DefaultMgmtSystem"] = mine.Count == 1 && mine.Count < systems.Count ? mine[0] : null;
+
             ViewData["Title"] = "Document Control";
 
             return View();
@@ -360,7 +367,7 @@ namespace DMS.Controllers
             }
         }
 
-        public JsonResult GetActionItems()
+        public JsonResult GetActionItems(string mgmtSystem)
         {
             JsonResult denied = DenyWithoutLogin();
             if (denied != null) return denied;
@@ -371,7 +378,7 @@ namespace DMS.Controllers
                 return Json(new
                 {
                     status = true,
-                    data = Services.DocumentBinderService.GetActionItems(db),
+                    data = Services.DocumentBinderService.GetActionItems(db, mgmtSystem),
                     canRegistration = menuURLList.Contains("/P4DMaintenance/Index"),
                     canPrintRequest = menuURLList.Contains("/CopyRequest/Index")
                 });

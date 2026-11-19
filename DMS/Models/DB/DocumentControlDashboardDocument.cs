@@ -38,6 +38,8 @@ namespace DMS.Models.DB
         public string? DISTRIBUTION { get; set; }
         public string? DEPARTMENT_NAME { get; set; }
         public int? CLASSIFIED { get; set; }
+        // Management System (QMS / K3L / ..., 2026-11-19) - sp_DocumentControlDashboard_Search must select it
+        public string? MGMT_SYSTEM { get; set; }
         public string? CLASSIFIED_VAL { get; set; }
         public string? DOCUMENT_YEAR { get; set; }
         public DateTime? NEXT_REVIEW_DATE { get; set; }

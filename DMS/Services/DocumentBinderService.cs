@@ -128,11 +128,13 @@ namespace DMS.Services
         }
 
         /// <summary>"Needs Action" counts that come from Document Registration and Print Request.</summary>
-        public static ActionItems GetActionItems(DBContext db)
+        public static ActionItems GetActionItems(DBContext db, string mgmtSystem = null)
         {
             using var connection = new SqlConnection(db.Database.GetConnectionString());
             connection.Open();
             using SqlCommand command = Procedure(connection, "[dbo].[sp_DocumentControlDashboard_ActionItems]");
+            // Management System filter of the dashboard (2026-11-19)
+            command.Parameters.Add(new SqlParameter("@MGMT_SYSTEM", string.IsNullOrWhiteSpace(mgmtSystem) ? DBNull.Value : mgmtSystem.Trim()));
             using SqlDataReader r = command.ExecuteReader();
             if (!r.Read()) return new ActionItems();
             return new ActionItems

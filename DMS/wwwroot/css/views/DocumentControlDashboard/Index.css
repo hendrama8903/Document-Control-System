@@ -205,3 +205,7 @@
    Index.cshtml to bring the sidebar back. */
 .dp-layout-row.folders-hidden .dcd-folder-panel,
 .dp-layout-row.folders-hidden #btn_toggleFolders { display: none !important; }
+
+/* Management System filter (2026-11-19) */
+.dcd-system-select { height: 32px; border: 1px solid #D0D5DD; border-radius: 6px; padding: 0 8px; font-size: 13px; color: #344054; background: #fff; vertical-align: middle; }
+.dcd-stats-system { font-weight: 600; color: #2450D8; margin-left: 4px; }

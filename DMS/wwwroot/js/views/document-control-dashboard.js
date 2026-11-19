@@ -14,6 +14,24 @@ function computeGridHeight() {
 }
 
 // ---------- KPI cards (Total / Effective / Need Review / Pending Acknowledgement) ----------
+// every row of the last load; the numbers follow the Management System filter (2026-11-19)
+var gDcdAllRows = [];
+function dcdRowsForSystem() {
+    var system = $("#dcdSystemFilter").val();
+    return system ? gDcdAllRows.filter(function (r) { return (r.MGMT_SYSTEM || "QMS") === system; }) : gDcdAllRows;
+}
+function dcdRefreshStatsForSystem() {
+    var system = $("#dcdSystemFilter").val();
+    $("#dcdStatsSystem").text(system ? "· " + system : "");
+    updateHeaderStats(dcdRowsForSystem());
+}
+// the counts from other menus (registrations, print requests) follow the system too
+function dcdSystemChanged() {
+    dcdRefreshStatsForSystem();
+    dcdLoadActionItems();
+    dcdApplyGridFilter();
+}
+
 function updateHeaderStats(rows) {
     rows = rows || [];
     var total = rows.length;
@@ -93,6 +111,7 @@ function dcdLoadActionItems() {
     $.ajax({
         type: "GET",
         url: documentControlDashboardConfig.urls.getActionItems,
+        data: { mgmtSystem: $("#dcdSystemFilter").val() || "" },
         cache: false,
         success: function (result) {
             if (!result.status) return;
@@ -168,7 +187,8 @@ $(document).ready(function () {
     $("#btn_clearActionFilter").on("click", function () {
         gActionFilter = null;
         dcdRenderActionChips();
-        dcdApplyGridFilter();
+        $("#dcdSystemFilter").val("");
+        dcdSystemChanged();
     });
 });
 
@@ -192,7 +212,14 @@ function dcdApplyGridFilter() {
     var action = gActionFilter ? dcdActionDef(gActionFilter) : null;
     if (action && action.predicate) { parts.push([action.predicate, "=", true]); }
 
-    grid.filter(parts.length === 0 ? null : (parts.length === 1 ? parts[0] : [parts[0], "and", parts[1]]));
+    // Management System filter (2026-11-19)
+    var system = $("#dcdSystemFilter").val();
+    if (system) { parts.push(["MGMT_SYSTEM", "=", system]); }
+
+    // [a, "and", b, "and", c]
+    var expr = null;
+    parts.forEach(function (p) { expr = expr === null ? p : [expr, "and", p]; });
+    grid.filter(expr);
 }
 
 // ---------- Folders / Register Overview sidebar toggles - each independent
@@ -744,7 +771,8 @@ $(document).ready(function () {
                 }
             }).done(function (result) {
                 var rows = result.data == "" ? [] : result.data;
-                updateHeaderStats(rows);
+                gDcdAllRows = rows;
+                dcdRefreshStatsForSystem();
                 dcdLoadActionItems(); // Refresh also brings the counts from the other menus up to date
                 d.resolve(rows);
             }).fail(function () {
@@ -956,6 +984,8 @@ $(document).ready(function () {
                     }
                 }
             },
+            // Management System (QMS / K3L / ..., 2026-11-19)
+            { dataField: "MGMT_SYSTEM", caption: "System", width: 80, alignment: "center" },
             {
                 // owning division (snapshot on the document), next to Department (Hendra 2026-11-18)
                 dataField: "DIVISION",
@@ -1050,11 +1080,10 @@ $(document).ready(function () {
             //Deep-link lama (mis. redirect setelah login dari /DocumentControlDashboard/Index?DOCUMENT_CODE=...) -
             //terapkan sebagai filter kolom Document No sekali saja saat grid pertama kali siap.
             // Only once: before, it was applied again after every Reset (2026-11-14).
-            var params = new URLSearchParams(window.location.search);
-            var documentCode = params.get("DOCUMENT_CODE");
-            if (documentCode && !dcdDeepLinkApplied) {
+            // 2026-11-19: exact filter + "Showing ... / Show all" chip (dmsApplyDeepLink)
+            if (!dcdDeepLinkApplied) {
                 dcdDeepLinkApplied = true;
-                e.component.columnOption("DOCUMENT_CODE", "filterValue", documentCode);
+                dmsApplyDeepLink(e.component, { param: "DOCUMENT_CODE", column: "DOCUMENT_CODE" });
             }
 
             var count = e.component.totalCount();
@@ -1409,3 +1438,18 @@ function downloadAttachment() {
         showErrorMesgGrowl("This data does not have an attachment");
     }
 }
+
+// ---------- Management System filter (2026-11-19) ----------
+// Options: every system in the master; a Document Control that holds exactly one system
+// (SHE -> K3L) starts on it. "All Systems" shows the whole register.
+$(document).ready(function () {
+    var $sel = $("#dcdSystemFilter");
+    if (!$sel.length) return;
+    (documentControlDashboardConfig.mgmtSystems || []).forEach(function (s) {
+        $("<option>").val(s.Code).text(s.Code).attr("title", s.Name || "").appendTo($sel);
+    });
+    if (documentControlDashboardConfig.defaultMgmtSystem) $sel.val(documentControlDashboardConfig.defaultMgmtSystem);
+    $sel.on("change", dcdSystemChanged);
+    var grid = $("#datagrid").data("dxDataGrid");
+    if (grid && $sel.val()) dcdApplyGridFilter();
+});
