@@ -1,0 +1,98 @@
+/* Master Data > Organization Change (2026-11-19). Popups reuse the dvf-* styles of DivisionMaster/_PopupForm.css. */
+#modalOcForm .modal-content, #modalOcCancel .modal-content, #modalOcDeactivate .modal-content, #modalOcHistory .modal-content { border: none; border-radius: 14px; overflow: hidden; padding: 0; }
+#modalOcForm .dvf-body { padding: 18px 22px 8px; max-height: 70vh; overflow-y: auto; }
+#modalOcHistory .dvf-body, #modalOcDeactivate .dvf-body, #modalOcCancel .dvf-body { padding: 16px 22px 18px; max-height: 65vh; overflow-y: auto; }
+
+.oc-intro {
+    display: flex; gap: 10px; align-items: flex-start;
+    margin: 14px 16px 0; padding: 10px 14px; border-radius: 10px;
+    background: #F4F8FF; border: 1px solid #C7D9F7; color: #344054; font-size: 12.5px; line-height: 1.55;
+}
+.oc-intro .fa { color: #2450D8; font-size: 15px; margin-top: 2px; }
+.oc-check { font-size: 13px; font-weight: 500; color: #475467; margin: 0 0 0 8px; cursor: pointer; vertical-align: middle; }
+.oc-check input { margin-right: 4px; vertical-align: -1px; }
+
+.oc-sub { display: block; font-size: 11px; color: #98A2B3; margin-top: 2px; white-space: normal; }
+.oc-missing { display: inline-block; font-size: 11.5px; font-weight: 600; color: #B54708; background: #FFFAEB; border-radius: 6px; padding: 1px 7px; }
+.oc-file { display: block; font-size: 12px; margin-top: 3px; color: #2450D8; font-weight: 600; }
+
+.oc-maps { display: flex; align-items: flex-start; gap: 8px; }
+.oc-side { flex: 1 1 0; min-width: 0; }
+.oc-side > div { line-height: 1.5; }
+.oc-arrow { color: #98A2B3; padding-top: 1px; }
+.oc-owner { margin-left: 6px; font-size: 10.5px; font-weight: 700; color: #027A48; background: #ECFDF3; border-radius: 999px; padding: 0 7px; }
+
+.oc-chip { display: inline-block; margin: 1px 0; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.oc-chip.active { background: #ECFDF3; color: #027A48; }
+.oc-chip.busy { background: #FFFAEB; color: #B54708; }
+.oc-chip.inactive { background: #F2F4F7; color: #667085; }
+.oc-chip.gone { background: #F2F4F7; color: #98A2B3; }
+.oc-chip.kept { background: #EFF8FF; color: #175CD3; }
+
+.oc-state { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+.oc-state::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.oc-state.Valid { background: #ECFDF3; color: #027A48; }
+.oc-state.Cancelled { background: #FEF3F2; color: #B42318; }
+
+.oc-impact { width: auto; border-collapse: collapse; font-size: 12px; margin: 4px 0 6px; }
+.oc-impact th, .oc-impact td { border: 1px solid #E4E7EC; padding: 5px 10px; }
+.oc-impact th { background: #F4F6F8; font-weight: 600; color: #344054; white-space: nowrap; }
+.oc-num { text-align: center; }
+.oc-num-busy { color: #B54708; font-weight: 700; }
+.oc-detail-note, .oc-detail-empty { font-size: 11.5px; color: #667085; }
+
+/* form */
+.oc-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-bottom: 10px; }
+.oc-gap { margin-top: 14px; }
+@media (max-width: 767px) { .oc-grid2 { grid-template-columns: 1fr; } }
+.oc-type-hint { margin: 2px 0 12px; padding: 8px 12px; border-radius: 8px; background: #F9FAFB; border: 1px solid #EAECF0; font-size: 12px; color: #475467; line-height: 1.5; }
+.oc-map { width: 100%; border-collapse: separate; border-spacing: 0 6px; }
+/* site.css colours every "thead th" blue with white text: this header is plain labels */
+.oc-map thead th { background: transparent; font-size: 11.5px; font-weight: 600; color: #475467; padding: 0 4px 2px; text-align: left; white-space: nowrap; }
+.oc-th-sub { font-weight: 400; color: #98A2B3; }
+.oc-map td { padding: 0 4px; vertical-align: middle; }
+.oc-map .form-control { height: 32px; font-size: 13px; }
+.oc-col-arrow { width: 22px; color: #98A2B3; text-align: center; }
+.oc-col-owner { width: 52px; text-align: center !important; }
+.oc-col-del { width: 34px; }
+.oc-del { border: none; background: none; color: #98A2B3; cursor: pointer; }
+.oc-del:hover { color: #C62828; }
+.oc-map .oc-col-parent, .oc-map .oc-col-owner { display: none; }
+.oc-map.show-parent .oc-col-parent, .oc-map.show-owner .oc-col-owner { display: table-cell; }
+.oc-map.hide-old .oc-col-old, .oc-map.hide-old .oc-col-oldname, .oc-map.hide-old .oc-col-arrow { display: none; }
+.oc-map.hide-new .oc-col-new, .oc-map.hide-new .oc-col-arrow { display: none; }
+.oc-add-row { border: 1px dashed #C7D9F7; background: #F8FAFF; color: #2450D8; border-radius: 8px; padding: 5px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.oc-current-file { margin-top: 6px; font-size: 12px; }
+.oc-current-file a { color: #2450D8; font-weight: 600; margin-right: 8px; }
+
+/* dialogs */
+.oc-header-danger { background: linear-gradient(135deg, #C62828, #9F1F1F); }
+.oc-header-warning { background: linear-gradient(135deg, #E8890C, #B86A00); }
+.oc-btn-danger { background: #C62828; color: #fff; }
+.oc-btn-danger:hover { background: #9F1F1F; }
+.oc-btn-warning { background: #E8890C; color: #fff; }
+.oc-btn-warning:hover { background: #B86A00; }
+.oc-btn-warning[disabled] { opacity: .45; cursor: not-allowed; }
+.oc-note { font-size: 12.5px; color: #475467; line-height: 1.55; margin: 0 0 12px; }
+.oc-note-warn { color: #B54708; font-weight: 600; }
+.oc-deact-list { list-style: none; padding: 0; margin: 0; }
+.oc-deact-list li { padding: 7px 0; border-bottom: 1px solid #F2F4F7; }
+.oc-blocked { color: #B54708; }
+
+#datagrid .dx-datagrid { font-size: 12.5px; }
+
+/* transfer (tahap 2) */
+#modalOcTransfer .modal-content { border: none; border-radius: 14px; overflow: hidden; padding: 0; }
+@media (min-width: 992px) { .oc-modal-xl { width: 1080px; } }
+#modalOcTransfer .dvf-body { padding: 16px 22px 18px; max-height: 66vh; overflow-y: auto; }
+.oc-tr-group { margin: 0 0 16px; }
+.oc-tr-head { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #101828; }
+.oc-tr-all { margin: 0; cursor: pointer; }
+.oc-tr-info { font-size: 11px; font-weight: 600; color: #667085; background: #F2F4F7; border-radius: 999px; padding: 1px 8px; }
+.oc-tr-table { width: 100%; margin-top: 6px; }
+.oc-tr-table td { vertical-align: middle; }
+.oc-tr-check { width: 30px; text-align: center; }
+.oc-tr-old { width: 90px; color: #667085; white-space: nowrap; }
+.oc-tr-target { width: 340px; }
+.oc-tr-target .form-control { height: 30px; font-size: 12.5px; }
+.oc-transfer-count { margin-right: auto; font-size: 12.5px; color: #475467; font-weight: 600; }

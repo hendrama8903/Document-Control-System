@@ -15,11 +15,42 @@ namespace DMS.Controllers
     {
         DBContext db;
         private IWebHostEnvironment Environment;
+        private readonly ILogger<LegacyDocumentImportController> logger;
 
-        public LegacyDocumentImportController(DBContext db, IWebHostEnvironment environment)
+        // Upload limits shown on the page (Excel 10 MB, ZIP 100 MB); the request limit leaves
+        // room for both plus the multipart overhead (2026-11-17).
+        private const long MaxExcelBytes = 10L * 1024 * 1024;
+        private const long MaxZipBytes = 100L * 1024 * 1024;
+        private const long MaxImportRequestBytes = 115L * 1024 * 1024;
+
+        public LegacyDocumentImportController(DBContext db, IWebHostEnvironment environment, ILogger<LegacyDocumentImportController> logger)
         {
             this.db = db;
             Environment = environment;
+            this.logger = logger;
+        }
+
+        // Technical details (exception text, SQL errors, server paths) go to the log only; the
+        // user gets a plain message plus a reference to quote to IT (2026-11-17).
+        private string UnexpectedError(Exception ex, string whileDoing)
+        {
+            string reference = Guid.NewGuid().ToString("N").Substring(0, 8).ToUpperInvariant();
+            logger.LogError(ex, "Legacy document import: error while {WhileDoing} (ref {Reference}, user {User})",
+                whileDoing, reference, HttpContext.Session.GetString("USERNAME"));
+            return "An unexpected error occurred while " + whileDoing + ". Please contact IT and quote reference " + reference + ".";
+        }
+
+        // The import SPs return either a business message ("ERROR: Document Code X is already
+        // registered") or, from their CATCH block, "ERROR: <procedure>: <sql error>, at line = n".
+        // Business messages are shown without the "ERROR: " prefix; SQL errors are logged.
+        private string FriendlyDbMessage(string message, string whileDoing)
+        {
+            string text = (message ?? "").Trim();
+            if (text.Length == 0 || text.Contains("at line =", StringComparison.OrdinalIgnoreCase))
+            {
+                return UnexpectedError(new Exception(text.Length == 0 ? "Empty message from the database." : text), whileDoing);
+            }
+            return text.StartsWith("ERROR:", StringComparison.OrdinalIgnoreCase) ? text.Substring(6).Trim() : text;
         }
 
         private DocumentMaintenanceRepo documentMaintenanceRepo = DocumentMaintenanceRepo.Instance;
@@ -146,6 +177,8 @@ namespace DMS.Controllers
             return workbook;
         }
 
+        private static string SizeText(long bytes) => (bytes / (1024.0 * 1024.0)).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " MB";
+
         private FileStreamResult XlsxFile(IWorkbook workbook, string fileName)
         {
             // NPOI's Write(Stream) closes the stream it's given (this NPOI version has no
@@ -200,13 +233,9 @@ namespace DMS.Controllers
                         .Where(x => !string.IsNullOrEmpty(x.DOCUMENT_CODE))
                         .GroupBy(x => x.DOCUMENT_CODE.ToUpperInvariant())
                         .ToDictionary(g => g.Key, g => g.Max(x => x.REVISION ?? 0)),
-                    // former department -> current department(s), System Parameters DEPT_SUCCESSOR (2026-11-16)
-                    Successors = mSystemRepo.Search(new MSystem { SYSTEM_TYPE = "DEPT_SUCCESSOR" }, db, null, null)
-                        .Where(x => (x.STATUS ?? 1) == 1 && !string.IsNullOrWhiteSpace(x.SYSTEM_CODE) && !string.IsNullOrWhiteSpace(x.SYSTEM_VALUE))
-                        .GroupBy(x => x.SYSTEM_CODE.Trim().ToUpperInvariant())
-                        .ToDictionary(g => g.Key,
-                            g => g.First().SYSTEM_VALUE.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries).Select(v => v.Trim().ToUpperInvariant()).ToArray(),
-                            StringComparer.OrdinalIgnoreCase)
+                    // former department -> current department(s): the Organization Change register
+                    // (2026-11-19; it replaced System Parameters DEPT_SUCCESSOR, still read as a fallback)
+                    Successors = Services.OrgChangeService.LoadSuccessors(db)
                 };
 
                 // WorkbookFactory needs a stream it can seek in.
@@ -229,18 +258,57 @@ namespace DMS.Controllers
                 IWorkbook workbook = BuildTemplate(out ISheet templateSheet);
                 MasterListConverter.Write(workbook, templateSheet, result);
 
-                Response.Headers["X-Convert-Rows"] = result.Rows.Count.ToString();
-                Response.Headers["X-Convert-Errors"] = result.ErrorRows.ToString();
-                Response.Headers["X-Convert-Warnings"] = result.WarningRows.ToString();
-                return XlsxFile(workbook, "Import_Template_From_Master_List_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".xlsx");
+                MemoryStream stream = new MemoryStream();
+                workbook.Write(new NonClosingStreamWrapper(stream));
+
+                // JSON instead of the bare file (2026-11-17): besides the filled template the page
+                // gets the whole conversion log, so it can show every problem - and every code the
+                // system does not know yet - in one popup instead of only in column N of the file.
+                return Json(new
+                {
+                    status = true,
+                    fileName = "Import_Template_From_Master_List_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".xlsx",
+                    file = System.Convert.ToBase64String(stream.ToArray()),
+                    rows = result.Rows.Count,
+                    errorRows = result.ErrorRows,
+                    warningRows = result.WarningRows,
+                    filesGiven = result.FilesGiven,
+                    unusedFiles = result.UnusedFiles,
+                    files = result.Files.Select(f => new { name = f.Name, documents = f.Documents, rows = f.Rows, problem = f.Problem }),
+                    missingCodes = result.MissingCodes.Select(x => new
+                    {
+                        type = x.Type,
+                        code = x.Code,
+                        severity = x.IsError ? "error" : "warning",
+                        usedIn = string.Join(", ", x.UsedIn),
+                        documents = x.Documents,
+                        masterLists = x.MasterLists
+                    }),
+                    // One line per message; a message repeated on every revision row of the same
+                    // document is shown once, with the revisions it applies to.
+                    log = result.Rows
+                        .SelectMany(r => r.Errors.Select(e => (Row: r, Level: "error", Message: e))
+                            .Concat(r.Warnings.Select(w => (Row: r, Level: "warning", Message: w))))
+                        .GroupBy(x => (x.Row.Source, x.Row.DocumentCode, x.Level, x.Message))
+                        .Select(g => new
+                        {
+                            source = g.Key.Source,
+                            documentCode = g.Key.DocumentCode,
+                            revisions = string.Join(", ", g.Where(x => x.Row.Revision != null).Select(x => x.Row.Revision.Value).Distinct()),
+                            level = g.Key.Level,
+                            message = g.Key.Message
+                        })
+                });
             }
             catch (Exception ex)
             {
-                return Json(new { status = false, message = ex.Message });
+                return Json(new { status = false, message = UnexpectedError(ex, "converting the master list") });
             }
         }
 
         [HttpPost]
+        [RequestSizeLimit(MaxImportRequestBytes)]
+        [RequestFormLimits(MultipartBodyLengthLimit = MaxImportRequestBytes)]
         public JsonResult ProcessImport(IFormFile excelFile, IFormFile zipFile, bool commitMode)
         {
             JsonResult denied = DenyWithoutFunction("LEGACYDOCUMENTIMPORT-IMPORT");
@@ -266,11 +334,30 @@ namespace DMS.Controllers
                     return Json(new { status = false, message = "ZIP file is required." });
                 }
 
-                List<LegacyDocumentImportRow> rows = ParseExcel(excelFile);
+                if (excelFile.Length > MaxExcelBytes)
+                {
+                    return Json(new { status = false, message = "The Excel file is " + SizeText(excelFile.Length) + "; the limit is 10 MB." });
+                }
+
+                if (zipFile.Length > MaxZipBytes)
+                {
+                    return Json(new { status = false, message = "The ZIP file is " + SizeText(zipFile.Length) + "; the limit is 100 MB. Split the documents into several ZIP files and import them in batches." });
+                }
+
+                List<LegacyDocumentImportRow> rows;
+                try
+                {
+                    rows = ParseExcel(excelFile);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Legacy document import: Excel file '{File}' could not be read", excelFile.FileName);
+                    return Json(new { status = false, message = "The Excel file cannot be read. Save it as an Excel Workbook (.xlsx) based on Download Template, then try again." });
+                }
 
                 if (rows.Count == 0)
                 {
-                    return Json(new { status = false, message = "No data rows found in the Excel file." });
+                    return Json(new { status = false, message = "No data rows found in the Excel file. Fill the Template sheet from row 2 onwards." });
                 }
 
                 IList<DocumentMaintenance> existingDocs = documentMaintenanceRepo.Search(new DocumentMaintenance(), null, db, null, null);
@@ -281,7 +368,18 @@ namespace DMS.Controllers
 
                 AssignRevisionGroups(rows, existingCodeRevisions);
 
-                using (ZipArchive archive = new ZipArchive(zipFile.OpenReadStream(), ZipArchiveMode.Read))
+                ZipArchive archive;
+                try
+                {
+                    archive = new ZipArchive(zipFile.OpenReadStream(), ZipArchiveMode.Read);
+                }
+                catch (InvalidDataException ex)
+                {
+                    logger.LogWarning(ex, "Legacy document import: ZIP file '{File}' could not be opened", zipFile.FileName);
+                    return Json(new { status = false, message = "The ZIP file cannot be opened. It may be damaged or not a .zip archive (RAR/7z are not supported)." });
+                }
+
+                using (archive)
                 {
                     Dictionary<string, ZipArchiveEntry> zipEntries = archive.Entries
                         .Where(x => !string.IsNullOrEmpty(x.Name))
@@ -298,6 +396,9 @@ namespace DMS.Controllers
                         ValidateRow(row, zipEntries, categories, divisions, departments, classifications);
                     }
 
+                    string DistributionText(LegacyDocumentImportRow r) =>
+                        string.Join(", ", r.ResolvedDistribution.Select(d => departments.FirstOrDefault(p => p.DEPARTMENT_ID == d.DepartmentId)?.DEPARTMENT_CODE + " " + d.Date.ToString("dd-MM-yyyy")));
+
                     if (!commitMode)
                     {
                         return Json(new
@@ -313,7 +414,7 @@ namespace DMS.Controllers
                                 isCurrentRevision = x.IsCurrentRevision,
                                 isHistoryOnlyAppend = x.IsHistoryOnlyAppend,
                                 revision = x.Revision,
-                                distribution = string.Join(", ", x.ResolvedDistribution.Select(d => departments.FirstOrDefault(p => p.DEPARTMENT_ID == d.DepartmentId)?.DEPARTMENT_CODE + " " + d.Date.ToString("dd-MM-yyyy"))),
+                                distribution = DistributionText(x),
                                 errors = x.Errors
                             }),
                             validCount = rows.Count(x => x.Valid),
@@ -335,7 +436,7 @@ namespace DMS.Controllers
                         return Json(new
                         {
                             status = false,
-                            message = "Import dibatalkan - masih ada " + invalidCount + " baris yang tidak valid. Perbaiki dulu semua error (lihat hasil Preview) sebelum bisa Import."
+                            message = "Import cancelled: " + invalidCount + " row(s) are not valid, so nothing was saved. Fix every error shown in the preview, then validate again."
                         });
                     }
 
@@ -367,7 +468,7 @@ namespace DMS.Controllers
                         {
                             if (!row.Valid)
                             {
-                                results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = false, Message = string.Join("; ", row.Errors) });
+                                results.Add(new ImportRowResult { Row = row, Status = false, Message = string.Join("; ", row.Errors) });
                                 continue;
                             }
 
@@ -412,7 +513,7 @@ namespace DMS.Controllers
 
                                     if (result.status)
                                     {
-                                        results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = true, Message = row.ResolvedDistribution.Count == 0 ? "Imported" : "Imported, distributed to " + row.ResolvedDistribution.Count + " department(s)" });
+                                        results.Add(new ImportRowResult { Row = row, Status = true, Message = row.ResolvedDistribution.Count == 0 ? "Imported" : "Imported, distributed to " + row.ResolvedDistribution.Count + " department(s)" });
                                     }
                                     else
                                     {
@@ -420,12 +521,16 @@ namespace DMS.Controllers
                                         {
                                             System.IO.File.Delete(savedFullPath);
                                         }
-                                        results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = false, Message = result.message });
+                                        results.Add(new ImportRowResult { Row = row, Status = false, Message = FriendlyDbMessage(result.message, "saving row " + row.RowNumber) });
                                     }
                                 }
                                 catch (Exception ex)
                                 {
-                                    results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = false, Message = ex.Message });
+                                    if (savedFullPath != null && System.IO.File.Exists(savedFullPath))
+                                    {
+                                        System.IO.File.Delete(savedFullPath);
+                                    }
+                                    results.Add(new ImportRowResult { Row = row, Status = false, Message = UnexpectedError(ex, "saving row " + row.RowNumber) });
                                 }
                             }
                             else
@@ -435,7 +540,7 @@ namespace DMS.Controllers
                                 // on - they go straight to the history insert below.
                                 if (!row.IsHistoryOnlyAppend && !currentRevisionSaved)
                                 {
-                                    results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = false, Message = "Skipped: the current revision for Document Code '" + row.DocumentCode + "' was not saved successfully." });
+                                    results.Add(new ImportRowResult { Row = row, Status = false, Message = "Skipped: the current revision for Document Code '" + row.DocumentCode + "' was not saved successfully." });
                                     continue;
                                 }
 
@@ -479,16 +584,16 @@ namespace DMS.Controllers
 
                                     if (historyResult.status)
                                     {
-                                        results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = true, Message = "Imported as history (revision " + row.Revision + ")" });
+                                        results.Add(new ImportRowResult { Row = row, Status = true, Message = "Imported as history (revision " + row.Revision + ")" });
                                     }
                                     else
                                     {
-                                        results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = false, Message = historyResult.message });
+                                        results.Add(new ImportRowResult { Row = row, Status = false, Message = FriendlyDbMessage(historyResult.message, "saving row " + row.RowNumber) });
                                     }
                                 }
                                 catch (Exception ex)
                                 {
-                                    results.Add(new ImportRowResult { RowNumber = row.RowNumber, DocumentCode = row.DocumentCode, Status = false, Message = ex.Message });
+                                    results.Add(new ImportRowResult { Row = row, Status = false, Message = UnexpectedError(ex, "saving row " + row.RowNumber) });
                                 }
                             }
                         }
@@ -497,10 +602,16 @@ namespace DMS.Controllers
                     return Json(new
                     {
                         status = true,
-                        data = results.Select(x => new
+                        // Same columns as the preview, in Excel row order (rows are saved per
+                        // Document Code group, so the save order differs) - 2026-11-17.
+                        data = results.OrderBy(x => x.Row.RowNumber).Select(x => new
                         {
-                            rowNumber = x.RowNumber,
-                            documentCode = x.DocumentCode,
+                            rowNumber = x.Row.RowNumber,
+                            fileName = x.Row.FileName,
+                            documentCode = x.Row.DocumentCode,
+                            documentName = x.Row.DocumentName,
+                            revision = x.Row.Revision,
+                            distribution = DistributionText(x.Row),
                             status = x.Status,
                             message = x.Message
                         }),
@@ -511,7 +622,7 @@ namespace DMS.Controllers
             }
             catch (Exception ex)
             {
-                return Json(new { status = false, message = ex.Message });
+                return Json(new { status = false, message = UnexpectedError(ex, commitMode ? "importing the documents" : "validating the files") });
             }
         }
 
@@ -545,8 +656,7 @@ namespace DMS.Controllers
 
         private class ImportRowResult
         {
-            public int RowNumber { get; set; }
-            public string DocumentCode { get; set; }
+            public LegacyDocumentImportRow Row { get; set; }
             public bool Status { get; set; }
             public string Message { get; set; }
         }

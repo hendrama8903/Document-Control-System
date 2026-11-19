@@ -1,0 +1,229 @@
+@* Master Data > Organization Change (tahap 1, 2026-11-19): register of the organisation changes
+   announced by HR. Logic: Services/OrgChangeService. *@
+<link rel="stylesheet" href="~/css/devextreme/dx.light.css" asp-append-version="true" />
+<script src="~/js/devextreme/dx.custom.js" asp-append-version="true"></script>
+<link rel="stylesheet" href="~/css/views/DivisionMaster/_PopupForm.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/views/OrgChange/Index.css" asp-append-version="true" />
+
+<section class="content">
+    <div class="row">
+        <div class="col-xs-12">
+            <div class="dp-card">
+                <div class="oc-intro">
+                    <i class="fa fa-info-circle"></i>
+                    <div>
+                        Record every organisation change announced by <b>HR</b>: rename, merger, split, move, a department that becomes a section,
+                        a new unit or a closed one. Document numbers stay as they are; a new number may be used at the next revision with a
+                        reference to the old one. Old codes are <b>deactivated</b> with a valid-until date, never deleted, and only once nothing
+                        depends on them any more. The Master List import uses this register to map old department codes.
+                    </div>
+                </div>
+
+                <div class="box-header dp-toolbar">
+                    <div class="dp-toolbar-left">
+                        @if ((bool)ViewData["Add"])
+                        {
+                            <button type="button" class="dp-btn dp-btn-primary" id="btn_add"><i class="fa fa-plus"></i> New</button>
+                        }
+                        <label class="oc-check"><input type="checkbox" id="ocShowCancelled" /> Show cancelled</label>
+                    </div>
+                    <div class="dp-toolbar-right">
+                        <button type="button" class="dp-btn dp-btn-outline" id="btn_refresh"><i class="fa fa-refresh"></i> Refresh</button>
+                    </div>
+                </div>
+                <div class="box-body dms-grid">
+                    <div id="datagrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Add / Edit -->
+<div class="modal fade" id="modalOcForm" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="dvf-header">
+                <div class="dvf-header-icon"><i class="fa fa-sitemap"></i></div>
+                <div>
+                    <div class="dvf-header-title" id="ocFormTitle">New Organization Change</div>
+                    <div class="dvf-header-sub">As announced by HR</div>
+                </div>
+                <button type="button" class="dvf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
+            </div>
+
+            <div class="dvf-body">
+                <div class="oc-grid2">
+                    <div>
+                        <label class="dvf-label" for="ocType">Type of Change <span class="text-red">*</span></label>
+                        <select id="ocType" class="form-control"></select>
+                    </div>
+                    <div>
+                        <label class="dvf-label" for="ocLevel">Level <span class="text-red">*</span></label>
+                        <select id="ocLevel" class="form-control">
+                            <option value="DIVISION">Division</option>
+                            <option value="DEPARTMENT" selected>Department</option>
+                            <option value="SECTION">Section</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="dvf-label" for="ocEffective">Effective Date <span class="text-red">*</span></label>
+                        <input type="date" id="ocEffective" class="form-control" />
+                    </div>
+                    <div>
+                        <label class="dvf-label" for="ocHr">HR Reference <span class="text-red">*</span></label>
+                        <input type="text" id="ocHr" class="form-control" maxlength="200" placeholder="e.g. HR memo 012/HRD/XI/2026" />
+                    </div>
+                </div>
+
+                <div class="oc-type-hint" id="ocTypeHint"></div>
+
+                <label class="dvf-label">Old → New Codes <span class="text-red">*</span></label>
+                <table class="oc-map" id="ocMap">
+                    <thead>
+                        <tr>
+                            <th class="oc-col-old">Old Code</th>
+                            <th class="oc-col-oldname">Old Name <span class="oc-th-sub">if no longer in the master</span></th>
+                            <th class="oc-col-arrow"></th>
+                            <th class="oc-col-new">New Code</th>
+                            <th class="oc-col-parent">New Parent</th>
+                            <th class="oc-col-owner" title="Split: the new unit that owns the documents by default">Owner</th>
+                            <th class="oc-col-del"></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <button type="button" class="oc-add-row" id="btn_addRow"><i class="fa fa-plus"></i> Add row</button>
+                <datalist id="ocOldList"></datalist>
+
+                <div class="oc-grid2 oc-gap">
+                    <div>
+                        <label class="dvf-label" for="ocFile">HR Memo File</label>
+                        <input type="file" id="ocFile" class="form-control" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx,.msg,.eml" />
+                        <div class="oc-current-file" id="ocCurrentFile"></div>
+                    </div>
+                    <div>
+                        <label class="dvf-label" for="ocDesc">Description</label>
+                        <textarea id="ocDesc" class="form-control" rows="3" maxlength="1000" placeholder="e.g. QPD and QDT are merged into QPA"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dvf-footer">
+                <button type="button" class="dvf-btn dvf-btn-cancel" data-dismiss="modal"><i class="fa fa-times"></i> Cancel</button>
+                <button type="button" class="dvf-btn dvf-btn-primary" id="btn_save"><i class="fa fa-save"></i> Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel a change -->
+<div class="modal fade" id="modalOcCancel" role="dialog" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <div class="dvf-header oc-header-danger">
+                <div class="dvf-header-icon"><i class="fa fa-ban"></i></div>
+                <div>
+                    <div class="dvf-header-title">Cancel Organization Change</div>
+                    <div class="dvf-header-sub" id="ocCancelSub"></div>
+                </div>
+                <button type="button" class="dvf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
+            </div>
+            <div class="dvf-body">
+                <p class="oc-note">Use this when the change was recorded by mistake or HR withdrew it. It stays in the history as cancelled
+                    and is no longer used by the Master List import. Codes it already deactivated stay inactive.</p>
+                <label class="dvf-label" for="ocCancelReason">Reason <span class="text-red">*</span></label>
+                <textarea class="form-control" id="ocCancelReason" rows="3" maxlength="500"></textarea>
+            </div>
+            <div class="dvf-footer">
+                <button type="button" class="dvf-btn dvf-btn-cancel" data-dismiss="modal"><i class="fa fa-times"></i> Close</button>
+                <button type="button" class="dvf-btn oc-btn-danger" id="btn_cancelChange"><i class="fa fa-ban"></i> Cancel Change</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Deactivate old codes -->
+<div class="modal fade" id="modalOcDeactivate" role="dialog" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <div class="dvf-header oc-header-warning">
+                <div class="dvf-header-icon"><i class="fa fa-power-off"></i></div>
+                <div>
+                    <div class="dvf-header-title">Deactivate Old Codes</div>
+                    <div class="dvf-header-sub" id="ocDeactivateSub"></div>
+                </div>
+                <button type="button" class="dvf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
+            </div>
+            <div class="dvf-body">
+                <div id="ocDeactivateBody"></div>
+            </div>
+            <div class="dvf-footer">
+                <button type="button" class="dvf-btn dvf-btn-cancel" data-dismiss="modal"><i class="fa fa-times"></i> Close</button>
+                <button type="button" class="dvf-btn oc-btn-warning" id="btn_deactivate"><i class="fa fa-power-off"></i> Deactivate</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transfer to the new unit (tahap 2) -->
+<div class="modal fade" id="modalOcTransfer" role="dialog" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-lg oc-modal-xl">
+        <div class="modal-content">
+            <div class="dvf-header">
+                <div class="dvf-header-icon"><i class="fa fa-exchange"></i></div>
+                <div>
+                    <div class="dvf-header-title">Transfer to the New Unit</div>
+                    <div class="dvf-header-sub" id="ocTransferSub"></div>
+                </div>
+                <button type="button" class="dvf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
+            </div>
+            <div class="dvf-body" id="ocTransferBody"></div>
+            <div class="dvf-footer">
+                <span class="oc-transfer-count" id="ocTransferCount"></span>
+                <button type="button" class="dvf-btn dvf-btn-cancel" data-dismiss="modal"><i class="fa fa-times"></i> Close</button>
+                <button type="button" class="dvf-btn dvf-btn-primary" id="btn_transfer"><i class="fa fa-exchange"></i> Move Selected</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- History -->
+<div class="modal fade" id="modalOcHistory" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="dvf-header">
+                <div class="dvf-header-icon"><i class="fa fa-history"></i></div>
+                <div>
+                    <div class="dvf-header-title">History</div>
+                    <div class="dvf-header-sub" id="ocHistorySub"></div>
+                </div>
+                <button type="button" class="dvf-close" data-dismiss="modal"><i class="fa fa-times"></i></button>
+            </div>
+            <div class="dvf-body"><div id="ocHistoryGrid"></div></div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    var orgChangeConfig = {
+        canAdd: @(((bool)ViewData["Add"]) ? "true" : "false"),
+        canEdit: @(((bool)ViewData["Edit"]) ? "true" : "false"),
+        canCancel: @(((bool)ViewData["Cancel"]) ? "true" : "false"),
+        canDeactivate: @(((bool)ViewData["Deactivate"]) ? "true" : "false"),
+        canTransfer: @(((bool)ViewData["Transfer"]) ? "true" : "false"),
+        urls: {
+            options: "@Url.Action("Options", "OrgChange")",
+            search: "@Url.Action("Search", "OrgChange")",
+            save: "@Url.Action("Save", "OrgChange")",
+            cancel: "@Url.Action("Cancel", "OrgChange")",
+            deactivate: "@Url.Action("Deactivate", "OrgChange")",
+            history: "@Url.Action("History", "OrgChange")",
+            attachment: "@Url.Action("Attachment", "OrgChange")",
+            transferPlan: "@Url.Action("TransferPlan", "OrgChange")",
+            transfer: "@Url.Action("Transfer", "OrgChange")",
+            moves: "@Url.Action("Moves", "OrgChange")"
+        }
+    };
+</script>
+<script src="~/js/views/org-change.js" asp-append-version="true"></script>

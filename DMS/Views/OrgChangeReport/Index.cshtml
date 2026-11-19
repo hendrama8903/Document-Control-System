@@ -1,0 +1,47 @@
+@* Reports > Organization Change History (2026-11-19): audit evidence of the organisation changes
+   (QMS answer no. 8). Read only; DevExtreme grid like the other lists. *@
+<link rel="stylesheet" href="~/css/devextreme/dx.light.css" asp-append-version="true" />
+<script src="~/js/devextreme/dx.custom.js" asp-append-version="true"></script>
+<link rel="stylesheet" href="~/css/views/shared/grid-filter-row.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/views/DocumentMasterlist/Index.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/views/OrgChange/Index.css" asp-append-version="true" />
+<section class="content">
+    <div class="row">
+        <div class="col-xs-12">
+            <div class="dp-card">
+                <div class="box-header dp-toolbar">
+                    <div class="dp-toolbar-left">
+                        <label class="ml-field">Effective Date
+                            <input type="date" class="ml-select" id="ochFrom" />
+                        </label>
+                        <label class="ml-field">to
+                            <input type="date" class="ml-select" id="ochTo" />
+                        </label>
+                        <button type="button" class="dp-btn dp-btn-outline" id="btn_toggleFilters"><i class="fa fa-filter"></i> More Filters</button>
+                        <button type="button" class="dp-btn dp-btn-outline" id="btn_resetFilters"><i class="fa fa-undo"></i> Reset</button>
+                        <button type="button" class="dp-btn dp-btn-outline" id="btn_refresh"><i class="fa fa-refresh"></i> Refresh</button>
+                    </div>
+                    <div class="dp-toolbar-right">
+                        <button type="button" class="dp-icon-btn" id="btn_columns" title="Show/Hide Columns"><i class="fa fa-columns"></i> </button>
+                        <button type="button" class="dp-btn dp-btn-outline" id="btn_excel"><i class="fa fa-file-excel-o"></i> Excel</button>
+                        <button type="button" class="dp-btn dp-btn-outline" id="btn_pdf"><i class="fa fa-file-pdf-o"></i> PDF</button>
+                    </div>
+                </div>
+                <div class="box-body dms-grid">
+                    <div id="datagrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<script type="text/javascript">
+    var orgChangeReportConfig = {
+        urls: {
+            data: "@Url.Action("Data", "OrgChangeReport")",
+            excel: "@Url.Action("Excel", "OrgChangeReport")",
+            pdf: "@Url.Action("Pdf", "OrgChangeReport")",
+            attachment: "@Url.Action("Attachment", "OrgChange")"
+        }
+    };
+</script>
+<script src="~/js/views/org-change-report.js" asp-append-version="true"></script>

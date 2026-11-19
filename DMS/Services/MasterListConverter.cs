@@ -34,14 +34,14 @@ namespace DMS.Services
             public Dictionary<string, int> ExistingRevisions { get; set; } = new Dictionary<string, int>();
             /// <summary>
             /// Former department code (upper case) -> its current departments, from System Parameters
-            /// type DEPT_SUCCESSOR (2026-11-16). A department that was split has several successors:
+            /// type DEPT_SUCCESSOR (2026-11-16), since 2026-11-19 the Organization Change register. A department that was split has several successors:
             /// a distribution to the old code goes to all of them, the document owner to the first.
             /// The document number itself is never changed.
             /// </summary>
             public Dictionary<string, string[]> Successors { get; set; } = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase);
         }
 
-        private const string SuccessorHint = " If it was renamed, merged or split in a reorganisation, add it under System Parameters > DEPT_SUCCESSOR (code = old department, value = new department codes).";
+        private const string SuccessorHint = " If it was renamed, merged or split in a reorganisation, record it in Master Data > Organization Change (old code -> new code).";
 
         /// <summary>Active departments that replace a former department code; empty when none is set.</summary>
         private static List<DepartmentMaster> SuccessorsOf(string code, Masters m)
@@ -79,6 +79,22 @@ namespace DMS.Services
             public string Problem { get; set; }
         }
 
+        /// <summary>
+        /// A code used in the master lists that the system does not know, collected over ALL
+        /// lists of one conversion (request Hendra 2026-11-17), so every code that still needs
+        /// a master entry or a DEPT_SUCCESSOR mapping is listed at once instead of being found
+        /// one conversion at a time.
+        /// </summary>
+        public class MissingCode
+        {
+            public string Type { get; set; }        // Department, Division, Category, Section, Company, Process
+            public string Code { get; set; }
+            public bool IsError { get; set; }       // false = only a warning (row can still be imported)
+            public SortedSet<string> UsedIn { get; } = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            public SortedSet<string> Documents { get; } = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            public SortedSet<string> MasterLists { get; } = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        }
+
         public class Result
         {
             public List<OutRow> Rows { get; } = new List<OutRow>();
@@ -87,6 +103,25 @@ namespace DMS.Services
             public bool FilesGiven { get; set; }
             public int ErrorRows => Rows.Count(r => r.Errors.Count > 0);
             public int WarningRows => Rows.Count(r => r.Errors.Count == 0 && r.Warnings.Count > 0);
+
+            private readonly Dictionary<string, MissingCode> missing = new Dictionary<string, MissingCode>(StringComparer.OrdinalIgnoreCase);
+
+            /// <summary>Errors first, then by type and code.</summary>
+            public IEnumerable<MissingCode> MissingCodes => missing.Values
+                .OrderBy(x => x.IsError ? 0 : 1).ThenBy(x => x.Type).ThenBy(x => x.Code, StringComparer.OrdinalIgnoreCase);
+
+            public void AddMissing(string type, string code, string usedIn, string document, string source, bool isError)
+            {
+                if (string.IsNullOrWhiteSpace(code)) return;
+                code = code.Trim().ToUpperInvariant();
+                if (!missing.TryGetValue(type + "|" + code, out MissingCode entry))
+                    missing[type + "|" + code] = entry = new MissingCode { Type = type, Code = code };
+                entry.IsError |= isError;
+                entry.UsedIn.Add(usedIn);
+                if (!string.IsNullOrEmpty(document)) entry.Documents.Add(document);
+                // "List.xlsx [Sheet1]" -> the file name only
+                if (!string.IsNullOrEmpty(source)) entry.MasterLists.Add(Regex.Replace(source, @"\s*\[[^\]]*\]$", ""));
+            }
         }
 
         // One document as read from a master list, before it is split into revision rows.
@@ -157,7 +192,7 @@ namespace DMS.Services
             {
                 string source = doc.Source + ", row " + doc.ExcelRow;
                 var shared = new OutRow { DocumentCode = doc.Code, DocumentName = doc.Name, Source = source };
-                Resolve(doc, shared, m);
+                Resolve(doc, shared, m, result);
 
                 if (seenCodes.TryGetValue(doc.Code, out Doc first))
                     shared.Errors.Add("Document number is also listed in " + first.Source + ", row " + first.ExcelRow + ". Keep it in one master list only.");
@@ -231,7 +266,7 @@ namespace DMS.Services
                     }
 
                     if (isCurrent)
-                        row.Distribution = Distribute(doc, rev.Revision, rev.Date, row, m);
+                        row.Distribution = Distribute(doc, rev.Revision, rev.Date, row, m, result);
 
                     if (row.FileName != null)
                     {
@@ -477,8 +512,11 @@ namespace DMS.Services
 
         // ---------------------------------------------------------------- master data
 
-        private static void Resolve(Doc doc, OutRow row, Masters m)
+        private static void Resolve(Doc doc, OutRow row, Masters m, Result result)
         {
+            void Missing(string type, string code, bool isError) =>
+                result.AddMissing(type, code, "document number", doc.Code, doc.Source, isError);
+
             // Document number: DIV/CAT-DEPT-SECTION/NNN (level 3-4) or COMPANY/CAT/XXX/NNN (level 1-2).
             Match l34 = Regex.Match(doc.Code, @"^([A-Z0-9]+)/([A-Z0-9]+)-([A-Z0-9]+)-([A-Z0-9]+)/(\d+)$");
             Match l12 = Regex.Match(doc.Code, @"^([A-Z0-9]+)/([A-Z0-9]+)/([A-Z0-9]+)/(\d+)$");
@@ -490,9 +528,15 @@ namespace DMS.Services
                 row.Warnings.Add("The document number does not follow the system format (DIV/CAT-DEPT-SECTION/001 or HMMI/CAT/XXX/001); check Category, Division and Department.");
             // Level 1/2: COMPANY/CAT/PROCESS/NNN (level 2) or COMPANY/CAT/YEAR/NNN (level 1).
             if (l12.Success && m.CompanyCodes.Count > 0 && !m.CompanyCodes.Any(c => Eq(c.SYSTEM_CODE, l12.Groups[1].Value)))
+            {
                 row.Warnings.Add("Company " + l12.Groups[1].Value + " is not in Company Code master.");
+                Missing("Company", l12.Groups[1].Value, false);
+            }
             if (l12.Success && !Regex.IsMatch(l12.Groups[3].Value, @"^\d{4}$") && m.ProcessCodes.Count > 0 && !m.ProcessCodes.Any(c => Eq(c.SYSTEM_CODE, l12.Groups[3].Value)))
+            {
                 row.Warnings.Add("Process " + l12.Groups[3].Value + " is not in Process Code master (" + string.Join("/", m.ProcessCodes.Select(c => c.SYSTEM_CODE)) + "). The number is imported as written, but new documents cannot continue this numbering.");
+                Missing("Process", l12.Groups[3].Value, false);
+            }
             if (doc.Code.Length > 25)
                 row.Errors.Add("Document number is longer than 25 characters.");
             if (string.IsNullOrWhiteSpace(doc.Name))
@@ -504,7 +548,10 @@ namespace DMS.Services
                 : m.Categories.FirstOrDefault(c => Eq(c.DOCUMENT_CODE, doc.Type)) ?? m.Categories.FirstOrDefault(c => Norm(c.DOCUMENT_NAME) == Norm(doc.Type));
             DocumentMaster category = byCode ?? byType;
             if (category == null)
+            {
                 row.Errors.Add("Category \"" + (codeCategory ?? doc.Type) + "\" is not in Document Category master.");
+                Missing("Category", codeCategory ?? doc.Type, true);
+            }
             else
             {
                 row.CategoryCode = category.DOCUMENT_CODE;
@@ -523,6 +570,7 @@ namespace DMS.Services
                 row.Errors.Add(codeDivision != null
                     ? "Division \"" + codeDivision + "\" is not in Division master (or is inactive)." + hint
                     : "Division \"" + doc.HeaderDivision + "\" could not be matched to Division master. Type the Division Code.");
+                if (codeDivision != null) Missing("Division", codeDivision, true);
             }
             else
             {
@@ -559,6 +607,7 @@ namespace DMS.Services
                 row.Errors.Add(codeDepartment != null
                     ? "Department \"" + codeDepartment + "\" is not in Department master (or is inactive)." + hint + SuccessorHint
                     : "Department \"" + doc.HeaderDepartment + "\" could not be matched to Department master. Type the Department Code.");
+                if (codeDepartment != null) Missing("Department", codeDepartment, true);
             }
             else
             {
@@ -568,7 +617,10 @@ namespace DMS.Services
                 if (codeDepartment != null && !string.IsNullOrEmpty(doc.HeaderDepartment) && headerDepartment != null && headerDepartment.DEPARTMENT_CODE != department.DEPARTMENT_CODE)
                     row.Warnings.Add("The list header says department \"" + doc.HeaderDepartment + "\" (" + headerDepartment.DEPARTMENT_CODE + "), the number says " + department.DEPARTMENT_CODE + ".");
                 if (codeSection != null && !m.Sections.Any(s => Eq(s.DEPARTMENT_CODE, department.DEPARTMENT_CODE) && Eq(s.SECTION_CODE, codeSection)))
+                {
                     row.Warnings.Add("Section " + codeSection + " is not in Section master for department " + department.DEPARTMENT_CODE + ".");
+                    Missing("Section", department.DEPARTMENT_CODE + "-" + codeSection, false);
+                }
             }
 
             // Classification: the column ticked under "Status Dokumen" (Umum / Rahasia).
@@ -636,7 +688,7 @@ namespace DMS.Services
             ["nov"] = 11, ["dec"] = 12, ["des"] = 12
         };
 
-        private static string Distribute(Doc doc, int revision, DateTime? revisionDate, OutRow row, Masters m)
+        private static string Distribute(Doc doc, int revision, DateTime? revisionDate, OutRow row, Masters m, Result result)
         {
             var received = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
             var older = new SortedSet<int>();
@@ -689,6 +741,7 @@ namespace DMS.Services
                         if (recipients.Count == 0)
                         {
                             row.Errors.Add("Distribution code " + code + " (under " + column + ") is not a department or division with active departments in the master." + SuccessorHint);
+                            result.AddMissing("Department", code, "distribution (under " + column + ")", doc.Code, doc.Source, true);
                             continue;
                         }
 
@@ -814,6 +867,29 @@ namespace DMS.Services
                 row.CreateCell(3).SetCellValue(f.Documents);
                 row.CreateCell(4).SetCellValue(f.Rows);
                 row.CreateCell(5).SetCellValue(f.Problem ?? "");
+            }
+            s++;
+
+            // Every code missing from the masters, over all lists (2026-11-17).
+            var missingCodes = result.MissingCodes.ToList();
+            sheet.CreateRow(s++).CreateCell(0).SetCellValue(missingCodes.Count == 0
+                ? "All codes used in the master lists are in the system."
+                : "Codes not in the system (" + missingCodes.Count + "):");
+            if (missingCodes.Count > 0)
+            {
+                IRow mh = sheet.CreateRow(s++);
+                string[] missingTitles = { "Type", "Code", "Severity", "Used in", "Documents", "Master Lists" };
+                for (int i = 0; i < missingTitles.Length; i++) mh.CreateCell(i).SetCellValue(missingTitles[i]);
+                foreach (MissingCode mc in missingCodes)
+                {
+                    IRow row = sheet.CreateRow(s++);
+                    row.CreateCell(0).SetCellValue(mc.Type);
+                    row.CreateCell(1).SetCellValue(mc.Code);
+                    row.CreateCell(2).SetCellValue(mc.IsError ? "Error" : "Warning");
+                    row.CreateCell(3).SetCellValue(string.Join(", ", mc.UsedIn));
+                    row.CreateCell(4).SetCellValue(mc.Documents.Count);
+                    row.CreateCell(5).SetCellValue(string.Join(", ", mc.MasterLists));
+                }
             }
             s++;
             if (!result.FilesGiven)
